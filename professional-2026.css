@@ -235,4 +235,129 @@ button,a,input,textarea,select { -webkit-tap-highlight-color:transparent; }
 }
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after {scroll-behavior:auto!important;transition-duration:0.01ms!important;animation-duration:0.01ms!important;}
+}/* ==============================================================
+   GIỮ ĐẠO GIỮA ĐỜI — TINH CHỈNH THẨM MỸ V1 | 04-11-2026
+   Chỉ CSS: không thay đổi bài viết, dữ liệu, bộ lọc, menu, đăng bài.
+   Dán một lần ở CUỐI professional-2026.css.
+   =============================================================== */
+
+/* 1. Nền giấy kem có chiều sâu, không cần ảnh nền và không tăng tải mạng. */
+body .hero {
+  background:
+    radial-gradient(ellipse at 89% 18%, rgba(175,139,77,.085), transparent 44%),
+    radial-gradient(ellipse at 7% 3%, rgba(36,87,74,.040), transparent 40%),
+    linear-gradient(137deg, #faf9f5 0%, #f6f3eb 59%, #f0ede3 100%);
+  border-bottom: 1px solid #e4dfd2;
+}
+body .hero-grid {
+  min-height: 0;
+  padding-top: clamp(52px, 5.3vw, 82px);
+  padding-bottom: clamp(59px, 5.8vw, 88px);
+}
+body .hero-copy > p { color: #646e66; line-height: 1.88; }
+body .hero-foot { margin-top: 36px; color: #898373; }
+body .number-band {
+  background: linear-gradient(105deg, #e9e8de 0%, #efede3 53%, #e7e6db 100%);
+  border-top: 1px solid #e2dfd2;
+  border-bottom: 1px solid #dedacb;
+}
+
+/* 2. Khu vực bài mới trên Trang Chủ: bố cục gọn và có phân cấp. */
+body #gdd-directory {
+  background: linear-gradient(180deg, #f8f6f0 0%, #f5f3eb 57%, #f8f6f1 100%);
+  padding-top: clamp(38px, 4.5vw, 61px);
+  padding-bottom: clamp(52px, 5vw, 78px);
+}
+body #gdd-directory .gdd-directory-desc { max-width: 680px; line-height: 1.85; }
+body #gdd-directory .gdd-home-quick-nav { margin-bottom: 29px; }
+body #gdd-directory .gdd-home-quick-nav a {
+  border-color: #ddd9cd;
+  background: #fffdf8;
+  box-shadow: 0 2px 9px rgba(31,54,42,.025);
+}
+body #gdd-directory .gdd-preview-section {
+  padding-top: clamp(26px, 3.3vw, 43px);
+  padding-bottom: clamp(29px, 3.5vw, 46px);
+  border-top: 1px solid #ded9cc;
+}
+body #gdd-directory .gdd-preview-header { margin-bottom: 18px; }
+body #gdd-directory .gdd-preview-heading { letter-spacing: -.023em; }
+body #gdd-directory .gdd-preview-card {
+  border: 1px solid #dddacf;
+  border-radius: 8px;
+  background: #fffdf9;
+  box-shadow: 0 6px 22px rgba(28,62,48,.06);
+}
+body #gdd-directory .gdd-preview-card:hover {
+  border-color: #bba578;
+  box-shadow: 0 12px 28px rgba(27,65,51,.10);
+}
+body #gdd-directory .gdd-preview-thumb {
+  background: linear-gradient(135deg, #e7ebe4, #ece8de);
+  border-right: 1px solid #e1dfd5;
+}
+body #gdd-directory .gdd-preview-thumb img { object-fit: contain; }
+body #gdd-directory .gdd-preview-copy { gap: 8px; }
+body #gdd-directory .gdd-preview-name { color: #21483d; }
+body #gdd-directory .gdd-preview-summary { color: #6a756e; }
+body #gdd-directory .gdd-preview-more {
+  background: #fffdf8;
+  border: 1px solid #c7d1c4;
+  border-radius: 5px;
+  min-height: 43px;
+}
+body #gdd-directory .gdd-preview-empty {
+  background: rgba(255,253,248,.76);
+  border: 1px dashed #d7d4c8;
+  border-radius: 7px;
+}
+
+/* 3. Thẻ ở trang chuyên mục: cùng chất liệu, cùng đường viền. */
+body .person-card,
+body .gallery-card,
+body .archive-card,
+body #article-list .article-row.editorial-article {
+  background-color: #fffdf9;
+  border: 1px solid #e0dcd0;
+  border-radius: 8px;
+  box-shadow: 0 5px 18px rgba(29,60,45,.05);
+  overflow: hidden;
+}
+body .person-card:hover,
+body .gallery-card:hover,
+body .archive-card:hover,
+body #article-list .article-row.editorial-article:hover {
+  box-shadow: 0 12px 27px rgba(29,60,45,.09);
+}
+body .person-media,
+body .gallery-visual,
+body .archive-thumb { background-color: #e8eae3; }
+body .person-media img,
+body .gallery-visual img,
+body .archive-thumb > img { object-fit: contain; }
+body .section-top { margin-bottom: clamp(23px, 2.7vw, 33px); }
+body .section-tinted { background: linear-gradient(160deg, #f2f0e8, #efede4); }
+
+/* 4. Lời ngỏ và chân trang: vẫn theo tông xanh cổ – vàng đồng. */
+body #gioi-thieu {
+  background:
+    radial-gradient(ellipse at 92% 0%, rgba(174,139,78,.08), transparent 48%),
+    linear-gradient(122deg, #e9e6da, #f3f0e6);
+  border-top: 1px solid #dcd6c6;
+}
+
+/* 5. Điện thoại: bớt khoảng trống nhưng vẫn dễ đọc, dễ chạm. */
+@media (max-width: 620px) {
+  body .hero-grid { padding-top: 45px; padding-bottom: 53px; }
+  body .hero-foot { margin-top: 31px; }
+  body #gdd-directory { padding-top: 38px; padding-bottom: 53px; }
+  body #gdd-directory .gdd-preview-section { padding-top: 24px; padding-bottom: 29px; }
+  body #gdd-directory .gdd-preview-header { margin-bottom: 15px; }
+  body #gdd-directory .gdd-preview-card { border-radius: 7px; }
+  body #gdd-directory .gdd-preview-copy { gap: 6px; }
+}
+
+/* 6. Bảo toàn lựa chọn giảm chuyển động của người dùng. */
+@media (prefers-reduced-motion: reduce) {
+  body #gdd-directory .gdd-preview-card { transition: none; }
 }
