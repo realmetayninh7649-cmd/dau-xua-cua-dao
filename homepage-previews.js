@@ -195,48 +195,139 @@
   css.id='gdd-section-layout-css';
   css.textContent=`
     main > section[hidden], .gdd-directory[hidden], .gdd-route-path[hidden] {display:none!important}
-    .gdd-directory{padding:56px 0 76px;background:#f7f5ef}
+    .gdd-directory{padding:44px 0 74px;background:#f7f5ef}
     .gdd-directory-inner{width:min(1160px,calc(100% - 48px));margin:auto}
-    .gdd-directory-eyebrow{font:700 12px/1.5 'Be Vietnam Pro',sans-serif;letter-spacing:.17em;color:#b48b4e}
-    .gdd-directory h2{margin:12px 0 10px;font:600 clamp(29px,4vw,41px)/1.3 'Noto Serif',Georgia,serif;color:#224a3e}
-    .gdd-directory-desc{margin:0 0 28px;font:400 14px/1.8 'Be Vietnam Pro',sans-serif;color:#66736a}
-    .gdd-directory-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
-    .gdd-directory-card{display:flex;flex-direction:column;min-width:0;min-height:147px;padding:20px 19px;background:#fffdfa;border:1px solid #e2ded2;border-radius:6px;text-decoration:none;color:#234d42;box-shadow:0 5px 18px rgba(22,49,38,.035)}
-    .gdd-directory-card:hover,.gdd-directory-card:focus-visible{border-color:#bda57b;box-shadow:0 12px 27px rgba(22,49,38,.08)}
-    .gdd-directory-card strong{font:600 18px/1.5 'Noto Serif',Georgia,serif}
-    .gdd-directory-card small{flex:1;font:400 12px/1.7 'Be Vietnam Pro',sans-serif;color:#69766d;margin-top:8px}
-    .gdd-directory-card span{margin-top:12px;font:700 12px/1.5 'Be Vietnam Pro',sans-serif;color:#19594f}
-    .gdd-directory-links{display:flex;gap:15px;flex-wrap:wrap;margin-top:21px}
-    .gdd-directory-links a{color:#1f6559;font:700 13px/1.6 'Be Vietnam Pro',sans-serif;text-underline-offset:4px}
+    .gdd-directory-eyebrow{font:700 11px/1.5 'Be Vietnam Pro',sans-serif;letter-spacing:.17em;color:#aa8246}
+    .gdd-directory h2{margin:10px 0 12px;font:600 clamp(28px,3.5vw,40px)/1.35 'Noto Serif',Georgia,serif;color:#224a3e}
+    .gdd-directory-desc{max-width:720px;margin:0 0 23px;font:400 13px/1.95 'Be Vietnam Pro',sans-serif;color:#66736a}
+    .gdd-home-quick-nav{display:flex;gap:9px;flex-wrap:wrap;margin:22px 0 32px}
+    .gdd-home-quick-nav a{display:inline-block;padding:8px 13px;background:#fffefa;border:1px solid #ddd9ce;border-radius:40px;text-decoration:none;color:#31594e;font:600 11px/1.5 'Be Vietnam Pro',sans-serif}
+    .gdd-home-quick-nav a:hover{border-color:#aa8b57;background:#eceee5}
+    .gdd-preview-section{padding:26px 0 32px;border-top:1px solid #ddd9cd}
+    .gdd-preview-header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:19px}
+    .gdd-preview-heading{font:600 clamp(23px,2.5vw,31px)/1.4 'Noto Serif',Georgia,serif;color:#1d5045;margin:5px 0 4px}
+    .gdd-preview-sub{font:400 12px/1.7 'Be Vietnam Pro',sans-serif;color:#788078;margin:0}
+    .gdd-preview-index{color:#ac8a57;font:700 12px/1.5 'Be Vietnam Pro',sans-serif;white-space:nowrap;letter-spacing:.1em}
+    .gdd-preview-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .gdd-preview-card{min-width:0;width:100%;padding:0;border:1px solid #e2ded4;border-radius:7px;overflow:hidden;display:flex;text-align:left;cursor:pointer;background:#fffefa;box-shadow:0 4px 14px rgba(15,47,35,.05);color:inherit;transition:box-shadow .15s ease,border-color .15s ease}
+    .gdd-preview-card:hover{border-color:#bda47c;box-shadow:0 9px 23px rgba(15,47,35,.08)}
+    .gdd-preview-thumb{width:135px;min-width:135px;height:154px;min-height:154px;background:#e7e9e2;display:flex;align-items:center;justify-content:center;overflow:hidden;border-right:1px solid #e7e4da}
+    .gdd-preview-thumb img{width:100%;height:100%;display:block;object-fit:contain;object-position:center}
+    .gdd-preview-fallback{color:#af8d58;font:400 31px/1 Georgia,serif}
+    .gdd-preview-copy{display:flex;flex-direction:column;gap:7px;flex:1;min-width:0;padding:14px 16px}
+    .gdd-preview-meta{font:700 10px/1.5 'Be Vietnam Pro',sans-serif;color:#aa8550;letter-spacing:.045em}
+    .gdd-preview-name{font:600 clamp(15px,1.35vw,19px)/1.55 'Noto Serif',Georgia,serif;color:#24483e;overflow-wrap:anywhere;margin:0}
+    .gdd-preview-summary{margin:0;color:#69746d;font:400 11px/1.7 'Be Vietnam Pro',sans-serif;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+    .gdd-preview-hint{margin-top:auto;font:700 10px/1.5 'Be Vietnam Pro',sans-serif;color:#216051}
+    .gdd-preview-footer{display:flex;justify-content:flex-end;margin-top:15px}
+    .gdd-preview-more{display:inline-flex;align-items:center;gap:9px;justify-content:center;border:1px solid #c7d1c4;border-radius:4px;padding:10px 19px;min-height:42px;background:#fffefa;color:#1c574c;text-decoration:none;font:700 12px/1.5 'Be Vietnam Pro',sans-serif}
+    .gdd-preview-more:hover{background:#e5eee8}
+    .gdd-preview-empty{grid-column:1/-1;color:#777f76;background:#fbfaf6;border:1px dashed #ddd9cf;border-radius:5px;padding:16px;font:400 12px/1.8 'Be Vietnam Pro',sans-serif}
+    .gdd-directory-links{display:flex;gap:15px;flex-wrap:wrap;margin-top:20px}
+    .gdd-directory-links a{color:#1f6559;font:700 12px/1.6 'Be Vietnam Pro',sans-serif;text-underline-offset:4px}
     .gdd-route-path{width:min(1160px,calc(100% - 48px));margin:22px auto 0;padding:0;font:600 12px/1.6 'Be Vietnam Pro',sans-serif;color:#a0804a}
     .gdd-route-path a{color:#35645b;text-decoration:none}
     .gdd-route-path a:hover{text-decoration:underline}
     .gdd-route-path span{margin-left:8px}
     body.gdd-separate-sections main > section.section{padding-top:34px}
-    @media(max-width:820px){.gdd-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:560px){.gdd-directory{padding:35px 0 46px}.gdd-directory-inner,.gdd-route-path{width:calc(100% - 32px)}.gdd-directory-grid{gap:10px}.gdd-directory-card{padding:15px 14px;min-height:144px}.gdd-directory-card strong{font-size:15px}.gdd-directory-card small{font-size:11px}.gdd-directory-card span{font-size:11px}}
-    @media(max-width:340px){.gdd-directory-grid{grid-template-columns:1fr}}
+    @media(max-width:920px){.gdd-preview-cards{grid-template-columns:1fr}.gdd-preview-thumb{width:160px;min-width:160px}}
+    @media(max-width:560px){
+      .gdd-directory{padding:35px 0 48px}.gdd-directory-inner,.gdd-route-path{width:calc(100% - 32px)}
+      .gdd-home-quick-nav{gap:7px;margin:18px 0 26px}.gdd-home-quick-nav a{padding:7px 10px;font-size:10px}
+      .gdd-preview-section{padding:21px 0 27px}.gdd-preview-heading{font-size:22px}.gdd-preview-sub{font-size:11px}
+      .gdd-preview-header{margin-bottom:13px}.gdd-preview-cards{gap:11px}
+      .gdd-preview-thumb{width:116px;min-width:116px;height:133px;min-height:133px}
+      .gdd-preview-copy{padding:11px 12px;gap:5px}.gdd-preview-name{font-size:15px;line-height:1.45}
+      .gdd-preview-summary{font-size:10px;-webkit-line-clamp:2}.gdd-preview-hint{font-size:10px}
+      .gdd-preview-index{font-size:10px}
+    }
+    @media(max-width:350px){.gdd-preview-thumb{width:94px;min-width:94px}.gdd-preview-summary{-webkit-line-clamp:2}}
+    @media(prefers-reduced-motion:reduce){.gdd-preview-card{transition:none}}
   `;
   document.head.append(css);
 
+  // Trang Chủ: chỉ giới thiệu 1–2 tư liệu MỚI của mỗi mục.
+  // Bản đầy đủ luôn nằm ở chuyên mục gốc, không nhân đôi dữ liệu trong Supabase.
+  const previewSources={
+    'chuc-sac':['people-grid','.person-card','Hồ sơ Chức sắc'],
+    'video-dao-su':['video-grid','.archive-card','Video Đạo Sử'],
+    'ai-tin':['obituary-grid','.archive-card','Ai Tín'],
+    'tai-lieu-so-hoa':['document-grid','.archive-card','Tài liệu số hóa'],
+    'bien-khao':['article-list','.editorial-article','Biên khảo'],
+    'hinh-anh':['gallery-grid','.gallery-card','Hình ảnh']
+  };
   const directory=document.createElement('section');directory.id='gdd-directory';directory.className='gdd-directory';
   const inner=document.createElement('div');inner.className='gdd-directory-inner';
-  inner.innerHTML='<div class="gdd-directory-eyebrow">KHÁM PHÁ KHO TƯ LIỆU</div><h2>Chọn một chuyên mục</h2><p class="gdd-directory-desc">Mỗi chuyên mục được trình bày riêng, thuận tiện tra cứu trên điện thoại và máy tính.</p>';
-  const cards=document.createElement('nav');cards.className='gdd-directory-grid';cards.setAttribute('aria-label','Các chuyên mục Đạo sử');
-  sectionList.slice(0,6).forEach(([id,name,description])=>{
-    const card=document.createElement('a');card.href='#'+id;card.className='gdd-directory-card';
-    const heading=document.createElement('strong');heading.textContent=name;
-    const small=document.createElement('small');small.textContent=description;
-    const label=document.createElement('span');label.textContent='Mở chuyên mục ↗';
-    card.append(heading,small,label);cards.append(card);
-  });
+  inner.innerHTML='<div class="gdd-directory-eyebrow">TƯ LIỆU MỚI CẬP NHẬT</div><h2>Dấu xưa đang được gìn giữ</h2><p class="gdd-directory-desc">Mỗi chuyên mục giới thiệu hai tư liệu mới nhất. Nhấn <strong>Xem thêm</strong> để mở kho tư liệu đầy đủ, tra cứu và đọc chi tiết.</p>';
+  const quick=document.createElement('nav');quick.className='gdd-home-quick-nav';quick.setAttribute('aria-label','Chuyển đến chuyên mục');
+  for(const [id,name] of sectionList.slice(0,6)){
+    const a=document.createElement('a');a.href='#'+id;a.textContent=name;quick.append(a);
+  }
+  inner.append(quick);
+  const sectionViews=new Map();
+  for(const [index,[id,title,description]] of sectionList.slice(0,6).entries()){
+    const block=document.createElement('div');block.className='gdd-preview-section';block.dataset.previewSection=id;
+    const header=document.createElement('div');header.className='gdd-preview-header';
+    const nameCol=document.createElement('div');
+    const heading=document.createElement('h3');heading.className='gdd-preview-heading';heading.textContent=title;
+    const hint=document.createElement('p');hint.className='gdd-preview-sub';hint.textContent=description;
+    nameCol.append(heading,hint);
+    const idx=document.createElement('span');idx.className='gdd-preview-index';idx.textContent=String(index+1).padStart(2,'0')+' / 06';
+    header.append(nameCol,idx);
+    const cards=document.createElement('div');cards.className='gdd-preview-cards';cards.setAttribute('aria-label','Tư liệu mới: '+title);
+    const footer=document.createElement('div');footer.className='gdd-preview-footer';
+    const more=document.createElement('a');more.href='#'+id;more.className='gdd-preview-more';more.textContent='Xem thêm '+title+' ↗';
+    footer.append(more);block.append(header,cards,footer);inner.append(block);
+    sectionViews.set(id,cards);
+  }
   const extra=document.createElement('div');extra.className='gdd-directory-links';
   for(const [id,name] of sectionList.slice(6)){
     const a=document.createElement('a');a.href='#'+id;a.textContent=name+' ↗';extra.append(a);
   }
-  inner.append(cards,extra);directory.append(inner);
+  inner.append(extra);directory.append(inner);
   const stats=main.querySelector('.number-band');
   if(stats)stats.insertAdjacentElement('afterend',directory);else home.insertAdjacentElement('afterend',directory);
+
+  const extractPreview = (source,id) => {
+    const title=source.querySelector('h3')?.textContent?.trim()||'Tư liệu Đạo sử';
+    const summary=source.querySelector('.person-body p,.editorial-copy p,.archive-card-copy p,.gallery-card p')?.textContent?.trim()||'';
+    const meta=source.querySelector('.person-rank,.article-tag,.archive-type,.person-years')?.textContent?.trim()||'';
+    const image=source.querySelector('.person-media img,.editorial-image img,.gallery-visual img,.archive-thumb img')?.getAttribute('src')||'';
+    const action=source.matches('[data-open-kind][data-id]')?source:source.querySelector('[data-open-kind][data-id]');
+    // Khi URL từ nội dung chưa hợp lệ, không nhúng trực tiếp vào DOM.
+    const kind=action?.dataset.openKind||'',recordId=action?.dataset.id||'';
+    const card=document.createElement('button');card.type='button';card.className='gdd-preview-card';
+    if(kind&&recordId){card.dataset.openKind=kind;card.dataset.id=recordId;card.setAttribute('aria-label','Xem: '+title)}
+    else{card.disabled=true;card.title='Tư liệu đang cập nhật'}
+    const media=document.createElement('span');media.className='gdd-preview-thumb';
+    if(image&&/^(https:\/\/|\.\/|\/|[^:/?#]+\.(?:png|jpg|jpeg|webp)(?:\?|$))/i.test(image)){
+      const img=document.createElement('img');img.src=image;img.loading='lazy';img.decoding='async';img.alt='Ảnh tư liệu: '+title;media.append(img);
+    }else{
+      const ph=document.createElement('span');ph.className='gdd-preview-fallback';ph.textContent='✦';media.append(ph);
+    }
+    const body=document.createElement('span');body.className='gdd-preview-copy';
+    if(meta){const info=document.createElement('span');info.className='gdd-preview-meta';info.textContent=meta;body.append(info)}
+    const name=document.createElement('strong');name.className='gdd-preview-name';name.textContent=title;body.append(name);
+    if(summary){const desc=document.createElement('span');desc.className='gdd-preview-summary';desc.textContent=summary;body.append(desc)}
+    const more=document.createElement('span');more.className='gdd-preview-hint';more.textContent='Xem chi tiết ↗';body.append(more);
+    card.append(media,body);return card;
+  };
+  function updateHomePreview(id){
+    const conf=previewSources[id],area=sectionViews.get(id);if(!conf||!area)return;
+    const list=find('#'+conf[0]);if(!list)return;
+    const items=[...list.querySelectorAll(':scope > '+conf[1])].slice(0,2);
+    area.replaceChildren();
+    if(items.length){for(const item of items)area.append(extractPreview(item,id))}
+    else {const empty=document.createElement('div');empty.className='gdd-preview-empty';empty.textContent='Chuyên mục đang tiếp tục sưu tầm, biên soạn tư liệu.';area.append(empty)}
+  }
+  // app.js tự nạp lại nội dung sau mỗi lần lưu bài; quan sát danh sách gốc
+  // và cập nhật ảnh giới thiệu, tuyệt đối không đụng vào bộ lọc/đăng bài.
+  for(const id of Object.keys(previewSources)){
+    const conf=previewSources[id],source=find('#'+conf[0]);if(!source)continue;
+    let queued=false;
+    new MutationObserver(()=>{if(queued)return;queued=true;queueMicrotask(()=>{queued=false;updateHomePreview(id)})}).observe(source,{childList:true});
+    updateHomePreview(id);
+  }
 
   const trail=document.createElement('nav');trail.id='gdd-route-path';trail.className='gdd-route-path';
   trail.setAttribute('aria-label','Đường dẫn chuyên mục');
