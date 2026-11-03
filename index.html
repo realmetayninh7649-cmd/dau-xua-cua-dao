@@ -350,5 +350,209 @@ body #gdd-directory .gdd-preview-more:hover {background:#edf2ec;}
 })();
 </script>
 <!-- KẾT THÚC: GDD - TINH CHỈNH TRANG CHỦ 2026 -->
+<!-- GDD V2 – LỜI NGỎ + SLIDESHOW 8 GIÂY: DÁN TRƯỚC </body> MỘT LẦN -->
+<style id="gdd-loi-ngo-slide8-css">
+/* GIỮ ĐẠO GIỮA ĐỜI - CHỈNH LỜI NGỎ + SLIDESHOW 8 GIÂY */
+#gioi-thieu.about {
+  position:relative;isolation:isolate;overflow:hidden;
+  background:radial-gradient(ellipse at 85% 10%,rgba(174,139,78,.11),transparent 42%),
+             linear-gradient(120deg,#e9e6dc,#f4f1e9 66%,#ede9dd);
+}
+#gioi-thieu.about::before {
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20720%20350%22%20fill%3D%22none%22%3E%3Cg%20stroke%3D%22%23A7854F%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M55%20233h480c50%200%2082-24%2082-59%200-34-28-57-58-57-23%200-44%2012-55%2030-7-42-40-75-83-75-42%200-79%2029-87%2068-20-23-46-32-73-26-28%206-48%2025-54%2051-22-14-48-11-67%206-20%2019-23%2048-12%2062%22%2F%3E%3Cpath%20d%3D%22M206%20165c19-15%2044-11%2059%207%2010%2013%209%2030-2%2040-11%2011-30%2010-39%201-9-9-6-22%202-29%22%2F%3E%3Cpath%20d%3D%22M375%20142c19-17%2048-15%2065%206%2016%2020%2011%2048-6%2058-15%2010-32%204-38-6-6-10%200-21%2010-24%22%2F%3E%3Cpath%20d%3D%22M114%20255h481M182%20275h324M485%2095c35-11%2071%205%2091%2033%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");background-repeat:no-repeat;
+  background-size:min(45vw,460px) auto;
+  background-position:right -70px top 16px;
+  opacity:.24;
+}
+#gioi-thieu .about-grid {position:relative;z-index:1;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:clamp(24px,4.6vw,74px);}
+#gioi-thieu .gdd-about-heading h2 {max-width:440px;line-height:1.45;}
+#gioi-thieu .gdd-about-prose {font-size:clamp(13px,1.05vw,15px);line-height:2.02;color:#53645b;}
+#gioi-thieu .gdd-about-prose p {margin:0 0 22px;text-align:left;}
+#gioi-thieu .gdd-about-prose .gdd-mantra {color:#28584b;font-weight:700;letter-spacing:.018em;margin-top:24px;}
+#gioi-thieu .gdd-about-prose .gdd-signature {font-family:'Noto Serif',Georgia,serif;font-style:italic;color:#876b41;text-align:right;margin-top:14px;}
+#trang-chu .gdd-history-photo {cursor:pointer;touch-action:pan-y;}
+#trang-chu .gdd-history-photo:focus-visible {outline:3px solid #b28d53;outline-offset:5px;}
+#trang-chu .gdd-history-photo img {transition:opacity .36s ease;}
+#trang-chu .gdd-history-photo figcaption {line-height:1.45;overflow-wrap:anywhere;}
+@media(max-width:820px) {
+  #gioi-thieu .about-grid {grid-template-columns:minmax(0,1fr);gap:19px;}
+  #gioi-thieu .gdd-about-heading h2 {margin-bottom:8px;}
+  #gioi-thieu.about::before {background-size:340px auto;background-position:right -150px top 15px;opacity:.18;}
+}
+@media(prefers-reduced-motion:reduce) {#trang-chu .gdd-history-photo img {transition:none;}}
+</style>
+<script id="gdd-loi-ngo-slide8-script">
+(() => {
+  'use strict';
+  if (window.__gddLoiNgoSlide8s) return;
+  window.__gddLoiNgoSlide8s = true;
+  const init = () => {
+    const about = document.getElementById('gioi-thieu');
+    if (about) about.innerHTML = '<div class="wrap about-grid">\n  <div class="gdd-about-heading">\n    <div class="eyebrow">LỜI NGỎ</div>\n    <h2>Giữ một trang xưa,<br><em>nối muôn đời sau.</em></h2>\n  </div>\n  <div class="gdd-about-prose">\n    <p>Người xưa khuất bóng, năm tháng lần qua, song công nghiệp của chư vị Chức sắc tiền bối vẫn còn lưu dấu trong những trang Đạo sử, những tờ Châu tri, Thánh lịnh đã úa màu cùng lời thuật chuyện của người sau.</p>\n    <p>Bởi lòng tưởng nhớ tiền nhân, Tiểu đệ góp nhặt sử liệu, hình ảnh và những chứng tích còn lưu truyền, hầu biên chép lại đôi phần cuộc đời, đạo nghiệp của các bậc tiền bối trong nền Đại Đạo Tam Kỳ Phổ Độ.</p>\n    <p>Tư liệu được tham khảo từ nhiều nguồn, có phần đã được kiểm chứng, có phần còn chờ đối chiếu. Các bài biên khảo được diễn đạt theo lối ký sự quốc ngữ Nam Kỳ xưa, pha hơi văn Cao Đài thuở trước. Những lời dẫn chuyện mang tính văn chương, chẳng phải nguyên văn của nhân vật nếu không có dẫn nguồn.</p>\n    <p>Công việc còn nhiều sơ thất, kính mong chư Quý Hiền Huynh, Hiền Tỷ, Hiền Đệ, Hiền Muội vui lòng chỉ giáo, bổ khuyết, hầu giữ lại chút dấu xưa cho lớp hậu học mai sau.</p>\n    <p class="gdd-mantra">NAM MÔ CAO ĐÀI TIÊN ÔNG ĐẠI BỒ TÁT MA HA TÁT.</p>\n    <p class="gdd-signature">Tiểu đệ TRƯỜNG QUANG kính bút.</p>\n  </div>\n</div>';
+
+    const hero = document.getElementById('trang-chu');
+    const heading = hero?.querySelector('.hero-copy h1');
+    if (!hero || !heading) return;
+
+    // Hình cũ chỉ chọn một tư liệu; thay bằng một khung mới có thể luân phiên.
+    hero.querySelectorAll('.gdd-history-photo').forEach(el => el.remove());
+    const frame = document.createElement('figure');
+    frame.className = 'gdd-history-photo';
+    frame.hidden = true;
+    frame.tabIndex = 0;
+    frame.setAttribute('role', 'button');
+    frame.setAttribute('aria-label', 'Mở tư liệu đang giới thiệu');
+    const image = document.createElement('img');
+    image.alt = 'Hình tư liệu Đạo sử';
+    image.decoding = 'async';
+    const caption = document.createElement('figcaption');
+    frame.append(image, caption);
+    heading.insertAdjacentElement('afterend', frame);
+
+    const buckets = [
+      '#people-grid .person-card',
+      '#article-list .editorial-article',
+      '#gallery-grid .gallery-card',
+      '#video-grid .archive-card',
+      '#obituary-grid .archive-card',
+      '#document-grid .archive-card'
+    ];
+    let slides = [], signature = '', currentKey = '', slideIndex = 0;
+    let sequence = 0, loading = false, lastSwitch = 0;
+    const unavailable = new Set();
+    const blocked = matchMedia('(prefers-reduced-motion: reduce)');
+    const obtain = () => {
+      const items = [], seen = new Set();
+      for (const selector of buckets) {
+        for (const card of document.querySelectorAll(selector)) {
+          const picture = card.querySelector('img');
+          const action = card.matches('[data-open-kind][data-id]')
+            ? card : card.querySelector('[data-open-kind][data-id]');
+          const raw = picture?.getAttribute('src')?.trim();
+          if (!raw || !action?.dataset?.openKind || !action?.dataset?.id) continue;
+          let url;
+          try {
+            const parsed = new URL(raw, document.baseURI);
+            if (parsed.protocol !== 'https:' && !(location.protocol === 'http:' && parsed.protocol === 'http:')) continue;
+            url = parsed.href;
+          } catch { continue; }
+          if (seen.has(url)) continue;
+          seen.add(url);
+          const title = card.querySelector('h3')?.textContent?.trim() || 'Tư liệu Đạo sử';
+          const kind = action.dataset.openKind, id = action.dataset.id;
+          items.push({ url, title, kind, id, key: kind + ':' + id + ':' + url });
+          if (items.length >= 30) return items;
+        }
+      }
+      return items;
+    };
+    const show = (number, attempts = 0) => {
+      if (!slides.length || attempts >= slides.length) {
+        if (!currentKey) { frame.hidden = true; hero.classList.remove('gdd-has-history'); }
+        return;
+      }
+      const pos = (number + slides.length) % slides.length;
+      const slide = slides[pos];
+      if (unavailable.has(slide.key)) return show(pos + 1, attempts + 1);
+      if (slide.key === currentKey && !frame.hidden) { slideIndex = pos; return; }
+      const token = ++sequence;
+      loading = true;
+      const loader = new Image();
+      loader.onload = () => {
+        if (token !== sequence) return;
+        loading = false;
+        slideIndex = pos;
+        currentKey = slide.key;
+        image.style.opacity = '0';
+        image.src = slide.url;
+        image.alt = 'Ảnh tư liệu: ' + slide.title;
+        caption.textContent = 'TƯ LIỆU LỊCH SỬ · ' + slide.title + ' · ' + (pos + 1) + '/' + slides.length;
+        frame.dataset.openKind = slide.kind;
+        frame.dataset.id = slide.id;
+        frame.setAttribute('aria-label', 'Mở tư liệu: ' + slide.title);
+        frame.hidden = false;
+        hero.classList.add('gdd-has-history');
+        lastSwitch = Date.now();
+        requestAnimationFrame(() => { image.style.opacity = '1'; });
+      };
+      loader.onerror = () => {
+        if (token !== sequence) return;
+        loading = false;
+        unavailable.add(slide.key);
+        show(pos + 1, attempts + 1);
+      };
+      loader.src = slide.url;
+    };
+    const refresh = () => {
+      const collected = obtain();
+      const fresh = collected.map(x => x.key).join('|');
+      if (fresh === signature) return;
+      signature = fresh;
+      slides = collected;
+      if (!slides.length) {
+        ++sequence; loading = false; currentKey = '';
+        frame.hidden = true; hero.classList.remove('gdd-has-history');
+        return;
+      }
+      const keep = slides.findIndex(x => x.key === currentKey);
+      if (keep >= 0 && !frame.hidden) {
+        slideIndex = keep;
+        caption.textContent = 'TƯ LIỆU LỊCH SỬ · ' + slides[keep].title + ' · ' + (keep + 1) + '/' + slides.length;
+      } else show(0);
+    };
+    let scheduled = false;
+    const scheduleRefresh = () => {
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => { scheduled = false; refresh(); });
+    };
+    for (const id of ['people-grid', 'article-list', 'gallery-grid', 'video-grid', 'obituary-grid', 'document-grid']) {
+      const node = document.getElementById(id);
+      if (node) new MutationObserver(scheduleRefresh).observe(node, { childList: true });
+    }
+    refresh();
+    const move = offset => {
+      if (slides.length < 2 || loading) return;
+      show(slideIndex + offset);
+    };
+    window.setInterval(() => {
+      if (!document.hidden && !hero.hidden && !blocked.matches && slides.length > 1 && !loading && Date.now() - lastSwitch >= 7900) move(1);
+    }, 8000);
+    frame.addEventListener('keydown', event => {
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+        event.preventDefault(); move(event.key === 'ArrowRight' ? 1 : -1);
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault(); frame.click();
+      }
+    });
+    let startX = null, startY = null, suppressClick = false;
+    frame.addEventListener('touchstart', event => {
+      const touch = event.touches[0]; if (!touch) return;
+      startX = touch.clientX; startY = touch.clientY;
+    }, { passive: true });
+    frame.addEventListener('touchend', event => {
+      const touch = event.changedTouches[0];
+      if (!touch || startX === null) return;
+      const dx = touch.clientX - startX, dy = touch.clientY - startY;
+      startX = startY = null;
+      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        suppressClick = true; move(dx < 0 ? 1 : -1);
+        window.setTimeout(() => { suppressClick = false; }, 450);
+      }
+    }, { passive: true });
+    frame.addEventListener('click', event => {
+      if (suppressClick) {
+        event.preventDefault(); event.stopImmediatePropagation();
+      }
+    }, true);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else init();
+})();
+</script>
+<!-- KẾT THÚC BẢN CẬP NHẬT GDD V2 -->
+
 </body>
 </html>
