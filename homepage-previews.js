@@ -347,11 +347,11 @@
     const route=getRoute();
     const changed=active!==route;
     active=route;
-    const isHome=route==='trang-chu';
+    const isHome=route==='trang-chu'||route==='gioi-thieu';
     for(const section of main.querySelectorAll(':scope > section')){
       if(section===directory)continue;
       if(section===stats){section.hidden=!isHome;continue;}
-      if(section.id){section.hidden=isHome?section.id!=='trang-chu':section.id!==route;continue;}
+      if(section.id){section.hidden=isHome?!['trang-chu','gioi-thieu'].includes(section.id):section.id!==route;continue;}
       // Phần bổ sung không định danh được giữ nguyên để không tác động chức năng khác.
     }
     directory.hidden=!isHome;trail.hidden=isHome;
@@ -360,7 +360,8 @@
     document.body.classList.toggle('gdd-separate-sections',!isHome);
     if(changed){
       requestAnimationFrame(()=>{
-        if(!location.hash.includes('/'))window.scrollTo({top:0,behavior:'instant'});
+        if(route==='gioi-thieu')find('#gioi-thieu')?.scrollIntoView({behavior:'instant',block:'start'});
+        else if(!location.hash.includes('/'))window.scrollTo({top:0,behavior:'instant'});
       });
     }
   };
