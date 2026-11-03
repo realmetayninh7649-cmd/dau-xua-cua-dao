@@ -179,5 +179,176 @@
     </div>
   </section></div>
   <noscript>Vui lòng bật JavaScript để xem danh mục tư liệu và tìm kiếm.</noscript>
+<!-- BẮT ĐẦU: GDD - TINH CHỈNH TRANG CHỦ 2026 (DÁN MỘT LẦN) -->
+<style id="gdd-home-final-2026">
+/* GIỮ ĐẠO GIỮA ĐỜI — TINH CHỈNH MỘT LẦN, 04/11/2026.
+   Chỉ giao diện. Giữ nguyên dữ liệu, hệ thống quản trị và điều hướng. */
+#trang-chu.hero {
+  position:relative; isolation:isolate;
+  background:
+    radial-gradient(ellipse at 77% 21%,rgba(172,141,84,.10),transparent 43%),
+    radial-gradient(ellipse at 5% 5%,rgba(25,84,69,.055),transparent 44%),
+    linear-gradient(125deg,#faf8f2 0%,#f4f1e8 62%,#ede9de 100%);
+}
+#trang-chu.hero::before {
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20720%20350%22%20fill%3D%22none%22%3E%3Cg%20stroke%3D%22%23A7854F%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M55%20233h480c50%200%2082-24%2082-59%200-34-28-57-58-57-23%200-44%2012-55%2030-7-42-40-75-83-75-42%200-79%2029-87%2068-20-23-46-32-73-26-28%206-48%2025-54%2051-22-14-48-11-67%206-20%2019-23%2048-12%2062%22%2F%3E%3Cpath%20d%3D%22M206%20165c19-15%2044-11%2059%207%2010%2013%209%2030-2%2040-11%2011-30%2010-39%201-9-9-6-22%202-29%22%2F%3E%3Cpath%20d%3D%22M375%20142c19-17%2048-15%2065%206%2016%2020%2011%2048-6%2058-15%2010-32%204-38-6-6-10%200-21%2010-24%22%2F%3E%3Cpath%20d%3D%22M114%20255h481M182%20275h324M485%2095c35-11%2071%205%2091%2033%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20720%20350%22%20fill%3D%22none%22%3E%3Cg%20stroke%3D%22%23A7854F%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M55%20233h480c50%200%2082-24%2082-59%200-34-28-57-58-57-23%200-44%2012-55%2030-7-42-40-75-83-75-42%200-79%2029-87%2068-20-23-46-32-73-26-28%206-48%2025-54%2051-22-14-48-11-67%206-20%2019-23%2048-12%2062%22%2F%3E%3Cpath%20d%3D%22M206%20165c19-15%2044-11%2059%207%2010%2013%209%2030-2%2040-11%2011-30%2010-39%201-9-9-6-22%202-29%22%2F%3E%3Cpath%20d%3D%22M375%20142c19-17%2048-15%2065%206%2016%2020%2011%2048-6%2058-15%2010-32%204-38-6-6-10%200-21%2010-24%22%2F%3E%3Cpath%20d%3D%22M114%20255h481M182%20275h324M485%2095c35-11%2071%205%2091%2033%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  background-repeat:no-repeat;
+  background-size:min(49vw,490px) auto,min(37vw,350px) auto;
+  background-position:right -42px top 15px,left -155px bottom 12px;
+  opacity:.22;
+}
+#trang-chu .hero-grid {position:relative;z-index:1;gap:clamp(22px,4vw,55px);padding-top:clamp(42px,5vw,66px);padding-bottom:clamp(44px,5vw,67px);min-height:0;}
+#trang-chu .hero-copy {min-width:0;}
+#trang-chu .hero-copy h1 {
+  font-size:clamp(35px,3.85vw,56px);line-height:1.35;
+  letter-spacing:-.038em;margin:clamp(22px,2.7vw,33px) 0 clamp(19px,2.8vw,30px);
+  text-wrap:balance;
+}
+#trang-chu .hero-copy>p {max-width:570px;line-height:1.84;margin-bottom:26px;}
+#trang-chu .hero-foot {margin-top:28px;}
+#trang-chu.gdd-has-history .hero-art {display:none;}
+#trang-chu .gdd-history-photo {
+  position:absolute;right:0;top:50%;transform:translateY(-50%);
+  width:min(38%,395px);height:min(445px,42vw);margin:0;
+  border:1px solid #d4c6a9;border-radius:6px;
+  background:#f9f7f0;padding:12px;
+  box-shadow:0 17px 44px rgba(32,65,51,.11),0 2px 6px rgba(49,66,48,.045);
+  overflow:hidden;
+}
+#trang-chu .gdd-history-photo[hidden] {display:none!important;}
+#trang-chu .gdd-history-photo img {
+  display:block;width:100%;height:calc(100% - 40px);
+  object-fit:contain;object-position:center;
+  border-radius:3px;background:linear-gradient(145deg,#e6e8e1,#eeece5);
+}
+#trang-chu .gdd-history-photo figcaption {
+  display:flex;align-items:center;justify-content:center;min-height:40px;
+  color:#876d43;text-align:center;font:600 10px/1.45 'Be Vietnam Pro',sans-serif;
+  letter-spacing:.06em;padding:6px 4px;
+}
+/* Hai ảnh/bài từng chuyên mục: hiện từ dữ liệu cũ, không tạo bản ghi mới. */
+body #gdd-directory {
+  background:linear-gradient(180deg,#f7f5ee,#f3f0e7 55%,#f7f5ef);
+  padding-top:clamp(35px,4.4vw,58px);
+  padding-bottom:clamp(48px,5vw,76px);
+}
+body #gdd-directory .gdd-preview-section {
+  padding:clamp(24px,3vw,39px) 0;
+  border-top:1px solid #ded8cb;
+}
+body #gdd-directory .gdd-preview-header {margin-bottom:17px;}
+body #gdd-directory .gdd-preview-heading {color:#1b4a40;letter-spacing:-.02em;}
+body #gdd-directory .gdd-preview-cards {gap:clamp(12px,1.7vw,19px);}
+body #gdd-directory .gdd-preview-cards>.gdd-preview-card:nth-child(n+3){display:none;}
+body #gdd-directory .gdd-preview-card {
+  border:1px solid #ded9cb;background:#fffdf8;border-radius:7px;
+  box-shadow:0 6px 20px rgba(25,56,42,.055);
+  overflow:hidden;transition:box-shadow .18s ease,transform .18s ease;
+}
+body #gdd-directory .gdd-preview-card:hover {box-shadow:0 10px 26px rgba(25,56,42,.10);transform:translateY(-2px);}
+body #gdd-directory .gdd-preview-thumb {
+  background:linear-gradient(140deg,#e5e8e0,#f1ede3);
+  border-right:1px solid #e2ded2;
+}
+body #gdd-directory .gdd-preview-thumb img {width:100%;height:100%;object-fit:contain;object-position:center;}
+body #gdd-directory .gdd-preview-copy {gap:7px;}
+body #gdd-directory .gdd-preview-name {color:#23493d;}
+body #gdd-directory .gdd-preview-more {
+  background:#fffcf6;border:1px solid #c5d0c4;color:#195448;
+  border-radius:5px;min-height:43px;padding:10px 18px;
+}
+body #gdd-directory .gdd-preview-more:hover {background:#edf2ec;}
+/* Trên các màn hình lớn ảnh nằm cạnh tiêu đề; trên điện thoại xuống dưới tiêu đề. */
+@media (min-width:841px){
+  #trang-chu.gdd-has-history .hero-grid{grid-template-columns:minmax(0,1.18fr) minmax(265px,.82fr);min-height:510px;}
+}
+@media (max-width:840px){
+  #trang-chu .hero-grid {display:block;padding-top:38px;padding-bottom:48px;}
+  #trang-chu .hero-copy h1 {font-size:clamp(34px,6.8vw,48px);line-height:1.33;}
+  #trang-chu .gdd-history-photo {
+    position:relative;top:auto;right:auto;transform:none;
+    width:min(100%,410px);height:310px;margin:20px auto 23px;padding:10px;
+  }
+  #trang-chu .hero-art {max-height:370px;}
+  body #gdd-directory .gdd-preview-cards{grid-template-columns:1fr;}
+}
+@media (max-width:560px){
+  #trang-chu .hero-grid{padding-top:32px;padding-bottom:42px;}
+  #trang-chu .hero-copy h1{font-size:clamp(35px,8.8vw,43px);line-height:1.35;margin:18px 0 23px;}
+  #trang-chu .hero-copy>p{font-size:13px;line-height:1.85;margin-bottom:22px;}
+  #trang-chu .gdd-history-photo{height:275px;width:min(100%,340px);}
+  #trang-chu .hero-foot{margin-top:22px;}
+  body #gdd-directory .gdd-preview-section{padding:22px 0 28px;}
+  body #gdd-directory .gdd-preview-header{margin-bottom:14px;}
+  body #gdd-directory .gdd-preview-card{border-radius:6px;}
+}
+@media (max-width:360px){
+  body #gdd-directory .gdd-preview-card{min-width:0;width:100%;}
+  body #gdd-directory .gdd-preview-thumb{flex:0 0 88px;width:88px;min-width:88px;height:125px;min-height:125px;}
+  body #gdd-directory .gdd-preview-copy{min-width:0;padding:10px;overflow-wrap:anywhere;}
+  body #gdd-directory .gdd-preview-name{font-size:14px;}
+}
+@media (prefers-reduced-motion:reduce){body #gdd-directory .gdd-preview-card{transition:none;}}
+</style>
+<script id="gdd-home-final-script-2026">
+/* Chỉ đọc ảnh đã được website công bố; không thay đổi bảng dữ liệu. */
+(()=>{
+  if(window.__gddHome2026Final)return;
+  window.__gddHome2026Final=true;
+  const start=()=>{
+    const hero=document.querySelector('#trang-chu');
+    const copy=hero?.querySelector('.hero-copy');
+    const heading=copy?.querySelector('h1');
+    if(!hero||!copy||!heading)return;
+    const figure=document.createElement('figure');
+    figure.className='gdd-history-photo';figure.hidden=true;
+    figure.setAttribute('aria-label','Di ảnh tư liệu lịch sử');
+    const image=document.createElement('img');image.alt='Di ảnh tư liệu Đạo sử';
+    const caption=document.createElement('figcaption');caption.textContent='DI ẢNH & TƯ LIỆU TIỀN NHÂN';
+    figure.append(image,caption);
+    heading.insertAdjacentElement('afterend',figure);
+    let current='',pending='';
+    const update=()=>{
+      const candidates=document.querySelectorAll(
+        '#people-grid .person-media img, #article-list .editorial-image img, #gallery-grid .gallery-visual img'
+      );
+      let node=null,url='';
+      for(const item of candidates){
+        const raw=item.getAttribute('src');
+        if(!raw)continue;
+        try{
+          const parsed=new URL(raw,document.baseURI);
+          if(parsed.protocol==='https:' || (parsed.protocol==='http:' && location.protocol==='http:')){
+            node=item;url=parsed.href;break;
+          }
+        }catch{}
+      }
+      if(!node||!url||url===current||url===pending)return;
+      pending=url;
+      const preload=new Image();
+      preload.onload=()=>{
+        if(pending!==url)return;
+        const title=node.closest('.person-card,.editorial-article,.gallery-card')?.querySelector('h3')?.textContent?.trim();
+        image.src=url;
+        image.alt=title?'Ảnh tư liệu: '+title:'Di ảnh tư liệu lịch sử';
+        caption.textContent=title?'TƯ LIỆU LỊCH SỬ · '+title:'DI ẢNH & TƯ LIỆU TIỀN NHÂN';
+        figure.hidden=false;hero.classList.add('gdd-has-history');
+        current=url;pending='';
+      };
+      preload.onerror=()=>{if(pending===url)pending='';};
+      preload.src=url;
+    };
+    for(const selector of ['#people-grid','#article-list','#gallery-grid']){
+      const container=document.querySelector(selector);
+      if(container)new MutationObserver(update).observe(container,{childList:true});
+    }
+    update();
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+})();
+</script>
+<!-- KẾT THÚC: GDD - TINH CHỈNH TRANG CHỦ 2026 -->
 </body>
 </html>
