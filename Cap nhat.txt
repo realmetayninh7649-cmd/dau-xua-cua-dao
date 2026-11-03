@@ -1,0 +1,376 @@
+/*
+ * GIỮ ĐẠO GIỮA ĐỜI | DẤU XƯA CỬA ĐẠO
+ * Trang chủ giới thiệu + danh mục tra cứu, phân trang 12 bản ghi.
+ * Bổ sung an toàn: không sửa app.js, quản trị, Supabase schema hoặc các ảnh gốc.
+ */
+(() => {
+  'use strict';
+  if (window.__gddArchiveCatalogV1) return;
+  window.__gddArchiveCatalogV1 = true;
+
+  const GROUPS = [
+    {kind:'people',anchor:'chuc-sac',grid:'people-grid',title:'Hồ sơ Chức sắc',intro:'Tra cứu theo tên, phẩm vị, cơ quan hành Đạo và phân nhóm.'},
+    {kind:'videos',anchor:'video-dao-su',grid:'video-grid',title:'Video Đạo Sử',intro:'Phim tư liệu, ký sự, thuyết minh và hình ảnh lịch sử.'},
+    {kind:'obituaries',anchor:'ai-tin',grid:'obituary-grid',title:'Ai Tín',intro:'Tin qui vị, lời tưởng niệm và hồ sơ nhân vật liên quan.'},
+    {kind:'documents',anchor:'tai-lieu-so-hoa',grid:'document-grid',title:'Tài liệu được số hóa',intro:'Thánh Lịnh, văn kiện, bản chụp và tư liệu có nguồn gốc.'},
+    {kind:'posts',anchor:'bien-khao',grid:'article-list',title:'Biên khảo',intro:'Bài sưu khảo công nghiệp và dấu mốc lịch sử Đại Đạo.'},
+    {kind:'media',anchor:'hinh-anh',grid:'gallery-grid',title:'Hình ảnh và kỷ vật',intro:'Di ảnh, văn kiện, hình lễ nghi và kỷ vật của người xưa.'},
+  ];
+  const SELECTS={
+    people:'id,slug,full_name,secular_name,rank,branch,subgroup,years,birthplace,summary,image_url,created_at',
+    posts:'id,slug,title,category,summary,cover_url,person_id,created_at',
+    media:'id,slug,title,caption,image_url,created_at',
+    videos:'id,slug,title,summary,video_url,cover_url,created_at',
+    obituaries:'id,slug,title,deceased_name,memorial_date,summary,cover_url,created_at',
+    documents:'id,slug,title,document_number,document_date,summary,file_url,created_at'
+  };
+  const PREFIX = {people:'nhan-vat',posts:'bai-viet',media:'hinh-anh-tu-lieu',videos:'video-dao-su',obituaries:'ai-tin',documents:'tai-lieu-so-hoa'};
+  const HOME_LIMIT=3, PAGE_SIZE=12, FETCH_SIZE=200, MAX_FETCH=5000;
+  const byId=id=>document.getElementById(id);
+  const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLocaleLowerCase('vi');
+  const safeURL=s=>{try {const u=new URL(String(s));return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}};
+  const date=s=>{if(!s)return '';const n=new Date(s);return Number.isNaN(n.getTime())?'':n.toLocaleDateString('vi-VN')};
+  const groups=Object.fromEntries(GROUPS.map(item=>[item.anchor,item]));
+  const cache=new Map();
+  const filters={query:'',branch:'all',subgroup:'all',category:'all',page:1};
+  let current=null, requestNumber=0, archive=null;
+
+  const css=document.createElement('style');
+  css.id='gdd-archive-catalog-css';
+  css.textContent=`
+    /* Tư liệu chọn lọc ở Trang Chủ, không kéo dài theo số lượng bài. */
+    #people-show-more {display:none!important;}
+    #people-result-count {display:none!important;}
+    .gdd-see-all {display:inline-flex;align-items:center;justify-content:center;gap:9px;
+      padding:11px 19px;border:1px solid #19564c;border-radius:5px;color:#19564c;
+      background:#fffefa;text-decoration:none;font:700 12px/1.6 'Be Vietnam Pro',system-ui,sans-serif;
+      margin:20px 0 5px;min-height:44px;transition:background .16s;}
+    .gdd-see-all:hover,.gdd-see-all:focus-visible {background:#e9f1eb;}
+    .gdd-home-see-all {display:flex;justify-content:flex-end;}
+    body.gdd-catalog-mode main > section:not(#gdd-catalog-view) {display:none!important;}
+    #gdd-catalog-view[hidden] {display:none!important;}
+    #gdd-catalog-view {padding:clamp(36px,5vw,65px) 0 90px;min-height:70vh;background:#f7f5ef;}
+    .gdd-catalog-crumb {display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+      font:600 11px/1.8 'Be Vietnam Pro',system-ui,sans-serif;color:#90774d;margin:0 0 23px;}
+    .gdd-catalog-crumb a {color:#19584b;text-decoration:none;}
+    .gdd-catalog-hero {padding:0 0 25px;border-bottom:1px solid #d9dccf;}
+    .gdd-catalog-hero h1 {font:600 clamp(29px,5vw,47px)/1.4 'Noto Serif',Georgia,serif;
+      letter-spacing:-.035em;margin:0 0 10px;color:#1e4e43;}
+    .gdd-catalog-hero p {color:#64726a;font-size:13px;line-height:1.8;margin:0;}
+    .gdd-catalog-tools {display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:26px 0 12px;}
+    .gdd-catalog-tools input,.gdd-catalog-tools select {
+      box-sizing:border-box;width:100%;min-height:46px;border:1px solid #d0d7ce;border-radius:6px;
+      padding:10px 13px;background:#fffdfa;color:#283e35;font:400 14px/1.5 'Be Vietnam Pro',system-ui,sans-serif;
+    }
+    .gdd-catalog-search {flex:1 1 290px;}
+    .gdd-catalog-select {flex:1 1 180px;max-width:260px;}
+    .gdd-catalog-status {margin:13px 0 23px;min-height:22px;color:#69796f;font:500 12px/1.8 'Be Vietnam Pro',system-ui,sans-serif;}
+    .gdd-catalog-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:stretch;}
+    .gdd-catalog-card {min-width:0;overflow:hidden;display:flex;flex-direction:column;
+      border:1px solid #e2e1d8;background:#fffefa;border-radius:7px;box-shadow:0 6px 22px #20493f0b;}
+    .gdd-catalog-card-cover {width:100%;height:auto;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;
+      padding:10px;background:#e8eae1;border:0;border-radius:0;cursor:pointer;overflow:hidden;}
+    .gdd-catalog-grid.is-people .gdd-catalog-card-cover,.gdd-catalog-grid.is-media .gdd-catalog-card-cover {aspect-ratio:4/5;}
+    .gdd-catalog-card-cover img {display:block;width:100%;height:100%;max-height:100%;object-fit:contain;object-position:center;}
+    .gdd-catalog-placeholder {display:flex;flex-direction:column;gap:9px;justify-content:center;align-items:center;
+      color:#1c5b4b;text-align:center;padding:18px;font:600 12px/1.7 'Noto Serif',Georgia,serif;letter-spacing:.08em;}
+    .gdd-catalog-placeholder span {color:#b28d52;font-size:38px;line-height:1;}
+    .gdd-catalog-card-body {padding:19px 19px 20px;display:flex;flex-direction:column;gap:8px;flex:1;}
+    .gdd-catalog-card-type {font:700 10px/1.6 'Be Vietnam Pro',system-ui,sans-serif;letter-spacing:.12em;color:#9d7d48;}
+    .gdd-catalog-card h2 {font:600 clamp(17px,1.6vw,22px)/1.55 'Noto Serif',Georgia,serif;
+      color:#1c473c;overflow-wrap:anywhere;margin:0;}
+    .gdd-catalog-card p {font:400 12px/1.85 'Be Vietnam Pro',system-ui,sans-serif;color:#68736e;
+      display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:0 0 13px;flex:1;}
+    .gdd-catalog-card-action {align-self:stretch;margin-top:auto;padding:11px 0 0;min-height:36px;display:flex;
+      justify-content:space-between;align-items:center;background:none;border:0;border-top:1px solid #e4e2d9;
+      text-align:left;color:#17554a;font:700 12px/1.5 'Be Vietnam Pro',system-ui,sans-serif;cursor:pointer;}
+    .gdd-catalog-empty {grid-column:1/-1;border:1px dashed #cbd6ca;background:#fcfbf6;padding:35px 22px;text-align:center;color:#66776c;border-radius:6px;}
+    .gdd-catalog-pagination {display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px;margin:32px 0 0;}
+    .gdd-catalog-pagination button {display:inline-flex;align-items:center;justify-content:center;min-width:42px;min-height:42px;
+      border:1px solid #cdd6ce;border-radius:5px;background:#fffefa;color:#19584b;font:600 13px/1 'Be Vietnam Pro',system-ui,sans-serif;padding:9px 11px;}
+    .gdd-catalog-pagination button[aria-current="page"] {background:#19584b;color:white;border-color:#19584b;}
+    .gdd-catalog-pagination button:disabled {color:#a3aaa2;cursor:default;opacity:.55;}
+    .gdd-catalog-ellipsis {font:600 14px Georgia,serif;color:#9ca69c;padding:0 3px;}
+    .gdd-catalog-quiet {font:400 11px/1.65 'Be Vietnam Pro',system-ui,sans-serif;color:#7c8b7d;margin:15px 0 0;text-align:center;}
+    @media(max-width:850px){.gdd-catalog-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}}
+    @media(max-width:550px){
+      #gdd-catalog-view {padding:28px 0 72px;}
+      .gdd-catalog-grid {grid-template-columns:minmax(0,1fr);gap:17px;}
+      .gdd-catalog-grid.is-media {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+      .gdd-catalog-grid.is-media .gdd-catalog-card-body {padding:10px 10px 12px;gap:5px;}
+      .gdd-catalog-grid.is-media .gdd-catalog-card h2 {font-size:13px;line-height:1.45;}
+      .gdd-catalog-grid.is-media .gdd-catalog-card p {display:none;}
+      .gdd-catalog-grid.is-media .gdd-catalog-card-type {font-size:9px;}
+      .gdd-catalog-grid.is-media .gdd-catalog-card-action {font-size:10px;}
+      .gdd-catalog-card-body {padding:16px 17px;}
+      .gdd-catalog-card h2 {font-size:19px;}
+      .gdd-catalog-select {flex:1 1 135px;max-width:none;}
+      .gdd-catalog-tools {gap:9px;}
+    }
+    @media(prefers-reduced-motion:reduce){.gdd-see-all{transition:none;}}
+  `;
+  document.head.appendChild(css);
+
+  function buildUI(){
+    const main=document.querySelector('main');
+    if(!main) return;
+    archive=document.createElement('section');
+    archive.id='gdd-catalog-view';archive.hidden=true;
+    archive.setAttribute('aria-label','Danh mục tư liệu');
+    archive.innerHTML=`<div class="wrap">
+      <div class="gdd-catalog-crumb"><a href="#trang-chu">Trang Chủ</a><span aria-hidden="true">›</span><span id="gdd-cat-bread">Kho tư liệu</span></div>
+      <div class="gdd-catalog-hero"><div class="eyebrow">DẤU XƯA CỬA ĐẠO · TRA CỨU TƯ LIỆU</div><h1 id="gdd-cat-title">Kho tư liệu Đạo sử</h1><p id="gdd-cat-intro"></p></div>
+      <div class="gdd-catalog-tools"><label class="gdd-catalog-search"><span class="sr-only">Tìm tư liệu</span><input type="search" id="gdd-cat-query" placeholder="Tìm tên, tiêu đề, niên đại, chủ đề…" autocomplete="off"></label>
+      <label class="gdd-catalog-select" id="gdd-cat-branch-wrap" hidden><span class="sr-only">Cơ quan Đạo</span><select id="gdd-cat-branch"><option value="all">Tất cả cơ quan</option><option>Cửu Trùng Đài</option><option>Hiệp Thiên Đài</option><option>Phước Thiện</option><option value="Hành chánh Đạo">Hành chánh Đạo</option><option>Khác</option></select></label>
+      <label class="gdd-catalog-select" id="gdd-cat-sub-wrap" hidden><span class="sr-only">Phân nhóm</span><select id="gdd-cat-sub"><option value="all">Tất cả phân nhóm</option></select></label>
+      <label class="gdd-catalog-select" id="gdd-cat-topic-wrap" hidden><span class="sr-only">Chủ đề Biên khảo</span><select id="gdd-cat-topic"><option value="all">Tất cả chủ đề</option></select></label></div>
+      <div class="gdd-catalog-status" id="gdd-cat-status" role="status" aria-live="polite"></div>
+      <div id="gdd-cat-grid" class="gdd-catalog-grid"></div>
+      <nav class="gdd-catalog-pagination" id="gdd-cat-pages" aria-label="Chuyển trang tư liệu"></nav>
+      <p class="gdd-catalog-quiet">Tư liệu được sưu tầm, ghi nguồn và bổ sung thường xuyên.</p>
+    </div>`;
+    main.appendChild(archive);
+    for(const group of GROUPS){
+      const grid=byId(group.grid);if(!grid)continue;
+      const footer=document.createElement('div');footer.className='gdd-home-see-all';
+      footer.innerHTML=`<a class="gdd-see-all" href="#${group.anchor}" aria-label="Xem toàn bộ ${escape(group.title)}">Xem tất cả ${escape(group.title)} <span aria-hidden="true">↗</span></a>`;
+      const anchor=group.kind==='people'?(grid.parentElement.querySelector('.results-footer')||grid):group.kind==='posts'?(grid.closest('.article-layout')||grid):grid;
+      anchor.insertAdjacentElement('afterend',footer);
+      const reduce=()=>{
+        const children=[...grid.children];
+        const cards=children.filter(el=>!el.classList.contains('empty-state'));
+        if(cards.length>HOME_LIMIT){for(const el of cards.slice(HOME_LIMIT))el.remove();}
+      };
+      new MutationObserver(reduce).observe(grid,{childList:true});
+      reduce();
+    }
+    const query=byId('gdd-cat-query');query.addEventListener('input',()=>{filters.query=query.value;filters.page=1;renderRows();});
+    for(const [id,key] of [['gdd-cat-branch','branch'],['gdd-cat-sub','subgroup'],['gdd-cat-topic','category']]){
+      byId(id).addEventListener('change',e=>{
+        filters[key]=e.target.value;
+        if(key==='branch')refreshSubgroups();
+        filters.page=1;renderRows();
+      });
+    }
+    byId('gdd-cat-pages').addEventListener('click',e=>{
+      const b=e.target.closest('button[data-p]');if(!b||b.disabled)return;
+      filters.page=Number(b.dataset.p);renderRows();
+      archive.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+    byId('gdd-cat-grid').addEventListener('click',e=>{
+      const b=e.target.closest('button[data-open-kind]');if(!b)return;
+      const entry=cache.get(current?.kind)?.rows.find(row=>String(row.id)===b.dataset.id);
+      if(!entry)return;
+      // Bộ mã app.js xử lý được hồ sơ đã tải (tối đa 500). Nếu hồ sơ vượt
+      // giới hạn dữ liệu khởi tạo, dựng trình đọc tương thích thay thế.
+      setTimeout(()=>{
+        const overlay=byId('detail-overlay');
+        if(overlay&&overlay.hidden)openFallbackDetail(current.kind,entry);
+      },0);
+    });
+    window.addEventListener('hashchange',syncRoute);
+    document.addEventListener('click',e=>{
+      const nav=e.target.closest('#main-nav a[data-branch]');
+      if(nav){setTimeout(()=>{
+        if(current?.kind!=='people')return;
+        filters.branch=byId('branch-filter')?.value||'all';
+        filters.subgroup=byId('subgroup-filter')?.value||'all';
+        byId('gdd-cat-branch').value=filters.branch;
+        refreshSubgroups();
+        filters.page=1;renderRows();
+      },0);}
+      if(e.target.closest('[data-close="detail"]') && current){
+        const prev=current.anchor;
+        setTimeout(()=>history.replaceState(null,'','#'+prev),0);
+      }
+    },true);
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape' && current && byId('detail-overlay')&&!byId('detail-overlay').hidden){
+        const prev=current.anchor;
+        setTimeout(()=>history.replaceState(null,'','#'+prev),0);
+      }
+    },true);
+    syncRoute();
+  }
+
+  function syncRoute(){
+    const hash=decodeURIComponent(location.hash.replace(/^#/,'').split('/')[0]);
+    const next=groups[hash]||null;
+    if(!next){
+      current=null;document.body.classList.remove('gdd-catalog-mode');
+      if(archive)archive.hidden=true;
+      return;
+    }
+    const different=current?.kind!==next.kind;
+    current=next;
+    document.body.classList.add('gdd-catalog-mode');
+    archive.hidden=false;
+    byId('gdd-cat-bread').textContent=next.title;
+    byId('gdd-cat-title').textContent=next.title;
+    byId('gdd-cat-intro').textContent=next.intro;
+    if(different){
+      filters.query='';filters.page=1;filters.branch='all';filters.subgroup='all';filters.category='all';
+      byId('gdd-cat-query').value='';
+      byId('gdd-cat-branch').value='all';
+      if(next.kind==='people'){
+        filters.branch=byId('branch-filter')?.value||'all';
+        filters.subgroup=byId('subgroup-filter')?.value||'all';
+        byId('gdd-cat-branch').value=filters.branch;
+      }
+    }
+    byId('gdd-cat-branch-wrap').hidden=next.kind!=='people';
+    byId('gdd-cat-sub-wrap').hidden=next.kind!=='people';
+    byId('gdd-cat-topic-wrap').hidden=next.kind!=='posts';
+    byId('gdd-cat-grid').className='gdd-catalog-grid is-'+next.kind;
+    document.querySelectorAll('#main-nav [data-nav]').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+next.anchor));
+    renderRows();
+    window.scrollTo(0,0);
+    if(!cache.has(next.kind))loadKind(next);
+  }
+
+  async function loadKind(group,force=false){
+    if(!force && cache.get(group.kind)?.ready)return;
+    const ticket=++requestNumber;
+    if(current?.kind===group.kind)byId('gdd-cat-status').textContent='Đang tải danh mục tư liệu…';
+    const cfg=window.SITE_CONFIG||{};
+    const endpoint=String(cfg.supabaseUrl||'').replace(/\/$/,'');
+    const key=cfg.supabasePublishableKey;
+    if(!endpoint||!key){
+      if(current?.kind===group.kind)showError('Chưa kết nối Supabase. Vui lòng kiểm tra cấu hình website.');
+      return;
+    }
+    const rows=[];
+    try{
+      for(let offset=0;offset<MAX_FETCH;offset+=FETCH_SIZE){
+        const url=endpoint+'/rest/v1/'+encodeURIComponent(group.kind)+'?select='+encodeURIComponent(SELECTS[group.kind])+'&published=eq.true&order=created_at.desc&limit='+FETCH_SIZE+'&offset='+offset;
+        const response=await fetch(url,{headers:{apikey:key,Accept:'application/json'},credentials:'omit'});
+        if(!response.ok)throw Error('Lỗi Supabase '+response.status);
+        const page=await response.json();
+        if(!Array.isArray(page))throw Error('Kết quả máy chủ không hợp lệ');
+        rows.push(...page);
+        if(page.length<FETCH_SIZE)break;
+      }
+      cache.set(group.kind,{ready:true,rows});
+      if(current?.kind===group.kind){
+        refreshSubgroups();refreshTopics();renderRows();
+      }
+    }catch(err){
+      if(current?.kind===group.kind)showError('Không thể tải danh mục ('+err.message+'). Hãy kiểm tra kết nối và thử lại.');
+    }
+  }
+  function showError(message){
+    byId('gdd-cat-status').textContent=message;
+    byId('gdd-cat-grid').innerHTML='<div class="gdd-catalog-empty">Không tải được dữ liệu. <button type="button" id="gdd-cat-retry" class="gdd-see-all">Thử lại</button></div>';
+    byId('gdd-cat-pages').replaceChildren();
+    byId('gdd-cat-retry')?.addEventListener('click',()=>loadKind(current,true));
+  }
+  function refreshSubgroups(){
+    if(!cache.get('people')?.ready)return;
+    const rows=cache.get('people')?.rows||[];
+    const subset=rows.filter(p=>filters.branch==='all'||(p.branch||'Khác')===filters.branch);
+    const values=[...new Set(subset.map(p=>p.subgroup).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+    const select=byId('gdd-cat-sub');
+    select.innerHTML='<option value="all">Tất cả phân nhóm</option>'+values.map(v=>`<option value="${escape(v)}">${escape(v)}</option>`).join('');
+    if(!values.includes(filters.subgroup))filters.subgroup='all';
+    select.value=filters.subgroup;
+  }
+  function refreshTopics(){
+    const rows=cache.get('posts')?.rows||[];
+    const values=[...new Set(rows.map(p=>p.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+    byId('gdd-cat-topic').innerHTML='<option value="all">Tất cả chủ đề</option>'+values.map(v=>`<option value="${escape(v)}">${escape(v)}</option>`).join('');
+    byId('gdd-cat-topic').value=values.includes(filters.category)?filters.category:'all';
+  }
+  function renderRows(){
+    if(!current)return;
+    const stored=cache.get(current.kind);
+    if(!stored?.ready){
+      byId('gdd-cat-grid').innerHTML='<div class="gdd-catalog-empty">Đang chuẩn bị kho tư liệu…</div>';
+      byId('gdd-cat-pages').replaceChildren();
+      return;
+    }
+    const words=norm(filters.query.trim());
+    const rows=stored.rows.filter(p=>{
+      if(current.kind==='people' && filters.branch!=='all' && (p.branch||'Khác')!==filters.branch)return false;
+      if(current.kind==='people' && filters.subgroup!=='all' && p.subgroup!==filters.subgroup)return false;
+      if(current.kind==='posts' && filters.category!=='all' && p.category!==filters.category)return false;
+      if(!words)return true;
+      const haystack=[p.full_name,p.secular_name,p.rank,p.branch,p.subgroup,p.years,p.birthplace,p.summary,
+        p.title,p.category,p.body,p.caption,p.deceased_name,p.document_number,p.document_date,p.memorial_date,p.sources].filter(Boolean).join(' ');
+      return norm(haystack).includes(words);
+    });
+    const pages=Math.max(1,Math.ceil(rows.length/PAGE_SIZE));
+    filters.page=Math.min(Math.max(1,filters.page),pages);
+    const start=(filters.page-1)*PAGE_SIZE;
+    const shown=rows.slice(start,start+PAGE_SIZE);
+    byId('gdd-cat-status').textContent=rows.length?`Hiển thị ${start+1}–${start+shown.length} trong ${rows.length} tư liệu · Trang ${filters.page}/${pages}`:'Không tìm thấy tư liệu phù hợp.';
+    byId('gdd-cat-grid').innerHTML=shown.length?shown.map(p=>cardHTML(p,current.kind)).join(''):'<div class="gdd-catalog-empty">Chưa có tư liệu phù hợp. Thử đổi từ khóa hoặc bộ lọc.</div>';
+    renderPages(pages);
+  }
+  function cardHTML(row,kind){
+    const title=kind==='people'?row.full_name:row.title;
+    const subtitle=kind==='people'?[row.rank,row.years].filter(Boolean).join(' · '):
+      kind==='obituaries'?row.memorial_date:kind==='documents'?[row.document_number,row.document_date].filter(Boolean).join(' · '):
+      kind==='posts'?row.category:kind==='videos'?'VIDEO ĐẠO SỬ':'ẢNH TƯ LIỆU';
+    const description=row.summary||row.caption||row.birthplace||'Tư liệu đang được biên soạn và bổ sung thông tin.';
+    const docsImage=kind==='documents' && /\.(jpe?g|png|webp)(\?|$)/i.test(row.file_url||'')?row.file_url:'';
+    const picture=safeURL(row.image_url||row.cover_url||docsImage);
+    const poster=picture?`<img src="${escape(picture)}" alt="${escape(title)}" loading="lazy" decoding="async">`:
+      `<span class="gdd-catalog-placeholder" aria-hidden="true"><span>✦</span>${escape(kind==='videos'?'VIDEO ĐẠO SỬ':kind==='documents'?'TÀI LIỆU ĐẠO SỬ':'DẤU XƯA CỬA ĐẠO')}</span>`;
+    const action=kind==='people'?'Xem tiểu sử':kind==='videos'?'Xem video':kind==='media'?'Xem ảnh':'Đọc tư liệu';
+    return `<article class="gdd-catalog-card">
+      <button class="gdd-catalog-card-cover" type="button" data-open-kind="${kind}" data-id="${escape(row.id)}" aria-label="${escape(action+' '+title)}">${poster}</button>
+      <div class="gdd-catalog-card-body"><span class="gdd-catalog-card-type">${escape(subtitle||current.title)} · ${escape(date(row.created_at))}</span>
+        <h2>${escape(title)}</h2><p>${escape(description)}</p>
+        <button class="gdd-catalog-card-action" type="button" data-open-kind="${kind}" data-id="${escape(row.id)}">${escape(action)} <span aria-hidden="true">↗</span></button>
+      </div></article>`;
+  }
+  function renderPages(total){
+    const element=byId('gdd-cat-pages');
+    if(total<=1){element.replaceChildren();return;}
+    const pages=new Set([1,total,...Array.from({length:5},(_,i)=>filters.page+i-2).filter(i=>i>=1&&i<=total)]);
+    const ordered=[...pages].sort((a,b)=>a-b);
+    let html=`<button type="button" data-p="${filters.page-1}" ${filters.page===1?'disabled':''} aria-label="Trang trước">‹ Trước</button>`;
+    for(let i=0;i<ordered.length;i++){
+      if(i>0&&ordered[i]-ordered[i-1]>1)html+='<span class="gdd-catalog-ellipsis" aria-hidden="true">…</span>';
+      const page=ordered[i];
+      html+=`<button type="button" data-p="${page}" ${page===filters.page?'aria-current="page"':''} aria-label="Trang ${page}">${page}</button>`;
+    }
+    html+=`<button type="button" data-p="${filters.page+1}" ${filters.page===total?'disabled':''} aria-label="Trang tiếp">Tiếp ›</button>`;
+    element.innerHTML=html;
+  }
+  async function openFallbackDetail(kind,summary){
+    const overlay=byId('detail-overlay'),content=byId('detail-content');
+    if(!overlay||!content)return;
+    const cfg=window.SITE_CONFIG||{};
+    let row=summary;
+    try{
+      const params=new URLSearchParams({select:'*',id:'eq.'+summary.id,published:'eq.true',limit:'1'});
+      const response=await fetch(String(cfg.supabaseUrl).replace(/\/$/,'')+'/rest/v1/'+kind+'?'+params,
+        {headers:{apikey:cfg.supabasePublishableKey,Accept:'application/json'},credentials:'omit'});
+      if(!response.ok)throw Error('HTTP '+response.status);
+      const data=await response.json();
+      if(!data.length)throw Error('Không tìm thấy tư liệu đã công bố');
+      row=data[0];
+    }catch(e){console.warn('[Dấu Xưa Cửa Đạo] Không tải được chi tiết đầy đủ:',e);}
+    // Nếu chỉ có tiêu đề và tóm tắt, thông báo chưa tải được đầy đủ thay vì coi đó là toàn văn.
+    const title=kind==='people'?row.full_name:row.title;
+    const picture=safeURL(row.cover_url||row.image_url);
+    const original=safeURL(kind==='videos'?row.video_url:row.file_url);
+    const body=kind==='people'?row.biography:kind==='media'?row.caption:row.body;
+    const source=row.sources||'Chưa bổ sung nguồn tư liệu.';
+    // Gắn hash trước khi dựng nội dung để bộ album hiện hành có thể tìm đúng hồ sơ.
+    history.replaceState(null,'','#'+PREFIX[kind]+'/'+encodeURIComponent(row.slug));
+    content.innerHTML=`<div class="eyebrow">${escape(current.title)}</div><h2 class="detail-title">${escape(title)}</h2>
+      <p class="detail-meta">${escape(row.rank||row.category||row.document_number||'')}</p>
+      ${picture?`<div class="detail-cover"><img src="${escape(picture)}" alt="${escape(title)}"></div>`:''}
+      ${row.summary?`<p class="detail-summary">${escape(row.summary)}</p>`:''}
+      <div class="detail-body" style="white-space:pre-wrap">${escape(body||'Nội dung đầy đủ hiện chưa tải được. Vui lòng thử lại sau.')}</div>
+      ${original?`<p class="detail-external"><a class="btn btn-primary" href="${escape(original)}" target="_blank" rel="noopener noreferrer">Mở tư liệu gốc ↗</a></p>`:''}
+      <div class="detail-source"><strong>NGUỒN TƯ LIỆU &amp; GHI CHÚ</strong>${escape(source)}</div>`;
+    overlay.hidden=false;document.body.classList.add('modal-open');
+    overlay.querySelector('.detail-panel')?.scrollTo(0,0);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',buildUI,{once:true});
+  else buildUI();
+})();
