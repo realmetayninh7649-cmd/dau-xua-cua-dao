@@ -134,6 +134,21 @@ function videoSource(raw){
     }
     slot.classList.add('is-playing');
   }
+  // Nếu ảnh bìa hỏng hoặc nguồn không cho đọc: hiện bố cục dự phòng,
+  // không để trống hoặc làm co khung bài biên khảo.
+  document.addEventListener('error',event=>{
+    const img=event.target;
+    if(img instanceof HTMLImageElement && img.closest('#article-list .editorial-image'))img.hidden=true;
+  },true);
+  document.addEventListener('load',event=>{
+    const img=event.target;
+    if(!(img instanceof HTMLImageElement))return;
+    const cover=img.closest('#article-list .editorial-image');
+    if(!cover||!img.naturalWidth||!img.naturalHeight)return;
+    const ratio=img.naturalHeight/img.naturalWidth;
+    cover.classList.toggle('is-portrait',ratio>1.12);
+    cover.classList.toggle('is-landscape',ratio<.88);
+  },true);
   const portrait = p => {const src=safeUrl(p.image_url);return src?`<img src="${escape(src)}" alt="Di ảnh ${escape(p.full_name)}" loading="lazy">`:`<div class="portrait-placeholder"><span class="symbol">${escape((p.secular_name||p.full_name||'Đ').trim().split(/\s+/).slice(-1)[0].charAt(0).toUpperCase())}</span></div>`};
   const toast = message => {const el=$('#toast');el.textContent=message;el.classList.add('is-visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('is-visible'),4500)};
   const publicRows = kind => state.admin?state.data[kind]:state.data[kind].filter(x=>x.published);
@@ -149,7 +164,24 @@ function videoSource(raw){
     $('#people-grid').innerHTML=shown.length?shown.map(p=>`<article class="person-card"><div class="person-media">${portrait(p)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span><p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
     $('#people-result-count').textContent=`Đang hiển thị ${shown.length} / ${matching.length} hồ sơ`;
     const more=$('#people-show-more');more.hidden=matching.length<=6;more.textContent=state.peopleExpanded?'Thu gọn hồ sơ ↑':'Xem thêm hồ sơ ↗';
-    $('#article-list').innerHTML=posts.length?posts.slice(0,8).map(p=>`<article class="article-row"><div><span class="article-tag">${escape(p.category||'BIÊN KHẢO')} · ${escape(date(p.created_at))}</span><h3>${escape(p.title)}</h3><p>${escape(p.summary||'Bài khảo cứu trong kho tư liệu Đạo sử.')}</p></div><button type="button" aria-label="Đọc bài ${escape(p.title)}" data-open-kind="posts" data-id="${escape(p.id)}">↗</button></article>`).join(''):'<div class="empty-state"><b>Chưa có bài biên khảo.</b>Người quản trị có thể đăng bài đầu tiên.</div>';
+    $('#article-list').innerHTML=posts.length?posts.slice(0,8).map(p=>{
+      // Ưu tiên ảnh bìa bài viết; nếu chưa có, dùng di ảnh Chức sắc đã công bố và có liên hệ.
+      const linked=p.person_id?linkedPerson(p.person_id):null;
+      const image=safeUrl(p.cover_url)||safeUrl(linked?.published?linked.image_url:'');
+      const emptyArtwork='<div class="editorial-placeholder" aria-hidden="true"><span>✦</span><strong>TƯ LIỆU ĐẠO SỬ</strong><small>BIÊN KHẢO</small></div>';
+      const artwork=image
+        ?emptyArtwork+`<img src="${escape(image)}" alt="Ảnh bìa: ${escape(p.title)}" loading="lazy" decoding="async">`
+        :emptyArtwork;
+      return `<article class="article-row editorial-article">
+        <button type="button" class="editorial-image" data-open-kind="posts" data-id="${escape(p.id)}" aria-label="Đọc bài: ${escape(p.title)}">${artwork}</button>
+        <div class="editorial-copy">
+          <span class="article-tag">${escape(p.category||'BIÊN KHẢO')} · ${escape(date(p.created_at))}</span>
+          <h3>${escape(p.title)}</h3>
+          <p>${escape(p.summary||'Bài khảo cứu trong kho tư liệu Đạo sử.')}</p>
+          <button type="button" class="editorial-read" data-open-kind="posts" data-id="${escape(p.id)}">Đọc biên khảo <span aria-hidden="true">↗</span></button>
+        </div>
+      </article>`;
+    }).join(''):'<div class="empty-state"><b>Chưa có bài biên khảo.</b>Ban Biên Tập đang sưu tầm tư liệu.</div>';
     $('#gallery-grid').innerHTML=media.length?media.map(m=>{const src=safeUrl(m.image_url);return `<button type="button" class="gallery-card" data-open-kind="media" data-id="${escape(m.id)}"><div class="gallery-visual">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div><h3>${escape(m.title)}</h3><p>${escape(m.caption||'Bấm để xem thông tin ảnh.')}</p></div></button>`}).join(''):'<div class="empty-state"><b>Chưa có ảnh tư liệu.</b>Tải ảnh từ trang quản trị để lập thư viện ảnh.</div>';
     const groupKinds=[['videos','video-grid','Video Đạo Sử'],['obituaries','obituary-grid','Ai Tín'],['documents','document-grid','Tài liệu số hóa']];
     groupKinds.forEach(([kind,target,label])=>{
