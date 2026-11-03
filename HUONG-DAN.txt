@@ -1,0 +1,20 @@
+GIỮ ĐẠO GIỮA ĐỜI — HIỂN THỊ ẢNH BÌA BIÊN KHẢO
+
+1) Giải nén ZIP rồi tải tệp bien-khao-covers.js vào thư mục gốc repo:
+   https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/upload/main
+
+2) Mở và sửa index.html:
+   https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/edit/main/index.html
+
+3) Bên trong <head>, ngay sau dòng:
+   <script defer src="image-viewer.js?v=20261103"></script>
+   thêm dòng:
+   <script defer src="bien-khao-covers.js?v=20261103-2030"></script>
+
+4) Commit changes. Mở lại website, làm mới, xem chuyên mục Biên khảo.
+
+5) Nếu bài thiếu ảnh, đăng nhập Quản trị > Biên khảo > Sửa > tải ảnh bìa rồi Lưu.
+   Nếu bài liên kết với một hồ sơ Chức sắc có di ảnh, hệ thống dùng ảnh Chức sắc
+   làm ảnh thay thế khi bài chưa có ảnh bìa riêng.
+
+Bản bổ sung này không thay đổi video Facebook, hồ sơ, hay trình xem ảnh hiện hữu.
