@@ -125,3 +125,6 @@ html { scroll-padding-top: 156px; }
 .detail-video-preview .video-poster-button,.detail-video-preview .video-poster-unavailable { min-height:0; }
 .video-preview-slot.is-playing,.detail-video-preview.is-playing { background:#101919; }
 @media(max-width:680px) { .video-archive-card { grid-template-columns:1fr; } .video-archive-card .archive-thumb { aspect-ratio:16/9;min-height:0;height:auto; } .video-poster-button,.video-poster-unavailable { min-height:0;aspect-ratio:16/9; } .video-archive-card .archive-card-copy { padding:16px; } }
+
+/* Nhúng video Facebook bằng iframe Social Plugin, sử dụng cùng khung phát. */
+.video-preview-slot iframe[src*="facebook.com/plugins/video.php"],.detail-video-preview iframe[src*="facebook.com/plugins/video.php"]{background:#151c1c}

@@ -38,7 +38,7 @@
     people:[['full_name','Danh xưng / tên Chức sắc','text',1],['secular_name','Thế danh','text'],['rank','Phẩm vị','text'],['branch','Cơ quan / hệ thống','branch'],['subgroup','Phân nhóm Chức sắc','subgroup'],['years','Năm sanh – qui vị','text'],['birthplace','Nguyên quán','text'],['summary','Tóm tắt ngắn','textarea'],['biography','Tiểu sử / công nghiệp (nội dung đầy đủ)','long',1],['date_notes','Ngày tháng Âm – Dương lịch','text'],['sources','Nguồn sử liệu / chú thích','textarea'],['image_url','Địa chỉ ảnh (URL), nếu có','url'],['file','Hoặc tải di ảnh lên','file'],['verified','Đã đối chiếu nguồn sử liệu','check'],['published','Công bố trên website','check']],
     posts:[['title','Tiêu đề bài viết','text',1],['category','Chuyên mục','text'],['summary','Dẫn nhập / tóm tắt','textarea'],['body','Nội dung biên khảo','long',1],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Thư mục và nguồn trích dẫn','textarea'],['cover_url','Địa chỉ ảnh bìa (URL)','url'],['file','Hoặc tải ảnh bìa lên','file'],['verified','Đã đối chiếu nguồn sử liệu','check'],['published','Công bố trên website','check']],
     media:[['title','Tên ảnh / văn kiện','text',1],['caption','Mô tả, niên đại, xuất xứ','long'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Người cung cấp / nguồn bản gốc','textarea'],['image_url','Địa chỉ ảnh (URL)','url'],['file','Tải hình ảnh lên','file'],['published','Công bố trên website','check']],
-    videos:[['title','Tiêu đề video Đạo Sử','text',1],['summary','Tóm tắt','textarea'],['body','Nội dung / thuyết minh','long'],['video_url','Liên kết video YouTube hoặc MP4 (nếu có)','url'],['video_file','Hoặc chọn video MP4 từ album / tệp điện thoại','video-file'],['cover_url','Đường dẫn ảnh bìa (nếu có)','url'],['file','Hoặc tải ảnh bìa lên','file'],['person_id','Chức sắc liên quan','person'],['sources','Nguồn video / bản quyền / xuất xứ','textarea'],['published','Công bố trên website','check']],
+    videos:[['title','Tiêu đề video Đạo Sử','text',1],['summary','Tóm tắt','textarea'],['body','Nội dung / thuyết minh','long'],['video_url','Liên kết Facebook, YouTube hoặc MP4 (nếu có)','url'],['video_file','Hoặc chọn video MP4 từ album / tệp điện thoại','video-file'],['cover_url','Đường dẫn ảnh bìa (nếu có)','url'],['file','Hoặc tải ảnh bìa lên','file'],['person_id','Chức sắc liên quan','person'],['sources','Nguồn video / bản quyền / xuất xứ','textarea'],['published','Công bố trên website','check']],
     obituaries:[['title','Tiêu đề Ai Tín','text',1],['deceased_name','Danh xưng người quy vị','text'],['memorial_date','Ngày quy vị (Âm / Dương lịch)','text'],['summary','Lời dẫn ngắn','textarea'],['body','Nội dung Ai Tín / tưởng niệm','long'],['cover_url','Đường dẫn di ảnh','url'],['file','Hoặc tải di ảnh lên','file'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Nguồn tin / tài liệu xác minh','textarea'],['published','Công bố trên website','check']],
     documents:[['title','Tên tài liệu số hóa','text',1],['document_number','Số hiệu văn kiện','text'],['document_date','Niên đại / ngày tháng văn kiện','text'],['summary','Mô tả ngắn','textarea'],['body','Nội dung giới thiệu / trích yếu','long'],['file_url','Liên kết file PDF hoặc ảnh','url'],['file','Hoặc tải PDF / ảnh tài liệu lên','file'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Xuất xứ bản gốc / nguồn lưu trữ','textarea'],['published','Công bố trên website','check']]
   };
@@ -57,33 +57,54 @@
   const safeUrl = s => {try{const u=new URL(String(s));return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}};
   const date = s => {if(!s)return '';try{return new Date(s).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return ''}};
   const statusTag = record => record.verified?'<span class="verification verified">ĐÃ ĐỐI CHIẾU</span>':'<span class="verification">CẦN ĐỐI CHIẾU</span>';
-  // Chỉ nhúng YouTube có ID hợp lệ hoặc đường dẫn trực tiếp MP4/WebM.
-  // Không nhúng HTML hay iframe từ đường dẫn không rõ nguồn gốc.
-  function videoSource(raw){
-    const url=safeUrl(raw);if(!url)return null;
-    let u;try{u=new URL(url)}catch{return null}
-    const host=u.hostname.toLowerCase(),path=u.pathname.split('/').filter(Boolean);
-    let id='';
-    if(host==='youtu.be'||host==='www.youtu.be')id=path[0]||'';
-    else if(['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com','www.youtube-nocookie.com'].includes(host)){
-      if(u.pathname==='/watch')id=u.searchParams.get('v')||'';
-      else if(['embed','shorts','live','v'].includes(path[0]))id=path[1]||'';
-    }
-    if(/^[A-Za-z0-9_-]{11}$/.test(id))return {type:'youtube',url,id,poster:`https://i.ytimg.com/vi/${id}/hqdefault.jpg`};
-    if(u.protocol==='https:' && /\.(mp4|webm)$/i.test(u.pathname))return {type:'file',url};
-    return {type:'external',url};
+// Chỉ nhúng các dịch vụ video được nhận diện rõ; không chèn HTML tùy ý.
+// Facebook dùng iframe Social Plugin và giữ liên kết gốc để xem dự phòng.
+function videoSource(raw){
+  const url=safeUrl(raw);if(!url)return null;
+  let u;try{u=new URL(url)}catch{return null}
+  const host=u.hostname.toLowerCase(),path=u.pathname.split('/').filter(Boolean);
+  let id='';
+  if(host==='youtu.be'||host==='www.youtu.be')id=path[0]||'';
+  else if(['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com','www.youtube-nocookie.com'].includes(host)){
+    if(u.pathname==='/watch')id=u.searchParams.get('v')||'';
+    else if(['embed','shorts','live','v'].includes(path[0]))id=path[1]||'';
   }
+  if(/^[A-Za-z0-9_-]{11}$/.test(id))return {type:'youtube',url,id,poster:`https://i.ytimg.com/vi/${id}/hqdefault.jpg`};
+  // Nhận đường dẫn video và Reels công khai từ facebook.com, fb.watch.
+  // fb.watch là URL rút gọn: Meta có thể từ chối nhúng, nên giữ nút mở gốc.
+  const facebookHosts=['facebook.com','www.facebook.com','m.facebook.com','web.facebook.com','mbasic.facebook.com'];
+  if(u.protocol==='https:' && (host==='fb.watch'||facebookHosts.includes(host))){
+    const short=host==='fb.watch'&&path.length===1&&/^[A-Za-z0-9_-]{5,40}$/.test(path[0]);
+    const watch=host!=='fb.watch'&&(
+      ((path[0]==='watch'||path[0]==='video.php') && /^\d{5,25}$/.test(u.searchParams.get('v')||'')) ||
+      (path.length>=2 && ['videos','reels'].includes(path[path.length-2]) && /^[A-Za-z0-9_-]{5,100}$/.test(path[path.length-1])) ||
+      (path.length===2 && path[0]==='reel' && /^[A-Za-z0-9_-]{5,100}$/.test(path[1])) ||
+      (path.length>=3 && path[0]==='share' && ['v','r'].includes(path[1]) && /^[A-Za-z0-9_-]{5,100}$/.test(path[2]))
+    );
+    if(short||watch){
+      u.hash='';
+      // Tránh tham số theo dõi không cần thiết; giữ tham số ID cho watch/video.php.
+      if(short||u.searchParams.has('v')){
+        const videoId=u.searchParams.get('v');u.search='';if(videoId)u.searchParams.set('v',videoId);
+      }else{u.search=''}
+      const href=u.href;
+      return {type:'facebook',url,embedHref:href,shortLink:Boolean(short)};
+    }
+  }
+  if(u.protocol==='https:' && /\.(mp4|webm)$/i.test(u.pathname))return {type:'file',url};
+  return {type:'external',url};
+}
   function videoPoster(record){
     const source=videoSource(record.video_url),picture=safeUrl(record.cover_url)||(source?.type==='youtube'?source.poster:'');
     const image=picture?`<img src="${escape(picture)}" alt="" loading="lazy">`:'<span class="video-placeholder-icon" aria-hidden="true">▣</span>';
-    if(source?.type==='youtube'||source?.type==='file'){
-      return `<button class="video-poster-button" type="button" data-video-play="${escape(record.id)}" aria-label="Phát video ${escape(record.title)}">${image}<span class="video-play-badge" aria-hidden="true">▶</span><span class="video-play-caption">Nhấn để xem ngay</span></button>`;
+    if(['youtube','facebook','file'].includes(source?.type)){
+      return `<button class="video-poster-button" type="button" data-video-play="${escape(record.id)}" aria-label="Phát video ${escape(record.title)}">${image}<span class="video-play-badge" aria-hidden="true">▶</span><span class="video-play-caption">${source.type==='facebook'?'Video Facebook · Nhấn để xem':'Nhấn để xem ngay'}</span></button>`;
     }
     return `<div class="video-poster-unavailable">${image}<span class="video-play-caption">${source?'Xem video tại nguồn ở phần chi tiết':'Chưa có video để phát'}</span></div>`;
   }
   function playVideo(id,control){
     const record=publicRows('videos').find(x=>x.id===id),source=record&&videoSource(record.video_url);
-    if(!source||!['youtube','file'].includes(source.type))return;
+    if(!source||!['youtube','facebook','file'].includes(source.type))return;
     const slot=control.closest('.video-preview-slot, .detail-video-preview');if(!slot)return;
     // Không để nhiều video cùng phát ở một thời điểm.
     $$('.video-preview-slot video, .detail-video-preview video').forEach(v=>v.pause());
@@ -95,6 +116,14 @@
       frame.loading='eager';frame.referrerPolicy='strict-origin-when-cross-origin';
       frame.allow='accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share';
       frame.setAttribute('allowfullscreen','');slot.replaceChildren(frame);
+    }else if(source.type==='facebook'){
+      const frame=document.createElement('iframe');
+      frame.src=`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(source.embedHref)}&show_text=false&width=560`;
+      frame.title=`Video Facebook · Đạo Sử: ${record.title}`;
+      frame.loading='eager';frame.referrerPolicy='strict-origin-when-cross-origin';
+      frame.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';
+      frame.setAttribute('allowfullscreen','');slot.replaceChildren(frame);
+      // Nếu Facebook chặn iframe, đường dẫn trong bài chi tiết vẫn cho phép xem gốc.
     }else{
       const player=document.createElement('video');
       player.controls=true;player.playsInline=true;player.preload='metadata';
@@ -149,7 +178,7 @@
     const person=kind!=='people'&&record.person_id?linkedPerson(record.person_id):null;
     const dateNotes=kind==='people'&&record.date_notes?`<p class="detail-meta">Ngày tháng: ${escape(record.date_notes)}</p>`:'';
     const url=safeUrl(kind==='videos'?record.video_url:kind==='documents'?record.file_url:'');
-    const link=url?`<p class="detail-external"><a href="${escape(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${kind==='videos'?'Xem video gốc':'Mở tài liệu số'} ↗</a></p>`:'';
+    const link=url?`<p class="detail-external"><a href="${escape(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${kind==='videos'?(videoSource(record.video_url)?.type==='facebook'?'Xem trên Facebook':'Xem video gốc'):'Mở tài liệu số'} ↗</a></p>`:'';
     const visual=kind==='videos'?`<div class="detail-video-preview" data-video-id="${escape(record.id)}">${videoPoster(record)}</div>`:`<div class="detail-cover">${src?`<img src="${escape(src)}" alt="${escape(title)}">`:`<div class="portrait-placeholder">${escape(sectionNames[kind])}</div>`}</div>`;
     $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${link}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
     $('#detail-overlay').hidden=false;document.body.classList.add('modal-open');$('.detail-panel').scrollTop=0;
@@ -179,7 +208,7 @@
     if(type==='branch')return `<label>${escape(label)}<select name="${name}"><option value="Cửu Trùng Đài">Cửu Trùng Đài</option><option value="Hiệp Thiên Đài">Hiệp Thiên Đài</option><option value="Phước Thiện">Phước Thiện</option><option value="Hành chánh Đạo">Hành chánh Đạo</option><option value="Khác">Khác</option></select></label>`;
     if(type==='subgroup')return `<label>${escape(label)}<select name="subgroup"><option value="">Chưa phân loại</option>${allSubgroups.map(g=>`<option value="${escape(g)}">${escape(g)}</option>`).join('')}</select></label>`;
     if(type==='person')return `<label>${escape(label)}<select name="person_id"><option value="">Không liên kết</option>${state.data.people.map(p=>`<option value="${escape(p.id)}">${escape(p.full_name)}</option>`).join('')}</select></label>`;
-    if(type==='video-file')return `<label>${escape(label)}<input type="file" name="video_file" accept="video/*,.mp4,.webm"></label><p class="help">Chọn tệp MP4 (H.264 khuyên dùng) hoặc WebM, tối đa 45 MB. Tệp MOV từ iPhone cần xuất thành MP4 trước để xem tốt trên Android và máy tính. Với video lớn, nên dùng liên kết YouTube. Video tải lên sẽ ở kho công khai khi có đường dẫn.</p>`;
+    if(type==='video-file')return `<label>${escape(label)}<input type="file" name="video_file" accept="video/*,.mp4,.webm"></label><p class="help">Chọn tệp MP4 (H.264 khuyên dùng) hoặc WebM, tối đa 45 MB. Tệp MOV từ iPhone cần xuất thành MP4 trước để xem tốt trên Android và máy tính. Với video lớn đã đăng trên Page, hãy dán đường dẫn Facebook vào ô phía trên. Video tải lên sẽ ở kho công khai khi có đường dẫn.</p>`;
     if(type==='file'){const docs=state.editorKind==='documents';return `<label>${escape(label)}<input type="file" name="file" accept="${docs?'application/pdf,image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp'}"></label><p class="help">${docs?'PDF tối đa 15 MB, ảnh tối đa 6 MB.':'JPEG, PNG hoặc WebP tối đa 6 MB.'} Giữ bản gốc ở nơi lưu trữ riêng.</p>`;}
     if(type==='long'||type==='textarea')return `<label>${escape(label)}<textarea name="${name}" class="${type==='long'?'tall':''}"${req}></textarea></label>`;
     return `<label>${escape(label)}<input type="${type==='url'?'url':'text'}" name="${name}"${req}></label>`;
@@ -257,7 +286,7 @@
     try{
       const data={};for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;data[name]=el.type==='checkbox'?el.checked:el.value.trim()||null}
       const selectedVideo=kind==='videos'?form.elements.video_file?.files?.[0]:null;
-      if(kind==='videos'&&!data.video_url&&!selectedVideo)throw new Error('Hãy dán liên kết YouTube hoặc chọn một video MP4 từ điện thoại.');
+      if(kind==='videos'&&!data.video_url&&!selectedVideo)throw new Error('Hãy dán liên kết Facebook/YouTube hoặc chọn video MP4 từ điện thoại.');
       if(selectedVideo){data.video_url=await uploadVideo(selectedVideo,progress=>{$('#form-message').textContent=`Đang tải video: ${progress}%. Đừng đóng trang trong khi tải.`;});}
       const file=form.elements.file?.files?.[0];if(file){const url=await uploadImage(file,kind);data[kind==='documents'?'file_url':(['posts','videos','obituaries'].includes(kind)?'cover_url':'image_url')]=url}
       if(!record){data.slug=slugify(data.full_name||data.title)+'-'+Date.now().toString(36).slice(-6)}
