@@ -23,6 +23,11 @@
   let clientPromise = null;
   let editing = null;
   let editorSeq = 0, detailSeq = 0;
+  // Giữ tệp trong bộ nhớ cho đến khi người quản trị bấm Đăng/Lưu MỘT LẦN.
+  let pendingFiles = [];
+  let panelContext = '';
+  let uploading = false;
+
 
   const $ = (selector, root=document) => root.querySelector(selector);
   const escape = v => String(v ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -75,6 +80,8 @@
     .gdd-admin-photo .gdd-album-field {margin:0 0 8px;}
     .gdd-admin-photo .gdd-album-field input {margin-top:5px;}
     .gdd-admin-photo .gdd-album-commands {margin:0;gap:6px;}
+    .gdd-album-photo-no {display:flex;align-items:center;justify-content:center;min-height:70px;font:700 17px Georgia,serif;color:#7e8b80;background:#eff2ea;border-radius:5px;}
+    .gdd-album-selection {margin:12px 0 16px;}
     .gdd-album-empty {font:400 12px/1.75 'Be Vietnam Pro',sans-serif;color:#778279;margin:14px 0 0;}
     @media(max-width:530px){.gdd-album-grid{gap:10px;}.gdd-album h3{font-size:18px;}.gdd-album-figure figcaption{font-size:11px;}#gdd-admin-album-panel{padding:15px 12px;}.gdd-admin-photo{grid-template-columns:56px minmax(0,1fr);gap:8px;}.gdd-admin-photo img{width:56px;height:73px;}.gdd-album-btn{font-size:11px;padding:8px 9px;}}
   `;
@@ -153,36 +160,85 @@
     window.addEventListener('hashchange',handleDetailChange);
   }
 
-  /* Phần quản trị: lưu bài trước, vào SỬA để chọn nhiều ảnh. */
+  /* Phần quản trị: một lần đăng = lưu bài + ảnh bìa + bộ ảnh tư liệu. */
   const editor=$('#editor-form');
   const panel=document.createElement('section');panel.id='gdd-admin-album-panel';
-  if (editor) editor.after(panel);
   const getEditorKind=()=>$('.editor-tabs button.is-selected')?.dataset.kind || '';
-  function isEditing() {return ($('#editor-heading')?.textContent||'').trim()==='Sửa tư liệu';}
+  function isEditing(){return ($('#editor-heading')?.textContent||'').trim()==='Sửa tư liệu';}
   function setStatus(message){const area=$('#gdd-album-status');if(area)area.textContent=message;}
   let adminRows=[];
-  function renderPanel() {
-    if (!editor) return;
-    if (!isEditing() || !editing || getEditorKind()!==editing.kind) {
-      panel.innerHTML=`<h3>Bộ ảnh tư liệu kèm theo</h3><p class="gdd-album-note">Muốn thêm nhiều ảnh: hãy <b>đăng bài trước</b>, sau đó chọn nút <b>Sửa</b> ở phần “Tư liệu đã đăng / bản nháp” để tải bộ ảnh vào đúng hồ sơ.</p>`;
-      return;
+
+  function validatePending(){
+    if(pendingFiles.length>MAX_FILES)throw Error(`Mỗi lần đăng chọn tối đa ${MAX_FILES} ảnh.`);
+    for(const item of pendingFiles){
+      const f=item.file;
+      if(!FILE_EXT[f.type])throw Error(`Ảnh ${f.name} không đúng định dạng. Chỉ nhận JPEG, PNG, WebP.`);
+      if(!f.size||f.size>MAX_SIZE)throw Error(`Ảnh ${f.name} vượt quá 6 MB hoặc là tệp trống.`);
     }
+    return true;
+  }
+  function renderQueue(){
+    const target=$('#gdd-album-selection');if(!target)return;
+    target.replaceChildren();
+    if(!pendingFiles.length){target.textContent='Chưa chọn ảnh đính kèm.';return;}
+    const summary=document.createElement('p');summary.className='gdd-album-note';
+    summary.textContent=`Đã chọn ${pendingFiles.length} ảnh. Giữ thứ tự bên dưới, hoặc dùng nút ↑ ↓ để đổi vị trí.`;
+    target.appendChild(summary);
+    pendingFiles.forEach((item,index)=>{
+      const row=document.createElement('div');row.className='gdd-admin-photo';
+      const indexDisplay=document.createElement('div');indexDisplay.className='gdd-album-photo-no';
+      indexDisplay.textContent=String(index+1).padStart(2,'0');
+      const content=document.createElement('div');
+      const fn=document.createElement('p');fn.className='gdd-album-note';fn.style.margin='0 0 5px';
+      fn.textContent=item.file.name+' · '+(item.file.size/1024/1024).toFixed(2)+' MB'+(item.saved?' · Đã lưu':'');
+      const label=document.createElement('label');label.className='gdd-album-field';label.textContent='Chú thích ảnh '+(index+1);
+      const input=document.createElement('input');input.type='text';input.maxLength=400;
+      input.placeholder=getEditorKind()==='documents'?'Trang '+String(index+1).padStart(2,'0')+' – số hiệu văn kiện…':'Mô tả, xuất xứ hoặc niên đại (không bắt buộc)';
+      input.value=item.caption;
+      input.disabled=!!item.saved;
+      input.addEventListener('input',()=>{item.caption=input.value;});
+      label.appendChild(input);
+      const cmds=document.createElement('div');cmds.className='gdd-album-commands';
+      const add=(text,action,disabled=false)=>{const btn=document.createElement('button');btn.type='button';btn.className='gdd-album-btn';btn.textContent=text;btn.disabled=disabled||!!item.saved||uploading;btn.addEventListener('click',action);cmds.appendChild(btn);};
+      add('↑',()=>{[pendingFiles[index-1],pendingFiles[index]]=[pendingFiles[index],pendingFiles[index-1]];renderQueue();},index===0);
+      add('↓',()=>{[pendingFiles[index+1],pendingFiles[index]]=[pendingFiles[index],pendingFiles[index+1]];renderQueue();},index===pendingFiles.length-1);
+      add('Gỡ',()=>{pendingFiles.splice(index,1);renderQueue();});
+      content.append(fn,label,cmds);row.append(indexDisplay,content);target.appendChild(row);
+    });
+  }
+  function renderPanel(){
+    if(!editor)return;
+    const kind=getEditorKind();
+    const owner=isEditing()&&editing&&kind===editing.kind?editing:null;
+    const context=kind+':'+(owner?.id||'new');
+    // Khi đổi bài hoặc đổi chuyên mục, tệp chọn ở bài cũ không được gắn nhầm.
+    if(panelContext!==context){pendingFiles=[];panelContext=context;}
+    const actions=editor.querySelector('.form-actions');
+    if(actions&&panel.parentElement!==editor)actions.before(panel);
+    if(!actions)return;
+    // MutationObserver chỉ theo dõi con trực tiếp: tránh dựng lại form khi người dùng đang nhập.
+    if(panel.dataset.context===context&&panel.querySelector('#gdd-album-files'))return;
+    panel.dataset.context=context;
     panel.innerHTML=`
       <h3>Bộ ảnh tư liệu kèm theo</h3>
-      <p class="gdd-album-note">Đang biên tập: <b>${escape(KIND_LABEL[editing.kind])}</b>. Chọn nhiều ảnh JPEG/PNG/WebP cùng lúc. Tối đa ${MAX_FILES} ảnh/lượt, mỗi ảnh không quá 6 MB; giữ nguyên chất lượng tệp. Ảnh sẽ hiển thị bên dưới nội dung bài theo thứ tự.</p>
-      <label class="gdd-album-field">Chọn nhiều ảnh từ album iPhone / ứng dụng Tệp
+      <p class="gdd-album-note">Có thể chọn <b>nhiều ảnh ngay khi soạn bài mới</b> — không cần đăng xong rồi bấm Sửa. Chọn tối đa ${MAX_FILES} ảnh/lượt (JPEG/PNG/WebP, 6 MB/ảnh), sau đó nhấn <b>Đăng tư liệu</b> một lần. Ảnh bìa chính vẫn chọn riêng ở phía trên.</p>
+      <label class="gdd-album-field">Chọn nhiều ảnh từ album iPhone hoặc ứng dụng Tệp
         <input type="file" id="gdd-album-files" accept="image/jpeg,image/png,image/webp" multiple>
       </label>
-      <div class="gdd-album-commands"><button class="gdd-album-btn primary" type="button" id="gdd-album-upload">Tải bộ ảnh vào bài</button></div>
-      <div class="gdd-album-status" id="gdd-album-status" aria-live="polite"></div>
-      <div id="gdd-album-admin-list"><p class="gdd-album-empty">Đang đọc các ảnh đã đính kèm…</p></div>
-      <p class="gdd-album-note">Để đổi vị trí hoặc sửa chú thích, dùng các nút dưới từng ảnh. Gỡ ảnh khỏi bài không xóa tệp gốc trong Storage.</p>`;
-    const current={...editing};
-    const ticket=++editorSeq;
-    $('#gdd-album-upload').addEventListener('click',()=>uploadSelected(current,ticket));
-    const input=$('#gdd-album-files');
-    input.addEventListener('change',()=>setStatus(input.files?.length?`Đã chọn ${input.files.length} ảnh. Nhấn “Tải bộ ảnh vào bài” để lưu.`:''));
-    loadAdminRows(current,ticket);
+      <div id="gdd-album-selection" class="gdd-album-selection"></div>
+      <div class="gdd-album-status" id="gdd-album-status" role="status" aria-live="polite"></div>
+      ${owner?'<div id="gdd-album-admin-list"><p class="gdd-album-empty">Đang đọc các ảnh đã đính kèm…</p></div>':''}
+    `;
+    $('#gdd-album-files').addEventListener('change',e=>{
+      const files=Array.from(e.target.files||[]);
+      pendingFiles=files.map(file=>({file,caption:'',saved:false}));
+      if(files.length>MAX_FILES)setStatus(`Đã chọn ${files.length} ảnh; chỉ được tối đa ${MAX_FILES}.`);
+      else setStatus(files.length?`Đã chọn ${files.length} ảnh. Điền nội dung rồi nhấn nút Đăng tư liệu/Lưu thay đổi ở bên dưới.`:'');
+      renderQueue();
+      // FileList không còn cần: giữ tệp File trong queue để người dùng đổi thứ tự.
+    });
+    renderQueue();
+    if(owner)loadAdminRows(owner,++editorSeq);
   }
   async function loadAdminRows(owner,ticket) {
     try {
@@ -238,49 +294,60 @@
       setStatus('Đã đổi thứ tự ảnh.');await loadAdminRows(owner,ticket);
     }catch(e){setStatus('Không đổi được thứ tự: '+e.message);await loadAdminRows(owner,ticket);}
   }
-  async function uploadSelected(owner,ticket) {
-    const input=$('#gdd-album-files'),btn=$('#gdd-album-upload');
-    const files=[...(input?.files||[])];
-    if(!files.length){setStatus('Hãy chọn ít nhất một ảnh.');return;}
-    if(files.length>MAX_FILES){setStatus(`Một lần chỉ chọn tối đa ${MAX_FILES} ảnh.`);return;}
-    for(const file of files){
-      if(!FILE_EXT[file.type]){setStatus(`Định dạng không hỗ trợ: ${file.name}. Chỉ nhận JPEG/PNG/WebP.`);return;}
-      if(!file.size || file.size>MAX_SIZE){setStatus(`Ảnh ${file.name} phải có dung lượng từ 1 byte đến 6 MB.`);return;}
-    }
-    btn.disabled=true;input.disabled=true;
+  async function uploadPending(kind,id,onProgress){
+    if(uploading)throw Error('Hệ thống đang tải một bộ ảnh khác.');
+    validatePending();
+    if(!pendingFiles.some(item=>!item.saved))return;
+    if(!ALLOWED_KINDS.has(kind)||!id)throw Error('Không xác định được hồ sơ chứa bộ ảnh.');
+    uploading=true;
+    const filePicker=$('#gdd-album-files');
+    if(filePicker)filePicker.disabled=true;
+    renderQueue();
     let done=0;
     try{
       const supa=await getClient();
       const {data:{user},error:authError}=await supa.auth.getUser();
-      if(authError||!user)throw Error('Phiên đăng nhập đã hết hạn; hãy đăng nhập quản trị lại.');
+      if(authError||!user)throw Error('Phiên quản trị hết hạn. Hãy đăng nhập lại.');
       const {data:maxRows,error:maxError}=await supa.from(ALBUM_TABLE).select('sort_order')
-        .eq('owner_kind',owner.kind).eq('owner_id',owner.id)
-        .order('sort_order',{ascending:false}).limit(1);
+        .eq('owner_kind',kind).eq('owner_id',id).order('sort_order',{ascending:false}).limit(1);
       if(maxError)throw maxError;
       let position=Math.max(0,maxRows?.[0]?.sort_order??0);
-      for (const file of files) {
-        if(ticket!==editorSeq)throw Error('Bạn đã chuyển sang bài khác; quá trình tải lên đã dừng để tránh gắn nhầm ảnh.');
-        setStatus(`Đang tải ảnh ${done+1}/${files.length}: ${file.name}. Đừng đóng trang.`);
-        const suffix=(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2));
-        const path=`${owner.kind}/${Date.now()}-${suffix}.${FILE_EXT[file.type]}`;
-        const {error:upError}=await supa.storage.from('dao-su-images').upload(path,file,{contentType:file.type,cacheControl:'3600',upsert:false});
+      const files=pendingFiles.filter(item=>!item.saved);
+      for(const item of files){
+        const n=done+1;
+        const msg=`Đang tải ảnh ${n}/${files.length}: ${item.file.name}. Đừng đóng trang.`;
+        setStatus(msg);onProgress?.(msg);
+        const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
+        const path=`${kind}/${Date.now()}-${suffix}.${FILE_EXT[item.file.type]}`;
+        const {error:upError}=await supa.storage.from('dao-su-images').upload(path,item.file,
+          {contentType:item.file.type,cacheControl:'3600',upsert:false});
         if(upError)throw upError;
-        const publicUrl=supa.storage.from('dao-su-images').getPublicUrl(path).data.publicUrl;
+        const url=supa.storage.from('dao-su-images').getPublicUrl(path).data.publicUrl;
         const next=++position;
+        const defaultCaption=kind==='documents'?`Trang ${String(next).padStart(2,'0')}`:
+          `Ảnh tư liệu ${String(next).padStart(2,'0')}`;
         const {error:dbError}=await supa.from(ALBUM_TABLE).insert({
-          owner_kind:owner.kind,owner_id:owner.id,image_url:publicUrl,
-          caption:owner.kind==='documents'?`Trang ${String(next).padStart(2,'0')}`:`Ảnh tư liệu ${String(next).padStart(2,'0')}`,
-          sort_order:next
+          owner_kind:kind,owner_id:id,image_url:url,
+          caption:item.caption.trim()||defaultCaption,sort_order:next
         });
         if(dbError)throw dbError;
-        done++;
+        item.saved=true;done++;
+        setStatus(`Đã tải ${done}/${files.length} ảnh…`);
       }
-      setStatus(`Đã tải và lưu thành công ${done} ảnh. Ảnh gốc được giữ nguyên.`);
-      input.value='';
-      await loadAdminRows(owner,ticket);
-    }catch(e){setStatus(`Đã lưu ${done}/${files.length} ảnh. Lỗi: ${e.message||e}`);await loadAdminRows(owner,ticket);}
-    finally {if(ticket===editorSeq){btn.disabled=false;input.disabled=false;}}
+      const msg=`Đã lưu thành công ${done} ảnh vào bài. Giữ nguyên tệp ảnh gốc.`;
+      setStatus(msg);onProgress?.(msg);
+    }catch(err){
+      setStatus(`Đã lưu ${done} ảnh; còn ${pendingFiles.filter(x=>!x.saved).length} ảnh chưa tải. Lỗi: ${err.message||err}`);
+      throw err;
+    }finally {uploading=false;if(filePicker)filePicker.disabled=false;renderQueue();}
   }
+  // Cho app.js gọi sau khi tạo bài; hỗ trợ thử lại ảnh lỗi mà KHÔNG tạo bản ghi mới.
+  window.GDDAlbums={
+    pendingCount:()=>pendingFiles.filter(item=>!item.saved).length,
+    validatePending,
+    uploadPending,
+    resetAfterSuccess:()=>{pendingFiles=[];editing=null;panelContext='';panel.dataset.context='';}
+  };
 
   if(editor){
     // Ghi nhận ID ngay tại sự kiện click Sửa, trước khi app.js dựng form.
@@ -288,6 +355,7 @@
       const el=e.target instanceof Element?e.target:null;
       if(!el)return;
       const edit=el.closest('[data-list-edit],[data-edit-kind]');
+      if(uploading){e.preventDefault();e.stopImmediatePropagation();setStatus('Ảnh đang được tải. Hãy chờ thông báo hoàn tất.');return;}
       if(edit) {
         editing={kind:edit.dataset.listEdit||edit.dataset.editKind,id:edit.dataset.id||edit.dataset.editId};
         // app.js đổi form đồng bộ tại phần bubble; observer bên dưới sẽ cập nhật.

@@ -312,21 +312,78 @@ function videoSource(raw){
     return storage.getPublicUrl(path).data.publicUrl;
   }
   async function saveRecord(e){
-    e.preventDefault();if(!state.admin)return toast('Tài khoản chưa có quyền biên tập.');
-    const form=e.currentTarget,btn=$('button[type="submit"]',form),kind=state.editorKind,record=state.data[kind].find(x=>x.id===state.editingId);
-    btn.disabled=true;$('#form-message').textContent='Đang lưu tư liệu…';
+    e.preventDefault();
+    if(!state.admin)return toast('Tài khoản chưa có quyền biên tập.');
+    const form=e.currentTarget;
+    const btn=$('button[type="submit"]',form);
+    const kind=state.editorKind;
+    const record=state.data[kind].find(x=>x.id===state.editingId);
+    const albums=window.GDDAlbums;
+    btn.disabled=true;
+    $('#form-message').textContent='Đang kiểm tra và lưu tư liệu…';
     try{
-      const data={};for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;data[name]=el.type==='checkbox'?el.checked:el.value.trim()||null}
+      // Kiểm tra toàn bộ bộ ảnh trước khi ghi một bản ghi mới.
+      albums?.validatePending?.();
+      const data={};
+      for(const name of schema[kind]){
+        const el=form.elements[name];
+        if(!el)continue;
+        data[name]=el.type==='checkbox'?el.checked:el.value.trim()||null;
+      }
       const selectedVideo=kind==='videos'?form.elements.video_file?.files?.[0]:null;
-      if(kind==='videos'&&!data.video_url&&!selectedVideo)throw new Error('Hãy dán liên kết Facebook/YouTube hoặc chọn video MP4 từ điện thoại.');
-      if(selectedVideo){data.video_url=await uploadVideo(selectedVideo,progress=>{$('#form-message').textContent=`Đang tải video: ${progress}%. Đừng đóng trang trong khi tải.`;});}
-      const file=form.elements.file?.files?.[0];if(file){const url=await uploadImage(file,kind);data[kind==='documents'?'file_url':(['posts','videos','obituaries'].includes(kind)?'cover_url':'image_url')]=url}
-      if(!record){data.slug=slugify(data.full_name||data.title)+'-'+Date.now().toString(36).slice(-6)}
+      if(kind==='videos'&&!data.video_url&&!selectedVideo){
+        throw new Error('Hãy dán liên kết Facebook/YouTube hoặc chọn video MP4 từ điện thoại.');
+      }
+      if(selectedVideo){
+        data.video_url=await uploadVideo(selectedVideo,progress=>{
+          $('#form-message').textContent=`Đang tải video: ${progress}%. Đừng đóng trang khi đang tải.`;
+        });
+      }
+      const file=form.elements.file?.files?.[0];
+      if(file){
+        const url=await uploadImage(file,kind);
+        data[kind==='documents'?'file_url':(['posts','videos','obituaries'].includes(kind)?'cover_url':'image_url')]=url;
+      }
+      if(!record)data.slug=slugify(data.full_name||data.title)+'-'+Date.now().toString(36).slice(-6);
+      // Lấy đúng ID từ câu lệnh insert/update để gắn toàn bộ ảnh vào bài, không cần người dùng bấm Sửa.
       const request=record?state.supabase.from(kind).update(data).eq('id',record.id):state.supabase.from(kind).insert(data);
-      const {error}=await request;if(error)throw error;
-      await fetchData();state.editingId=null;buildEditor();toast('Đã lưu tư liệu thành công.');
-    }catch(err){$('#form-message').textContent='Không thể lưu: '+(err.message||'Lỗi không xác định');toast('Lỗi lưu tư liệu. Xin kiểm tra lại quyền và dữ liệu.')}
-    finally{btn.disabled=false}
+      const {data:saved,error}=await request.select('id').single();
+      if(error)throw error;
+      const savedId=saved?.id||record?.id;
+      if(!savedId)throw new Error('Đã lưu dữ liệu nhưng không lấy được mã bài viết.');
+      // Nếu việc tải ảnh thất bại, lần bấm sau cập nhật bài này, KHÔNG tạo thêm bài mới.
+      state.editingId=savedId;
+      // Giữ lại URL đã tải nếu người dùng phải thử tải album thêm lần nữa.
+      for(const name of ['video_url','cover_url','file_url','image_url']){
+        if(data[name]&&form.elements[name])form.elements[name].value=data[name];
+      }
+      if(form.elements.file)form.elements.file.value='';
+      if(form.elements.video_file)form.elements.video_file.value='';
+      try{
+        if(albums?.pendingCount?.()){
+          await albums.uploadPending(kind,savedId,message=>{
+            $('#form-message').textContent=message;
+          });
+        }
+      }catch(albumError){
+        await fetchData();
+        $('#form-message').textContent='Bài viết đã được lưu, nhưng một số ảnh chưa tải xong: '+
+          (albumError.message||String(albumError))+' Nhấn “Hoàn tất ảnh còn lại” để thử lại, không tạo bài mới.';
+        btn.textContent='Hoàn tất ảnh còn lại';
+        toast('Đã lưu bài. Một số ảnh chưa tải xong, có thể thử lại.');
+        return;
+      }
+      await fetchData();
+      state.editingId=null;
+      albums?.resetAfterSuccess?.();
+      buildEditor();
+      toast('Đã đăng tư liệu và lưu bộ ảnh thành công.');
+    }catch(err){
+      $('#form-message').textContent='Không thể lưu: '+(err.message||'Lỗi không xác định');
+      toast('Lỗi lưu tư liệu. Vui lòng xem thông báo dưới nút đăng.');
+    }finally{
+      btn.disabled=false;
+    }
   }
   async function deleteRecord(){
     const kind=state.editorKind,id=state.editingId;if(!id||!state.admin)return;
