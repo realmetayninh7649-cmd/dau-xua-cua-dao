@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8f5ed">
+  <meta name="description" content="Dấu Xưa Cửa Đạo – không gian sưu tầm, biên khảo và lưu giữ tiểu sử, công nghiệp, ảnh tư liệu Chức sắc Đại Đạo Tam Kỳ Phổ Độ.">
+  <meta property="og:title" content="Dấu Xưa Cửa Đạo | Kho tư liệu Đạo sử">
+  <meta property="og:description" content="Gìn giữ đạo sử, lưu dấu tiền nhân, nối nhịp mai sau.">
+  <title>Dấu Xưa Cửa Đạo — Kho tư liệu Chức sắc Cao Đài</title>
+  <link rel="icon" href="assets/emblem.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="supabase-config.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="thin-bar"><div class="wrap top-bar-inner"><span>ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ</span><span>TƯ LIỆU · BIÊN KHẢO · DI SẢN</span></div></div>
+  <header class="site-header" id="dau-trang">
+    <div class="wrap nav-row">
+      <a class="brand" href="#trang-chu" aria-label="Dấu Xưa Cửa Đạo — về trang chủ">
+        <img src="assets/emblem.svg" alt="" width="48" height="48">
+        <span><strong>DẤU XƯA CỬA ĐẠO</strong><small>KHO TƯ LIỆU ĐẠO SỬ</small></span>
+      </a>
+      <nav class="main-nav" id="main-nav" aria-label="Điều hướng chính">
+        <a href="#trang-chu" data-nav="trang-chu">Trang chủ</a>
+        <a href="#chuc-sac" data-nav="chuc-sac">Chức sắc</a>
+        <a href="#bien-khao" data-nav="bien-khao">Biên khảo</a>
+        <a href="#hinh-anh" data-nav="hinh-anh">Hình ảnh</a>
+        <a href="#gioi-thieu" data-nav="gioi-thieu">Giới thiệu</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="text-button" id="admin-open" type="button" aria-label="Mở trang quản trị"><span class="admin-icon">✧</span> Quản trị</button>
+        <button class="menu-button" id="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Mở trình đơn"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero section-anchor" id="trang-chu">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="short-rule"></span> DI SẢN &amp; KÝ ỨC ĐẠI ĐẠO</div>
+          <h1>Gìn giữ <em>dấu xưa,</em><br>kể chuyện <em>người trước.</em></h1>
+          <p>Không gian sưu khảo tiểu sử, công nghiệp và hình ảnh của chư Chức sắc tiền bối Cao Đài. Mỗi tư liệu được nâng niu, đối chiếu nguồn gốc, để mạch chuyện Đạo còn được lưu truyền.</p>
+          <div class="hero-actions"><a class="btn btn-primary" href="#chuc-sac">Khám phá tư liệu <span aria-hidden="true">↗</span></a><a class="btn btn-outline" href="#bien-khao">Đọc bài biên khảo</a></div>
+          <div class="hero-foot"><span class="hollow-star">✳</span> Lưu dấu hôm nay · Gởi lại mai sau</div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="arch-top"></div><div class="art-inner">
+            <div class="art-arch one"></div><div class="art-arch two"></div>
+            <div class="art-circle"><svg viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="110" cy="110" r="89" stroke="currentColor" stroke-width=".8" opacity=".4"/><circle cx="110" cy="110" r="73" stroke="currentColor" stroke-width=".7" stroke-dasharray="3 6" opacity=".55"/><path d="M110 55C139 83 143 115 110 153C77 115 81 83 110 55Z" stroke="currentColor" stroke-width="2"/><path d="M110 89C132 112 129 131 110 151C91 131 88 112 110 89Z" stroke="currentColor" stroke-width="1.4"/><path d="M66 123C75 150 89 156 110 153C131 156 145 150 154 123" stroke="currentColor" stroke-width="2"/><path d="M51 153C76 166 93 167 110 155C127 167 144 166 169 153" stroke="currentColor" stroke-width="1.2"/><path d="M46 170H174" stroke="currentColor" stroke-width="1.5"/><path d="M61 181H159" stroke="currentColor" stroke-width="1"/></svg></div>
+            <div class="art-topline">SƯU TẦM &amp; LƯU GIỮ</div><div class="art-title">ĐẠO<br>SỬ</div><div class="art-caption">VẾT TÍCH NGÀY QUA<br>GIÁ TRỊ MUÔN ĐỜI</div>
+            <div class="art-bottomline">TAM KỲ PHỔ ĐỘ</div>
+          </div><div class="art-side">BÚT TÍCH · DI ẢNH · SỬ LIỆU</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="number-band" aria-label="Thống kê tư liệu"><div class="wrap number-grid">
+      <div><strong id="count-people">—</strong><span>Hồ sơ Chức sắc</span></div>
+      <div><strong id="count-posts">—</strong><span>Bài biên khảo</span></div>
+      <div><strong id="count-media">—</strong><span>Ảnh tư liệu</span></div>
+      <div class="number-message"><i>“Kẻ trước vun bồi,<br>người sau gìn giữ.”</i></div>
+    </div></section>
+
+    <section class="section section-anchor" id="chuc-sac">
+      <div class="wrap">
+        <div class="section-top"><div><div class="eyebrow">HỒ SƠ NHÂN VẬT</div><h2>Chư Chức sắc <em>tiền bối</em></h2><p>Tra cứu theo tên, phẩm vị, cơ quan Đạo hoặc quê quán.</p></div><span class="section-index">01 / TƯ LIỆU NHÂN VẬT</span></div>
+        <div class="filter-panel"><label class="search-box" for="people-search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.5"/><path d="m16 16 5 5"/></svg><input id="people-search" type="search" placeholder="Tìm tên, phẩm vị, quê quán…" autocomplete="off"></label><label class="sr-only" for="branch-filter">Lọc theo cơ quan</label><select id="branch-filter"><option value="all">Tất cả cơ quan</option><option value="Cửu Trùng Đài">Cửu Trùng Đài</option><option value="Hiệp Thiên Đài">Hiệp Thiên Đài</option><option value="Phước Thiện">Phước Thiện</option><option value="Hành chánh Đạo">Hành chánh Đạo</option><option value="Khác">Khác</option></select></div>
+        <div id="people-grid" class="people-grid" aria-live="polite"></div>
+        <div class="results-footer"><span id="people-result-count"></span><button id="people-show-more" class="link-button" type="button" hidden>Xem thêm hồ sơ <span>↗</span></button></div>
+      </div>
+    </section>
+
+    <section class="section section-tinted section-anchor" id="bien-khao"><div class="wrap">
+      <div class="section-top"><div><div class="eyebrow">BÚT TÍCH &amp; KHẢO CỨU</div><h2>Trang <em>biên khảo</em></h2><p>Những câu chuyện, tư liệu và dấu mốc được hệ thống theo từng nhân vật.</p></div><span class="section-index">02 / BÀI VIẾT</span></div>
+      <div class="article-layout"><div class="article-feature"><div class="feature-line">KHẮC GHI ĐẠO SỬ</div><div class="feature-mark">“</div><blockquote>Mỗi tấm di ảnh, mỗi trang bút tích đều là một mối dây nối người hôm nay với công nghiệp của bậc tiền nhân.</blockquote><span>TƯ LIỆU CẦN ĐƯỢC GHI NGUỒN, GÌN GIỮ VÀ ĐỐI CHIẾU.</span></div><div class="article-list" id="article-list" aria-live="polite"></div></div>
+      </div></section>
+
+    <section class="section section-anchor" id="hinh-anh"><div class="wrap">
+      <div class="section-top"><div><div class="eyebrow">HÌNH ẢNH &amp; KỶ VẬT</div><h2>Di ảnh và <em>tư liệu xưa</em></h2><p>Nơi tập hợp ảnh chân dung, hình lễ nghi, văn kiện và ảnh chụp lưu niệm.</p></div><span class="section-index">03 / THƯ VIỆN ẢNH</span></div>
+      <div id="gallery-grid" class="gallery-grid" aria-live="polite"></div>
+      <p class="gallery-note">* Khi đăng ảnh, nên ghi năm chụp (nếu biết), xuất xứ, người cung cấp và tình trạng bản gốc.</p>
+    </div></section>
+
+    <section class="about section-anchor" id="gioi-thieu"><div class="wrap about-grid"><div><div class="eyebrow">LỜI NGỎ</div><h2>Giữ một trang xưa,<br><em>nối muôn đời sau.</em></h2></div><div><p><strong>Dấu Xưa Cửa Đạo</strong> được hình thành với tâm nguyện sưu tầm, hệ thống và lưu truyền tư liệu về các bậc Chức sắc đã góp công vun đắp nền Đại Đạo Tam Kỳ Phổ Độ.</p><p>Trang không thay thế nguồn sử liệu chính thức. Các bài biên khảo được khuyến khích dẫn chứng rõ ràng, giữ nguyên bản văn khi trích dẫn và ghi nhận những chi tiết còn chờ đối chiếu.</p><div class="about-contact">Có tư liệu muốn chia sẻ? Xin liên hệ người biên tập.</div></div></div></section>
+  </main>
+
+  <footer class="footer"><div class="wrap footer-grid"><div class="footer-brand"><img src="assets/emblem.svg" alt="" width="45" height="45"><div><strong>DẤU XƯA CỬA ĐẠO</strong><small>Kho tư liệu Chức sắc Cao Đài</small></div></div><div>Gìn giữ Đạo sử bằng tấm lòng kính cẩn và tinh thần khảo chứng.</div><div>© <span id="year"></span> · Lưu dấu cho mai sau</div></div></footer>
+
+  <div id="mode-banner" class="mode-banner" hidden>Đang xem <strong>dữ liệu mẫu</strong>. Muốn lưu bài và ảnh trực tuyến, hãy kết nối Supabase theo tệp HƯỚNG-DẪN.</div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div class="overlay" id="detail-overlay" hidden><div class="backdrop" data-close="detail"></div><section class="detail-panel" role="dialog" aria-modal="true" aria-label="Chi tiết tư liệu"><button class="close-button" type="button" data-close="detail" aria-label="Đóng">×</button><div id="detail-content"></div></section></div>
+  <div class="overlay" id="admin-overlay" hidden><div class="backdrop" data-close="admin"></div><section class="admin-panel" role="dialog" aria-modal="true" aria-labelledby="admin-title"><button class="close-button" type="button" data-close="admin" aria-label="Đóng">×</button><div class="admin-header"><span class="eyebrow">TRANG DÀNH CHO NGƯỜI BIÊN TẬP</span><h2 id="admin-title">Quản trị <em>tư liệu</em></h2><p>Chỉ người được cấp quyền mới có thể đăng, sửa hoặc ẩn bài viết, tiểu sử và hình ảnh.</p></div>
+    <div id="admin-login-area"><form id="login-form" class="admin-form"><label>Email quản trị<input type="email" name="email" required autocomplete="username" placeholder="email@example.com"></label><label>Mật khẩu<input type="password" name="password" required autocomplete="current-password" placeholder="Mật khẩu"></label><button class="btn btn-primary" type="submit">Đăng nhập</button><p class="small-note" id="login-message"></p></form></div>
+    <div id="admin-editor-area" hidden><div class="editor-logged"><span id="logged-email"></span><button type="button" class="link-button" id="logout-button">Đăng xuất</button></div>
+      <div class="editor-tabs" role="group" aria-label="Loại tư liệu"><button class="is-selected" type="button" data-kind="people">Chức sắc</button><button type="button" data-kind="posts">Bài viết</button><button type="button" data-kind="media">Hình ảnh</button></div>
+      <div class="editor-heading"><h3 id="editor-heading">Thêm hồ sơ Chức sắc</h3><button type="button" class="link-button" id="editor-new">+ Soạn mới</button></div>
+      <form id="editor-form" class="admin-form"></form>
+      <div class="editor-items"><h3>Tư liệu đã đăng / bản nháp</h3><div id="editor-list"></div></div>
+    </div>
+  </section></div>
+  <noscript>Vui lòng bật JavaScript để xem danh mục tư liệu và tìm kiếm.</noscript>
+</body>
+</html>
