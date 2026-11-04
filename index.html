@@ -663,5 +663,269 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 })();
 </script>
 <!-- KẾT THÚC CẬP NHẬT DẤU XƯA CỬA ĐẠO -->
+<!-- GIỮ ĐẠO GIỮA ĐỜI | ALBUM KHÔNG GIỚI HẠN TỔNG SỐ ẢNH | 04-11-2026 -->
+<script id="gdd-album-unlimited-20261104">
+(() => {
+  'use strict';
+  if (window.__gddAlbumUnlimitedV1) return;
+  window.__gddAlbumUnlimitedV1 = true;
+
+  const TABLE = 'archive_gallery_images';
+  const BUCKET = 'dao-su-images';
+  const SIZE_MAX = 6 * 1024 * 1024;
+  const EXT = {'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp'};
+  const KINDS = new Set(['people','posts','media','videos','obituaries','documents']);
+  const PREFIX = {'nhan-vat':'people','bai-viet':'posts','hinh-anh-tu-lieu':'media','video-dao-su':'videos','ai-tin':'obituaries','tai-lieu-so-hoa':'documents'};
+  let queue = [];
+  let context = null;
+  let busy = false;
+  let client = null;
+  let installed = false;
+
+  const $ = (s, root=document) => root.querySelector(s);
+  function status(s) { const el = $('#gdd-album-status'); if (el) el.textContent=s; }
+  function validFile(f) {
+    if (!EXT[f.type]) throw Error('Chỉ nhận JPEG, PNG hoặc WebP: ' + f.name);
+    if (!f.size || f.size > SIZE_MAX) throw Error('Ảnh quá 6 MB hoặc bị trống: ' + f.name);
+  }
+  function pending() { return queue.filter(p=>!p.saved).length; }
+  function validate() { for (const p of queue) if(!p.saved) validFile(p.file); return true; }
+  async function getClient() {
+    if (client) return client;
+    const cfg=window.SITE_CONFIG || {};
+    if(!cfg.supabaseUrl || !cfg.supabasePublishableKey) throw Error('Chưa kết nối Supabase.');
+    const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+    client=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
+    return client;
+  }
+  function renderList() {
+    const list=$('#gdd-album-selection');
+    if (!list) return;
+    list.replaceChildren();
+    if(!queue.length){list.textContent='Chưa chọn ảnh đính kèm.';return;}
+    const summary=document.createElement('p'); summary.className='gdd-album-note';
+    summary.textContent=`Đã chọn ${queue.length} ảnh (${pending()} ảnh chờ tải). Có thể chọn thêm nhiều lần, giữ thứ tự và đặt chú thích từng ảnh.`;
+    list.appendChild(summary);
+    const frag=document.createDocumentFragment();
+    queue.forEach((item,i)=>{
+      const row=document.createElement('div'); row.className='gdd-admin-photo';
+      const no=document.createElement('div'); no.className='gdd-album-photo-no'; no.textContent=String(i+1).padStart(2,'0');
+      const body=document.createElement('div');
+      const label=document.createElement('p'); label.className='gdd-album-note'; label.textContent=item.file.name+' · '+(item.file.size/1048576).toFixed(2)+' MB'+(item.saved?' · Đã lưu':'');
+      const field=document.createElement('label'); field.className='gdd-album-field'; field.textContent='Chú thích ảnh '+(i+1);
+      const input=document.createElement('input');input.type='text';input.maxLength=400;input.value=item.caption||'';
+      input.placeholder='Niên đại, số trang hoặc xuất xứ (không bắt buộc)';input.disabled=item.saved||busy;
+      input.addEventListener('input',()=>{item.caption=input.value;});field.appendChild(input);
+      const actions=document.createElement('div');actions.className='gdd-album-commands';
+      const btn=(name,disabled,handler)=>{
+        const b=document.createElement('button');b.type='button';b.className='gdd-album-btn';b.textContent=name;
+        b.disabled=disabled||item.saved||busy;b.addEventListener('click',handler);actions.appendChild(b);
+      };
+      btn('↑',i===0,()=>{[queue[i],queue[i-1]]=[queue[i-1],queue[i]];renderList();});
+      btn('↓',i===queue.length-1,()=>{[queue[i],queue[i+1]]=[queue[i+1],queue[i]];renderList();});
+      btn('Gỡ',false,()=>{queue.splice(i,1);renderList();});
+      body.append(label,field,actions);row.append(no,body);frag.appendChild(row);
+    });
+    list.appendChild(frag);
+  }
+  // Quản trị trên 250 ảnh: tải tiếp theo từng trang, không phải mở một màn hình khổng lồ.
+  function ensureAdminPager(panel){
+    const list=panel?.querySelector('#gdd-album-admin-list');
+    const wrap=list?.querySelector('.gdd-admin-photos');
+    if(!wrap||wrap.children.length<250||wrap.dataset.unlimitedExtraFinished==='1'||list.querySelector('.gdd-album-extra-more'))return;
+    const parts=(panel.dataset.context||'').split(':');
+    const kind=parts.shift(),id=parts.join(':');
+    if(!KINDS.has(kind)||!id||id==='new')return;
+    const more=document.createElement('button');more.type='button';more.className='gdd-album-btn gdd-album-extra-more';
+    more.textContent='Xem và quản lý ảnh đã lưu từ số 251 trở đi';
+    more.style.margin='16px 0';more.dataset.offset='250';list.appendChild(more);
+    more.addEventListener('click',async()=>{
+      more.disabled=true;more.textContent='Đang đọc thêm ảnh đã lưu…';
+      try{
+        const supa=await getClient(),offset=Number(more.dataset.offset)||250;
+        const {data:rows,error}=await supa.from(TABLE).select('id,image_url,caption,sort_order')
+          .eq('owner_kind',kind).eq('owner_id',id)
+          .order('sort_order',{ascending:true}).order('created_at',{ascending:true})
+          .range(offset,offset+249);
+        if(error)throw error;
+        for(const [i,row] of (rows||[]).entries()){
+          const item=document.createElement('div');item.className='gdd-admin-photo';
+          const img=document.createElement('img');img.src=row.image_url;img.alt=row.caption||'Ảnh tư liệu';img.loading='lazy';
+          const content=document.createElement('div'),label=document.createElement('label');label.className='gdd-album-field';
+          label.textContent='Ảnh số '+(offset+i+1)+' — Chú thích';
+          const input=document.createElement('input');input.type='text';input.maxLength=400;input.value=row.caption||'';label.appendChild(input);
+          const buttons=document.createElement('div');buttons.className='gdd-album-commands';
+          const make=(text,run)=>{
+            const btn=document.createElement('button');btn.type='button';btn.className='gdd-album-btn';btn.textContent=text;
+            btn.addEventListener('click',async()=>{btn.disabled=true;try{await run();}catch(e){status('Lỗi: '+(e.message||e));}finally{btn.disabled=false;}});
+            buttons.appendChild(btn);
+          };
+          make('Lưu chú thích',async()=>{const {error}=await supa.from(TABLE).update({caption:input.value.trim()||null}).eq('id',row.id);if(error)throw error;status('Đã lưu chú thích ảnh '+(offset+i+1)+'.');});
+          for(const [direction,labelText] of [[-1,'↑'],[1,'↓']]){
+            make(labelText,async()=>{
+              const target=offset+i+direction;if(target<0)return;
+              const {data:adjacent,error}=await supa.from(TABLE).select('id,sort_order')
+                .eq('owner_kind',kind).eq('owner_id',id).order('sort_order',{ascending:true})
+                .order('created_at',{ascending:true}).range(target,target);
+              if(error)throw error;if(!adjacent?.length)return;
+              const other=adjacent[0],temp=-Math.abs(Date.now());
+              for(const [rowId,position] of [[row.id,temp],[other.id,row.sort_order],[row.id,other.sort_order]]){
+                const {error:updateError}=await supa.from(TABLE).update({sort_order:position}).eq('id',rowId);
+                if(updateError)throw updateError;
+              }
+              status('Đã đổi thứ tự ảnh. Mở lại bài để làm mới danh sách.');
+            });
+          }
+          make('Gỡ ảnh',async()=>{
+            if(!confirm('Gỡ ảnh này khỏi bài viết? Tệp gốc vẫn lưu trong Storage.'))return;
+            const {error}=await supa.from(TABLE).delete().eq('id',row.id);
+            if(error)throw error;item.remove();status('Đã gỡ ảnh khỏi bài.');
+          });
+          content.append(label,buttons);item.append(img,content);wrap.appendChild(item);
+        }
+        more.dataset.offset=String(offset+(rows||[]).length);
+        if(!rows||rows.length<250){wrap.dataset.unlimitedExtraFinished='1';more.remove();}
+        else {more.disabled=false;more.textContent='Tải thêm 250 ảnh đã lưu tiếp theo';}
+        if(!rows?.length)status('Đã hiển thị toàn bộ ảnh đã lưu.');
+      }catch(err){more.disabled=false;more.textContent='Thử tải thêm ảnh';status('Không tải được: '+(err.message||err));}
+    });
+  }
+
+  function takePicker() {
+    const panel=$('#gdd-admin-album-panel');
+    const input=$('#gdd-album-files');
+    if (!panel||!input||!window.GDDAlbums) return;
+    const nextContext=panel.dataset.context||'';
+    if(nextContext!==context){queue=[];context=nextContext;}
+    if(input.dataset.unlimitedBound==='1'){ensureAdminPager(panel);return;}
+    // Bỏ listener chọn 30 ảnh của phiên bản cũ, giữ toàn bộ form và dữ liệu.
+    const clean=input.cloneNode(true);clean.dataset.unlimitedBound='1';
+    input.replaceWith(clean);
+    const desc=panel.querySelector('p.gdd-album-note');
+    if(desc)desc.innerHTML='Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, mỗi ảnh tối đa <b>6 MB</b> (JPEG/PNG/WebP). Nên chọn 10–20 ảnh/lượt trên iPhone để tránh đứng máy. Bấm <b>Đăng tư liệu</b> một lần; giữ trang mở khi đang tải.';
+    const chooser=clean.closest('label');if(chooser)chooser.firstChild.textContent='Chọn thêm ảnh từ album iPhone hoặc ứng dụng Tệp (có thể chọn nhiều lượt)\n        ';
+    clean.addEventListener('change',()=>{
+      if(busy)return;
+      const selected=Array.from(clean.files||[]);let added=0;const problems=[];
+      for(const file of selected){
+        try{validFile(file);
+          // Loại trường hợp chọn trùng cùng tệp trong các lượt (vẫn cho ảnh khác cùng tên).
+          const key=file.name+'|'+file.size+'|'+file.lastModified;
+          if(queue.some(item=>item.key===key))continue;
+          queue.push({file,key,caption:'',saved:false});added++;
+        }catch(e){problems.push(e.message);}
+      }
+      clean.value='';renderList();
+      status((added?'Đã thêm '+added+' ảnh; tổng cộng '+queue.length+' ảnh. ':'')+(problems.length?problems.join('; '):'Chọn thêm hoặc nhấn Đăng tư liệu.'));
+    });
+    renderList();ensureAdminPager(panel);
+  }
+  async function uploadPending(kind,id,onProgress){
+    if(busy)throw Error('Bộ ảnh đang được tải lên.');
+    validate();
+    if(!pending())return;
+    if(!KINDS.has(kind)||!id)throw Error('Không xác định được bài viết cần tải ảnh.');
+    busy=true;
+    const input=$('#gdd-album-files');if(input)input.disabled=true;
+    renderList();let done=0;
+    try{
+      const supa=await getClient();
+      const {data:{user},error:authError}=await supa.auth.getUser();
+      if(authError||!user)throw Error('Phiên quản trị đã hết hạn. Vui lòng đăng nhập lại.');
+      const {data:top,error:topError}=await supa.from(TABLE).select('sort_order')
+        .eq('owner_kind',kind).eq('owner_id',id).order('sort_order',{ascending:false}).limit(1);
+      if(topError)throw topError;
+      let position=Math.max(0,top?.[0]?.sort_order||0);
+      const items=queue.filter(x=>!x.saved);
+      for(const item of items){
+        const message=`Đang tải ảnh ${done+1}/${items.length}: ${item.file.name}. Xin giữ trang mở.`;
+        status(message);onProgress?.(message);
+        const suffix=(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2));
+        const path=`${kind}/${Date.now()}-${suffix}.${EXT[item.file.type]}`;
+        const {error:upError}=await supa.storage.from(BUCKET).upload(path,item.file,{contentType:item.file.type,cacheControl:'3600',upsert:false});
+        if(upError)throw upError;
+        const url=supa.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+        const order=position+1;
+        const {error:rowError}=await supa.from(TABLE).insert({owner_kind:kind,owner_id:id,image_url:url,
+          caption:item.caption.trim()||(kind==='documents'?'Trang ':'Ảnh tư liệu ')+String(order).padStart(2,'0'),sort_order:order});
+        if(rowError)throw rowError;
+        position=order;item.saved=true;done++;
+        const progress=`Đã lưu ${done}/${items.length} ảnh; còn ${pending()} ảnh chờ tải.`;
+        status(progress);onProgress?.(progress);
+      }
+      status('Đã lưu đủ '+done+' ảnh, không giới hạn tổng số ảnh của bài.');
+    }catch(err){
+      const message=`Đã tải thành công ${done} ảnh; còn ${pending()} ảnh chưa tải. Lỗi: ${err.message||err}`;
+      status(message);throw err;
+    }finally{busy=false;if(input)input.disabled=false;renderList();}
+  }
+  function install(){
+    if(installed||!window.GDDAlbums)return;
+    installed=true;
+    const old=window.GDDAlbums;
+    window.GDDAlbums={
+      pendingCount:pending,validatePending:validate,uploadPending,
+      resetAfterSuccess:()=>{queue=[];context=null;old.resetAfterSuccess?.();}
+    };
+    const editor=$('#editor-form');
+    if(editor){new MutationObserver(takePicker).observe(editor,{childList:true,subtree:true});takePicker();}
+    document.addEventListener('click',e=>{
+      if(!busy)return;
+      if(e.target.closest('#editor-new,.editor-tabs button,[data-list-edit],[data-edit-kind],[data-close="admin"]')){
+        e.preventDefault();e.stopImmediatePropagation();status('Đang tải ảnh, đừng chuyển bài hoặc đóng quản trị.');
+      }
+    },true);
+    window.addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue='';}});
+  }
+  // Thêm ảnh thứ 201 trở đi theo từng trang 200 ảnh; ảnh đã tải không bị bỏ sót.
+  let detailsKey='',extending=false;
+  async function extendPublic(){
+    const detail=$('#detail-content'),gallery=detail?.querySelector('.gdd-album-grid');
+    if(!gallery || extending || gallery.dataset.unlimitedExtension==='1'||gallery.children.length<200)return;
+    const match=location.hash.match(/^#([^/]+)\/(.+)$/);if(!match||!PREFIX[match[1]])return;
+    let slug;try{slug=decodeURIComponent(match[2]);}catch{return;}
+    const key=match[1]+'/'+slug;gallery.dataset.unlimitedExtension='1';extending=true;detailsKey=key;
+    try{
+      const supa=await getClient(),kind=PREFIX[match[1]];
+      const {data:parent,error:parentError}=await supa.from(kind).select('id').eq('slug',slug).maybeSingle();
+      if(parentError||!parent) return;
+      let offset=200,added=0;
+      for(;;){
+        if(detailsKey!==key||!gallery.isConnected)break;
+        const {data:rows,error}=await supa.from(TABLE).select('image_url,caption')
+          .eq('owner_kind',kind).eq('owner_id',parent.id)
+          .order('sort_order',{ascending:true}).order('created_at',{ascending:true})
+          .range(offset,offset+199);
+        if(error)throw error;
+        for(const [i,record] of (rows||[]).entries()){
+          let url;try{url=new URL(record.image_url);if(url.protocol!=='https:')continue;}catch{continue;}
+          const figure=document.createElement('figure');figure.className='gdd-album-figure';
+          const button=document.createElement('button');button.type='button';button.className='gdd-album-tile detail-cover';
+          const no=offset+i+1, img=document.createElement('img');img.loading='lazy';img.src=url.href;
+          img.alt=record.caption||'Ảnh tư liệu '+no;button.setAttribute('aria-label','Xem ảnh tư liệu số '+no);
+          button.appendChild(img);button.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();img.click();}});
+          const caption=document.createElement('figcaption');const idx=document.createElement('span');idx.className='gdd-album-page';idx.textContent=String(no).padStart(2,'0')+'.';
+          caption.append(idx,document.createTextNode(record.caption||'Ảnh tư liệu'));
+          const original=document.createElement('div'),link=document.createElement('a');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.className='gdd-album-open';link.textContent='Mở ảnh gốc ↗';original.appendChild(link);
+          figure.append(button,caption,original);gallery.appendChild(figure);added++;
+        }
+        offset+=(rows||[]).length;
+        if(!rows||rows.length<200)break;
+      }
+      const count=detail.querySelector('.gdd-album-count');if(count&&added)count.textContent=(200+added)+' ảnh';
+    }catch(e){console.warn('Không thể tải toàn bộ ảnh trong bộ tư liệu:',e);}
+    finally{extending=false;}
+  }
+  function begin(){
+    install();
+    if(!window.GDDAlbums)setTimeout(install,200);
+    const detail=$('#detail-content');
+    if(detail)new MutationObserver(()=>{if(!extending)queueMicrotask(extendPublic);}).observe(detail,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',begin,{once:true});else begin();
+})();
+</script>
+<!-- KẾT THÚC BẢN CẬP NHẬT BỘ ẢNH KHÔNG GIỚI HẠN -->
+
 </body>
 </html>
