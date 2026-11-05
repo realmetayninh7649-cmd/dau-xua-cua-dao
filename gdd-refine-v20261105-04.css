@@ -1,0 +1,80 @@
+/* GIỮ ĐẠO GIỮA ĐỜI — TINH CHỈNH NHẸ, v2026.11.05.04
+ * Chỉ: khoảng cách Trang Chủ, cỡ chữ nhỏ và nền khung ảnh.
+ * Không thay đổi chiều dài/rộng khung ảnh, trật tự bài, nội dung hoặc giao diện quản trị.
+ * Xóa dòng link tới file này là có thể hoàn tác riêng phần CSS.
+ */
+
+/* Trang Chủ: khoảng cách giữa sáu khu tư liệu đều đặn, bớt trống nhẹ. */
+html body #gdd-directory {
+  padding-top: clamp(30px, 3.8vw, 49px);
+  padding-bottom: clamp(38px, 4.3vw, 62px);
+}
+html body #gdd-directory .gdd-preview-section {
+  padding-top: clamp(20px, 2.6vw, 32px);
+  padding-bottom: clamp(22px, 2.7vw, 34px);
+}
+html body #gdd-directory .gdd-preview-header { margin-bottom: 14px; }
+
+/* Chữ nhỏ: rõ ràng hơn, không thay đổi cỡ các tiêu đề lớn. */
+html body #gdd-directory .gdd-preview-sub {
+  font-size: 12px;
+  line-height: 1.75;
+}
+html body #gdd-directory .gdd-preview-meta {
+  font-size: 11px;
+  line-height: 1.55;
+}
+html body #gdd-directory .gdd-preview-summary {
+  font-size: 12px;
+  line-height: 1.72;
+}
+html body #gdd-directory .gdd-preview-hint {
+  font-size: 11px;
+}
+
+/* Giữ kích thước và tỷ lệ ảnh gốc, chỉ thống nhất nền/viền khung. */
+html body #gdd-directory .gdd-preview-thumb,
+body #people-grid .person-media,
+body .gallery-visual,
+body .archive-card:not(.video-archive-card) .archive-thumb {
+  background: linear-gradient(145deg, #e6e9e1 0%, #f0ede5 100%);
+}
+html body #gdd-directory .gdd-preview-thumb img,
+body #people-grid .person-media img,
+body .gallery-visual img,
+body .archive-card:not(.video-archive-card) .archive-thumb img,
+body #article-list .editorial-image img {
+  object-fit: contain;
+  object-position: center;
+}
+html body #gdd-directory .gdd-preview-card,
+body .person-card,
+body .gallery-card,
+body .archive-card {
+  border-color: #dfd9cd;
+}
+
+@media (max-width: 560px) {
+  html body #gdd-directory {
+    padding-top: 28px;
+    padding-bottom: 39px;
+  }
+  html body #gdd-directory .gdd-preview-section {
+    padding-top: 18px;
+    padding-bottom: 24px;
+  }
+  html body #gdd-directory .gdd-preview-header {
+    margin-bottom: 12px;
+  }
+  html body #gdd-directory .gdd-preview-summary {
+    font-size: 11.5px;
+    -webkit-line-clamp: 2;
+  }
+  html body #gdd-directory .gdd-preview-sub {
+    font-size: 12px;
+  }
+  body #people-grid .person-body p {
+    font-size: 12.5px;
+    line-height: 1.72;
+  }
+}
