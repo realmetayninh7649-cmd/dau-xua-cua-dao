@@ -929,5 +929,260 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 <script defer src="gdd-calendar-statistics.js?v=20261104-01"></script>
 <script defer src="gdd-memorial.js?v=20261105-01"></script>
 <script defer src="gdd-people-organizer.js?v=20261105-01"></script>
+<!-- CHỈNH HIỂN THỊ PHÂN LOẠI CHỨC SẮC -->
+
+<style>
+
+  #gdd-sex-tabs [hidden] {
+
+    display: none !important;
+
+  }
+
+  #gdd-people-list .gdd-people-gender:empty {
+
+    display: none !important;
+
+  }
+
+</style>
+
+<script id="gdd-fix-gender-20261105">
+
+(() => {
+
+  'use strict';
+
+  function init() {
+
+    const tabs = document.getElementById('gdd-sex-tabs');
+
+    const admin = document.getElementById('admin-editor-area');
+
+    const list = document.getElementById('gdd-people-list');
+
+    const count = document.getElementById('gdd-people-count');
+
+    const search = document.getElementById('people-search');
+
+    if (!tabs || !admin || !list || !count || !search) return;
+
+    const pending = tabs.querySelector(
+
+      '[data-gdd-sex="Chưa phân loại"]'
+
+    );
+
+    const note = tabs.querySelector('.gdd-sex-note');
+
+    if (!pending) return;
+
+    const isAdmin = () => !admin.hidden;
+
+    let busy = false;
+
+    let queued = false;
+
+    let searchFallback = false;
+
+    let previousSex = 'Nam';
+
+    function sync() {
+
+      if (busy) return;
+
+      busy = true;
+
+      const privileged = isAdmin();
+
+      if (pending.hidden === privileged) {
+
+        pending.hidden = !privileged;
+
+      }
+
+      if (note && note.hidden === privileged) {
+
+        note.hidden = !privileged;
+
+      }
+
+      if (!privileged) {
+
+        const label = count.querySelector('span');
+
+        if (label && label.textContent.includes('hồ sơ chưa phân loại')) {
+
+          label.textContent = label.textContent.replace(
+
+            'hồ sơ chưa phân loại',
+
+            'hồ sơ tư liệu'
+
+          );
+
+        }
+
+        list.querySelectorAll('.gdd-people-gender').forEach(node => {
+
+          if (node.textContent.trim() === 'Chưa phân loại') {
+
+            node.textContent = '';
+
+          }
+
+        });
+
+        const empty = list.querySelector('.empty-state');
+
+        if (empty && empty.textContent.includes('Chưa phân loại')) {
+
+          empty.innerHTML =
+
+            '<b>Chưa có hồ sơ trong phân mục này.</b>' +
+
+            'Hãy thử tìm theo tên hoặc chọn cơ quan khác.';
+
+        }
+
+      }
+
+      busy = false;
+
+    }
+
+    function schedule() {
+
+      if (queued) return;
+
+      queued = true;
+
+      queueMicrotask(() => {
+
+        queued = false;
+
+        sync();
+
+      });
+
+    }
+
+    new MutationObserver(schedule).observe(list, {
+
+      childList: true,
+
+      subtree: true
+
+    });
+
+    new MutationObserver(schedule).observe(count, {
+
+      childList: true,
+
+      subtree: true,
+
+      characterData: true
+
+    });
+
+    new MutationObserver(schedule).observe(admin, {
+
+      attributes: true,
+
+      attributeFilter: ['hidden']
+
+    });
+
+    search.addEventListener('input', () => {
+
+      setTimeout(() => {
+
+        if (isAdmin()) return;
+
+        const query = search.value.trim();
+
+        if (!query) {
+
+          if (searchFallback) {
+
+            searchFallback = false;
+
+            const button = [
+
+              ...tabs.querySelectorAll('[data-gdd-sex]')
+
+            ].find(x => x.dataset.gddSex === previousSex);
+
+            button?.click();
+
+          }
+
+          sync();
+
+          return;
+
+        }
+
+        const chosen = tabs.querySelector(
+
+          '[data-gdd-sex][aria-pressed="true"]'
+
+        );
+
+        if (
+
+          list.querySelector('.empty-state') &&
+
+          chosen?.dataset.gddSex !== 'Chưa phân loại'
+
+        ) {
+
+          const old = chosen?.dataset.gddSex || 'Nam';
+
+          pending.click();
+
+          if (list.querySelector('.empty-state')) {
+
+            chosen?.click();
+
+          } else {
+
+            searchFallback = true;
+
+            previousSex = old;
+
+          }
+
+        }
+
+        sync();
+
+      }, 0);
+
+    });
+
+    sync();
+
+  }
+
+  if (document.readyState === 'loading') {
+
+    document.addEventListener('DOMContentLoaded', init, {
+
+      once: true
+
+    });
+
+  } else {
+
+    init();
+
+  }
+
+})();
+
+</script>
+
+<!-- KẾT THÚC CHỈNH PHÂN LOẠI CHỨC SẮC -->
 </body>
 </html>
