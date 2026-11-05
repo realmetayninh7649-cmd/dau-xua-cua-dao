@@ -1184,5 +1184,175 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 </script>
 
 <!-- KẾT THÚC CHỈNH PHÂN LOẠI CHỨC SẮC -->
+<!-- GIỮ ĐẠO GIỮA ĐỜI — BẢN SỬA TƯỞNG NIỆM + HIỂN THỊ PHIÊN BẢN | v2026.11.05.02 -->
+<script id="gdd-memorial-layout-v2">
+(() => {
+  'use strict';
+  if (window.__GDD_MEMORIAL_LAYOUT_V2) return;
+  window.__GDD_MEMORIAL_LAYOUT_V2 = true;
+
+  const VERSION = 'v2026.11.05.02';
+  const $ = (selector, parent = document) => parent.querySelector(selector);
+  const css = document.createElement('style');
+  css.id = 'gdd-memorial-layout-v2-css';
+  css.textContent = `
+    /* Chỉ tác động phần Tưởng Niệm Chức Sắc và dòng phiên bản cuối trang. */
+    #gdd-memorial-feature .gdd-memorial-v2-rank {
+      font: 700 13px/1.6 'Be Vietnam Pro', sans-serif;
+      color: #98794d; margin: 0 0 7px; text-align: left;
+    }
+    #gdd-memorial-feature .gdd-memorial-name {
+      margin: 0 0 11px; text-align: left; line-height: 1.4;
+    }
+    #gdd-memorial-feature .gdd-memorial-v2-anniversary {
+      display: block; margin: 0 0 14px; padding: 0;
+      color: #8b7451; text-align: left;
+      font: 400 13px/1.8 'Be Vietnam Pro', sans-serif;
+      overflow-wrap: anywhere;
+    }
+    #gdd-memorial-feature .gdd-memorial-v2-body {
+      display: -webkit-box; -webkit-box-orient: vertical;
+      -webkit-line-clamp: 4; line-clamp: 4;
+      overflow: hidden; overflow-wrap: anywhere;
+      white-space: pre-line; text-align: left;
+      color: #5a6860; font: 400 13px/1.85 'Be Vietnam Pro', sans-serif;
+      margin: 0 0 14px; padding: 0;
+    }
+    #gdd-memorial-feature .gdd-memorial-v2-body[hidden] { display: none !important; }
+    #gdd-memorial-feature .gdd-memorial-feature-copy > .gdd-memorial-meta {
+      margin: 0 0 12px; text-align: left;
+    }
+    #gdd-memorial-feature .gdd-memorial-actions { margin-top: 0; }
+    #gdd-site-build-version {
+      border-top: 1px solid rgba(233, 228, 208, .19);
+      max-width: 1100px; margin: 18px auto 0; padding: 11px 18px 5px;
+      text-align: center; color: #b7c7bb;
+      font: 400 10px/1.65 'Be Vietnam Pro', sans-serif;
+      letter-spacing: .025em;
+    }
+  `;
+  document.head.appendChild(css);
+
+  function showVersion() {
+    const footer = $('footer.footer') || $('footer');
+    if (!footer) return;
+    let el = $('#gdd-site-build-version');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'gdd-site-build-version';
+      footer.appendChild(el);
+    }
+    el.textContent = 'Phiên bản giao diện: ' + VERSION;
+    el.title = 'Số phiên bản giao diện đang cài. Mã GitHub bên cạnh tự thay đổi theo commit mới; GitHub Pages có thể cập nhật chậm hơn.';
+    // Mã rxxxxxxx thay đổi mỗi lần repository GitHub có commit mới.
+    // Nếu GitHub không trả kết quả, phiên bản giao diện vẫn hiển thị bình thường.
+    fetch('https://api.github.com/repos/realmetayninh7649-cmd/dau-xua-cua-dao/commits/main', {
+      cache: 'no-store', headers: { Accept: 'application/vnd.github+json' }
+    })
+      .then(res => { if (!res.ok) throw Error('Không đọc được mã commit'); return res.json(); })
+      .then(data => {
+        if (/^[0-9a-f]{40}$/i.test(data.sha || '')) {
+          el.textContent = 'Phiên bản giao diện: ' + VERSION + ' · Mã cập nhật GitHub: ' + data.sha.slice(0, 7);
+        }
+      })
+      .catch(() => {});
+  }
+
+  let supabaseClientPromise;
+  function client() {
+    const cfg = window.SITE_CONFIG || {};
+    if (!cfg.supabaseUrl || !cfg.supabasePublishableKey) return Promise.reject(Error('Thiếu cấu hình Supabase'));
+    if (!supabaseClientPromise) {
+      supabaseClientPromise = import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')
+        .then(({ createClient }) => createClient(cfg.supabaseUrl, cfg.supabasePublishableKey));
+    }
+    return supabaseClientPromise;
+  }
+
+  function hideUnusedIntroduction() {
+    // Giữ textarea trong DOM để mã lưu bài cũ không bị lỗi hoặc xóa dữ liệu cũ.
+    const input = $('#gdd-memorial-form textarea[name="summary"]');
+    const field = input?.closest('label');
+    if (field) field.hidden = true;
+  }
+
+  function patchFeatured(feature, serial) {
+    const copy = $('.gdd-memorial-feature-copy', feature);
+    const name = $('.gdd-memorial-name', copy || feature);
+    if (!copy || !name) return;
+
+    // Tách dòng cũ: "Đầu Sư – Cửu Trùng Đài · Kỷ niệm ngày qui vị: ..."
+    const oldMeta = copy.querySelector('.gdd-memorial-meta');
+    const current = (oldMeta?.textContent || '').trim();
+    const prefix = 'Kỷ niệm ngày qui vị:';
+    const index = current.indexOf(prefix);
+    const rank = (index >= 0 ? current.slice(0, index) : current)
+      .replace(/[·\s]+$/, '').trim();
+    const anniversary = index >= 0 ? current.slice(index + prefix.length).trim() : '';
+    const rankEl = document.createElement('div');
+    rankEl.className = 'gdd-memorial-v2-rank';
+    if (rank) { rankEl.textContent = rank; name.before(rankEl); }
+    const anniversaryEl = document.createElement('p');
+    anniversaryEl.className = 'gdd-memorial-v2-anniversary';
+    if (anniversary) {
+      anniversaryEl.textContent = prefix + ' ' + anniversary;
+      name.after(anniversaryEl);
+    }
+    oldMeta?.remove();
+
+    // Chỉ giữ trích đoạn lấy từ trường NỘI DUNG bài tưởng niệm, không lấy summary.
+    copy.querySelector('.gdd-memorial-summary')?.remove();
+    const bodyEl = document.createElement('p');
+    bodyEl.className = 'gdd-memorial-v2-body';
+    bodyEl.hidden = true;
+    (anniversary ? anniversaryEl : name).after(bodyEl);
+
+    const link = $('.gdd-memorial-primary', copy)?.getAttribute('href') || '';
+    const match = link.match(/^#tuong-niem\/(.+)$/);
+    if (!match) return;
+    let slug;
+    try { slug = decodeURIComponent(match[1]); } catch { return; }
+    client()
+      .then(supa => supa.from('gdd_memorials')
+        .select('body,rank_title,anniversary_date')
+        .eq('published', true).eq('slug', slug).maybeSingle())
+      .then(({ data, error }) => {
+        if (error || !data || !feature.contains(copy) || serial !== Number(feature.dataset.v2Serial)) return;
+        if (data.rank_title) {
+          rankEl.textContent = data.rank_title;
+          if (!rankEl.isConnected) name.before(rankEl);
+        }
+        if (data.anniversary_date) {
+          anniversaryEl.textContent = prefix + ' ' + data.anniversary_date;
+          if (!anniversaryEl.isConnected) name.after(anniversaryEl);
+        }
+        const body = String(data.body || '').trim();
+        if (body) { bodyEl.textContent = body; bodyEl.hidden = false; }
+      })
+      .catch(() => { /* Nếu mạng lỗi: giữ bố cục đã sửa, không đụng bài viết. */ });
+  }
+
+  function init() {
+    showVersion();
+    hideUnusedIntroduction();
+    const feature = $('#gdd-memorial-feature');
+    if (!feature) return;
+    let serial = 0;
+    const update = () => {
+      serial++;
+      feature.dataset.v2Serial = String(serial);
+      patchFeatured(feature, serial);
+    };
+    // Chỉ theo dõi phần nội dung trực tiếp của thẻ tưởng niệm.
+    new MutationObserver(update).observe(feature, { childList: true });
+    update();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else init();
+})();
+</script>
+<!-- KẾT THÚC BẢN SỬA TƯỞNG NIỆM v2026.11.05.02 -->
+
 </body>
 </html>
