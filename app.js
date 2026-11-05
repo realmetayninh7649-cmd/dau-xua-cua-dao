@@ -245,6 +245,12 @@ function videoSource(raw){
     if(type==='long'||type==='textarea')return `<label>${escape(label)}<textarea name="${name}" class="${type==='long'?'tall':''}"${req}></textarea></label>`;
     return `<label>${escape(label)}<input type="${type==='url'?'url':'text'}" name="${name}"${req}></label>`;
   }
+     }
+
+  // DÁN TOÀN BỘ MÃ PHÂN LOẠI NAM/NỮ VÀO ĐÂY
+
+
+  function buildEditor(){
   function buildEditor(){
     const kind=state.editorKind;$('#editor-heading').textContent=state.editingId?'Sửa tư liệu':'Thêm '+(sectionNames[kind]||'tư liệu');
     $$('.editor-tabs button').forEach(b=>b.classList.toggle('is-selected',b.dataset.kind===kind));
