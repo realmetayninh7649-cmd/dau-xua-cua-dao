@@ -123,7 +123,7 @@
   async function getPdf(){
     await loadScript('https://cdn.jsdelivr.net/npm/pdfmake@0.2.20/build/pdfmake.min.js',()=>!!window.pdfMake);
     await loadScript('https://cdn.jsdelivr.net/npm/pdfmake@0.2.20/build/vfs_fonts.js',
-      ()=>!!window.pdfMake?.vfs||!!window.pdfMake?.virtualfs);
+      ()=>!!window.pdfMake);
     return window.pdfMake;
   }
   async function getWord(){
