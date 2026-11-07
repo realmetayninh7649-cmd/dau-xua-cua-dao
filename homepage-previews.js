@@ -258,7 +258,7 @@
   };
   const directory=document.createElement('section');directory.id='gdd-directory';directory.className='gdd-directory';
   const inner=document.createElement('div');inner.className='gdd-directory-inner';
-  inner.innerHTML='<div class="gdd-directory-eyebrow">TƯ LIỆU MỚI CẬP NHẬT</div><h2>Dấu xưa đang được gìn giữ</h2><p class="gdd-directory-desc">Mỗi chuyên mục giới thiệu hai tư liệu mới nhất. Nhấn <strong>Xem thêm</strong> để mở kho tư liệu đầy đủ, tra cứu và đọc chi tiết.</p>';
+  inner.innerHTML='<div class="gdd-directory-eyebrow">TƯ LIỆU MỚI CẬP NHẬT</div><h2>Dấu xưa đang được gìn giữ</h2><p class="gdd-directory-desc">Mỗi chuyên mục giới thiệu hai tư liệu mới nhất; riêng Hồ sơ Chức sắc có hai hồ sơ Hiệp Thiên Đài và hai hồ sơ Cửu Trùng Đài. Nhấn <strong>Xem thêm</strong> để đọc đầy đủ.</p>';
   const quick=document.createElement('nav');quick.className='gdd-home-quick-nav';quick.setAttribute('aria-label','Chuyển đến chuyên mục');
   for(const [id,name] of sectionList.slice(0,6)){
     const a=document.createElement('a');a.href='#'+id;a.textContent=name;quick.append(a);
@@ -313,6 +313,8 @@
     card.append(media,body);return card;
   };
   function updateHomePreview(id){
+    // Trang Chủ Chức sắc sau khi dữ liệu đã nạp do bộ phân loại hai Đài quản lý.
+    if(id==='chuc-sac' && document.body.classList.contains('gdd-people-enhanced'))return;
     const conf=previewSources[id],area=sectionViews.get(id);if(!conf||!area)return;
     const list=find('#'+conf[0]);if(!list)return;
     const items=[...list.querySelectorAll(':scope > '+conf[1])].slice(0,2);
