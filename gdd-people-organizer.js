@@ -196,17 +196,22 @@
        && rows.some(p=>(p.gender||'Chưa phân loại')==='Chưa phân loại')) s.selectedSex='Chưa phân loại';
     document.body.classList.add('gdd-people-enhanced');renderList();renderManager();
   }
-  // Trang Chủ: hai nhánh Hiệp Thiên Đài / Cửu Trùng Đài, mỗi nhánh 2 Chức sắc.
-  // Tách khỏi bộ lọc Nam/Nữ của trang hồ sơ và giữ đúng thứ tự quản trị đã lưu.
+  // Trang Chủ: 2 Chức sắc mỗi Đài, tự động đổi cặp sau mỗi 15 giây.
+  // Giữ nguyên cách sắp xếp trong quản trị; chỉ thay những thẻ xem trước.
+  let homeRotationTick=0;
   function renderHomepagePreview(){
     const box=document.querySelector('[data-preview-section="chuc-sac"] .gdd-preview-cards');
     if(!box||!s.ready)return;
+    const ordered=sorted().filter(p=>p.published);
     const groups=[
       {branch:'Hiệp Thiên Đài',short:'HIỆP THIÊN ĐÀI'},
       {branch:'Cửu Trùng Đài',short:'CỬU TRÙNG ĐÀI'}
-    ].map(group=>({
-      ...group,rows:sorted().filter(p=>p.published && norm(p.branch)===norm(group.branch)).slice(0,2)
-    }));
+    ].map(group=>{
+      const candidates=ordered.filter(p=>norm(p.branch)===norm(group.branch));
+      const rows=candidates.length<=2?candidates:
+        Array.from({length:2},(_,i)=>candidates[(homeRotationTick*2+i)%candidates.length]);
+      return {...group,rows};
+    });
     const signature=JSON.stringify(groups.map(g=>g.rows.map(p=>[p.id,p.full_name,p.rank,p.summary,p.image_url,p.sort_order])));
     if(box.dataset.gddHomeBranches===signature && box.querySelector('.gdd-home-people-split'))return;
     const card=p=>{
@@ -288,7 +293,22 @@
     if(!adminArea?.hidden)fetchRows().catch(()=>{});
   },350)}).observe(editorList,{childList:true});}
   const preview=$('[data-preview-section="chuc-sac"] .gdd-preview-cards');
-  if(preview)new MutationObserver(()=>renderHomepagePreview()).observe(preview,{childList:true});
+  if(preview){
+    new MutationObserver(()=>renderHomepagePreview()).observe(preview,{childList:true});
+    // Chỉ xoay khi đang xem Trang Chủ. Ngừng tạm thời nếu tab ẩn,
+    // đang mở chi tiết, hoặc đang tương tác bằng chuột/bàn phím với thẻ.
+    setInterval(()=>{
+      if(!s.ready||document.hidden||preview.closest('#gdd-directory')?.hidden)return;
+      if(document.querySelector('#detail-overlay')?.hidden===false)return;
+      if(preview.contains(document.activeElement))return;
+      if(window.matchMedia('(hover:hover) and (pointer:fine)').matches&&preview.matches(':hover'))return;
+      const published=sorted().filter(p=>p.published);
+      if(!['Hiệp Thiên Đài','Cửu Trùng Đài'].some(branch=>
+        published.filter(p=>norm(p.branch)===norm(branch)).length>2))return;
+      homeRotationTick++;
+      renderHomepagePreview();
+    },15000);
+  }
   async function init(){try{
     const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
     s.client=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{autoRefreshToken:true,persistSession:true}});
