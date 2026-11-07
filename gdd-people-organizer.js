@@ -38,47 +38,117 @@
   .gdd-manage-actions button:disabled{opacity:.35;cursor:default}
   #gdd-manager-status{font-size:12px;color:#746a58;margin:8px 0}
   .gdd-menu-gender{font-weight:600!important;color:#174d43!important}
-  /* Chỉ mục Hồ sơ Chức sắc trên Trang Chủ: 2 cơ quan × 2 chân dung. */
+  /* Trang Chủ Chức sắc: 2 cột, 4 thẻ cùng chiều cao; giữ vòng xoay 15 giây. */
   body #gdd-directory [data-preview-section="chuc-sac"] .gdd-preview-cards{display:block!important}
-  body #gdd-directory .gdd-home-people-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(10px,2vw,20px);width:100%;min-width:0}
-  body #gdd-directory .gdd-home-people-branch{min-width:0;background:rgba(255,253,247,.40);border:1px solid #e0d9ca;border-radius:7px;padding:12px}
-  body #gdd-directory .gdd-home-people-branch-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:3px 7px;border-bottom:1px solid #e0d8c9;margin:0 0 12px;padding:0 0 10px}
-  body #gdd-directory .gdd-home-people-branch-head h4{margin:0;font:700 clamp(14px,1.55vw,18px)/1.5 'Noto Serif',Georgia,serif;color:#205346}
-  body #gdd-directory .gdd-home-people-branch-head span{font:600 10px/1.45 'Be Vietnam Pro',sans-serif;color:#a17d48;white-space:nowrap}
-  body #gdd-directory .gdd-home-people-cards{display:grid;grid-template-columns:1fr;gap:10px}
-  body #gdd-directory .gdd-home-person-mini{display:flex;min-width:0;min-height:122px;align-items:stretch}
-  body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{flex:0 0 102px;width:102px;min-width:102px;height:auto;min-height:122px;border-right:1px solid #e5e0d6;background:#eeede5}
-  body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb img{width:100%;height:100%;object-fit:contain}
-  body #gdd-directory .gdd-home-person-mini .gdd-preview-copy{gap:5px;min-width:0;padding:11px 12px}
-  body #gdd-directory .gdd-home-person-mini .gdd-preview-name{font-size:14px;line-height:1.42}
-  body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{font-size:10px;-webkit-line-clamp:2}
-  body #gdd-directory .gdd-home-person-mini .gdd-preview-hint{font-size:10px}
-  body #gdd-directory .gdd-home-people-branch .gdd-preview-empty{grid-column:auto;padding:14px 9px;font-size:11px}
+  body #gdd-directory .gdd-home-people-split{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(9px,2vw,18px);
+    align-items:stretch;width:100%;min-width:0
+  }
+  body #gdd-directory .gdd-home-people-branch{
+    display:flex;flex-direction:column;align-self:stretch;min-width:0;
+    padding:12px;box-sizing:border-box;background:rgba(255,253,247,.4);
+    border:1px solid #e0d9ca;border-radius:7px
+  }
+  body #gdd-directory .gdd-home-people-branch-head{
+    display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px 7px;
+    min-height:47px;box-sizing:border-box;border-bottom:1px solid #e0d8c9;
+    margin:0 0 11px;padding:0 0 10px
+  }
+  body #gdd-directory .gdd-home-people-branch-head h4{
+    margin:0;min-width:0;font:700 clamp(14px,1.55vw,18px)/1.4 'Noto Serif',Georgia,serif;color:#205346
+  }
+  body #gdd-directory .gdd-home-people-branch-head span{
+    white-space:nowrap;font:600 10px/1.45 'Be Vietnam Pro',sans-serif;color:#a17d48
+  }
+  body #gdd-directory .gdd-home-people-cards{
+    display:grid;grid-template-columns:minmax(0,1fr);
+    grid-template-rows:repeat(2,minmax(0,1fr));gap:11px;flex:1 1 auto;min-width:0
+  }
+  body #gdd-directory .gdd-home-person-mini{
+    display:grid;grid-template-columns:118px minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr);align-items:stretch;
+    width:100%;height:100%;min-width:0;min-height:183px;box-sizing:border-box
+  }
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{
+    display:flex;align-items:center;justify-content:center;
+    flex:none;width:100%;min-width:0;max-width:none;height:100%;min-height:0;
+    overflow:hidden;background:#eeede5;border-right:1px solid #e5e0d6
+  }
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb img{
+    display:block;width:100%;height:100%;object-fit:contain;object-position:center
+  }
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-copy{
+    display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;
+    box-sizing:border-box;padding:11px 12px;gap:5px
+  }
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-meta{
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+    line-height:1.45;min-height:2.9em;max-height:2.9em;overflow:hidden
+  }
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-name{
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+    font-size:14px;line-height:1.36;min-height:4.08em;max-height:4.08em;
+    margin:0;overflow:hidden;overflow-wrap:anywhere
+  }
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+    font-size:10px;line-height:1.55;min-height:3.1em;max-height:3.1em;
+    margin:0;overflow:hidden
+  }
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-hint{
+    display:block;align-self:flex-start;margin-top:auto;font-size:10px;line-height:1.4
+  }
+  body #gdd-directory .gdd-home-people-branch .gdd-preview-empty{
+    grid-column:auto;min-height:183px;box-sizing:border-box;
+    display:flex;align-items:center;padding:14px 9px;font-size:11px
+  }
+  /* iPad và điện thoại: cùng một bố cục ảnh phía trên và nội dung phía dưới. */
   @media(max-width:920px){
     body #gdd-directory .gdd-home-people-branch{padding:9px}
-    body #gdd-directory .gdd-home-person-mini{flex-direction:column;min-height:0}
-    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{flex:none;width:100%;min-width:0;height:135px;min-height:135px;border-right:0;border-bottom:1px solid #e5e0d6}
+    body #gdd-directory .gdd-home-people-branch-head{min-height:48px}
+    body #gdd-directory .gdd-home-person-mini{
+      grid-template-columns:minmax(0,1fr);
+      grid-template-rows:142px minmax(0,1fr);min-height:322px
+    }
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{
+      height:142px;min-height:0;border-right:0;border-bottom:1px solid #e5e0d6
+    }
     body #gdd-directory .gdd-home-person-mini .gdd-preview-copy{padding:10px;gap:5px}
   }
   @media(max-width:560px){
     body #gdd-directory .gdd-home-people-split{gap:9px}
     body #gdd-directory .gdd-home-people-branch{padding:7px}
-    body #gdd-directory .gdd-home-people-branch-head{margin-bottom:8px;padding-bottom:7px}
+    body #gdd-directory .gdd-home-people-branch-head{
+      grid-template-columns:minmax(0,1fr) auto;min-height:50px;
+      margin-bottom:8px;padding-bottom:7px;align-items:start
+    }
     body #gdd-directory .gdd-home-people-branch-head h4{font-size:12px;line-height:1.35}
-    body #gdd-directory .gdd-home-people-branch-head span{font-size:9px}
+    body #gdd-directory .gdd-home-people-branch-head span{font-size:9px;line-height:1.35}
     body #gdd-directory .gdd-home-people-cards{gap:8px}
-    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{height:118px;min-height:118px}
+    body #gdd-directory .gdd-home-person-mini{
+      grid-template-rows:125px minmax(0,1fr);min-height:305px
+    }
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{height:125px;min-height:0}
     body #gdd-directory .gdd-home-person-mini .gdd-preview-copy{padding:8px;gap:4px}
-    body #gdd-directory .gdd-home-person-mini .gdd-preview-name{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
-    body #gdd-directory .gdd-home-person-mini .gdd-preview-meta{font-size:9px}
-    body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{font-size:9px;-webkit-line-clamp:2}
-    body #gdd-directory .gdd-home-person-mini .gdd-preview-hint{font-size:9px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-meta{font-size:10px;line-height:1.35;min-height:2.7em;max-height:2.7em}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-name{
+      font-size:12px;line-height:1.35;min-height:4.05em;max-height:4.05em
+    }
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{
+      font-size:9.5px;line-height:1.5;min-height:3em;max-height:3em
+    }
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-hint{font-size:9.5px}
+    body #gdd-directory .gdd-home-people-branch .gdd-preview-empty{min-height:305px}
   }
   @media(max-width:365px){
     body #gdd-directory .gdd-home-people-split{gap:7px}
     body #gdd-directory .gdd-home-people-branch{padding:5px}
-    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{height:98px;min-height:98px}
-    body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{display:none}
+    body #gdd-directory .gdd-home-person-mini{grid-template-rows:112px minmax(0,1fr);min-height:288px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{height:112px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-copy{padding:7px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-name{font-size:11.5px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{font-size:9px}
+    body #gdd-directory .gdd-home-people-branch .gdd-preview-empty{min-height:288px}
   }
   @media(max-width:680px){#gdd-people-list .person-card{width:100%}#gdd-sex-tabs button{flex:1 1 auto} .gdd-manage-row{align-items:stretch}}
   `;
