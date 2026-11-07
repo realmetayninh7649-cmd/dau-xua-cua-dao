@@ -8,7 +8,7 @@
 
   const css = `
     body.gdd-photo-open { overflow:hidden!important; }
-    .gallery-visual:has(img), .person-media:has(img), #detail-content .detail-cover:has(img) { cursor:zoom-in; }
+    .gallery-visual:has(img), .person-media:has(img), #gdd-directory .gdd-preview-thumb:has(img), #detail-content .detail-cover:has(img) { cursor:zoom-in; }
     .gallery-visual:has(img)::before, .person-media:has(img)::after {
       content:'⌕'; position:absolute; right:11px; bottom:11px; z-index:2;
       display:grid; place-items:center; width:34px; height:34px; border-radius:50%;
@@ -232,14 +232,25 @@
   }
   download.addEventListener('click',()=>downloadImage(source,title,download));
   
-  // Chạm vào ảnh trong thẻ thư viện hoặc di ảnh Chức sắc thì phóng to ngay.
+  // Nhấn vào vùng có kính lúp để xem ảnh; hồ sơ/tựa bài vẫn mở qua nút riêng.
+  // #gdd-people-list là danh sách Chức sắc Nam/Nữ mới, không nằm trong #people-grid.
+  // Các thẻ xem trước ở Trang Chủ cũng được tạo động sau khi tải dữ liệu.
   document.addEventListener('click',e=>{
     const el=e.target;
     if(!(el instanceof Element)||!viewer.hidden)return;
-    const img=el.closest('#gallery-grid .gallery-visual img, #people-grid .person-media img, #detail-content .detail-cover img');
+    const frame=el.closest(
+      '#gallery-grid .gallery-visual, #people-grid .person-media, '+
+      '#gdd-people-list .person-media, #gdd-directory .gdd-preview-thumb, '+
+      '#detail-content .detail-cover'
+    );
+    const img=frame?.querySelector('img');
     if(!img)return;
-    e.preventDefault();e.stopImmediatePropagation();
-    openImage(img.currentSrc||img.src,imgTitle(img));
+    const src=img.currentSrc||img.src;
+    if(!safeSource(src))return;
+    // Bắt click trong capture trước sự kiện mở hồ sơ tại app.js.
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    openImage(src,imgTitle(img));
   },true);
 
   // Mỗi khi trang chi tiết mở, thêm nút phóng to/tải ảnh, không sửa cấu trúc hồ sơ.
