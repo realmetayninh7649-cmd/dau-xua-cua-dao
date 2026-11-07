@@ -145,7 +145,7 @@
       const ratio=Math.min(1,1400/Math.max(image.naturalWidth,image.naturalHeight));
       const width=Math.max(1,Math.round(image.naturalWidth*ratio)),height=Math.max(1,Math.round(image.naturalHeight*ratio));
       const c=document.createElement('canvas');c.width=width;c.height=height;
-      c.getContext('2d',{alpha:false}).drawImage(image,0,0,width,height);
+      const context=c.getContext('2d',{alpha:false});context.fillStyle='#FFFFFF';context.fillRect(0,0,width,height);context.drawImage(image,0,0,width,height);
       const data=c.toDataURL('image/jpeg',.82);c.width=c.height=0;
       return {data,width,height};
     }finally{URL.revokeObjectURL(ref)}
@@ -258,12 +258,18 @@
       nodes.push(p('TÀI LIỆU THAM KHẢO',{bold:true,color:'245447',size:25,before:260,after:190,keep:true}));
       for(const s of chunks(record.sources))nodes.push(p(s,{after:180}));
     }
-    if(record.sourceLink)nodes.push(p('Tệp tài liệu gốc: '+record.sourceLink,{size:19,color:'245447',before:180}));
+    const reference=(label,url)=>d.ExternalHyperlink?
+      new d.Paragraph({children:[
+        new d.TextRun({text:label,size:19,color:'245447'}),
+        new d.ExternalHyperlink({link:url,children:[new d.TextRun({text:url,color:'245447',size:19,underline:{color:'245447'}})]})
+      ],spacing:{before:180,after:180,line:360}}):
+      p(label+url,{size:19,color:'245447',before:180});
+    if(record.sourceLink)nodes.push(reference('Tệp tài liệu gốc: ',record.sourceLink));
     if(images.fail.length){
       nodes.push(p('ẢNH KHÔNG THỂ NHÚNG — ĐƯỜNG DẪN NGUỒN',{bold:true,color:'245447',size:24,before:240,keep:true}));
       for(const im of images.fail)nodes.push(p(im.caption+': '+im.url,{size:19,color:'245447'}));
     }
-    nodes.push(p('Bài viết gốc: '+record.permalink,{size:19,color:'245447',before:200}));
+    nodes.push(reference('Bài viết gốc: ',record.permalink));
     const doc=new d.Document({
       creator:'Giữ Đạo Giữa Đời',title:record.title,
       sections:[{properties:{page:{margin:{top:1150,bottom:1050,left:1150,right:1150}}},
