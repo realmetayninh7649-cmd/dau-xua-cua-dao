@@ -313,6 +313,8 @@
     card.append(media,body);return card;
   };
   function updateHomePreview(id){
+    // Trang Chủ Chức sắc sau khi dữ liệu đã nạp do bộ phân loại hai Đài quản lý.
+    if(id==='chuc-sac' && document.body.classList.contains('gdd-people-enhanced'))return;
     const conf=previewSources[id],area=sectionViews.get(id);if(!conf||!area)return;
     const list=find('#'+conf[0]);if(!list)return;
     const items=[...list.querySelectorAll(':scope > '+conf[1])].slice(0,2);
