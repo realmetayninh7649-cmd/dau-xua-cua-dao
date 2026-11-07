@@ -300,7 +300,7 @@
     setInterval(()=>{
       if(!s.ready||document.hidden||preview.closest('#gdd-directory')?.hidden)return;
       if(document.querySelector('#detail-overlay')?.hidden===false)return;
-      if(preview.contains(document.activeElement))return;
+      if(preview.contains(document.activeElement)&&document.activeElement?.matches?.(':focus-visible'))return;
       if(window.matchMedia('(hover:hover) and (pointer:fine)').matches&&preview.matches(':hover'))return;
       const published=sorted().filter(p=>p.published);
       if(!['Hiệp Thiên Đài','Cửu Trùng Đài'].some(branch=>
