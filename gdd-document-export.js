@@ -126,10 +126,6 @@
       ()=>!!window.pdfMake);
     return window.pdfMake;
   }
-  async function getWord(){
-    await loadScript('https://cdn.jsdelivr.net/npm/docx@9.11.0/dist/index.umd.cjs',()=>!!window.docx?.Packer);
-    return window.docx;
-  }
   async function processImage(url){
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
     let response;
@@ -222,73 +218,113 @@
       ],margin:[56,16,56,0]})
     };
   }
+  function zipStoreDocx(files){
+ const enc=new TextEncoder();
+ const table=new Uint32Array(256);
+ for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=(c&1)?0xedb88320^(c>>>1):c>>>1;table[i]=c>>>0}
+ const crc32=bytes=>{let c=0xffffffff;for(let i=0;i<bytes.length;i++)c=table[(c^bytes[i])&255]^(c>>>8);return(c^0xffffffff)>>>0};
+ const entries=[],chunks=[];let offset=0;
+ const now=new Date(),year=Math.max(1980,now.getFullYear());
+ const date=((year-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+ const time=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1);
+ for(const item of files){
+  const name=enc.encode(item.name),data=typeof item.data==='string'?enc.encode(item.data):item.data;
+  if(!data||data.length>=0xffffffff||offset+data.length>=0xffffffff)throw Error('Tệp quá lớn để xuất thành Word trên thiết bị.');
+  const crc=crc32(data),h=new Uint8Array(30+name.length),v=new DataView(h.buffer);
+  v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint16(6,0x0800,true);
+  v.setUint16(10,time,true);v.setUint16(12,date,true);v.setUint32(14,crc,true);
+  v.setUint32(18,data.length,true);v.setUint32(22,data.length,true);v.setUint16(26,name.length,true);
+  h.set(name,30);entries.push({name,data,crc,offset});chunks.push(h,data);offset+=h.length+data.length;
+ }
+ const centers=[];let dirSize=0;
+ for(const e of entries){
+  const h=new Uint8Array(46+e.name.length),v=new DataView(h.buffer);
+  v.setUint32(0,0x02014b50,true);v.setUint16(4,20,true);v.setUint16(6,20,true);v.setUint16(8,0x0800,true);
+  v.setUint16(12,time,true);v.setUint16(14,date,true);v.setUint32(16,e.crc,true);
+  v.setUint32(20,e.data.length,true);v.setUint32(24,e.data.length,true);v.setUint16(28,e.name.length,true);
+  v.setUint32(42,e.offset,true);h.set(e.name,46);centers.push(h);dirSize+=h.length;
+ }
+ const eocd=new Uint8Array(22),v=new DataView(eocd.buffer);
+ v.setUint32(0,0x06054b50,true);v.setUint16(8,entries.length,true);v.setUint16(10,entries.length,true);
+ v.setUint32(12,dirSize,true);v.setUint32(16,offset,true);
+ return new Blob([...chunks,...centers,eocd],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
   async function docxBlob(record,images){
-    const d=await getWord();
-    const p=(value,opt={})=>new d.Paragraph({
-      children:[new d.TextRun({text:String(value),color:opt.color||'314339',bold:!!opt.bold,size:opt.size||22})],
-      alignment:opt.center?d.AlignmentType.CENTER:d.AlignmentType.LEFT,
-      spacing:{before:opt.before||0,after:opt.after??170,line:365},
-      keepWithNext:!!opt.keep
-    });
-    const nodes=[
-      p('KHO TƯ LIỆU ĐẠO SỬ',{center:true,bold:true,color:'A88B4B',size:18,after:80}),
-      p('GIỮ ĐẠO GIỮA ĐỜI',{center:true,bold:true,color:'245447',size:36,after:65}),
-      p('DẤU XƯA CỬA ĐẠO',{center:true,color:'A88B4B',size:19,after:400}),
-      p(labels[record.kind],{center:true,color:'A88B4B',bold:true,size:18,after:135}),
-      p(record.title,{center:true,bold:true,color:'245447',size:34,after:190})
-    ];
-    if(record.subtitle)nodes.push(p(record.subtitle,{center:true,color:'67746D',size:21,after:240}));
-    const addPicture=async(im,cover)=>{
-      const bytes=Uint8Array.from(atob(im.data.split(',')[1]),c=>c.charCodeAt(0));
-      const factor=Math.min((cover?380:480)/im.width,(cover?350:520)/im.height,1);
-      nodes.push(new d.Paragraph({children:[new d.ImageRun({type:'jpg',data:bytes,
-        transformation:{width:Math.max(1,Math.round(im.width*factor)),height:Math.max(1,Math.round(im.height*factor))}})],
-        alignment:d.AlignmentType.CENTER,spacing:{before:220,after:90}}));
-      nodes.push(p(im.caption,{center:true,color:'6B776F',size:18,after:250}));
-    };
-    if(images.ok.length)await addPicture(images.ok[0],true);
-    if(record.summary)nodes.push(p(record.summary,{bold:true,color:'245447',size:23,after:350}));
-    nodes.push(p('NỘI DUNG TƯ LIỆU',{bold:true,color:'245447',size:25,after:220,keep:true}));
-    for(const s of chunks(record.content||'Nội dung đang được bổ sung.'))nodes.push(p(s,{after:210}));
-    if(images.ok.length>1){
-      nodes.push(p('HÌNH ẢNH VÀ TÀI LIỆU ĐÍNH KÈM',{bold:true,color:'245447',size:25,before:270,after:210,keep:true}));
-      for(const im of images.ok.slice(1))await addPicture(im,false);
-    }
-    if(record.sources){
-      nodes.push(p('TÀI LIỆU THAM KHẢO',{bold:true,color:'245447',size:25,before:260,after:190,keep:true}));
-      for(const s of chunks(record.sources))nodes.push(p(s,{after:180}));
-    }
-    const reference=(label,url)=>d.ExternalHyperlink?
-      new d.Paragraph({children:[
-        new d.TextRun({text:label,size:19,color:'245447'}),
-        new d.ExternalHyperlink({link:url,children:[new d.TextRun({text:url,color:'245447',size:19,underline:{color:'245447'}})]})
-      ],spacing:{before:180,after:180,line:360}}):
-      p(label+url,{size:19,color:'245447',before:180});
-    if(record.sourceLink)nodes.push(reference('Tệp tài liệu gốc: ',record.sourceLink));
-    if(images.fail.length){
-      nodes.push(p('ẢNH KHÔNG THỂ NHÚNG — ĐƯỜNG DẪN NGUỒN',{bold:true,color:'245447',size:24,before:240,keep:true}));
-      for(const im of images.fail)nodes.push(p(im.caption+': '+im.url,{size:19,color:'245447'}));
-    }
-    nodes.push(reference('Bài viết gốc: ',record.permalink));
-    const doc=new d.Document({
-      creator:'Giữ Đạo Giữa Đời',title:record.title,
-      sections:[{properties:{page:{margin:{top:1150,bottom:1050,left:1150,right:1150}}},
-        footers:{default:new d.Footer({children:[p('GIỮ ĐẠO GIỮA ĐỜI · KHO TƯ LIỆU ĐẠO SỬ',{center:true,color:'A18B5C',size:16})]})},
-        children:nodes}]
-    });
-    return d.Packer.toBlob(doc);
-  }
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+ const body=[],rels=[],photoFiles=[];let nextRel=3;
+ const rel=(type,target,external=false)=>{
+  const id='rId'+nextRel++;
+  rels.push(`<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/${type}" Target="${esc(target)}"${external?' TargetMode="External"':''}/>`);
+  return id;
+ };
+ const run=(value,opt={})=>`<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:eastAsia="Times New Roman"/>${opt.bold?'<w:b/>':''}${opt.italic?'<w:i/>':''}<w:color w:val="${opt.color||'2B4337'}"/><w:sz w:val="${opt.size||24}"/></w:rPr><w:t xml:space="preserve">${esc(value)}</w:t></w:r>`;
+ const p=(value,opt={})=>`<w:p><w:pPr><w:jc w:val="${opt.center?'center':'left'}"/><w:spacing w:before="${opt.before||0}" w:after="${opt.after??190}" w:line="360" w:lineRule="auto"/>${opt.keep?'<w:keepNext/>':''}</w:pPr>${run(value,opt)}</w:p>`;
+ const heading=t=>body.push(p(t,{bold:true,color:'205246',size:27,after:240,before:230,keep:true}));
+ body.push(p('KHO TƯ LIỆU ĐẠO SỬ',{center:true,bold:true,color:'A17E49',size:19,after:120}));
+ body.push(p('GIỮ ĐẠO GIỮA ĐỜI',{center:true,bold:true,color:'205246',size:37,after:55}));
+ body.push(p('DẤU XƯA CỬA ĐẠO',{center:true,color:'A17E49',size:18,after:450}));
+ body.push(p(labels[record.kind]||'TƯ LIỆU ĐẠO SỬ',{center:true,bold:true,color:'A17E49',size:19,after:120}));
+ body.push(p(record.title,{center:true,bold:true,color:'205246',size:35,after:210}));
+ if(record.subtitle)body.push(p(record.subtitle,{center:true,color:'65736B',size:21,after:250}));
+ function photo(im,cover=false){
+  const raw=atob(im.data.split(',')[1]),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+  const fileName='photo-'+(photoFiles.length+1)+'.jpg',id=photoFiles.length+1,rid=rel('image','media/'+fileName);
+  photoFiles.push({name:'word/media/'+fileName,data:bytes});
+  const factor=Math.min((cover?380:480)/im.width,(cover?350:520)/im.height,1);
+  const w=Math.round(im.width*factor)*9525,h=Math.round(im.height*factor)*9525;
+  body.push(`<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="220" w:after="80"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${w}" cy="${h}"/><wp:docPr id="${id}" name="Ảnh ${id}" descr="${esc(im.caption||'Ảnh tư liệu')}"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="${id}" name="Ảnh ${id}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`);
+  body.push(p(im.caption||'Ảnh tư liệu',{center:true,italic:true,color:'68756A',size:18,after:310}));
+ }
+ if(images.ok.length)photo(images.ok[0],true);
+ if(record.summary)body.push(p(record.summary,{bold:true,color:'205246',size:24,after:330}));
+ heading('NỘI DUNG TƯ LIỆU');
+ for(const part of chunks(record.content||'Nội dung đang được bổ sung.'))body.push(p(part));
+ if(images.ok.length>1){heading('HÌNH ẢNH VÀ TÀI LIỆU ĐÍNH KÈM');for(const im of images.ok.slice(1))photo(im)}
+ if(record.sources){heading('TÀI LIỆU THAM KHẢO');for(const part of chunks(record.sources))body.push(p(part))}
+ function hyperlink(label,url){
+  const id=rel('hyperlink',url,true);
+  body.push(`<w:p><w:pPr><w:spacing w:before="180" w:after="180"/></w:pPr>${run(label,{size:19,color:'205246'})}<w:hyperlink r:id="${id}"><w:r><w:rPr><w:color w:val="205246"/><w:u w:val="single"/><w:sz w:val="19"/></w:rPr><w:t xml:space="preserve">${esc(url)}</w:t></w:r></w:hyperlink></w:p>`);
+ }
+ if(record.sourceLink)hyperlink('Tệp tài liệu gốc: ',record.sourceLink);
+ if(images.fail.length){heading('ẢNH KHÔNG THỂ NHÚNG — ĐƯỜNG DẪN NGUỒN');for(const im of images.fail)hyperlink(im.caption+': ',im.url)}
+ hyperlink('Bài viết gốc: ',record.permalink);
+ const footerId=rel('footer','footer1.xml');
+ const ns='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+ body.push(`<w:sectPr><w:footerReference w:type="default" r:id="${footerId}"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1050" w:right="1050" w:bottom="1050" w:left="1050" w:header="450" w:footer="490"/></w:sectPr>`);
+ const documentXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${ns}><w:body>${body.join('')}</w:body></w:document>`;
+ const footerXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="center"/></w:pPr>${run('GIỮ ĐẠO GIỮA ĐỜI · DẤU XƯA CỬA ĐẠO  |  Trang ',{size:16,color:'947A4B'})}<w:fldSimple w:instr="PAGE"/></w:p></w:ftr>`;
+ const contentTypes='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>';
+ const packageRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>';
+ const docRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`;
+ const core=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${esc(record.title)}</dc:title><dc:creator>Giữ Đạo Giữa Đời</dc:creator></cp:coreProperties>`;
+ return zipStoreDocx([{name:'[Content_Types].xml',data:contentTypes},{name:'_rels/.rels',data:packageRels},
+  {name:'docProps/core.xml',data:core},{name:'word/document.xml',data:documentXml},
+  {name:'word/_rels/document.xml.rels',data:docRels},{name:'word/footer1.xml',data:footerXml},...photoFiles]);
+}
   function attachBlob(blob,record,format,bar){
-    const old=bar.querySelector('.gdd-doc-ready');
-    if(old){URL.revokeObjectURL(old.href);old.remove()}
-    const url=URL.createObjectURL(blob),link=document.createElement('a');
-    const name=safeFilename(record.title)+'.'+format;
-    link.href=url;link.download=name;link.className='gdd-doc-ready';
-    link.textContent='↓ Lưu file '+name;
-    bar.appendChild(link);
-    // iPhone: link có sẵn để người dùng nhấn / Lưu vào Tệp sau khi tạo.
-    if(!/iPad|iPhone|iPod/.test(navigator.userAgent))link.click();
-  }
+ const old=bar.querySelector('.gdd-doc-ready');
+ if(old){URL.revokeObjectURL(old.href);old.remove()}
+ bar.querySelector('.gdd-doc-share')?.remove();
+ const name=safeFilename(record.title)+'.'+format;
+ const url=URL.createObjectURL(blob),link=document.createElement('a');
+ link.href=url;link.download=name;link.className='gdd-doc-ready';
+ link.textContent='↓ Lưu file '+name;bar.appendChild(link);
+ const mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+ if(format==='docx' && typeof File==='function' && typeof navigator.share==='function'){
+  const share=document.createElement('button');
+  share.type='button';share.className='gdd-doc-ready gdd-doc-share';
+  share.textContent='Chia sẻ / Lưu vào Tệp';
+  share.addEventListener('click',async()=>{
+   try{
+    const wordFile=new File([blob],name,{type:mime});
+    if(typeof navigator.canShare==='function'&&!navigator.canShare({files:[wordFile]})){link.click();return}
+    await navigator.share({files:[wordFile],title:record.title});
+   }catch(err){if(err?.name!=='AbortError')link.click()}
+  });
+  bar.appendChild(share);
+ }
+ if(!/iPad|iPhone|iPod/.test(navigator.userAgent))link.click();
+}
   async function exportDocument(button,bar){
     if(locked)return;
     const current=route();
