@@ -38,6 +38,48 @@
   .gdd-manage-actions button:disabled{opacity:.35;cursor:default}
   #gdd-manager-status{font-size:12px;color:#746a58;margin:8px 0}
   .gdd-menu-gender{font-weight:600!important;color:#174d43!important}
+  /* Chỉ mục Hồ sơ Chức sắc trên Trang Chủ: 2 cơ quan × 2 chân dung. */
+  body #gdd-directory [data-preview-section="chuc-sac"] .gdd-preview-cards{display:block!important}
+  body #gdd-directory .gdd-home-people-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(10px,2vw,20px);width:100%;min-width:0}
+  body #gdd-directory .gdd-home-people-branch{min-width:0;background:rgba(255,253,247,.40);border:1px solid #e0d9ca;border-radius:7px;padding:12px}
+  body #gdd-directory .gdd-home-people-branch-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:3px 7px;border-bottom:1px solid #e0d8c9;margin:0 0 12px;padding:0 0 10px}
+  body #gdd-directory .gdd-home-people-branch-head h4{margin:0;font:700 clamp(14px,1.55vw,18px)/1.5 'Noto Serif',Georgia,serif;color:#205346}
+  body #gdd-directory .gdd-home-people-branch-head span{font:600 10px/1.45 'Be Vietnam Pro',sans-serif;color:#a17d48;white-space:nowrap}
+  body #gdd-directory .gdd-home-people-cards{display:grid;grid-template-columns:1fr;gap:10px}
+  body #gdd-directory .gdd-home-person-mini{display:flex;min-width:0;min-height:122px;align-items:stretch}
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{flex:0 0 102px;width:102px;min-width:102px;height:auto;min-height:122px;border-right:1px solid #e5e0d6;background:#eeede5}
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb img{width:100%;height:100%;object-fit:contain}
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-copy{gap:5px;min-width:0;padding:11px 12px}
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-name{font-size:14px;line-height:1.42}
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{font-size:10px;-webkit-line-clamp:2}
+  body #gdd-directory .gdd-home-person-mini .gdd-preview-hint{font-size:10px}
+  body #gdd-directory .gdd-home-people-branch .gdd-preview-empty{grid-column:auto;padding:14px 9px;font-size:11px}
+  @media(max-width:920px){
+    body #gdd-directory .gdd-home-people-branch{padding:9px}
+    body #gdd-directory .gdd-home-person-mini{flex-direction:column;min-height:0}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{flex:none;width:100%;min-width:0;height:135px;min-height:135px;border-right:0;border-bottom:1px solid #e5e0d6}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-copy{padding:10px;gap:5px}
+  }
+  @media(max-width:560px){
+    body #gdd-directory .gdd-home-people-split{gap:9px}
+    body #gdd-directory .gdd-home-people-branch{padding:7px}
+    body #gdd-directory .gdd-home-people-branch-head{margin-bottom:8px;padding-bottom:7px}
+    body #gdd-directory .gdd-home-people-branch-head h4{font-size:12px;line-height:1.35}
+    body #gdd-directory .gdd-home-people-branch-head span{font-size:9px}
+    body #gdd-directory .gdd-home-people-cards{gap:8px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{height:118px;min-height:118px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-copy{padding:8px;gap:4px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-name{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-meta{font-size:9px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{font-size:9px;-webkit-line-clamp:2}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-hint{font-size:9px}
+  }
+  @media(max-width:365px){
+    body #gdd-directory .gdd-home-people-split{gap:7px}
+    body #gdd-directory .gdd-home-people-branch{padding:5px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-thumb{height:98px;min-height:98px}
+    body #gdd-directory .gdd-home-person-mini .gdd-preview-summary{display:none}
+  }
   @media(max-width:680px){#gdd-people-list .person-card{width:100%}#gdd-sex-tabs button{flex:1 1 auto} .gdd-manage-row{align-items:stretch}}
   `;
   document.head.append(css);
@@ -154,24 +196,36 @@
        && rows.some(p=>(p.gender||'Chưa phân loại')==='Chưa phân loại')) s.selectedSex='Chưa phân loại';
     document.body.classList.add('gdd-people-enhanced');renderList();renderManager();
   }
+  // Trang Chủ: hai nhánh Hiệp Thiên Đài / Cửu Trùng Đài, mỗi nhánh 2 Chức sắc.
+  // Tách khỏi bộ lọc Nam/Nữ của trang hồ sơ và giữ đúng thứ tự quản trị đã lưu.
   function renderHomepagePreview(){
     const box=document.querySelector('[data-preview-section="chuc-sac"] .gdd-preview-cards');
     if(!box||!s.ready)return;
-    const newest=sorted().filter(p=>p.published).slice(0,2);
-    const expected=newest.map(p=>p.id).join(',');
-    const found=[...box.querySelectorAll('[data-id]')].map(el=>el.dataset.id).join(',');
-    if(expected===found||(!expected&&!found))return;
-    const html=newest.map(p=>{
+    const groups=[
+      {branch:'Hiệp Thiên Đài',short:'HIỆP THIÊN ĐÀI'},
+      {branch:'Cửu Trùng Đài',short:'CỬU TRÙNG ĐÀI'}
+    ].map(group=>({
+      ...group,rows:sorted().filter(p=>p.published && norm(p.branch)===norm(group.branch)).slice(0,2)
+    }));
+    const signature=JSON.stringify(groups.map(g=>g.rows.map(p=>[p.id,p.full_name,p.rank,p.summary,p.image_url,p.sort_order])));
+    if(box.dataset.gddHomeBranches===signature && box.querySelector('.gdd-home-people-split'))return;
+    const card=p=>{
       const image=safeURL(p.image_url);
-      return `<button type="button" class="gdd-preview-card" data-open-kind="people" data-id="${esc(p.id)}">
-        <span class="gdd-preview-thumb">${image?`<img src="${esc(image)}" alt="Di ảnh ${esc(p.full_name)}" loading="lazy">`:'<span class="gdd-preview-fallback">✦</span>'}</span>
+      return `<button type="button" class="gdd-preview-card gdd-home-person-mini" data-open-kind="people" data-id="${esc(p.id)}" aria-label="Xem tiểu sử ${esc(p.full_name)}">
+        <span class="gdd-preview-thumb">${image?`<img src="${esc(image)}" alt="Di ảnh ${esc(p.full_name)}" loading="lazy" decoding="async">`:'<span class="gdd-preview-fallback" aria-hidden="true">✦</span>'}</span>
         <span class="gdd-preview-copy"><span class="gdd-preview-meta">${esc(p.rank||'Chức sắc')}</span>
-          <strong class="gdd-preview-name">${esc(p.full_name)}</strong>
-          <span class="gdd-preview-summary">${esc(p.summary||'Hồ sơ Chức sắc tiền bối')}</span>
-          <span class="gdd-preview-hint">Xem chi tiết ↗</span>
-        </span></button>`;
-    }).join('');
-    box.innerHTML=html||'<div class="gdd-preview-empty">Chuyên mục đang sưu tầm hồ sơ.</div>';
+        <strong class="gdd-preview-name">${esc(p.full_name)}</strong>
+        <span class="gdd-preview-summary">${esc(p.summary||'Hồ sơ Chức sắc tiền bối')}</span>
+        <span class="gdd-preview-hint">Xem chi tiết ↗</span></span></button>`;
+    };
+    const html=groups.map(group=>`
+      <section class="gdd-home-people-branch" aria-label="Chức sắc ${esc(group.branch)}">
+        <div class="gdd-home-people-branch-head"><h4>${esc(group.branch)}</h4><span>${group.rows.length} / 2 hồ sơ</span></div>
+        <div class="gdd-home-people-cards">${group.rows.map(card).join('')||
+          '<div class="gdd-preview-empty">Đang bổ sung hồ sơ Chức sắc thuộc cơ quan này.</div>'}</div>
+      </section>`).join('');
+    box.innerHTML='<div class="gdd-home-people-split">'+html+'</div>';
+    box.dataset.gddHomeBranches=signature;
   }
 
   // Quản trị: thêm khu vực quản lý riêng BÊN DƯỚI danh sách bài hiện có.
