@@ -120,7 +120,10 @@ function videoSource(raw){
       frame.setAttribute('allowfullscreen','');slot.replaceChildren(frame);
     }else if(source.type==='facebook'){
       const frame=document.createElement('iframe');
-      frame.src=`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(source.embedHref)}&show_text=false&width=560`;
+      const embedWidth=Math.max(220,Math.round(slot.clientWidth||560));
+      const fmt=slot.dataset.gddAspect||'landscape';
+      const embedHeight=Math.round(embedWidth*(fmt==='portrait'?16/9:fmt==='square'?1:9/16));
+      frame.src=`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(source.embedHref)}&show_text=false&width=${embedWidth}&height=${embedHeight}`;
       frame.title=`Video Facebook · Đạo Sử: ${record.title}`;
       frame.loading='eager';frame.referrerPolicy='strict-origin-when-cross-origin';
       frame.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';
