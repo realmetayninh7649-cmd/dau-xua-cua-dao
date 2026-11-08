@@ -162,7 +162,8 @@
     const val=Math.max(0,Math.min(100,Number(volume.value)||0));
     audio.volume=val/100;write(VOL,String(val));
   });
-  audio.addEventListener('playing',()=>view('Đang phát · Lặp lại bản niệm'));
+  audio.addEventListener('playing',()=>{document.dispatchEvent(new Event('gdd:chant-play'));view('Đang phát · Lặp lại bản niệm')});
+  document.addEventListener('gdd:radio-play',()=>{if(playing())pause('Tạm dừng để nghe Radio Đạo Sử.');});
   audio.addEventListener('pause',()=>view());
   audio.addEventListener('error',()=>view('Không tải được âm thanh. Hãy tải lại trang để thử lần nữa.'));
   document.addEventListener('play',event=>{
