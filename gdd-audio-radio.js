@@ -103,7 +103,7 @@ function getClient(){
    .then(m=>m.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey));
  return clientPromise;
 }
-const state={category:'all',rows:[],page:0,fetching:false,selected:null,adminRows:[],adminPage:0,adminLoading:false,editing:null};
+const state={category:'all',rows:[],page:0,fetching:false,refreshPending:false,selected:null,adminRows:[],adminPage:0,adminLoading:false,editing:null};
 const player=$('#gdd-radio-audio'),list=$('#gdd-radio-list'),listStatus=$('#gdd-radio-list-status'),playStatus=$('#gdd-radio-play-status'),more=$('#gdd-radio-more');
 const progressKey=id=>'gdd-radio-position-'+id;
 const progressFor=id=>{try{return Number(localStorage.getItem(progressKey(id)))||0}catch{return 0}};
@@ -131,7 +131,7 @@ function selectProgram(row,autoplay=false){
   player.src=url;player.load();
   const saved=progressFor(row.id);
   player.addEventListener('loadedmetadata',()=>{
-   if(saved>10&&Number.isFinite(player.duration)&&saved<player.duration-15)
+   if(state.selected?.id===row.id&&saved>10&&Number.isFinite(player.duration)&&saved<player.duration-15)
     try{player.currentTime=saved;playStatus.textContent='Nghe tiếp từ '+Math.floor(saved/60)+' phút.'}catch{}
   },{once:true});
  }
@@ -150,20 +150,26 @@ function selectProgram(row,autoplay=false){
  if(autoplay){playStatus.textContent='Đang mở chương trình…';player.play().catch(()=>{playStatus.textContent='Chạm ▶ trong trình phát để nghe.'})}
 }
 async function fetchPublic(reset=true){
- if(state.fetching)return;
+ if(state.fetching){if(reset)state.refreshPending=true;return;}
  state.fetching=true;more.disabled=true;
+ const requestedCategory=state.category;
  if(reset){state.page=0;state.rows=[];list.textContent='Đang tải danh sách…'}
  try{
   const supa=await getClient(),size=24,offset=state.page*size;
-  let query=supa.from(TABLE).select('*').eq('published',true).order('published_at',{ascending:false,nullsFirst:false})
+  let query=supa.from(TABLE).select('*').eq('published',true);
+  if(requestedCategory!=='all')query=query.eq('category',requestedCategory);
+  const {data,error}=await query.order('published_at',{ascending:false,nullsFirst:false})
     .order('created_at',{ascending:false}).range(offset,offset+size-1);
-  if(state.category!=='all')query=query.eq('category',state.category);
-  const {data,error}=await query;if(error)throw error;
+  if(error)throw error;
+  if(state.category!==requestedCategory){state.refreshPending=true;return}
   state.rows.push(...(data||[]));state.page++;more.hidden=(data||[]).length<size;
   renderList();listStatus.textContent='';
   if(reset&&!state.selected&&state.rows.length)selectProgram(state.rows[0],false);
  }catch(e){listStatus.textContent='Không thể tải kho âm thanh: '+(e.message||e);if(reset)list.textContent='Chưa tải được kho âm thanh.'}
- finally{state.fetching=false;more.disabled=false}
+ finally{
+  state.fetching=false;more.disabled=false;
+  if(state.refreshPending){state.refreshPending=false;fetchPublic(true)}
+ }
 }
 section.addEventListener('click',e=>{
  const filter=e.target.closest('[data-gdd-radio-filter]');
