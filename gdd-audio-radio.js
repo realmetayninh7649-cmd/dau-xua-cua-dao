@@ -35,6 +35,14 @@ style.textContent=`
 #am-thanh-dai-dao .gdd-radio-player-box h3{font:700 19px/1.5 'Noto Serif',Georgia,serif;color:#214e42;margin:10px 0}
 #am-thanh-dai-dao .gdd-radio-player-box p{font:400 11px/1.8 'Be Vietnam Pro',sans-serif;color:#68756c}
 #am-thanh-dai-dao .gdd-radio-player-box audio{width:100%;height:51px;margin:10px 0}
+#am-thanh-dai-dao .gdd-radio-transport{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:2px 0 11px}
+#am-thanh-dai-dao .gdd-radio-transport button{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:39px;padding:7px 4px;border:1px solid #c9bb98;border-radius:6px;background:#fcfaf2;color:#235245;cursor:pointer;font:700 10px/1.35 'Be Vietnam Pro',Arial,sans-serif;white-space:normal;text-align:center}
+#am-thanh-dai-dao .gdd-radio-transport button span{font-size:16px;line-height:1}
+#am-thanh-dai-dao .gdd-radio-transport button[aria-pressed="true"]{background:#1f584a;color:#fff;border-color:#1f584a}
+#am-thanh-dai-dao .gdd-radio-transport button:disabled{opacity:.40;cursor:not-allowed}
+#am-thanh-dai-dao .gdd-radio-transport button:not(:disabled):active{transform:translateY(1px)}
+@media(max-width:380px){#am-thanh-dai-dao .gdd-radio-transport button{font-size:9px;gap:3px;padding:6px 2px}}
+
 #am-thanh-dai-dao .gdd-radio-status{color:#6a776d;font:500 11px/1.7 'Be Vietnam Pro',sans-serif}
 #am-thanh-dai-dao .gdd-radio-more{margin-top:14px;padding:10px 13px;border:1px solid #b9a275;background:#fffdf8;color:#225348;border-radius:5px;cursor:pointer;font-weight:700}
 #am-thanh-dai-dao .gdd-radio-source{color:#2a604e;overflow-wrap:anywhere;font-size:11px}
@@ -88,6 +96,11 @@ section.innerHTML=`
     <h3 id="gdd-radio-title">Mời chọn một chương trình</h3>
     <p id="gdd-radio-summary">Chạm vào tên số Radio hoặc bản niệm muốn nghe.</p>
     <audio id="gdd-radio-audio" controls preload="none" aria-label="Trình nghe Âm Thanh Đại Đạo"></audio>
+    <div class="gdd-radio-transport" role="group" aria-label="Điều khiển chuyển bài và lặp lại">
+      <button type="button" id="gdd-radio-previous" aria-label="Nghe bài trước" title="Nghe bài trước" disabled><span aria-hidden="true">⏮</span> Bài trước</button>
+      <button type="button" id="gdd-radio-next" aria-label="Nghe bài tiếp theo" title="Nghe bài tiếp theo" disabled>Bài tiếp <span aria-hidden="true">⏭</span></button>
+      <button type="button" id="gdd-radio-repeat-one" aria-label="Lặp lại bài đang nghe" aria-pressed="false" title="Lặp lại bài đang nghe"><span aria-hidden="true">↻</span> Lặp bài</button>
+    </div>
     <p id="gdd-radio-play-status" class="gdd-radio-status" role="status" aria-live="polite"></p>
     <div id="gdd-radio-description"></div>
    </div>
@@ -105,6 +118,19 @@ function getClient(){
 }
 const state={category:'all',rows:[],page:0,fetching:false,refreshPending:false,selected:null,adminRows:[],adminPage:0,adminLoading:false,editing:null};
 const player=$('#gdd-radio-audio'),list=$('#gdd-radio-list'),listStatus=$('#gdd-radio-list-status'),playStatus=$('#gdd-radio-play-status'),more=$('#gdd-radio-more');
+const previous=$('#gdd-radio-previous'),next=$('#gdd-radio-next'),repeatOne=$('#gdd-radio-repeat-one');
+const REPEAT_KEY='gdd-radio-repeat-one-v1';
+let repeatEnabled=false;
+try{repeatEnabled=localStorage.getItem(REPEAT_KEY)==='on'}catch{}
+player.loop=repeatEnabled;
+repeatOne.setAttribute('aria-pressed',String(repeatEnabled));
+function syncControls(){
+ const current=state.rows.findIndex(r=>r.id===state.selected?.id);
+ const canChange=state.rows.length>1&&current>=0;
+ previous.disabled=!canChange;next.disabled=!canChange;
+ repeatOne.setAttribute('aria-pressed',String(repeatEnabled));
+ repeatOne.title=repeatEnabled?'Đang bật lặp lại bài này — chạm để tắt':'Chạm để lặp lại bài đang nghe';
+}
 const progressKey=id=>'gdd-radio-position-'+id;
 const progressFor=id=>{try{return Number(localStorage.getItem(progressKey(id)))||0}catch{return 0}};
 function saveProgress(){
@@ -120,6 +146,7 @@ function itemHTML(row){
 }
 function renderList(){
  list.innerHTML=state.rows.length?state.rows.map(itemHTML).join(''):'<p class="gdd-radio-status">Chưa có chương trình công khai trong chuyên mục này.</p>';
+ syncControls();
 }
 function selectProgram(row,autoplay=false){
  if(!row)return;
@@ -164,7 +191,16 @@ async function fetchPublic(reset=true){
   if(state.category!==requestedCategory){state.refreshPending=true;return}
   state.rows.push(...(data||[]));state.page++;more.hidden=(data||[]).length<size;
   renderList();listStatus.textContent='';
-  if(reset&&!state.selected&&state.rows.length)selectProgram(state.rows[0],false);
+  if(reset){
+   // The visible playlist and the selected song should stay in sync after filtering.
+   if(state.rows.length&&!state.rows.some(r=>r.id===state.selected?.id))selectProgram(state.rows[0],false);
+   else if(!state.rows.length){
+    saveProgress();player.pause();player.removeAttribute('src');player.load();state.selected=null;
+    $('#gdd-radio-title').textContent='Chưa có chương trình trong mục này';
+    $('#gdd-radio-summary').textContent='Xin chọn chuyên mục khác để nghe.';
+    playStatus.textContent='';syncControls();
+   }
+  }
  }catch(e){listStatus.textContent='Không thể tải kho âm thanh: '+(e.message||e);if(reset)list.textContent='Chưa tải được kho âm thanh.'}
  finally{
   state.fetching=false;more.disabled=false;
@@ -178,6 +214,23 @@ section.addEventListener('click',e=>{
  if(item){const row=state.rows.find(r=>r.id===item.dataset.gddRadioPlay);if(row)selectProgram(row,true)}
 });
 more.addEventListener('click',()=>fetchPublic(false));
+function stepTrack(direction){
+ if(state.rows.length<2)return;
+ const i=state.rows.findIndex(r=>r.id===state.selected?.id);
+ if(i<0)return;
+ const chosen=state.rows[(i+direction+state.rows.length)%state.rows.length];
+ if(chosen)selectProgram(chosen,true);
+}
+previous.addEventListener('click',()=>stepTrack(-1));
+next.addEventListener('click',()=>stepTrack(1));
+repeatOne.addEventListener('click',()=>{
+ repeatEnabled=!repeatEnabled;player.loop=repeatEnabled;
+ try{localStorage.setItem(REPEAT_KEY,repeatEnabled?'on':'off')}catch{}
+ syncControls();
+ playStatus.textContent=repeatEnabled?
+  'Đã bật lặp lại: bài đang nghe sẽ tự phát lại từ đầu.':
+  'Đã tắt lặp lại bài.';
+});
 let lastProgress=0;
 player.addEventListener('timeupdate',()=>{if(Date.now()-lastProgress>5000){lastProgress=Date.now();saveProgress()}});
 player.addEventListener('pause',saveProgress);
