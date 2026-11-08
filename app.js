@@ -27,7 +27,7 @@
   };
   const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,detail:null };
   const schema = {
-    people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','sources','image_url','verified','published'],
+    people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date','sources','image_url','verified','published'],
     posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
     media:['title','caption','sources','person_id','image_url','published'],
     videos:['title','summary','body','video_url','cover_url','sources','person_id','published'],
@@ -37,7 +37,7 @@
   const fields = {
     people:[['full_name','Danh xưng / tên Chức sắc','text',1],['secular_name','Thế danh','text'],['rank','Phẩm vị','text'],['branch','Cơ quan / hệ thống','branch'],['subgroup','Phân nhóm Chức sắc','subgroup'],
 ['gender','Phân loại Chức sắc Nam / Nữ','gender',1],
-  ['years','Năm sanh – qui vị','text'],['birthplace','Nguyên quán','text'],['summary','Tóm tắt ngắn','textarea'],['biography','Tiểu sử / công nghiệp (nội dung đầy đủ)','long',1],['date_notes','Ngày tháng Âm – Dương lịch','text'],['sources','Nguồn sử liệu / chú thích','textarea'],['image_url','Địa chỉ ảnh (URL), nếu có','url'],['file','Hoặc tải di ảnh lên','file'],['verified','Đã đối chiếu nguồn sử liệu','check'],['published','Công bố trên website','check']],
+  ['years','Năm sanh – qui vị','text'],['birthplace','Nguyên quán','text'],['summary','Tóm tắt ngắn','textarea'],['biography','Tiểu sử / công nghiệp (nội dung đầy đủ)','long',1],['date_notes','Ngày tháng Âm – Dương lịch','text'],['death_lunar_day','Ngày qui vị ÂM lịch (1–30)','lunar-day'],['death_lunar_month','Tháng qui vị ÂM lịch (1–12)','lunar-month'],['death_lunar_leap','Ngày qui vị thuộc tháng nhuận','check'],['death_solar_date','Ngày qui vị DƯƠNG lịch (nếu biết)','date'],['sources','Nguồn sử liệu / chú thích','textarea'],['image_url','Địa chỉ ảnh (URL), nếu có','url'],['file','Hoặc tải di ảnh lên','file'],['verified','Đã đối chiếu nguồn sử liệu','check'],['published','Công bố trên website','check']],
     posts:[['title','Tiêu đề bài viết','text',1],['category','Chuyên mục','text'],['summary','Dẫn nhập / tóm tắt','textarea'],['body','Nội dung biên khảo','long',1],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Thư mục và nguồn trích dẫn','textarea'],['cover_url','Địa chỉ ảnh bìa (URL)','url'],['file','Hoặc tải ảnh bìa lên','file'],['verified','Đã đối chiếu nguồn sử liệu','check'],['published','Công bố trên website','check']],
     media:[['title','Tên ảnh / văn kiện','text',1],['caption','Mô tả, niên đại, xuất xứ','long'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Người cung cấp / nguồn bản gốc','textarea'],['image_url','Địa chỉ ảnh (URL)','url'],['file','Tải hình ảnh lên','file'],['published','Công bố trên website','check']],
     videos:[['title','Tiêu đề video Đạo Sử','text',1],['summary','Tóm tắt','textarea'],['body','Nội dung / thuyết minh','long'],['video_url','Liên kết Facebook, YouTube hoặc MP4 (nếu có)','url'],['video_file','Hoặc chọn video MP4 từ album / tệp điện thoại','video-file'],['cover_url','Đường dẫn ảnh bìa (nếu có)','url'],['file','Hoặc tải ảnh bìa lên','file'],['person_id','Chức sắc liên quan','person'],['sources','Nguồn video / bản quyền / xuất xứ','textarea'],['published','Công bố trên website','check']],
@@ -243,7 +243,9 @@ function videoSource(raw){
     const [name,label,type,required]=field,req=required?' required':'';
     if(type==='check')return `<label class="check-label"><input type="checkbox" name="${name}" ${name==='published'?'checked':''}>${escape(label)}</label>`;
    
-if(type==='gender')return `<label>${escape(label)}<select name="gender" required><option value="">Chọn Nam hoặc Nữ</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></label>`;
+if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<input type="number" name="${name}" min="1" max="${type==='lunar-day'?'30':'12'}" step="1" inputmode="numeric" placeholder="${type==='lunar-day'?'Ngày':'Tháng'}"></label>`;
+    if(type==='date')return `<label>${escape(label)}<input type="date" name="${name}"></label>`;
+    if(type==='gender')return `<label>${escape(label)}<select name="gender" required><option value="">Chọn Nam hoặc Nữ</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></label>`;
   
      if(type==='branch')return `<label>${escape(label)}<select name="${name}"><option value="Cửu Trùng Đài">Cửu Trùng Đài</option><option value="Hiệp Thiên Đài">Hiệp Thiên Đài</option><option value="Phước Thiện">Phước Thiện</option><option value="Hành chánh Đạo">Hành chánh Đạo</option><option value="Khác">Khác</option></select></label>`;
     if(type==='subgroup')return `<label>${escape(label)}<select name="subgroup"><option value="">Chưa phân loại</option>${allSubgroups.map(g=>`<option value="${escape(g)}">${escape(g)}</option>`).join('')}</select></label>`;
@@ -339,6 +341,14 @@ if(type==='gender')return `<label>${escape(label)}<select name="gender" required
         if(!el)continue;
         data[name]=el.type==='checkbox'?el.checked:el.value.trim()||null;
       }
+      if(kind==='people'){
+        const d=data.death_lunar_day,m=data.death_lunar_month;
+        if(Boolean(d)!==Boolean(m))throw new Error('Ngày kỷ niệm qui vị phải nhập đủ ngày và tháng âm lịch.');
+        if(d&&(!Number.isInteger(Number(d))||Number(d)<1||Number(d)>30||
+           !Number.isInteger(Number(m))||Number(m)<1||Number(m)>12))
+          throw new Error('Ngày qui vị âm lịch phải từ 1–30, tháng từ 1–12.');
+        if(data.death_lunar_leap&&!d)throw new Error('Chỉ chọn tháng nhuận khi có ngày và tháng âm lịch.');
+      }
       const selectedVideo=kind==='videos'?form.elements.video_file?.files?.[0]:null;
       if(kind==='videos'&&!data.video_url&&!selectedVideo){
         throw new Error('Hãy dán liên kết Facebook/YouTube hoặc chọn video MP4 từ điện thoại.');
@@ -383,6 +393,7 @@ if(type==='gender')return `<label>${escape(label)}<select name="gender" required
         return;
       }
       await fetchData();
+      if(kind==='people')window.dispatchEvent(new Event('gdd:people-anniversary-refresh'));
       state.editingId=null;
       albums?.resetAfterSuccess?.();
       buildEditor();
