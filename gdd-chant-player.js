@@ -73,6 +73,7 @@
  }
  @media(prefers-reduced-motion:reduce){#gdd-chant-widget *{transition:none!important}}
  `
+ css.textContent += "\n #gdd-chant-widget{\n   right:18px;bottom:calc(30px + env(safe-area-inset-bottom,0px));\n   width:48px;height:48px;max-width:none;filter:none;\n }\n #gdd-chant-widget.gdd-chant-collapsed{width:48px;height:48px}\n #gdd-chant-widget .gdd-chant-reopen{\n   display:flex;position:relative;float:none;align-items:center;justify-content:center;\n   width:48px;height:48px;min-width:48px;min-height:48px;padding:0;\n   border:2px solid #c6a56d;border-radius:15px;\n   background:radial-gradient(circle at 26% 18%,#347461,#1b5547 60%,#123d33);\n   color:#f5e5b9;font:24px/1 Georgia,serif;\n   box-shadow:0 0 0 3px rgba(255,250,228,.9),0 5px 16px rgba(16,48,37,.2);\n }\n #gdd-chant-widget .gdd-chant-reopen::after{\n   content:'';position:absolute;right:5px;top:5px;width:7px;height:7px;\n   background:#c3c7bc;border-radius:50%;border:1px solid #1b5445;\n }\n #gdd-chant-widget.gdd-chant-playing .gdd-chant-reopen::after{\n   background:#eed282;box-shadow:0 0 5px #ddbd7b;\n }\n #gdd-chant-widget .gdd-chant-reopen::before{\n   content:'ÂM THANH';position:absolute;right:calc(100% + 9px);top:11px;\n   border:1px solid #d9c9a6;background:#fcfaf1;border-radius:5px;\n   padding:5px 8px;white-space:nowrap;\n   color:#235448;font:700 9px/1.4 'Be Vietnam Pro',Arial,sans-serif;\n   letter-spacing:.07em;opacity:0;pointer-events:none;transition:opacity .2s;\n   box-shadow:0 3px 9px rgba(20,50,40,.1);\n }\n #gdd-chant-widget .gdd-chant-reopen:hover::before,\n #gdd-chant-widget .gdd-chant-reopen:focus-visible::before{opacity:1}\n #gdd-chant-widget .gdd-chant-card{\n   position:absolute;right:0;bottom:62px;\n   display:block;width:min(240px,calc(100vw - 26px));max-width:none;\n   max-height:min(260px,60dvh);overflow-y:auto;\n   padding:12px;background:linear-gradient(150deg,#fffef9,#f5f2e7);\n   border:1px solid #c4b18b;border-radius:12px;\n   box-shadow:0 12px 30px rgba(16,47,34,.18),inset 0 0 0 1px #fff9ea;\n }\n #gdd-chant-widget.gdd-chant-collapsed .gdd-chant-card{display:none}\n #gdd-chant-widget .gdd-chant-names strong{white-space:normal;line-height:1.45;overflow-wrap:anywhere}\n #gdd-chant-widget .gdd-chant-note{white-space:normal}\n @media(max-width:720px){\n   #gdd-chant-widget{right:11px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:44px;height:44px}\n   #gdd-chant-widget.gdd-chant-collapsed{width:44px;height:44px}\n   #gdd-chant-widget .gdd-chant-reopen{width:44px;height:44px;min-width:44px;min-height:44px;border-radius:14px;font-size:22px}\n   #gdd-chant-widget .gdd-chant-card{bottom:56px;width:min(230px,calc(100vw - 24px));padding:10px}\n   #gdd-chant-widget .gdd-chant-reopen::before{display:none}\n }\n @media(max-height:520px) and (orientation:landscape){\n   #gdd-chant-widget{bottom:calc(18px + env(safe-area-inset-bottom,0px))}\n   #gdd-chant-widget .gdd-chant-card{max-height:58dvh}\n }\n @media(prefers-reduced-motion:reduce){#gdd-chant-widget .gdd-chant-reopen::before{transition:none}}\n";
  document.head.append(css);
  function start(){
   if(document.getElementById('gdd-chant-widget'))return;
@@ -82,8 +83,8 @@
   // Mặc định thu nhỏ; không hề ảnh hưởng tới phát nhạc.
   wrapper.classList.add('gdd-chant-collapsed');
   wrapper.innerHTML=`
-  <button type="button" class="gdd-chant-reopen" aria-label="Mở bảng điều khiển Niệm Danh Diêu Trì Kim Mẫu" title="Mở bảng nghe Niệm Danh Diêu Trì Kim Mẫu">♫</button>
-  <div class="gdd-chant-card">
+  <button type="button" class="gdd-chant-reopen" aria-label="Mở bảng nghe Âm thanh Đại Đạo" aria-expanded="false" aria-controls="gdd-chant-controls" title="Âm thanh Đại Đạo">♫</button>
+  <div class="gdd-chant-card" id="gdd-chant-controls">
     <div class="gdd-chant-top"><span class="gdd-chant-emblem" aria-hidden="true">♫</span>
       <span class="gdd-chant-names"><strong title="Niệm Danh Diêu Trì Kim Mẫu">Niệm Danh Diêu Trì Kim Mẫu</strong><small>Âm thanh Đại Đạo</small></span>
       <button type="button" class="gdd-chant-minimize" aria-label="Thu gọn bảng nghe, tiếp tục phát nhạc" title="Thu gọn, nhạc vẫn phát">−</button>
@@ -146,13 +147,15 @@
     else attempt(true);
   });
   minimize.addEventListener('click',()=>{
-    // Chỉ ẩn giao diện điều khiển: KHÔNG gọi audio.pause(),
-    // không đổi trạng thái bật/tắt và không tua lại bản thu.
     wrapper.classList.add('gdd-chant-collapsed');
+    reopen.setAttribute('aria-expanded','false');
+    // Thu nhỏ giao diện không dừng hay tua lại bản nhạc.
   });
   reopen.addEventListener('click',()=>{
-    wrapper.classList.remove('gdd-chant-collapsed');
-    view(playing()?'Đang phát · Lặp lại bản niệm':
+    const expand=wrapper.classList.contains('gdd-chant-collapsed');
+    wrapper.classList.toggle('gdd-chant-collapsed',!expand);
+    reopen.setAttribute('aria-expanded',String(expand));
+    if(expand)view(playing()?'Đang phát · Lặp lại bản niệm':
       'Chạm ▶ để nghe niệm danh hiệu Đức Phật Mẫu.');
   });
   volume.addEventListener('input',()=>{
