@@ -31,7 +31,9 @@ with sourced(full_name,ld,lm,leap,sd) as (values
  ('KHAI ĐẠO CHƠN QUÂN PHẠM TẤN ĐÃI',19,2,false,date '1976-03-19'),
  ('BẢO ĐẠO CHƠN QUÂN HỒ TẤN KHOA',18,12,false,date '1987-01-17'),
  ('ĐẦU SƯ THÁI NƯƠNG TINH',25,10,false,date '1929-11-25'),
- ('ĐỨC THƯỢNG PHẨM CAO QUỲNH CƯ',1,3,false,date '1929-04-10')
+ ('ĐỨC THƯỢNG PHẨM CAO QUỲNH CƯ',1,3,false,date '1929-04-10'),
+ ('ĐỨC QUYỀN GIÁO TÔNG LÊ VĂN TRUNG',13,10,false,date '1934-11-19'),
+ ('KHAI PHÁP CHƠN QUÂN TRẦN DUY NGHĨA',22,1,false,date '1954-02-24')
 )
 update public.people as p
 set death_lunar_day=s.ld,death_lunar_month=s.lm,death_lunar_leap=s.leap,death_solar_date=s.sd
