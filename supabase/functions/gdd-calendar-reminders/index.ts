@@ -116,18 +116,18 @@ function calculate(people,manual,startYear,years){
 function buildICS(events){
  const created=new Date().toISOString().slice(0,19).replace(/[-:]/g,"")+"Z";
  const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//GIU DAO GIUA DOI//LICH KY NIEM QUI VI//VI","CALSCALE:GREGORIAN","METHOD:PUBLISH",
- "X-WR-CALNAME:"+esc("Giữ Đạo Giữa Đời – Lịch kỷ niệm qui vị"),
+ "X-WR-CALNAME:"+esc("Giữ Đạo Giữa Đời – Lịch cúng lễ và kỷ niệm qui vị"),
  "X-WR-TIMEZONE:Asia/Ho_Chi_Minh","REFRESH-INTERVAL;VALUE=DURATION:PT12H","X-PUBLISHED-TTL:PT12H"];
  for(const e of events){
    const dt=e.solar.replace(/-/g,"");
    lines.push("BEGIN:VEVENT","UID:gdd-"+e.type+"-"+e.id+"-"+dt+"@dauxuacuadao.vn","DTSTAMP:"+created,
    "DTSTART:"+dt+"T020000Z","DTEND:"+dt+"T021500Z",
-   "SUMMARY:"+esc("Kỷ niệm qui vị – "+e.name),
+   "SUMMARY:"+esc(e.type==="ritual"?"Lễ cúng Đạo – "+e.name:"Kỷ niệm qui vị – "+e.name),
    "DESCRIPTION:"+esc([e.rank,"Ngày âm: "+e.lunar,"Ngày dương: "+e.solar,"Nguồn: "+e.source].filter(Boolean).join("\n")),
    "URL:"+esc(e.type==="person"&&e.slug?base+"#nhan-vat/"+encodeURIComponent(e.slug):base+"#gdd-archive-dashboard"),
    "STATUS:CONFIRMED","TRANSP:TRANSPARENT",
    "BEGIN:VALARM","ACTION:DISPLAY","TRIGGER:-P1D",
-   "DESCRIPTION:"+esc("Ngày mai kỷ niệm qui vị "+e.name),
+   "DESCRIPTION:"+esc(e.type==="ritual"?"Ngày mai có lễ: "+e.name:"Ngày mai kỷ niệm qui vị "+e.name),
    "END:VALARM","END:VEVENT");
  }
  lines.push("END:VCALENDAR");
@@ -164,7 +164,7 @@ Deno.serve(async req=>{
      const pts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
      const ymd=Object.fromEntries(pts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
      const today=ymd.year+"-"+ymd.month+"-"+ymd.day;
-     const items=all.filter(x=>x.solar>=today).slice(0,8).map(x=>({name:x.name,rank:x.rank,solar:x.solar,lunar:x.lunar}));
+     const items=all.filter(x=>x.solar>=today).slice(0,10).map(x=>({name:x.name,rank:x.rank,solar:x.solar,lunar:x.lunar,type:x.type}));
      return new Response(JSON.stringify({ok:true,years:[year,year+10],count:all.length,upcoming:items}),{headers:{...common,"Content-Type":"application/json;charset=utf-8"}});
    }
    return new Response(buildICS(all),{headers:{...common,"Content-Type":"text/calendar;charset=utf-8",
