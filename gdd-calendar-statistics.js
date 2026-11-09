@@ -321,10 +321,11 @@
         const a=document.createElement('span');a.className='gdd-solar';a.textContent=d;
         const b=document.createElement('span');b.className='gdd-lunar';b.textContent=lunar.day===1||lunar.leap?lunar.day+'/'+lunar.month+(lunar.leap?'N':''):String(lunar.day);
         day.append(a,b);
-        day.title=`${pad(d)}/${pad(m)}/${y} (Dương) · ${pad(lunar.day)}/${pad(lunar.month)}/${lunar.year}${lunar.leap?' (nhuận)':''} (Âm)`;
+        day.title=`${pad(d)}/${pad(m)}/${y} (Dương) · ${pad(lunar.day)}/${pad(lunar.month)} năm ${canChi(lunar.year)} (${lunar.year})${lunar.leap?' · tháng nhuận':''} (Âm)`;
         day.dataset.solarDate=`${y}-${pad(m)}-${pad(d)}`;
         day.dataset.lunarDay=String(lunar.day);
         day.dataset.lunarMonth=String(lunar.month);
+         day.dataset.lunarYear=String(lunar.year);
         day.dataset.lunarLeap=lunar.leap?'1':'0';
         day.setAttribute('aria-label',day.title);
         day.addEventListener('click',()=>{selected={year:y,month:m,day:d};if(m!==mm){yy=y;mm=m}render()});
@@ -334,7 +335,7 @@
       const lunar=solarToLunar(selected.day,selected.month,selected.year);
       selectedInfo.replaceChildren();
       const name=document.createElement('strong');name.textContent=weekdays[dt.getUTCDay()]+', '+pad(selected.day)+'/'+pad(selected.month)+'/'+selected.year+' (Dương lịch)';
-      const info=document.createElement('span');info.textContent='Âm lịch: '+pad(lunar.day)+'/'+pad(lunar.month)+'/'+lunar.year+(lunar.leap?' · Tháng nhuận':'')+' · Năm '+canChi(lunar.year);
+      const info=document.createElement('span');info.textContent='Âm lịch: '+pad(lunar.day)+'/'+pad(lunar.month)+(lunar.leap?' nhuận':'')+' năm '+canChi(lunar.year)+' ('+lunar.year+')';
       selectedInfo.append(name,info);
       window.dispatchEvent(new CustomEvent('gdd:calendar-updated',{detail:{
         solarDate:`${selected.year}-${pad(selected.month)}-${pad(selected.day)}`,
