@@ -66,6 +66,9 @@ const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GE
 const base="https://realmetayninh7649-cmd.github.io/dau-xua-cua-dao/";
 const CEREMONIES=[{"id":"ruoc-than-tien-phat","calendar":"lunar","day":1,"month":1,"title":"Lễ rước Thần, Thánh, Tiên, Phật","rite":"Tiểu Đàn"},{"id":"dai-le-duc-chi-ton","calendar":"lunar","day":9,"month":1,"title":"Đại lễ Đức Chí Tôn","rite":"Đại Đàn"},{"id":"thuong-nguon","calendar":"lunar","day":15,"month":1,"title":"Lễ Thượng Ngươn","rite":"Đại Đàn","note":"Tại các Thánh Thất và Điện Thờ Phật Mẫu địa phương, thời gian cúng từ mùng 1 đến hết Rằm tháng Giêng âm lịch, cùng thời điểm với Tòa Thánh."},{"id":"thai-thuong-lao-quan","calendar":"lunar","day":15,"month":2,"title":"Vía Đức Thái Thượng Lão Quân","rite":"Đại Đàn"},{"id":"quan-am","calendar":"lunar","day":19,"month":2,"title":"Vía Đức Phật Quan Âm","rite":"Đại Đàn"},{"id":"thich-ca","calendar":"lunar","day":8,"month":4,"title":"Vía Đức Phật Thích Ca","rite":"Đại Đàn"},{"id":"hoi-ky-niem-hiep-thien-dai","calendar":"lunar","day":10,"month":4,"title":"Kỷ niệm hội ngày qui thiên của Đức Hộ Pháp, Đức Thượng Phẩm, Đức Thượng Sanh và quý Thời Quân Hiệp Thiên Đài","rite":"Tiểu Đàn","note":"Tại địa phương chỉ cúng Tiểu Đàn ở Thánh Thất."},{"id":"quan-thanh-de-quan","calendar":"lunar","day":24,"month":6,"title":"Vía Đức Quan Thánh Đế Quân","rite":"Đại Đàn"},{"id":"trung-nguon","calendar":"lunar","day":15,"month":7,"title":"Lễ Trung Ngươn","rite":"Đại Đàn","note":"Tại các Thánh Thất và Điện Thờ Phật Mẫu địa phương, thời gian cúng từ mùng 1 đến hết Rằm tháng Bảy âm lịch, cùng thời điểm với Tòa Thánh."},{"id":"hoi-yen-dieu-tri-cung","calendar":"lunar","day":15,"month":8,"title":"Đại lễ Hội Yến Diêu Trì Cung","rite":"Tiểu Đàn","note":"Các Điện Thờ Phật Mẫu địa phương chỉ cúng đàn theo thông lệ; không lập nghi cúng Hội Yến Diêu Trì Cung."},{"id":"ly-dai-tien","calendar":"lunar","day":18,"month":8,"title":"Vía Đức Lý Đại Tiên kiêm Giáo Tông Đại Đạo Tam Kỳ Phổ Độ","rite":"Đại Đàn"},{"id":"khong-thanh","calendar":"lunar","day":27,"month":8,"title":"Vía Đức Khổng Thánh","rite":"Đại Đàn"},{"id":"hoi-ky-niem-cuu-trung-dai","calendar":"lunar","day":13,"month":10,"title":"Kỷ niệm hội ngày qui thiên của Đức Quyền Giáo Tông, quý Đầu Sư và chư Chức Sắc hàng Thánh Nam Nữ","rite":"Tiểu Đàn","note":"Tại địa phương chỉ cúng Tiểu Đàn ở Thánh Thất."},{"id":"ha-nguon-khai-dao","calendar":"lunar","day":15,"month":10,"title":"Lễ Hạ Ngươn và kỷ niệm ngày khai Đại Đạo Tam Kỳ Phổ Độ","rite":"Đại Đàn","note":"Tại các Thánh Thất và Điện Thờ Phật Mẫu địa phương, thời gian cúng từ mùng 1 đến hết Rằm tháng Mười âm lịch, cùng thời điểm với Tòa Thánh."},{"id":"dua-chu-than-thanh","calendar":"lunar","day":24,"month":12,"title":"Lễ đưa chư Thần, Thánh, Tiên, Phật triều Thiên","rite":"Tiểu Đàn"},{"id":"jesus-christ","calendar":"solar","day":25,"month":12,"title":"Vía Đức Jésus Christ","rite":"Đại Đàn"}];
 const pad=n=>String(n).padStart(2,"0");
+const CAN=["Giáp","Ất","Bính","Đinh","Mậu","Kỷ","Canh","Tân","Nhâm","Quý"];
+const CHI=["Tý","Sửu","Dần","Mão","Thìn","Tỵ","Ngọ","Mùi","Thân","Dậu","Tuất","Hợi"];
+const canChiYear=y=>CAN[(y+6)%10]+" "+CHI[(y+8)%12];
 const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/gi,"d").toLowerCase().replace(/\s+/g," ").trim();
 const esc=s=>String(s??"").replace(/\\/g,"\\\\").replace(/\r?\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;");
 const folded=line=>{let out="",part="",n=0;for(const c of line){const p=c.codePointAt(0),k=p<128?1:p<2048?2:p<65536?3:4;if(n+k>73){out+=part+"\r\n ";part="";n=1}part+=c;n+=k}return out+part};
@@ -99,7 +102,7 @@ function calculate(people,manual,startYear,years){
        if(x.type==="person")for(let i=unique.length-1;i>=0;i--)if(same(unique[i]))unique.splice(i,1);
        unique.push(x);
      }
-     for(const x of unique)out.push({...x,solar:y+"-"+pad(m)+"-"+pad(d),lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,order:t});
+     for(const x of unique)out.push({...x,solar:y+"-"+pad(m)+"-"+pad(d),lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,lunarYear:l.year,lunarCanChi:canChiYear(l.year),order:t});
      const rites=CEREMONIES.filter(r=>r.calendar==="solar"?(r.day===d&&r.month===m):(!l.leap&&r.day===l.day&&r.month===l.month));
      if(l.day===1)rites.push({id:"soc",title:"Cúng Sóc (mùng 1 âm lịch)",rite:"Tiểu Đàn",monthly:true});
      if(l.day===15)rites.push({id:"vong",title:"Cúng Vọng (ngày Rằm âm lịch)",rite:"Tiểu Đàn",monthly:true});
@@ -107,7 +110,7 @@ function calculate(people,manual,startYear,years){
        out.push({type:"ritual",id:rite.id+(rite.monthly?"-"+l.month+(l.leap?"-nhuan":""):""),
          name:rite.title,rank:rite.rite,source:rite.note||"Lịch cúng lễ hằng năm tại Tòa Thánh Tây Ninh",
          solar:y+"-"+pad(m)+"-"+pad(d),
-         lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,order:t});
+         lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,lunarYear:l.year,lunarCanChi:canChiYear(l.year),order:t});
      }
    }
  }
@@ -123,7 +126,7 @@ function buildICS(events){
    lines.push("BEGIN:VEVENT","UID:gdd-"+e.type+"-"+e.id+"-"+dt+"@dauxuacuadao.vn","DTSTAMP:"+created,
    "DTSTART:"+dt+"T020000Z","DTEND:"+dt+"T021500Z",
    "SUMMARY:"+esc(e.type==="ritual"?"Lễ cúng Đạo – "+e.name:"Kỷ niệm qui vị – "+e.name),
-   "DESCRIPTION:"+esc([e.rank,"Ngày âm: "+e.lunar,"Ngày dương: "+e.solar,"Nguồn: "+e.source].filter(Boolean).join("\n")),
+   "DESCRIPTION:"+esc([e.rank,"Ngày âm: "+e.lunar+" – năm "+e.lunarCanChi,"Ngày dương: "+e.solar,"Nguồn: "+e.source].filter(Boolean).join("\n")),
    "URL:"+esc(e.type==="person"&&e.slug?base+"#nhan-vat/"+encodeURIComponent(e.slug):base+"#gdd-archive-dashboard"),
    "STATUS:CONFIRMED","TRANSP:TRANSPARENT",
    "BEGIN:VALARM","ACTION:DISPLAY","TRIGGER:-P1D",
@@ -164,7 +167,7 @@ Deno.serve(async req=>{
      const pts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
      const ymd=Object.fromEntries(pts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
      const today=ymd.year+"-"+ymd.month+"-"+ymd.day;
-     const items=all.filter(x=>x.solar>=today).slice(0,10).map(x=>({name:x.name,rank:x.rank,solar:x.solar,lunar:x.lunar,type:x.type}));
+     const items=all.filter(x=>x.solar>=today).slice(0,10).map(x=>({name:x.name,rank:x.rank,solar:x.solar,lunar:x.lunar,lunarYear:x.lunarYear,lunarCanChi:x.lunarCanChi,type:x.type}));
      return new Response(JSON.stringify({ok:true,years:[year,year+10],count:all.length,upcoming:items}),{headers:{...common,"Content-Type":"application/json;charset=utf-8"}});
    }
    return new Response(buildICS(all),{headers:{...common,"Content-Type":"text/calendar;charset=utf-8",
