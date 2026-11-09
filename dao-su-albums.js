@@ -222,7 +222,7 @@
       <h3>Bộ ảnh tư liệu kèm theo</h3>
       <p class="gdd-album-note">Có thể chọn <b>nhiều ảnh ngay khi soạn bài mới</b> — không cần đăng xong rồi bấm Sửa. Chọn tối đa ${MAX_FILES} ảnh/lượt (JPEG/PNG/WebP; ảnh lớn tự giảm dưới 6 MB), sau đó nhấn <b>Đăng tư liệu</b> một lần. Ảnh bìa chính vẫn chọn riêng ở phía trên.</p>
       <label class="gdd-album-field">Chọn nhiều ảnh từ album iPhone hoặc ứng dụng Tệp
-        <input type="file" id="gdd-album-files" accept="image/jpeg,image/png,image/webp" multiple>
+        <input type="file" id="gdd-album-files" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple>
       </label>
       <div id="gdd-album-selection" class="gdd-album-selection"></div>
       <div class="gdd-album-status" id="gdd-album-status" role="status" aria-live="polite"></div>
