@@ -21,14 +21,15 @@
 <link rel="stylesheet" href="gdd-refine-v20261105-04.css?v=20261105-04">
 
   <script src="supabase-config.js"></script>
+  <script defer src="gdd-image-optimizer.js?v=20261109-01"></script>
   
-<script defer src="app.js?v=20261109-qui-vi-01"></script>
+<script defer src="app.js?v=20261109-imageopt-01"></script>
 
   <script defer src="image-viewer.js?v=pro-20261107-imageclick"></script>
-  <script defer src="dao-su-albums.js?v=mot-lan-20261103"></script>
+  <script defer src="dao-su-albums.js?v=20261109-imageopt-01"></script>
 <script defer src="homepage-previews.js?v=20261107-branches-01"></script>  <script defer src="gdd-video-aspect.js?v=20261107-01"></script>
   <script defer src="gdd-document-export.js?v=20261107-02"></script>
-  <script defer src="gdd-audio-radio.js?v=20261108-02"></script>
+  <script defer src="gdd-audio-radio.js?v=20261109-imageopt-01"></script>
 </head>
 <body>
   <div class="thin-bar"><div class="wrap top-bar-inner"><span>ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ</span><span>TƯ LIỆU · BIÊN KHẢO · DI SẢN</span></div></div>
@@ -159,7 +160,7 @@
         <label>Thông tin chi tiết <span aria-hidden="true">*</span><textarea name="description" maxlength="8000" rows="5" required placeholder="Mô tả nhân vật, thời gian, địa điểm, nội dung, nguồn gốc..."></textarea></label>
         <label>Xuất xứ / người lưu giữ<input name="source" maxlength="800" placeholder="Nguồn tư liệu hoặc tên người cung cấp"></label>
         <label>Liên kết tư liệu (nếu có)<input name="source_url" type="url" maxlength="1200" placeholder="https://..."></label>
-        <label>Đính kèm một ảnh hoặc PDF (không bắt buộc)<input name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small>JPEG, PNG, WebP hoặc PDF, tối đa 6 MB. Có thể gửi liên kết nếu có nhiều tệp.</small></label>
+        <label>Đính kèm một ảnh hoặc PDF (không bắt buộc)<input name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small>Ảnh lớn tự giảm xuống dưới 6 MB; PDF tối đa 6 MB. Có thể gửi liên kết nếu có nhiều tệp.</small></label>
         <label class="privacy-consent"><input name="consent" type="checkbox" required><span>Tôi có quyền chia sẻ tư liệu này và đồng ý để Ban Biên Tập liên hệ, xem xét nội dung.</span></label>
         <div class="hidden-trap" aria-hidden="true"><label>Trang web<input name="website" tabindex="-1" autocomplete="off"></label></div>
         <button type="submit" class="btn btn-primary">Gửi đến Ban Biên Tập <span aria-hidden="true">↗</span></button>
@@ -680,7 +681,6 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 
   const TABLE = 'archive_gallery_images';
   const BUCKET = 'dao-su-images';
-  const SIZE_MAX = 6 * 1024 * 1024;
   const EXT = {'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp'};
   const KINDS = new Set(['people','posts','media','videos','obituaries','documents']);
   const PREFIX = {'nhan-vat':'people','bai-viet':'posts','hinh-anh-tu-lieu':'media','video-dao-su':'videos','ai-tin':'obituaries','tai-lieu-so-hoa':'documents'};
@@ -693,8 +693,8 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
   const $ = (s, root=document) => root.querySelector(s);
   function status(s) { const el = $('#gdd-album-status'); if (el) el.textContent=s; }
   function validFile(f) {
-    if (!EXT[f.type]) throw Error('Chỉ nhận JPEG, PNG hoặc WebP: ' + f.name);
-    if (!f.size || f.size > SIZE_MAX) throw Error('Ảnh quá 6 MB hoặc bị trống: ' + f.name);
+    if (!window.GDDImageOptimizer?.detectType(f)) throw Error('Chỉ nhận JPEG, PNG, WebP hoặc HEIC tương thích: ' + f.name);
+    if (!f.size) throw Error('Ảnh bị trống: ' + f.name);
   }
   function pending() { return queue.filter(p=>!p.saved).length; }
   function validate() { for (const p of queue) if(!p.saved) validFile(p.file); return true; }
@@ -719,7 +719,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       const row=document.createElement('div'); row.className='gdd-admin-photo';
       const no=document.createElement('div'); no.className='gdd-album-photo-no'; no.textContent=String(i+1).padStart(2,'0');
       const body=document.createElement('div');
-      const label=document.createElement('p'); label.className='gdd-album-note'; label.textContent=item.file.name+' · '+(item.file.size/1048576).toFixed(2)+' MB'+(item.saved?' · Đã lưu':'');
+      const label=document.createElement('p'); label.className='gdd-album-note'; label.textContent=item.file.name+' · ảnh gốc '+(item.file.size/1048576).toFixed(2)+' MB'+(item.saved?' · Đã lưu bản tối ưu':' · sẽ tối ưu khi tải');
       const field=document.createElement('label'); field.className='gdd-album-field'; field.textContent='Chú thích ảnh '+(i+1);
       const input=document.createElement('input');input.type='text';input.maxLength=400;input.value=item.caption||'';
       input.placeholder='Niên đại, số trang hoặc xuất xứ (không bắt buộc)';input.disabled=item.saved||busy;
@@ -810,7 +810,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     const clean=input.cloneNode(true);clean.dataset.unlimitedBound='1';
     input.replaceWith(clean);
     const desc=panel.querySelector('p.gdd-album-note');
-    if(desc)desc.innerHTML='Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, mỗi ảnh tối đa <b>6 MB</b> (JPEG/PNG/WebP). Nên chọn 10–20 ảnh/lượt trên iPhone để tránh đứng máy. Bấm <b>Đăng tư liệu</b> một lần; giữ trang mở khi đang tải.';
+    if(desc)desc.innerHTML='Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, ảnh lớn được tự tối ưu dưới <b>6 MB</b> trước khi tải (JPEG/PNG/WebP; HEIC khi trình duyệt hỗ trợ). Nên chọn 10–20 ảnh/lượt trên iPhone để tránh đứng máy. Bấm <b>Đăng tư liệu</b> một lần; giữ trang mở khi đang tải.';
     const chooser=clean.closest('label');if(chooser)chooser.firstChild.textContent='Chọn thêm ảnh từ album iPhone hoặc ứng dụng Tệp (có thể chọn nhiều lượt)\n        ';
     clean.addEventListener('change',()=>{
       if(busy)return;
@@ -849,8 +849,12 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         const message=`Đang tải ảnh ${done+1}/${items.length}: ${item.file.name}. Xin giữ trang mở.`;
         status(message);onProgress?.(message);
         const suffix=(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2));
-        const path=`${kind}/${Date.now()}-${suffix}.${EXT[item.file.type]}`;
-        const {error:upError}=await supa.storage.from(BUCKET).upload(path,item.file,{contentType:item.file.type,cacheControl:'3600',upsert:false});
+        const ready=(await window.GDDImageOptimizer.prepare(item.file,{onProgress:text=>{
+          const detail=`Đang xử lý ảnh ${done+1}/${items.length}: ${text}`;
+          status(detail);onProgress?.(detail);
+        }})).file;
+        const path=`${kind}/${Date.now()}-${suffix}.${EXT[ready.type]}`;
+        const {error:upError}=await supa.storage.from(BUCKET).upload(path,ready,{contentType:ready.type,cacheControl:'3600',upsert:false});
         if(upError)throw upError;
         const url=supa.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
         const order=position+1;
@@ -861,7 +865,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         const progress=`Đã lưu ${done}/${items.length} ảnh; còn ${pending()} ảnh chờ tải.`;
         status(progress);onProgress?.(progress);
       }
-      status('Đã lưu đủ '+done+' ảnh, không giới hạn tổng số ảnh của bài.');
+      status('Đã lưu đủ '+done+' ảnh; bản gốc trên điện thoại được giữ nguyên.');
     }catch(err){
       const message=`Đã tải thành công ${done} ảnh; còn ${pending()} ảnh chưa tải. Lỗi: ${err.message||err}`;
       status(message);throw err;
@@ -936,10 +940,10 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 <!-- KẾT THÚC BẢN CẬP NHẬT BỘ ẢNH KHÔNG GIỚI HẠN -->
 <script defer src="gdd-calendar-statistics.js?v=20261109-may-vang-01"></script>
 <script defer src="gdd-calendar-anniversaries.js?v=20261109-02"></script>
-<script defer src="gdd-calendar-quick-editor.js?v=20261109-01"></script>
+<script defer src="gdd-calendar-quick-editor.js?v=20261109-imageopt-01"></script>
 <script defer src="gdd-calendar-reminder-subscription.js?v=20261109-le-cu-ng-01"></script>
 <script defer src="gdd-calendar-festivals.js?v=20261109-01"></script>
-<script defer src="gdd-memorial.js?v=20261105-01"></script>
+<script defer src="gdd-memorial.js?v=20261109-imageopt-01"></script>
 <script defer src="gdd-people-organizer.js?v=20261107-uniform-cards-01"></script>
 <!-- CHỈNH HIỂN THỊ PHÂN LOẠI CHỨC SẮC -->
 
