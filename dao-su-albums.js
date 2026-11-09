@@ -1,6 +1,6 @@
 /* GIỮ ĐẠO GIỮA ĐỜI — Thư viện ảnh tư liệu nhiều ảnh (2026-11-03)
    Bổ sung độc lập: không đổi các bảng hay bộ mã hiện có. Yêu cầu chạy SQL migration.
-   Chỉ tài khoản quản trị được tải lên và biên tập. Ảnh gốc không bị nén. */
+   Chỉ tài khoản quản trị được tải lên và biên tập. Ảnh lớn được tối ưu trước khi gửi. */
 (() => {
   'use strict';
   if (window.__gddAlbumsLoaded) return;
