@@ -22,6 +22,7 @@
 
   <script src="supabase-config.js"></script>
   
+<script defer src="gdd-image-optimizer.js?v=20261109-auto6mb-01"></script>
 <script defer src="app.js?v=20261109-qui-vi-01"></script>
 
   <script defer src="image-viewer.js?v=pro-20261107-imageclick"></script>
@@ -159,7 +160,7 @@
         <label>Thông tin chi tiết <span aria-hidden="true">*</span><textarea name="description" maxlength="8000" rows="5" required placeholder="Mô tả nhân vật, thời gian, địa điểm, nội dung, nguồn gốc..."></textarea></label>
         <label>Xuất xứ / người lưu giữ<input name="source" maxlength="800" placeholder="Nguồn tư liệu hoặc tên người cung cấp"></label>
         <label>Liên kết tư liệu (nếu có)<input name="source_url" type="url" maxlength="1200" placeholder="https://..."></label>
-        <label>Đính kèm một ảnh hoặc PDF (không bắt buộc)<input name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small>JPEG, PNG, WebP hoặc PDF, tối đa 6 MB. Có thể gửi liên kết nếu có nhiều tệp.</small></label>
+        <label>Đính kèm một ảnh hoặc PDF (không bắt buộc)<input name="attachment" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"><small>Ảnh gốc lớn tự tối ưu dưới 6 MB; PDF tối đa 6 MB. Có thể gửi liên kết nếu có nhiều tệp.</small></label>
         <label class="privacy-consent"><input name="consent" type="checkbox" required><span>Tôi có quyền chia sẻ tư liệu này và đồng ý để Ban Biên Tập liên hệ, xem xét nội dung.</span></label>
         <div class="hidden-trap" aria-hidden="true"><label>Trang web<input name="website" tabindex="-1" autocomplete="off"></label></div>
         <button type="submit" class="btn btn-primary">Gửi đến Ban Biên Tập <span aria-hidden="true">↗</span></button>
@@ -680,7 +681,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 
   const TABLE = 'archive_gallery_images';
   const BUCKET = 'dao-su-images';
-  const SIZE_MAX = 6 * 1024 * 1024;
+  const SIZE_MAX = 6 * 1024 * 1024; // dung lượng lưu trữ sau tối ưu
   const EXT = {'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp'};
   const KINDS = new Set(['people','posts','media','videos','obituaries','documents']);
   const PREFIX = {'nhan-vat':'people','bai-viet':'posts','hinh-anh-tu-lieu':'media','video-dao-su':'videos','ai-tin':'obituaries','tai-lieu-so-hoa':'documents'};
@@ -693,8 +694,8 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
   const $ = (s, root=document) => root.querySelector(s);
   function status(s) { const el = $('#gdd-album-status'); if (el) el.textContent=s; }
   function validFile(f) {
-    if (!EXT[f.type]) throw Error('Chỉ nhận JPEG, PNG hoặc WebP: ' + f.name);
-    if (!f.size || f.size > SIZE_MAX) throw Error('Ảnh quá 6 MB hoặc bị trống: ' + f.name);
+    if (!window.GDDImageOptimizer?.isImage(f)) throw Error('Chỉ nhận ảnh JPG/PNG/WebP/HEIC: '+f.name);
+    if (!f.size) throw Error('Ảnh trống: '+f.name);
   }
   function pending() { return queue.filter(p=>!p.saved).length; }
   function validate() { for (const p of queue) if(!p.saved) validFile(p.file); return true; }
@@ -810,7 +811,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     const clean=input.cloneNode(true);clean.dataset.unlimitedBound='1';
     input.replaceWith(clean);
     const desc=panel.querySelector('p.gdd-album-note');
-    if(desc)desc.innerHTML='Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, mỗi ảnh tối đa <b>6 MB</b> (JPEG/PNG/WebP). Nên chọn 10–20 ảnh/lượt trên iPhone để tránh đứng máy. Bấm <b>Đăng tư liệu</b> một lần; giữ trang mở khi đang tải.';
+    if(desc)desc.innerHTML='Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, ảnh gốc lớn được <b>tự tối ưu dưới 6 MB</b> (JPG/PNG/WebP/HEIC nếu hỗ trợ). Nên chọn 10–20 ảnh/lượt trên iPhone để tránh đứng máy. Bấm <b>Đăng tư liệu</b> một lần; giữ trang mở khi đang tải.';
     const chooser=clean.closest('label');if(chooser)chooser.firstChild.textContent='Chọn thêm ảnh từ album iPhone hoặc ứng dụng Tệp (có thể chọn nhiều lượt)\n        ';
     clean.addEventListener('change',()=>{
       if(busy)return;
@@ -848,9 +849,12 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       for(const item of items){
         const message=`Đang tải ảnh ${done+1}/${items.length}: ${item.file.name}. Xin giữ trang mở.`;
         status(message);onProgress?.(message);
+        if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
+        const prepared=await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{status(message);onProgress?.(message)}});
+        item.file=prepared;
         const suffix=(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2));
-        const path=`${kind}/${Date.now()}-${suffix}.${EXT[item.file.type]}`;
-        const {error:upError}=await supa.storage.from(BUCKET).upload(path,item.file,{contentType:item.file.type,cacheControl:'3600',upsert:false});
+        const path=`${kind}/${Date.now()}-${suffix}.${EXT[prepared.type]}`;
+        const {error:upError}=await supa.storage.from(BUCKET).upload(path,prepared,{contentType:prepared.type,cacheControl:'3600',upsert:false});
         if(upError)throw upError;
         const url=supa.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
         const order=position+1;
