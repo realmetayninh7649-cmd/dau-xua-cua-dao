@@ -90,7 +90,7 @@
   else selected.insertAdjacentElement('afterend',festival);
   festival.insertAdjacentElement('afterend',notes);
   function dateFromButton(b){
-   return {solarDate:b.dataset.solarDate,lunar:{day:+b.dataset.lunarDay,month:+b.dataset.lunarMonth,leap:b.dataset.lunarLeap==='1',year:+(b.dataset.solarDate||'').slice(0,4)}};
+   return {solarDate:b.dataset.solarDate,lunar:{day:+b.dataset.lunarDay,month:+b.dataset.lunarMonth,leap:b.dataset.lunarLeap==='1',year:+b.dataset.lunarYear}};
   }
   function markDates(){
    for(const b of grid.querySelectorAll('.gdd-cal-day')){
@@ -112,7 +112,11 @@
    festival.hidden=!items.length;
    if(!items.length){festival.replaceChildren();return}
    const [year,month,day]=date.solarDate.split('-');
-   const lunarDate=grid.querySelector('.gdd-cal-day.selected .gdd-lunar')?.textContent||'';
+   const CAN=['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+   const CHI=['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+   const lunar=date.lunar;
+   const lunarYearName=CAN[(lunar.year+6)%10]+' '+CHI[(lunar.year+8)%12];
+   const lunarDate=pad(lunar.day)+'/'+pad(lunar.month)+(lunar.leap?' nhuận':'')+' năm '+lunarYearName+' ('+lunar.year+')';
    const html=items.map(item=>
     '<article class="gdd-festival-item"><strong>'+escapeHTML(item.title)+'</strong>'+
     '<small>'+escapeHTML(item.rite)+' · '+(item.calendar==='solar'?'Dương lịch':'Âm lịch')+'</small>'+
