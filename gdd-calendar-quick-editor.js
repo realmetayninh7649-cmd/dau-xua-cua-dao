@@ -30,6 +30,9 @@
  #gdd-cal-quick-panel .gdd-cal-quick-check input{width:auto;min-height:auto}
  #gdd-cal-quick-panel .gdd-cal-quick-date{background:#f3eddd;border-radius:6px;padding:10px;font:600 11px/1.6 'Be Vietnam Pro',Arial,sans-serif;color:#52664f;grid-column:1/-1}
  #gdd-cal-quick-panel .gdd-cal-quick-group{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ #gdd-cal-quick-panel .gdd-cal-quick-advanced{grid-column:1/-1;border:1px solid #ddd2b9;border-radius:6px;background:rgba(255,255,255,.45);padding:9px}
+ #gdd-cal-quick-panel .gdd-cal-quick-advanced summary{cursor:pointer;font:700 11px/1.5 'Be Vietnam Pro',Arial,sans-serif;color:#275b4a}
+ #gdd-cal-quick-panel .gdd-cal-quick-advanced-fields{display:grid;grid-template-columns:1fr;gap:9px;margin-top:10px}
  #gdd-cal-quick-panel .gdd-cal-quick-group label.gdd-cal-quick-check{grid-column:1/-1}
  #gdd-cal-quick-panel .gdd-cal-quick-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
  #gdd-cal-quick-panel .gdd-cal-quick-actions button{min-height:36px;border-radius:6px;padding:8px 13px;cursor:pointer;border:1px solid #24584a;font:700 11px/1.4 'Be Vietnam Pro',Arial,sans-serif;background:#24584a;color:white}
@@ -76,10 +79,15 @@
        <label>Tháng dương lịch<input type="number" name="solar_month" min="1" max="12" step="1" inputmode="numeric"></label>
      </div>
      <label class="gdd-cal-quick-wide">Nguồn sử liệu / bia mộ *<textarea name="source_note" maxlength="4000" required placeholder="Thí dụ: Bia mộ, ghi ngày mùng 02/10 Đinh Sửu"></textarea></label>
-     <label class="gdd-cal-quick-wide">Ghi chú tưởng niệm<textarea name="description" maxlength="4000" placeholder="Ghi chép thêm nếu có…"></textarea></label>
-     <label class="gdd-cal-quick-wide">Liên kết bài tiểu sử (nếu đã đăng)<select name="linked_person_id"><option value="">Chưa có hồ sơ trên Web Đạo</option></select></label>
-     <label class="gdd-cal-quick-wide">Chân dung (JPG, PNG, WebP, tối đa 6 MB)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
-     <label class="gdd-cal-quick-wide">Hoặc liên kết ảnh<input type="url" name="image_url" placeholder="https://..."></label>
+     <details class="gdd-cal-quick-advanced" id="gdd-cal-quick-advanced">
+       <summary>＋ Thông tin bổ sung (chân dung, tiểu sử, ghi chú)</summary>
+       <div class="gdd-cal-quick-advanced-fields">
+         <label>Ghi chú tưởng niệm<textarea name="description" maxlength="4000" placeholder="Ghi chép thêm nếu có…"></textarea></label>
+         <label>Liên kết bài tiểu sử (nếu đã đăng)<select name="linked_person_id"><option value="">Chưa có hồ sơ trên Web Đạo</option></select></label>
+         <label>Chân dung (JPG, PNG, WebP, tối đa 6 MB)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
+         <label>Hoặc liên kết ảnh<input type="url" name="image_url" placeholder="https://..."></label>
+       </div>
+     </details>
      <p class="gdd-cal-quick-note">Ngày đã chọn được điền sẵn. Chọn âm lịch để năm sau vẫn hiển thị đúng ngày âm. Có thể sửa và xóa các kỷ niệm do quản trị viên tự thêm.</p>
      <div class="gdd-cal-quick-actions"><button type="submit" id="gdd-cal-quick-save">Lưu kỷ niệm vào lịch</button><button type="button" id="gdd-cal-quick-cancel" class="secondary">Hủy</button></div>
    </form>
@@ -157,6 +165,7 @@
   }
   function resetForm(){
     editingId=null;form.reset();
+    $('#gdd-cal-quick-advanced').open=false;
     form.elements.calendar_system.value='lunar';
     form.elements.linked_person_id.value='';
     $('#gdd-cal-quick-title').textContent='Thêm ngày kỷ niệm qui vị';
@@ -295,6 +304,7 @@
         if(form.elements[key])form.elements[key].value=data[key]??'';
       }
       form.elements.lunar_leap.checked=!!data.lunar_leap;
+      $('#gdd-cal-quick-advanced').open=Boolean(data.description||data.linked_person_id||data.image_url);
       dateMode();
       feedback('Đang sửa ngày kỷ niệm đã nhập thủ công.');
       await loadPeople();form.elements.linked_person_id.value=data.linked_person_id||'';
