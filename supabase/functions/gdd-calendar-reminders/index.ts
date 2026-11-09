@@ -100,6 +100,15 @@ function calculate(people,manual,startYear,years){
        unique.push(x);
      }
      for(const x of unique)out.push({...x,solar:y+"-"+pad(m)+"-"+pad(d),lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,order:t});
+     const rites=CEREMONIES.filter(r=>r.calendar==="solar"?(r.day===d&&r.month===m):(!l.leap&&r.day===l.day&&r.month===l.month));
+     if(l.day===1)rites.push({id:"soc",title:"Cúng Sóc (mùng 1 âm lịch)",rite:"Tiểu Đàn",monthly:true});
+     if(l.day===15)rites.push({id:"vong",title:"Cúng Vọng (ngày Rằm âm lịch)",rite:"Tiểu Đàn",monthly:true});
+     for(const rite of rites){
+       out.push({type:"ritual",id:rite.id+(rite.monthly?"-"+l.month+(l.leap?"-nhuan":""):""),
+         name:rite.title,rank:rite.rite,source:rite.note||"Lịch cúng lễ hằng năm tại Tòa Thánh Tây Ninh",
+         solar:y+"-"+pad(m)+"-"+pad(d),
+         lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,order:t});
+     }
    }
  }
  return out.sort((a,b)=>a.order-b.order||a.name.localeCompare(b.name,"vi"));
