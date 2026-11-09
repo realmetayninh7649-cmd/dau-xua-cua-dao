@@ -43,7 +43,10 @@
   const inputType=mimeFor(file);
   if(!inputType)throw Error('Chỉ nhận ảnh JPG, PNG, WebP hoặc HEIC/HEIF được thiết bị hỗ trợ.');
   const progress=options.onStatus||options.onProgress;
-  if(file.size<=LIMIT&&EXT[inputType])return file;
+  if(file.size<=LIMIT&&EXT[inputType]){
+   if(file.type===inputType)return file;
+   return new File([file],file.name,{type:inputType,lastModified:file.lastModified||Date.now()});
+  }
   report(progress,'Đang tối ưu ảnh '+file.name+' ('+mb(file.size)+')...');
   let decoded;
   try{decoded=await loadPixels(file)}
