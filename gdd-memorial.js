@@ -254,7 +254,7 @@
         <label>Nội dung bài tưởng niệm *<textarea name="body" required placeholder="Viết nội dung tưởng niệm, công nghiệp, nguồn đối chiếu…"></textarea></label>
         <label>Xuất xứ / nguồn tư liệu<textarea name="sources" placeholder="Sách, Thánh lịnh, bằng cấp, người lưu giữ ảnh…"></textarea></label>
         <label>Đường dẫn ảnh chân dung (nếu có)<input name="portrait_url" type="url" placeholder="https://..."></label>
-        <label>Hoặc tải chân dung JPEG, PNG, WebP từ điện thoại<input name="portrait_file" type="file" accept="image/jpeg,image/png,image/webp"></label>
+        <label>Hoặc tải chân dung JPEG, PNG, WebP từ điện thoại<input name="portrait_file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"></label>
         <p class="gdd-muted">Ảnh lớn tự giảm dưới 6 MB khi tải; bản gốc trên điện thoại không bị thay đổi.</p>
         <label class="gdd-published"><input type="checkbox" name="published" checked> Công bố trên website</label>
         <div class="gdd-memorial-admin-actions"><button type="submit" id="gdd-memorial-save">Đăng bài tưởng niệm</button><button type="button" class="gdd-secondary" id="gdd-memorial-new">+ Soạn bài mới</button></div>
