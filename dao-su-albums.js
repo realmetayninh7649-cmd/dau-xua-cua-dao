@@ -19,7 +19,6 @@
   };
   const FILE_EXT = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
   const MAX_FILES = 30;
-  const MAX_SIZE = 6 * 1024 * 1024;
   let clientPromise = null;
   let editing = null;
   let editorSeq = 0, detailSeq = 0;
