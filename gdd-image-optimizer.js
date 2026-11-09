@@ -33,7 +33,7 @@
     if(!file||typeof file.size!=="number"||file.size===0)throw Error("Ảnh bị trống hoặc không đọc được.");
     const mime=detectType(file);
     if(!mime)throw Error("Chỉ hỗ trợ ảnh JPEG, PNG, WebP. Với ảnh HEIC, trình duyệt cần hỗ trợ đọc ảnh.");
-    if(MIME[mime]&&file.size<=MAX_BYTES){
+    if(MIME[mime]&&file.type===mime&&file.size<=MAX_BYTES){
       return {file,changed:false,originalBytes:file.size,storedBytes:file.size};
     }
     if(typeof document==="undefined"||typeof Image==="undefined"||typeof URL?.createObjectURL!=="function")
