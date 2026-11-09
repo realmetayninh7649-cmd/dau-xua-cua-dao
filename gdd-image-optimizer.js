@@ -3,7 +3,7 @@
   if(window.GDDImageOptimizer)return;
   const MAX_BYTES=5700000; // Below 6 decimal MB and below 6 MiB Supabase bucket limit
   const MAX_EDGE=5200;
-  const MAX_PIXELS=18000000;
+  const MAX_PIXELS=15500000; // keep below the ~16 MP canvas ceiling on older iPhone Safari
   const MIME={"image/jpeg":"jpg","image/png":"png","image/webp":"webp"};
   const IMAGE_TYPES=new Set([...Object.keys(MIME),"image/heic","image/heif"]);
   const HEIC=/\.(?:heic|heif)$/i;
