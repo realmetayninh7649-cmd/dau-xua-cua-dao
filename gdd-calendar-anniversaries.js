@@ -24,6 +24,13 @@
  .gdd-cal-qui-vi-entry:hover,.gdd-cal-qui-vi-entry:focus-visible{border-color:#b99664;background:#f7f3e9}
  .gdd-cal-qui-vi-empty{margin:0;color:#7b8075;font:400 10px/1.6 'Be Vietnam Pro',Arial,sans-serif}
  .gdd-cal-qui-vi-month{margin:9px 0 0;font:600 10px/1.65 'Be Vietnam Pro',Arial,sans-serif;color:#9b835b}
+ .gdd-cal-qui-vi-static{cursor:default}
+ .gdd-cal-qui-vi-static:hover{background:#fffdf9;border-color:#e3ddcd}
+ .gdd-cal-qui-vi-manual{min-width:0}
+ .gdd-cal-qui-vi-manual .gdd-cal-qui-vi-copy small{overflow-wrap:anywhere}
+ .gdd-cal-qui-vi-actions{display:flex;gap:7px;justify-content:flex-end;margin:4px 0 1px}
+ .gdd-cal-qui-vi-actions button{background:#fffdf8;border:1px solid #ccbea0;border-radius:4px;color:#235348;padding:5px 11px;font:700 10px/1.4 'Be Vietnam Pro',Arial,sans-serif;cursor:pointer}
+ .gdd-cal-qui-vi-actions button:focus-visible{outline:2px solid #b99557;outline-offset:2px}
  @media(max-width:420px){.gdd-calendar .gdd-cal-day .gdd-cal-qui-vi-mark{font-size:9px;top:0;right:1px}.gdd-cal-qui-vi-list{margin-top:8px;padding-top:8px}.gdd-cal-qui-vi-entry{padding:7px}.gdd-cal-qui-vi-entry img,.gdd-cal-qui-vi-photo{flex-basis:36px;width:36px;height:42px}}
  `;
  document.head.append(style);
@@ -34,8 +41,9 @@
   list.className='gdd-cal-qui-vi-list';list.setAttribute('aria-label','Kỷ niệm ngày qui vị Chức Sắc');list.setAttribute('aria-live','polite');
   selected.insertAdjacentElement('afterend',list);
   const monthNote=document.createElement('p');monthNote.className='gdd-cal-qui-vi-month';list.insertAdjacentElement('afterend',monthNote);
-  let records=[],loaded=false,selection=null,run=0;
-  let requesting=false;
+  let records=[],allPeople=[],manual=[],loaded=false,selection=null,run=0;
+  let requesting=false,pendingReload=false;
+  const normal=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/\s+/g,' ').trim();
   const validDate=row=>Number.isInteger(Number(row.death_lunar_day)) && Number(row.death_lunar_day)>0&&Number(row.death_lunar_day)<=30&&
     Number.isInteger(Number(row.death_lunar_month))&&Number(row.death_lunar_month)>=1&&Number(row.death_lunar_month)<=12;
   function matches(row,date){
@@ -49,6 +57,25 @@
    }
    return false;
   }
+  function manualMatches(row,date){
+    if(row.calendar_system==='lunar')
+      return Number(row.lunar_day)===date.lunar.day &&
+        Number(row.lunar_month)===date.lunar.month &&
+        Boolean(row.lunar_leap)===Boolean(date.lunar.leap);
+    if(row.calendar_system==='solar'){
+      const parts=String(date.solarDate||'').split('-');
+      return Number(row.solar_day)===Number(parts[2]) &&
+        Number(row.solar_month)===Number(parts[1]);
+    }
+    return false;
+  }
+  function eventsFor(date){
+    const people=records.filter(row=>matches(row,date));
+    const entered=manual.filter(row=>manualMatches(row,date)).filter(row=>
+      !people.some(person=>(row.linked_person_id&&row.linked_person_id===person.id) ||
+        normal(row.full_name)===normal(person.full_name)));
+    return {people,entered,total:people.length+entered.length};
+  }
   const safeImg=v=>{try{const u=new URL(String(v||''),location.href);return /^https?:$/.test(u.protocol)?u.href:''}catch{return ''}};
   function recordHTML(row){
    const image=safeImg(row.image_url);
@@ -59,6 +86,29 @@
       (image?'<img loading="lazy" decoding="async" src="'+esc(image)+'" alt="Chơn dung '+esc(row.full_name)+'">':
         '<span class="gdd-cal-qui-vi-photo" aria-hidden="true">✦</span>')+
       '<span class="gdd-cal-qui-vi-copy"><b>'+esc(row.full_name)+'</b><small>'+esc((row.rank||'Chức Sắc')+' · '+when)+' · Xem tiểu sử ↗</small></span></button>';
+  }
+  function manualHTML(row){
+    const image=safeImg(row.image_url);
+    const person=row.linked_person_id&&allPeople.find(p=>p.id===row.linked_person_id);
+    const when=row.calendar_system==='lunar'?
+      'Âm lịch '+pad(row.lunar_day)+'/'+pad(row.lunar_month)+(row.lunar_leap?' (nhuận)':''):
+      'Dương lịch '+pad(row.solar_day)+'/'+pad(row.solar_month);
+    const fullWhen=when+(row.death_year?' · '+row.death_year:'');
+    const cover=image?'<img loading="lazy" decoding="async" src="'+esc(image)+'" alt="Chơn dung '+esc(row.full_name)+'">':
+      '<span class="gdd-cal-qui-vi-photo" aria-hidden="true">✦</span>';
+    const info='<span class="gdd-cal-qui-vi-copy"><b>'+esc(row.full_name)+'</b><small>'+
+      esc((row.rank||'Chức Sắc')+' · '+fullWhen)+'</small>'+
+      (row.source_note?'<small>Nguồn: '+esc(row.source_note)+'</small>':'')+
+      (row.description?'<small>'+esc(row.description)+'</small>':'')+
+      (person?'<small>Xem tiểu sử ↗</small>':'')+
+      '</span>';
+    const card=person?
+      '<button type="button" class="gdd-cal-qui-vi-entry" data-open-kind="people" data-id="'+esc(person.id)+'">'+cover+info+'</button>':
+      '<div class="gdd-cal-qui-vi-entry gdd-cal-qui-vi-static">'+cover+info+'</div>';
+    const actions=window.__gddCalendarQuickAdmin?
+      '<div class="gdd-cal-qui-vi-actions"><button type="button" data-gdd-calendar-edit="'+esc(row.id)+'">Sửa</button>'+
+      '<button type="button" data-gdd-calendar-delete="'+esc(row.id)+'">Xóa</button></div>':'';
+    return '<article class="gdd-cal-qui-vi-manual">'+card+actions+'</article>';
   }
   function dateFromButton(button){
     return {solarDate:button.dataset.solarDate,
@@ -75,13 +125,13 @@
      const base=button.dataset.baseAria||button.getAttribute('aria-label')||button.title;
      button.dataset.baseAria=base;
      button.setAttribute('aria-label',base);
-     const events=records.filter(row=>matches(row,dateFromButton(button)));
-     if(!events.length)continue;
+     const events=eventsFor(dateFromButton(button));
+     if(!events.total)continue;
      const marker=document.createElement('span');marker.className='gdd-cal-qui-vi-mark';
-     marker.textContent=events.length>1?String(events.length):'✦';marker.setAttribute('aria-hidden','true');
+     marker.textContent=events.total>1?String(events.total):'✦';marker.setAttribute('aria-hidden','true');
      button.append(marker);button.classList.add('gdd-cal-has-qui-vi');
-     button.setAttribute('aria-label',base+' · '+events.length+' kỷ niệm qui vị');
-     if(!button.classList.contains('other')){monthDays++;occurrences+=events.length}
+     button.setAttribute('aria-label',base+' · '+events.total+' kỷ niệm qui vị');
+     if(!button.classList.contains('other')){monthDays++;occurrences+=events.total}
    }
    monthNote.textContent=loaded?
      (occurrences?`Trong tháng có ${occurrences} kỷ niệm qui vị trên ${monthDays} ngày. Chạm ngày có dấu ✦ để xem.`:
@@ -96,15 +146,15 @@
      list.innerHTML='<strong>Kỷ niệm ngày qui vị</strong><p class="gdd-cal-qui-vi-empty">Đang tải các ngày kỷ niệm từ Hồ sơ Chức Sắc…</p>';
      return;
    }
-   const events=records.filter(row=>matches(row,date));
-   const heading='<strong>Kỷ niệm ngày qui vị'+(events.length?' · '+events.length+' Chức Sắc':'')+'</strong>';
-   if(events.length)list.innerHTML=heading+
-     '<span class="gdd-cal-qui-vi-sub">Chọn một hồ sơ để xem tiểu sử và nguồn ngày tháng.</span>'+
-     events.map(recordHTML).join('');
+   const events=eventsFor(date);
+   const heading='<strong>Kỷ niệm ngày qui vị'+(events.total?' · '+events.total+' Chức Sắc':'')+'</strong>';
+   if(events.total)list.innerHTML=heading+
+     '<span class="gdd-cal-qui-vi-sub">Kỷ niệm trích từ Hồ sơ Chức Sắc và những ngày do quản trị viên ghi nhận.</span>'+
+     events.people.map(recordHTML).join('')+events.entered.map(manualHTML).join('');
    else list.innerHTML=heading+'<p class="gdd-cal-qui-vi-empty">Chưa có kỷ niệm qui vị được ghi nhận cho ngày này.</p>';
   }
   async function reload(){
-   if(requesting)return;
+   if(requesting){pendingReload=true;return;}
    requesting=true;
    const task=++run;
    try{
@@ -121,11 +171,28 @@
        gathered.push(...data||[]);
        if(!data||data.length<500)break;
      }
-     if(task===run){records=gathered.filter(x=>validDate(x)||/^\d{4}-\d{2}-\d{2}$/.test(x.death_solar_date||''));loaded=true;decorate()}
+     const manuallyEntered=[];
+     for(let offset=0;offset<10000;offset+=500){
+       const {data,error}=await supa.from('gdd_calendar_memorials')
+         .select('id,full_name,rank,calendar_system,lunar_day,lunar_month,lunar_leap,solar_day,solar_month,death_year,image_url,source_note,description,linked_person_id,published')
+         .eq('published',true).order('created_at',{ascending:false}).range(offset,offset+499);
+       if(error)throw error;
+       manuallyEntered.push(...(data||[]));
+       if(!data||data.length<500)break;
+     }
+     if(task===run){
+       allPeople=gathered;
+       records=gathered.filter(x=>validDate(x)||/^\d{4}-\d{2}-\d{2}$/.test(x.death_solar_date||''));
+       manual=manuallyEntered;
+       loaded=true;decorate();
+     }
    }catch(err){
      console.warn('[GDD Qui Vi]',err?.message||err);
      if(!loaded){loaded=true;records=[];decorate();monthNote.textContent='Chưa tải được các ngày kỷ niệm. Xin kiểm tra lại kết nối.'}
-   }finally{requesting=false}
+   }finally{
+     requesting=false;
+     if(pendingReload){pendingReload=false;reload()}
+   }
   }
   window.addEventListener('gdd:calendar-updated',event=>{
    selection=event.detail?{solarDate:event.detail.solarDate,lunar:event.detail.lunar}:null;
@@ -133,6 +200,8 @@
    decorate();
   });
   window.addEventListener('gdd:people-anniversary-refresh',reload);
+  window.addEventListener('gdd:calendar-quick-saved',reload);
+  window.addEventListener('gdd:calendar-quick-admin-changed',()=>{if(loaded)decorate()});
   reload();
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
