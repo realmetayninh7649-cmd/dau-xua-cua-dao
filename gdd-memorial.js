@@ -255,7 +255,7 @@
         <label>Xuất xứ / nguồn tư liệu<textarea name="sources" placeholder="Sách, Thánh lịnh, bằng cấp, người lưu giữ ảnh…"></textarea></label>
         <label>Đường dẫn ảnh chân dung (nếu có)<input name="portrait_url" type="url" placeholder="https://..."></label>
         <label>Hoặc tải chân dung JPEG, PNG, WebP từ điện thoại<input name="portrait_file" type="file" accept="image/jpeg,image/png,image/webp"></label>
-        <p class="gdd-muted">Ảnh tối đa 6 MB, giữ nguyên bản gốc. Ảnh mới được tải vào kho dao-su-images đang sử dụng.</p>
+        <p class="gdd-muted">Ảnh lớn tự giảm dưới 6 MB khi tải; bản gốc trên điện thoại không bị thay đổi.</p>
         <label class="gdd-published"><input type="checkbox" name="published" checked> Công bố trên website</label>
         <div class="gdd-memorial-admin-actions"><button type="submit" id="gdd-memorial-save">Đăng bài tưởng niệm</button><button type="button" class="gdd-secondary" id="gdd-memorial-new">+ Soạn bài mới</button></div>
         <div id="gdd-memorial-admin-status" class="gdd-memorial-admin-status" role="status" aria-live="polite"></div>
@@ -348,11 +348,11 @@
         const file=form.elements.portrait_file.files?.[0];
         if(file){
           const formats={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
-          if(!formats[file.type])throw Error('Chân dung chỉ nhận JPEG, PNG hoặc WebP.');
-          if(!file.size||file.size>6*1024*1024)throw Error('Chân dung không được vượt 6 MB.');
+          if(!window.GDDImageOptimizer?.detectType(file))throw Error('Chân dung chỉ nhận JPEG, PNG, WebP hoặc HEIC tương thích.');
+          const ready=(await window.GDDImageOptimizer.prepare(file,{onProgress:setStatus})).file;
           setStatus('Đang tải ảnh chân dung…');
-          stagedPath='memorials/'+Date.now()+'-'+(crypto.randomUUID?.()||Math.random().toString(36).slice(2))+'.'+formats[file.type];
-          const {error:upError}=await supa.storage.from(BUCKET).upload(stagedPath,file,{contentType:file.type,upsert:false});
+          stagedPath='memorials/'+Date.now()+'-'+(crypto.randomUUID?.()||Math.random().toString(36).slice(2))+'.'+formats[ready.type];
+          const {error:upError}=await supa.storage.from(BUCKET).upload(stagedPath,ready,{contentType:ready.type,upsert:false});
           if(upError)throw upError;
           obj.portrait_url=supa.storage.from(BUCKET).getPublicUrl(stagedPath).data.publicUrl;
         }
