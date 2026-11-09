@@ -52,7 +52,7 @@
   try{decoded=await loadPixels(file)}
   catch(error){throw Error('Không giải mã được '+file.name+' trên thiết bị này. Hãy thử xuất ảnh sang JPEG rồi chọn lại.')}
   const smallScreen=/iPhone|iPad|Android|Mobile/i.test(navigator.userAgent||'');
-  const maxPixels=smallScreen?18000000:28000000;
+  const maxPixels=smallScreen?15000000:28000000;
   const maxSide=smallScreen?5600:7500;
   const originalPixels=decoded.width*decoded.height;
   const ratio=Math.min(1,Math.sqrt(maxPixels/originalPixels),maxSide/Math.max(decoded.width,decoded.height));
