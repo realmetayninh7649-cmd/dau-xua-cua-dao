@@ -84,7 +84,7 @@
        <div class="gdd-cal-quick-advanced-fields">
          <label>Ghi chú tưởng niệm<textarea name="description" maxlength="4000" placeholder="Ghi chép thêm nếu có…"></textarea></label>
          <label>Liên kết bài tiểu sử (nếu đã đăng)<select name="linked_person_id"><option value="">Chưa có hồ sơ trên Web Đạo</option></select></label>
-         <label>Chân dung (JPG, PNG, WebP, tối đa 6 MB)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
+         <label>Chân dung (ảnh lớn tự tối ưu dưới 6 MB)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
          <label>Hoặc liên kết ảnh<input type="url" name="image_url" placeholder="https://..."></label>
        </div>
      </details>
@@ -245,10 +245,11 @@
   }
   async function uploadPhoto(supa,file){
     const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
-    if(!types[file.type]||!file.size||file.size>6*1024*1024)throw Error('Chân dung cần là JPG/PNG/WebP và không quá 6 MB.');
-    const name='calendar-qui-vi/'+Date.now()+'-'+crypto.randomUUID().replace(/-/g,'').slice(0,12)+'.'+types[file.type];
+    if(!window.GDDImageOptimizer?.detectType(file))throw Error('Chân dung cần là JPG/PNG/WebP hoặc HEIC tương thích.');
+    const ready=(await window.GDDImageOptimizer.prepare(file,{onProgress:feedback})).file;
+    const name='calendar-qui-vi/'+Date.now()+'-'+crypto.randomUUID().replace(/-/g,'').slice(0,12)+'.'+types[ready.type];
     const bucket=supa.storage.from('dao-su-images');
-    const {error}=await bucket.upload(name,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
+    const {error}=await bucket.upload(name,ready,{contentType:ready.type,upsert:false,cacheControl:'3600'});
     if(error)throw error;
     return bucket.getPublicUrl(name).data.publicUrl;
   }
