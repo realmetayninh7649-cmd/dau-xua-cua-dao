@@ -151,7 +151,9 @@ Deno.serve(async req=>{
    const all=calculate(p,m,year,11);
    const common={...cors,"Cache-Control":"public,max-age=600,stale-while-revalidate=3600","X-Calendar-Events":String(all.length)};
    if(url.searchParams.get("format")==="json"){
-     const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+     const pts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+     const ymd=Object.fromEntries(pts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
+     const today=ymd.year+"-"+ymd.month+"-"+ymd.day;
      const items=all.filter(x=>x.solar>=today).slice(0,8).map(x=>({name:x.name,rank:x.rank,solar:x.solar,lunar:x.lunar}));
      return new Response(JSON.stringify({ok:true,years:[year,year+10],count:all.length,upcoming:items}),{headers:{...common,"Content-Type":"application/json;charset=utf-8"}});
    }
