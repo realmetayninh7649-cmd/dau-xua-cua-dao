@@ -257,7 +257,7 @@ panel.innerHTML=`
  <label>Loại chương trình <select name="category"><option value="radio-dao-su">Radio Đạo Sử</option><option value="niem-danh">Niệm danh hiệu</option><option value="thuyet-minh">Bài thuyết minh</option></select></label>
  <label>Số phát thanh<input name="episode_number" type="number" min="1" step="1"></label>
  <label>Ngày phát hành<input name="published_date" type="date"></label>
- <label>Ảnh bìa (ảnh lớn tự tối ưu dưới 6 MB)<input name="cover_file" type="file" accept="image/jpeg,image/png,image/webp"></label>
+ <label>Ảnh bìa (ảnh lớn tự tối ưu dưới 6 MB)<input name="cover_file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"></label>
  <label class="gdd-radio-full">Hoặc đường dẫn ảnh bìa<input name="cover_url" type="url" placeholder="https://..."></label>
  <label class="gdd-radio-full">Tệp MP3 (tối đa 45 MB)<input name="audio_file" type="file" accept="audio/mpeg,.mp3"></label>
  <p class="gdd-radio-full gdd-radio-note">Khi sửa số Radio đã đăng, không cần chọn lại MP3. Tệp trên 6 MB sẽ tải theo từng phần để hạn chế mất mạng.</p>
