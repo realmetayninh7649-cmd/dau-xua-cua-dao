@@ -251,7 +251,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     if(type==='subgroup')return `<label>${escape(label)}<select name="subgroup"><option value="">Chưa phân loại</option>${allSubgroups.map(g=>`<option value="${escape(g)}">${escape(g)}</option>`).join('')}</select></label>`;
     if(type==='person')return `<label>${escape(label)}<select name="person_id"><option value="">Không liên kết</option>${state.data.people.map(p=>`<option value="${escape(p.id)}">${escape(p.full_name)}</option>`).join('')}</select></label>`;
     if(type==='video-file')return `<label>${escape(label)}<input type="file" name="video_file" accept="video/*,.mp4,.webm"></label><p class="help">Chọn tệp MP4 (H.264 khuyên dùng) hoặc WebM, tối đa 45 MB. Tệp MOV từ iPhone cần xuất thành MP4 trước để xem tốt trên Android và máy tính. Với video lớn đã đăng trên Page, hãy dán đường dẫn Facebook vào ô phía trên. Video tải lên sẽ ở kho công khai khi có đường dẫn.</p>`;
-    if(type==='file'){const docs=state.editorKind==='documents';return `<label>${escape(label)}<input type="file" name="file" accept="${docs?'application/pdf,image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp'}"></label><p class="help">${docs?'PDF tối đa 15 MB, ảnh tối đa 6 MB.':'JPEG, PNG hoặc WebP tối đa 6 MB.'} Giữ bản gốc ở nơi lưu trữ riêng.</p>`;}
+    if(type==='file'){const docs=state.editorKind==='documents';return `<label>${escape(label)}<input type="file" name="file" accept="${docs?'application/pdf,image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp'}"></label><p class="help">${docs?'PDF tối đa 15 MB; ảnh lớn tự tối ưu trước khi tải (dưới 6 MB).':'Ảnh JPEG, PNG hoặc WebP lớn tự được tối ưu xuống dưới 6 MB.'} Giữ bản gốc ở nơi lưu trữ riêng.</p>`;}
     if(type==='long'||type==='textarea')return `<label>${escape(label)}<textarea name="${name}" class="${type==='long'?'tall':''}"${req}></textarea></label>`;
     return `<label>${escape(label)}<input type="${type==='url'?'url':'text'}" name="${name}"${req}></label>`;
   }
@@ -267,12 +267,15 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
   async function uploadImage(file,kind){
     if(!file)return '';
     const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','application/pdf':'pdf'};
-    if(!types[file.type] || (file.type==='application/pdf'&&kind!=='documents'))throw new Error('Định dạng không được hỗ trợ.');
-    const sizeLimit=file.type==='application/pdf'?15*1024*1024:6*1024*1024;
-    if(file.size>sizeLimit)throw new Error('Tệp vượt quá dung lượng cho phép.');
-    const bucket=file.type==='application/pdf'?'dao-su-documents':'dao-su-images';
-    const path=`${kind}/${Date.now()}-${Math.random().toString(36).slice(2,11)}.${types[file.type]}`;
-    const {error}=await state.supabase.storage.from(bucket).upload(path,file,{contentType:file.type,upsert:false});
+    if((file.type==='application/pdf'&&kind!=='documents')||(file.type!=='application/pdf'&&!window.GDDImageOptimizer?.detectType(file)))throw new Error('Định dạng không được hỗ trợ.');
+    const isPdf=file.type==='application/pdf';
+    if(isPdf&&file.size>15*1024*1024)throw new Error('PDF vượt quá 15 MB.');
+    const ready=isPdf?file:(await window.GDDImageOptimizer.prepare(file,{onProgress:message=>{
+      const note=$('#form-message');if(note)note.textContent=message;
+    }})).file;
+    const bucket=isPdf?'dao-su-documents':'dao-su-images';
+    const path=`${kind}/${Date.now()}-${Math.random().toString(36).slice(2,11)}.${types[ready.type]}`;
+    const {error}=await state.supabase.storage.from(bucket).upload(path,ready,{contentType:ready.type,upsert:false});
     if(error)throw error;
     return state.supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
   }
@@ -455,10 +458,12 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     try{
       const file=form.elements.attachment.files[0];let filePath=null;
       if(file){
-        if(!fileTypes[file.type])throw new Error('Chỉ nhận ảnh JPEG, PNG, WebP hoặc tệp PDF.');
-        if(file.size>6*1024*1024)throw new Error('Tệp gửi đến tối đa 6 MB.');
-        filePath=`pending/${Date.now()}-${Math.random().toString(36).slice(2,12)}.${fileTypes[file.type]}`;
-        const {error}=await state.supabase.storage.from('dao-su-submissions').upload(filePath,file,{contentType:file.type,upsert:false});
+        const pdf=file.type==='application/pdf';
+        if(!pdf&&!window.GDDImageOptimizer?.detectType(file))throw new Error('Chỉ nhận ảnh JPEG, PNG, WebP, HEIC tương thích hoặc PDF.');
+        if(pdf&&file.size>6*1024*1024)throw new Error('Tệp PDF gửi đến tối đa 6 MB.');
+        const ready=pdf?file:(await window.GDDImageOptimizer.prepare(file,{onProgress:message=>{notice.textContent=message}})).file;
+        filePath=`pending/${Date.now()}-${Math.random().toString(36).slice(2,12)}.${fileTypes[ready.type]}`;
+        const {error}=await state.supabase.storage.from('dao-su-submissions').upload(filePath,ready,{contentType:ready.type,upsert:false});
         if(error)throw error;
       }
       const data={sender_name:form.elements.sender_name.value.trim(),sender_email:form.elements.sender_email.value.trim(),category:form.elements.category.value,title:form.elements.title.value.trim(),description:form.elements.description.value.trim(),source:form.elements.source.value.trim()||null,source_url:form.elements.source_url.value.trim()||null,file_path:filePath,status:'pending'};
