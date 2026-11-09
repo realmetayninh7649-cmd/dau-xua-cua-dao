@@ -251,7 +251,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     if(type==='subgroup')return `<label>${escape(label)}<select name="subgroup"><option value="">Chưa phân loại</option>${allSubgroups.map(g=>`<option value="${escape(g)}">${escape(g)}</option>`).join('')}</select></label>`;
     if(type==='person')return `<label>${escape(label)}<select name="person_id"><option value="">Không liên kết</option>${state.data.people.map(p=>`<option value="${escape(p.id)}">${escape(p.full_name)}</option>`).join('')}</select></label>`;
     if(type==='video-file')return `<label>${escape(label)}<input type="file" name="video_file" accept="video/*,.mp4,.webm"></label><p class="help">Chọn tệp MP4 (H.264 khuyên dùng) hoặc WebM, tối đa 45 MB. Tệp MOV từ iPhone cần xuất thành MP4 trước để xem tốt trên Android và máy tính. Với video lớn đã đăng trên Page, hãy dán đường dẫn Facebook vào ô phía trên. Video tải lên sẽ ở kho công khai khi có đường dẫn.</p>`;
-    if(type==='file'){const docs=state.editorKind==='documents';return `<label>${escape(label)}<input type="file" name="file" accept="${docs?'application/pdf,image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp'}"></label><p class="help">${docs?'PDF tối đa 15 MB, ảnh tối đa 6 MB.':'JPEG, PNG hoặc WebP tối đa 6 MB.'} Giữ bản gốc ở nơi lưu trữ riêng.</p>`;}
+    if(type==='file'){const docs=state.editorKind==='documents';return `<label>${escape(label)}<input type="file" name="file" accept="${docs?'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif':'image/jpeg,image/png,image/webp,image/heic,image/heif'}"></label><p class="help">${docs?'PDF tối đa 15 MB; ảnh gốc lớn tự tối ưu dưới 6 MB.':'JPG/PNG/WebP và HEIC (nếu hỗ trợ) tự tối ưu trước khi lưu dưới 6 MB.'} Giữ bản gốc ở nơi lưu trữ riêng.</p>`;}
     if(type==='long'||type==='textarea')return `<label>${escape(label)}<textarea name="${name}" class="${type==='long'?'tall':''}"${req}></textarea></label>`;
     return `<label>${escape(label)}<input type="${type==='url'?'url':'text'}" name="${name}"${req}></label>`;
   }
@@ -266,10 +266,17 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
   function editRecord(kind,id){state.editorKind=kind;state.editingId=id;closeDetail();$('#admin-overlay').hidden=false;document.body.classList.add('modal-open');buildEditor();$('.admin-panel').scrollTop=120}
   async function uploadImage(file,kind){
     if(!file)return '';
+    if(file.type==='application/pdf'){
+      if(kind!=='documents')throw Error('PDF chỉ dành cho mục Tài liệu số hóa.');
+      if(file.size>15*1024*1024)throw Error('PDF vượt quá 15 MB.');
+    }else{
+      if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
+      file=await window.GDDImageOptimizer.prepare(file,{onStatus:message=>{
+        const el=$('#form-message');if(el)el.textContent=message;
+      }});
+    }
     const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','application/pdf':'pdf'};
-    if(!types[file.type] || (file.type==='application/pdf'&&kind!=='documents'))throw new Error('Định dạng không được hỗ trợ.');
-    const sizeLimit=file.type==='application/pdf'?15*1024*1024:6*1024*1024;
-    if(file.size>sizeLimit)throw new Error('Tệp vượt quá dung lượng cho phép.');
+    if(!types[file.type])throw Error('Tệp không đúng định dạng hỗ trợ.');
     const bucket=file.type==='application/pdf'?'dao-su-documents':'dao-su-images';
     const path=`${kind}/${Date.now()}-${Math.random().toString(36).slice(2,11)}.${types[file.type]}`;
     const {error}=await state.supabase.storage.from(bucket).upload(path,file,{contentType:file.type,upsert:false});
@@ -453,10 +460,15 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     if(!form.reportValidity())return;
     btn.disabled=true;notice.textContent='Đang tiếp nhận tư liệu…';
     try{
-      const file=form.elements.attachment.files[0];let filePath=null;
+      let file=form.elements.attachment.files[0];let filePath=null;
       if(file){
-        if(!fileTypes[file.type])throw new Error('Chỉ nhận ảnh JPEG, PNG, WebP hoặc tệp PDF.');
-        if(file.size>6*1024*1024)throw new Error('Tệp gửi đến tối đa 6 MB.');
+        if(file.type==='application/pdf'){
+          if(file.size>6*1024*1024)throw Error('Tệp PDF gửi đến tối đa 6 MB.');
+        }else{
+          if(!window.GDDImageOptimizer)throw Error('Chưa có bộ tối ưu ảnh, xin tải lại trang.');
+          file=await window.GDDImageOptimizer.prepare(file,{onStatus:msg=>{notice.textContent=msg;}});
+        }
+        if(!fileTypes[file.type])throw Error('Chỉ nhận ảnh JPEG, PNG, WebP hoặc tệp PDF.');
         filePath=`pending/${Date.now()}-${Math.random().toString(36).slice(2,12)}.${fileTypes[file.type]}`;
         const {error}=await state.supabase.storage.from('dao-su-submissions').upload(filePath,file,{contentType:file.type,upsert:false});
         if(error)throw error;

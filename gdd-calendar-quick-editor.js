@@ -84,7 +84,7 @@
        <div class="gdd-cal-quick-advanced-fields">
          <label>Ghi chú tưởng niệm<textarea name="description" maxlength="4000" placeholder="Ghi chép thêm nếu có…"></textarea></label>
          <label>Liên kết bài tiểu sử (nếu đã đăng)<select name="linked_person_id"><option value="">Chưa có hồ sơ trên Web Đạo</option></select></label>
-         <label>Chân dung (JPG, PNG, WebP, tối đa 6 MB)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
+         <label>Chân dung (ảnh lớn sẽ tự tối ưu dưới 6 MB)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif"></label>
          <label>Hoặc liên kết ảnh<input type="url" name="image_url" placeholder="https://..."></label>
        </div>
      </details>
@@ -244,13 +244,15 @@
     });
   }
   async function uploadPhoto(supa,file){
-    const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
-    if(!types[file.type]||!file.size||file.size>6*1024*1024)throw Error('Chân dung cần là JPG/PNG/WebP và không quá 6 MB.');
-    const name='calendar-qui-vi/'+Date.now()+'-'+crypto.randomUUID().replace(/-/g,'').slice(0,12)+'.'+types[file.type];
-    const bucket=supa.storage.from('dao-su-images');
-    const {error}=await bucket.upload(name,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
-    if(error)throw error;
-    return bucket.getPublicUrl(name).data.publicUrl;
+   if(!file)return '';
+   if(!window.GDDImageOptimizer)throw Error('Chưa tải bộ tối ưu ảnh. Xin tải lại trang.');
+   file=await window.GDDImageOptimizer.prepare(file,{onStatus:message=>feedback(message)});
+   const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+   const path='calendar-qui-vi/'+Date.now()+'-'+crypto.randomUUID().replace(/-/g,'').slice(0,12)+'.'+types[file.type];
+   const storage=supa.storage.from('dao-su-images');
+   const {error}=await storage.upload(path,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
+   if(error)throw error;
+   return storage.getPublicUrl(path).data.publicUrl;
   }
   form.addEventListener('submit',async e=>{
     e.preventDefault();if(busy)return;

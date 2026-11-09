@@ -257,7 +257,7 @@ panel.innerHTML=`
  <label>Loại chương trình <select name="category"><option value="radio-dao-su">Radio Đạo Sử</option><option value="niem-danh">Niệm danh hiệu</option><option value="thuyet-minh">Bài thuyết minh</option></select></label>
  <label>Số phát thanh<input name="episode_number" type="number" min="1" step="1"></label>
  <label>Ngày phát hành<input name="published_date" type="date"></label>
- <label>Ảnh bìa (JPG, PNG, WebP; tối đa 6 MB)<input name="cover_file" type="file" accept="image/jpeg,image/png,image/webp"></label>
+ <label>Ảnh bìa (ảnh gốc lớn tự tối ưu dưới 6 MB)<input name="cover_file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif"></label>
  <label class="gdd-radio-full">Hoặc đường dẫn ảnh bìa<input name="cover_url" type="url" placeholder="https://..."></label>
  <label class="gdd-radio-full">Tệp MP3 (tối đa 45 MB)<input name="audio_file" type="file" accept="audio/mpeg,.mp3"></label>
  <p class="gdd-radio-full gdd-radio-note">Khi sửa số Radio đã đăng, không cần chọn lại MP3. Tệp trên 6 MB sẽ tải theo từng phần để hạn chế mất mạng.</p>
@@ -342,15 +342,15 @@ async function uploadMP3(supa,file){
  return storage.getPublicUrl(path).data.publicUrl;
 }
 async function uploadImage(supa,file){
- if(!file)return '';
- const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
- if(!types[file.type])throw Error('Ảnh bìa chỉ nhận JPEG, PNG, WebP.');
- if(!file.size||file.size>6*1024*1024)throw Error('Ảnh bìa vượt giới hạn 6 MB.');
- const path='radio/'+Date.now()+'-'+Math.random().toString(36).slice(2,12)+'.'+types[file.type];
- const storage=supa.storage.from('dao-su-images');
- const {error}=await storage.upload(path,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
- if(error)throw error;
- return storage.getPublicUrl(path).data.publicUrl;
+  if(!file)return '';
+  if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải, xin tải lại website.');
+  file=await window.GDDImageOptimizer.prepare(file,{onStatus:message=>say(message)});
+  const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+  const path='radio/'+Date.now()+'-'+Math.random().toString(36).slice(2,12)+'.'+types[file.type];
+  const storage=supa.storage.from('dao-su-images');
+  const {error}=await storage.upload(path,file,{contentType:file.type,upsert:false,cacheControl:'3600'});
+  if(error)throw error;
+  return storage.getPublicUrl(path).data.publicUrl;
 }
 form.addEventListener('submit',async e=>{
  e.preventDefault();saveButton.disabled=true;
