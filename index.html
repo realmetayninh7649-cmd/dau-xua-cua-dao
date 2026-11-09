@@ -4,6 +4,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script id="gdd-home-top-on-load-2026">
+  /* 09-11-2026: Đến Web Đạo luôn bắt đầu ở đầu Trang Chủ.
+     Refresh: bỏ URL chuyên mục cũ (#...) tránh trình duyệt vào thẳng giữa trang.
+     Link chia sẻ mới đến bài viết/chuyên mục vẫn mở đúng địa chỉ của người gửi. */
+  (() => {
+    'use strict';
+    if (window.__gddInitialHomeTop) return;
+    window.__gddInitialHomeTop = true;
+
+    let reloading = false;
+    try {
+      const entry = performance.getEntriesByType?.('navigation')?.[0];
+      reloading = entry?.type === 'reload' || (!entry && performance.navigation?.type === 1);
+    } catch (_) {}
+
+    const homeHash = hash => !hash || hash === '#trang-chu' || hash === '#dau-trang';
+    const startAtHome = reloading || homeHash(location.hash);
+    if (!startAtHome) return; // Đừng đổi liên kết sâu do người đọc chủ động mở.
+
+    if (reloading && location.hash) {
+      try {
+        history.replaceState(history.state, '', location.pathname + location.search);
+      } catch (_) {}
+    }
+    try { history.scrollRestoration = 'manual'; } catch (_) {}
+
+    let interrupted = false;
+    const stop = () => { interrupted = true; };
+    for (const eventName of ['touchstart', 'wheel', 'pointerdown', 'keydown']) {
+      window.addEventListener(eventName, stop, { once:true, passive:true });
+    }
+    window.addEventListener('hashchange', () => {
+      if (!homeHash(location.hash)) interrupted = true;
+    });
+    const top = () => {
+      if (interrupted || !homeHash(location.hash)) return;
+      window.scrollTo({ top:0, left:0, behavior:'instant' });
+    };
+    // Safari/Chrome có thể khôi phục scroll sau khi DOM được dựng xong.
+    top();
+    document.addEventListener('DOMContentLoaded', () => {
+      top();
+      requestAnimationFrame(top);
+    }, { once:true });
+    window.addEventListener('pageshow', event => {
+      if (!event.persisted) top(); // Bấm Quay lại trên trình duyệt không bị ép lên đầu.
+    });
+    window.addEventListener('load', () => {
+      top();
+      requestAnimationFrame(top);
+    }, { once:true });
+  })();
+  </script>
   <meta name="theme-color" content="#f8f5ed">
   <meta name="description" content="Giữ Đạo Giữa Đời – Dấu Xưa Cửa Đạo, kho tư liệu Đạo sử sưu tầm, biên khảo và lưu giữ tiểu sử, công nghiệp, hình ảnh Chức sắc Cao Đài.">
   <meta property="og:title" content="Giữ Đạo Giữa Đời | Dấu Xưa Cửa Đạo – Kho tư liệu Đạo sử">
