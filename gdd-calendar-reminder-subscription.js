@@ -36,19 +36,19 @@
   const calendar=$('.gdd-calendar'),selected=$('#gdd-cal-selected');
   if(!calendar||!selected||$('#gdd-calendar-reminder-panel'))return;
   const box=document.createElement('section');box.id='gdd-calendar-reminder-panel';
-  box.setAttribute('aria-label','Nhận nhắc ngày kỷ niệm qui vị trước một ngày');
+  box.setAttribute('aria-label','Nhận nhắc lễ cúng và ngày kỷ niệm qui vị trước một ngày');
   box.innerHTML=`
-   <div class="gdd-remind-heading"><span aria-hidden="true">♧</span><span>Nhắc kỷ niệm Chức Sắc</span></div>
-   <p class="gdd-remind-description">Lịch tự quy đổi ngày âm sang ngày dương của <strong>từng năm</strong>. Khi đã thêm lịch vào điện thoại, có thể nhận nhắc <strong>09:00 sáng trước 1 ngày</strong> (giờ Việt Nam), tùy cài đặt thông báo của ứng dụng Lịch.</p>
+   <div class="gdd-remind-heading"><span aria-hidden="true">♧</span><span>Lịch cúng lễ &amp; tưởng niệm</span></div>
+   <p class="gdd-remind-description">Lịch cúng lễ tại Tòa Thánh và ngày kỷ niệm qui vị tự quy đổi ngày âm sang ngày dương của <strong>từng năm</strong>. Khi đã thêm lịch vào điện thoại, có thể nhận nhắc <strong>09:00 sáng trước 1 ngày</strong> (giờ Việt Nam), tùy cài đặt thông báo của ứng dụng Lịch.</p>
    <div class="gdd-remind-actions">
      <button type="button" id="gdd-remind-subscribe">＋ Theo dõi lịch tự cập nhật</button>
      <button type="button" id="gdd-remind-download">↓ Tải lịch có lời nhắc</button>
      <button type="button" id="gdd-remind-copy">⧉ Sao chép liên kết lịch</button>
    </div>
-   <p class="gdd-remind-status" id="gdd-remind-status" role="status" aria-live="polite">Bản theo dõi có thể nhận cập nhật khi Web Đạo đăng thêm ngày kỷ niệm.</p>
+   <p class="gdd-remind-status" id="gdd-remind-status" role="status" aria-live="polite">Bản theo dõi sẽ nhận ngày lễ và ngày kỷ niệm mới khi ứng dụng Lịch đồng bộ.</p>
    <div class="gdd-remind-coming" id="gdd-remind-coming">
-     <strong>Những ngày kỷ niệm sắp tới (đã quy đổi sang dương lịch)</strong>
-     <ul><li>Đang tải các ngày kỷ niệm đã công bố…</li></ul>
+     <strong>Những ngày lễ cúng và kỷ niệm sắp tới (theo dương lịch)</strong>
+     <ul><li>Đang tải ngày lễ và ngày tưởng niệm…</li></ul>
    </div>
    <details id="gdd-remind-help">
      <summary>Cách bật lời nhắc trên iPhone và Android</summary>
@@ -108,7 +108,7 @@
         const summary=document.createTextNode(' · '+String(e.name||'Chức Sắc')+' (âm '+String(e.lunar||'')+')');
         li.append(date,summary);list.append(li);
       }
-      if(!json.upcoming.length){const li=document.createElement('li');li.textContent='Chưa có ngày kỷ niệm sắp tới được xác định.';list.append(li)}
+      if(!json.upcoming.length){const li=document.createElement('li');li.textContent='Chưa có ngày lễ hoặc kỷ niệm sắp tới được ghi nhận.';list.append(li)}
     }catch{
       list.replaceChildren();
       const li=document.createElement('li');li.textContent='Chưa tải được danh sách sắp tới. Vẫn có thể đăng ký hoặc tải lịch ở trên.';list.append(li);
