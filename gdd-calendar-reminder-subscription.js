@@ -95,6 +95,23 @@
     if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return iso;
     const [y,m,d]=iso.split('-');return d+'/'+m+'/'+y;
   }
+
+  function nameOfLunarYear(y){
+    const year=Number(y);
+    if(!Number.isInteger(year)||year<1800||year>2200)return '';
+    const can=['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+    const chi=['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+    return can[(year+6)%10]+' '+chi[(year+8)%12];
+  }
+  function labelLunar(event){
+    const raw=String(event.lunar||'');
+    const parts=raw.match(/^(\d{1,2})\/(\d{1,2})( nhuận)?\/(\d{4})$/);
+    if(!parts)return raw;
+    // Lunar year is calculated for the specific date, not copied from the Gregorian year.
+    const year=Number(event.lunarYear)||Number(parts[4]);
+    const canChi=event.lunarCanChi||nameOfLunarYear(year);
+    return parts[1]+'/'+parts[2]+(parts[3]||'')+' năm '+canChi+' ('+year+')';
+  }
   async function upcoming(){
     try{
       const response=await fetch(endpoint+'?format=json',{cache:'no-store'});
@@ -105,7 +122,7 @@
       for(const e of json.upcoming.slice(0,5)){
         const li=document.createElement('li');
         const date=document.createElement('time');date.dateTime=e.solar;date.textContent=dateVN(e.solar);
-        const summary=document.createTextNode(' · '+String(e.name||'Chức Sắc')+' (âm '+String(e.lunar||'')+')');
+        const summary=document.createTextNode(' · '+String(e.name||'Chức Sắc')+' (âm '+labelLunar(e)+')');
         li.append(date,summary);list.append(li);
       }
       if(!json.upcoming.length){const li=document.createElement('li');li.textContent='Chưa có ngày lễ hoặc kỷ niệm sắp tới được ghi nhận.';list.append(li)}
