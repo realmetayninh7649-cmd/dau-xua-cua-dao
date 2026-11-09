@@ -183,6 +183,36 @@
     .gdd-visitor-unit>span:nth-child(2){font-size:9px;}
   }
 
+
+  /* Khung Lịch Âm – Dương: mây cách điệu nét vàng đồng chìm trên nền kem.
+     SVG vector nhỏ, không gọi máy chủ ngoài, không che vùng tương tác. */
+  .gdd-archive-dashboard .gdd-calendar{
+    background-color:#fffdf8;
+    background-image:
+      url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20360%20180%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22360%22%20y2%3D%22160%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23C29A56%22%20stop-opacity%3D%22.09%22%2F%3E%3Cstop%20offset%3D%22.48%22%20stop-color%3D%22%23B58C4C%22%20stop-opacity%3D%22.38%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23C29A56%22%20stop-opacity%3D%22.08%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20stroke%3D%22url(%23g)%22%20stroke-width%3D%222.6%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M5%20137H77c19%200%2030-12%2030-24%200-11-9-20-21-20-10%200-17%206-17%2014%200%207%205%2011%2011%2011%206%200%2010-5%209-9%22%2F%3E%3Cpath%20d%3D%22M94%20137h71c23%200%2037-14%2037-31%200-14-12-26-28-26-14%200-23%208-23%2019%200%208%206%2013%2013%2013%208%200%2013-5%2012-12%22%2F%3E%3Cpath%20d%3D%22M182%20137h86c22%200%2036-11%2036-25%200-12-11-22-24-22-12%200-19%207-19%2016%200%207%206%2011%2012%2010%22%2F%3E%3Cpath%20d%3D%22M26%20154h176m26%200h112%22%2F%3E%3Cpath%20d%3D%22M69%2080c9-18%2027-27%2048-24%208-27%2040-41%2067-27%2013-23%2043-30%2066-14%2011%208%2017%2018%2020%2029%2020-5%2042%209%2045%2029%22%2F%3E%3Cpath%20d%3D%22M106%2076c8-9%2022-14%2035-9%2013-20%2038-28%2058-16%2015-13%2034-12%2047-2%22%2F%3E%3Cpath%20d%3D%22M225%2024c-5-13-20-19-31-12-8%205-9%2015-3%2019%22%2F%3E%3Cpath%20d%3D%22M303%2080c18-6%2039%206%2045%2022%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+      url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20360%20180%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22360%22%20y2%3D%22160%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23C29A56%22%20stop-opacity%3D%22.09%22%2F%3E%3Cstop%20offset%3D%22.48%22%20stop-color%3D%22%23B58C4C%22%20stop-opacity%3D%22.38%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23C29A56%22%20stop-opacity%3D%22.08%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22translate(360%200)%20scale(-1%201)%22%20stroke%3D%22url(%23g)%22%20stroke-width%3D%222.6%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M5%20137H77c19%200%2030-12%2030-24%200-11-9-20-21-20-10%200-17%206-17%2014%200%207%205%2011%2011%2011%206%200%2010-5%209-9%22%2F%3E%3Cpath%20d%3D%22M94%20137h71c23%200%2037-14%2037-31%200-14-12-26-28-26-14%200-23%208-23%2019%200%208%206%2013%2013%2013%208%200%2013-5%2012-12%22%2F%3E%3Cpath%20d%3D%22M182%20137h86c22%200%2036-11%2036-25%200-12-11-22-24-22-12%200-19%207-19%2016%200%207%206%2011%2012%2010%22%2F%3E%3Cpath%20d%3D%22M26%20154h176m26%200h112%22%2F%3E%3Cpath%20d%3D%22M69%2080c9-18%2027-27%2048-24%208-27%2040-41%2067-27%2013-23%2043-30%2066-14%2011%208%2017%2018%2020%2029%2020-5%2042%209%2045%2029%22%2F%3E%3Cpath%20d%3D%22M106%2076c8-9%2022-14%2035-9%2013-20%2038-28%2058-16%2015-13%2034-12%2047-2%22%2F%3E%3Cpath%20d%3D%22M225%2024c-5-13-20-19-31-12-8%205-9%2015-3%2019%22%2F%3E%3Cpath%20d%3D%22M303%2080c18-6%2039%206%2045%2022%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+      linear-gradient(150deg,#fffefa 0%,#fbf7ec 57%,#fffdf8 100%);
+    background-repeat:no-repeat,no-repeat,no-repeat;
+    background-position:right -18px top 50px,left -30px bottom 47px,center;
+    background-size:clamp(155px,19vw,230px) auto,clamp(170px,22vw,270px) auto,cover;
+    background-origin:padding-box;
+    border-color:#d8c8a6;
+    box-shadow:inset 0 0 0 1px rgba(190,156,94,.10),0 4px 13px rgba(29,57,45,.04);
+  }
+  .gdd-archive-dashboard .gdd-calendar .gdd-panel-head{border-bottom-color:rgba(178,147,91,.25)}
+  @media(max-width:600px){
+    .gdd-archive-dashboard .gdd-calendar{
+      background-position:right -42px top 40px,left -54px bottom 40px,center;
+      background-size:140px auto,155px auto,cover;
+    }
+  }
+  @media(max-width:360px){
+    .gdd-archive-dashboard .gdd-calendar{
+      background-position:right -58px top 35px,left -62px bottom 30px,center;
+      background-size:130px auto,143px auto,cover;
+    }
+  }
+
   /* Điện thoại: ban đầu chỉ hiện lịch hôm nay, bấm để xem đủ tháng. */
   .gdd-cal-toggle{display:none;margin-left:auto;cursor:pointer;border:1px solid #d9d1bf;border-radius:5px;padding:5px 8px;background:#f3f0e7;color:#225447;font:600 10px/1.3 'Be Vietnam Pro',sans-serif;white-space:nowrap}
   @media(max-width:600px){
