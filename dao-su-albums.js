@@ -1,6 +1,6 @@
 /* GIỮ ĐẠO GIỮA ĐỜI — Thư viện ảnh tư liệu nhiều ảnh (2026-11-03)
    Bổ sung độc lập: không đổi các bảng hay bộ mã hiện có. Yêu cầu chạy SQL migration.
-   Chỉ tài khoản quản trị được tải lên và biên tập. Ảnh gốc không bị nén. */
+   Chỉ tài khoản quản trị được tải lên và biên tập. Ảnh được tối ưu trước khi lưu; ảnh gốc trên máy giữ nguyên. */
 (() => {
   'use strict';
   if (window.__gddAlbumsLoaded) return;
@@ -19,7 +19,6 @@
   };
   const FILE_EXT = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
   const MAX_FILES = 30;
-  const MAX_SIZE = 6 * 1024 * 1024;
   let clientPromise = null;
   let editing = null;
   let editorSeq = 0, detailSeq = 0;
@@ -172,8 +171,8 @@
     if(pendingFiles.length>MAX_FILES)throw Error(`Mỗi lần đăng chọn tối đa ${MAX_FILES} ảnh.`);
     for(const item of pendingFiles){
       const f=item.file;
-      if(!FILE_EXT[f.type])throw Error(`Ảnh ${f.name} không đúng định dạng. Chỉ nhận JPEG, PNG, WebP.`);
-      if(!f.size||f.size>MAX_SIZE)throw Error(`Ảnh ${f.name} vượt quá 6 MB hoặc là tệp trống.`);
+      if(!window.GDDImageOptimizer?.detectType(f))throw Error(`Ảnh ${f.name} không đúng định dạng. Chỉ nhận JPEG, PNG, WebP hoặc HEIC tương thích.`);
+      if(!f.size)throw Error(`Ảnh ${f.name} là tệp trống.`);
     }
     return true;
   }
@@ -221,7 +220,7 @@
     panel.dataset.context=context;
     panel.innerHTML=`
       <h3>Bộ ảnh tư liệu kèm theo</h3>
-      <p class="gdd-album-note">Có thể chọn <b>nhiều ảnh ngay khi soạn bài mới</b> — không cần đăng xong rồi bấm Sửa. Chọn tối đa ${MAX_FILES} ảnh/lượt (JPEG/PNG/WebP, 6 MB/ảnh), sau đó nhấn <b>Đăng tư liệu</b> một lần. Ảnh bìa chính vẫn chọn riêng ở phía trên.</p>
+      <p class="gdd-album-note">Có thể chọn <b>nhiều ảnh ngay khi soạn bài mới</b> — không cần đăng xong rồi bấm Sửa. Chọn tối đa ${MAX_FILES} ảnh/lượt (JPEG/PNG/WebP; ảnh lớn tự giảm dưới 6 MB), sau đó nhấn <b>Đăng tư liệu</b> một lần. Ảnh bìa chính vẫn chọn riêng ở phía trên.</p>
       <label class="gdd-album-field">Chọn nhiều ảnh từ album iPhone hoặc ứng dụng Tệp
         <input type="file" id="gdd-album-files" accept="image/jpeg,image/png,image/webp" multiple>
       </label>
@@ -318,9 +317,13 @@
         const msg=`Đang tải ảnh ${n}/${files.length}: ${item.file.name}. Đừng đóng trang.`;
         setStatus(msg);onProgress?.(msg);
         const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
-        const path=`${kind}/${Date.now()}-${suffix}.${FILE_EXT[item.file.type]}`;
-        const {error:upError}=await supa.storage.from('dao-su-images').upload(path,item.file,
-          {contentType:item.file.type,cacheControl:'3600',upsert:false});
+        const ready=(await window.GDDImageOptimizer.prepare(item.file,{onProgress:message=>{
+          setStatus('Ảnh '+n+'/'+files.length+': '+message);
+          onProgress?.('Ảnh '+n+'/'+files.length+': '+message);
+        }})).file;
+        const path=`${kind}/${Date.now()}-${suffix}.${FILE_EXT[ready.type]}`;
+        const {error:upError}=await supa.storage.from('dao-su-images').upload(path,ready,
+          {contentType:ready.type,cacheControl:'3600',upsert:false});
         if(upError)throw upError;
         const url=supa.storage.from('dao-su-images').getPublicUrl(path).data.publicUrl;
         const next=++position;
@@ -334,7 +337,7 @@
         item.saved=true;done++;
         setStatus(`Đã tải ${done}/${files.length} ảnh…`);
       }
-      const msg=`Đã lưu thành công ${done} ảnh vào bài. Giữ nguyên tệp ảnh gốc.`;
+      const msg=`Đã lưu thành công ${done} ảnh vào bài. Ảnh gốc trên thiết bị được giữ nguyên.`;
       setStatus(msg);onProgress?.(msg);
     }catch(err){
       setStatus(`Đã lưu ${done} ảnh; còn ${pendingFiles.filter(x=>!x.saved).length} ảnh chưa tải. Lỗi: ${err.message||err}`);
