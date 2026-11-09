@@ -84,7 +84,7 @@
        <div class="gdd-cal-quick-advanced-fields">
          <label>Ghi chú tưởng niệm<textarea name="description" maxlength="4000" placeholder="Ghi chép thêm nếu có…"></textarea></label>
          <label>Liên kết bài tiểu sử (nếu đã đăng)<select name="linked_person_id"><option value="">Chưa có hồ sơ trên Web Đạo</option></select></label>
-         <label>Chân dung (ảnh lớn tự tối ưu dưới 6 MB)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
+         <label>Chân dung (ảnh lớn tự tối ưu dưới 6 MB)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"></label>
          <label>Hoặc liên kết ảnh<input type="url" name="image_url" placeholder="https://..."></label>
        </div>
      </details>
