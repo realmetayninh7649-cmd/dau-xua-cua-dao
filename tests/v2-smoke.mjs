@@ -96,12 +96,20 @@ async function checkPage(label,width,height){
     await portrait.waitFor({timeout:20000});
     await page.evaluate(()=>{
       window.__v2PreviewClicks=[];
-      document.addEventListener('click',event=>{
-        const button=event.target.closest?.('[data-preview-section] [data-open-kind]');
-        if(button)window.__v2PreviewClicks.push({kind:button.dataset.openKind,id:button.dataset.id,time:Date.now()});
-      },true);
+      for(const type of ['pointerdown','pointerup','click']){
+        document.addEventListener(type,event=>{
+          const target=event.target;
+          const button=target.closest?.('[data-open-kind]');
+          window.__v2PreviewClicks.push({type,target:target.tagName,id:target.id||'',
+            classes:String(target.className||'').slice(0,70),
+            buttonId:button?.dataset.id||'',time:Date.now()});
+          if(window.__v2PreviewClicks.length>20)window.__v2PreviewClicks.shift();
+        },true);
+      }
     });
     await portrait.click();
+    // Kiểm tra kết quả click bằng chuột/touch; ghi chẩn đoán trước khi đợi QR.
+    await page.waitForTimeout(250);
     try{
       await page.locator('#detail-overlay:not([hidden]) .gdd-archive-qr').waitFor({timeout:12000});
     }catch(error){
