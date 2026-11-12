@@ -37,10 +37,26 @@
     for(const id of ['chuc-sac','video-dao-su','ai-tin','tai-lieu-so-hoa','bien-khao','hinh-anh']){
       const section=byId(id);if(section)primary.append(section);
     }
+    // Đường vào cổng tra cứu luôn thấy trong thanh điều hướng chính.
+    const nav=byId('main-nav'),homeLink=nav?.querySelector('a[href="#trang-chu"]');
+    if(homeLink&&!nav.querySelector('a[href="#gdd-v2-search"]')){
+      const searchLink=document.createElement('a');searchLink.href='#gdd-v2-search';
+      searchLink.textContent='Tra cứu';homeLink.insertAdjacentElement('afterend',searchLink);
+      searchLink.addEventListener('click',()=>{
+        nav.classList.remove('is-open');
+        byId('menu-toggle')?.setAttribute('aria-expanded','false');
+      });
+    }
     const audio=byId('am-thanh-dai-dao');if(audio)aside.append(audio);
     const dashboard=byId('gdd-archive-dashboard');
     let statistics=dashboard?.querySelector('.gdd-statistics')||null;
-    if(dashboard)aside.append(dashboard);
+    if(dashboard){
+      const heading=dashboard.querySelector('.gdd-dash-heading h2');
+      const subheading=dashboard.querySelector('.gdd-dash-heading p');
+      if(heading)heading.textContent='Lịch Âm – Dương';
+      if(subheading)subheading.textContent='Xem lịch hôm nay, ngày qui vị và những lễ Đạo sắp đến.';
+      aside.append(dashboard);
+    }
     const support=document.createElement('div');
     support.id='gdd-v2-support';support.className='gdd-v2-support';
     support.innerHTML='<div class="gdd-v2-end-heading"><span>ĐỒNG HÀNH GÌN GIỮ SỬ LIỆU</span><h2>Góp tư liệu &amp; Bồi dưỡng chuyên môn</h2></div><div id="gdd-v2-support-items" class="gdd-v2-support-items"></div>';
