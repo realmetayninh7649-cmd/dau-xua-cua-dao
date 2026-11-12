@@ -42,3 +42,15 @@ dialog.gdd-learning-dialog::backdrop{background:#121212c9}
 .gdd-learning-dialog-actions{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:13px}
 .gdd-learning-dialog-actions a{color:#185847;font-weight:600}
 @media(max-width:720px){.gdd-learning-section .gdd-learning-feature{grid-template-columns:1fr;padding:16px;gap:18px}.gdd-learning-section .gdd-learning-badge-art{max-width:275px;margin:auto}.gdd-learning-section .gdd-learning-extra{flex-direction:column;align-items:flex-start;padding:17px}.gdd-learning-section .gdd-learning-catalog>summary{padding:15px;font-size:15px}.gdd-learning-section .gdd-learning-catalog-body{padding:10px 15px 16px}.gdd-learning-section .gdd-learning-course-button,.gdd-learning-section .gdd-learning-course-unavailable{flex-direction:column;align-items:flex-start;gap:2px}.gdd-learning-dialog-inner{padding:10px}}
+
+
+/* HP LIFE: tên khóa học song ngữ và khung xem không có nút tải. */
+.gdd-learning-section .gdd-learning-course-title{display:flex;flex-direction:column;gap:2px;min-width:0}
+.gdd-learning-section .gdd-learning-course-title strong{font:inherit;display:block}
+.gdd-learning-section .gdd-learning-course-title em{display:block;font-style:normal;font-weight:400;font-size:12px;line-height:1.65;color:#736858}
+.gdd-learning-section .gdd-learning-course-button small{flex-shrink:0}
+.gdd-learning-section .gdd-learning-badge-art img{-webkit-user-select:none;user-select:none;-webkit-user-drag:none;-webkit-touch-callout:none}
+.gdd-learning-dialog .gdd-learning-dialog-image-wrap{position:relative;overflow:hidden;background:#fff;border:1px solid #eee5d7;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.gdd-learning-dialog .gdd-learning-dialog-image{border:0;pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+.gdd-learning-dialog .gdd-learning-dialog-image-wrap::after{content:"CHỈ XEM · GIỮ ĐẠO GIỮA ĐỜI";position:absolute;bottom:8px;right:8px;max-width:90%;font:600 10px/1.5 'Be Vietnam Pro',system-ui,sans-serif;color:#584a39;background:#ffffffe0;border:1px solid #d9d1c5;border-radius:4px;padding:4px 7px;pointer-events:none}
+.gdd-learning-dialog .gdd-learning-view-only{font:400 12px/1.7 'Be Vietnam Pro',system-ui,sans-serif;color:#74695b;margin:10px 0 2px;text-align:center}
