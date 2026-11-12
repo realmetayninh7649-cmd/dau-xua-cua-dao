@@ -12,6 +12,11 @@ ALTER TABLE public.people ALTER COLUMN archive_code DROP NOT NULL;
 -- Có thể chạy lại an toàn khi dãy số đã tồn tại (không hạ số đang cấp).
 CREATE SEQUENCE IF NOT EXISTS public.gdd_person_ctd_global_seq AS bigint START WITH 1 INCREMENT BY 1 MINVALUE 1;
 CREATE SEQUENCE IF NOT EXISTS public.gdd_person_htd_global_seq AS bigint START WITH 1 INCREMENT BY 1 MINVALUE 1;
+-- Chỉ tài khoản đã xác thực mới được dùng sequence khi RLS cho phép đăng bài.
+REVOKE ALL ON SEQUENCE public.gdd_person_ctd_global_seq, public.gdd_person_htd_global_seq
+  FROM PUBLIC, anon;
+GRANT USAGE ON SEQUENCE public.gdd_person_ctd_global_seq, public.gdd_person_htd_global_seq
+  TO authenticated, service_role;
 
 -- Xác nhận chốt đầu dòng và bản tạm rút trước khi thay mã cũ.
 DO $check$
