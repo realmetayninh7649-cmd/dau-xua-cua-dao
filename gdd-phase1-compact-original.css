@@ -26,14 +26,12 @@
 /* Giữ đúng màu nền, chữ và viền gốc; chỉ thay chiều rộng/khoảng cách. */
 body.gdd-p1-ready .gdd-p1-side-intro{background:var(--green)!important;border-color:var(--green)!important}
 body.gdd-p1-ready .gdd-p1-panel,
-body.gdd-p1-ready #gdd-p1-main #gdd-directory,
-body.gdd-p1-ready .gdd-p1-support-links a{
-  background:var(--white)!important;border-color:var(--line)!important
-}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory{background:#f7f5ef!important;border-color:var(--line)!important} /* Nền gốc homepage-previews.js */
+body.gdd-p1-ready .gdd-p1-support-links a{background:var(--white)!important;border-color:var(--line)!important}
 body.gdd-p1-ready .gdd-p1-panel>summary{background:var(--paper)!important;color:var(--green)!important}
 body.gdd-p1-ready .gdd-p1-support{background:var(--paper)!important;border-color:var(--line)!important}
 body.gdd-p1-ready .gdd-p1-statistics{background:var(--paper)!important;border-color:var(--line)!important}
-body.gdd-p1-ready .footer{background:var(--green)!important}
+body.gdd-p1-ready .footer{background:#153e38!important} /* Màu chân trang gốc styles.css */
 body.gdd-p1-ready #gdd-p1-main .gdd-memorial-shell{
   background:linear-gradient(125deg,#f3f1e9,#faf8f2 53%,#efece2)!important
 }
