@@ -30,12 +30,12 @@
     iridescent.addColorStop(.66,'#c9cbf1');
     iridescent.addColorStop(.82,'#f3cbb9');
     iridescent.addColorStop(1,'#c0e6f1');
-    ctx.globalAlpha=.22;
+    ctx.globalAlpha=.16;
     ctx.fillStyle=iridescent;
     frame();ctx.fill();
 
     // Hai viền kép và guilloché/đường an ninh sóng mịn.
-    ctx.globalAlpha=.43;
+    ctx.globalAlpha=.31;
     ctx.strokeStyle='#f6faff';
     ctx.lineWidth=Math.max(1,ribbonHeight*.012);
     frame();ctx.stroke();
@@ -50,7 +50,7 @@
       const y0=top+ribbonHeight*(line+.5)/waves;
       ctx.beginPath();
       ctx.strokeStyle=line%3===0?'#f6f9ff':line%3===1?'#b5ddf8':'#e9bcda';
-      ctx.globalAlpha=line%3===0?.42:.32;
+      ctx.globalAlpha=line%3===0?.31:.24;
       ctx.lineWidth=Math.max(.65,ribbonHeight*.006);
       for(let step=0;step<=segments;step++){
         const frac=step/segments;
@@ -78,12 +78,12 @@
     tint.addColorStop(.53,'#fcf1c8');
     tint.addColorStop(.75,'#f1faff');
     tint.addColorStop(1,'#fae8f9');
-    ctx.globalAlpha=.40;
+    ctx.globalAlpha=.30;
     ctx.strokeStyle='#7b819d';
     ctx.lineJoin='round';
     ctx.lineWidth=Math.max(.7,fontSize*.11);
     ctx.strokeText(LABEL,0,ribbonHeight*.015);
-    ctx.globalAlpha=.79;
+    ctx.globalAlpha=.39;
     ctx.fillStyle=tint;
     ctx.shadowColor='#f3eaf8';
     ctx.shadowBlur=Math.max(1,ribbonHeight*.04);
@@ -121,7 +121,7 @@
     if(width<1||height<1)throw new Error('Ảnh không có kích thước hợp lệ.');
     const canvas=document.createElement('canvas');
     canvas.width=width;canvas.height=height;
-    const ctx=canvas.getContext('2d',{alpha:false});
+    const ctx=canvas.getContext('2d',{alpha:true});
     if(!ctx)throw new Error('Thiết bị không hỗ trợ xuất ảnh có dấu ở độ phân giải này.');
     ctx.drawImage(image,0,0,width,height);
     drawSeal(ctx,width,height);
@@ -141,7 +141,7 @@
     name=name.replace(/\.(?:jpe?g|png|webp|gif|avif|bmp)$/i,'');
     if(!name)name=label||'chuc-sac';
     name=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d')
-      .replace(/[^a-zA-Z0-9-_]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||'chuc-sac';
+      .replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||'chuc-sac';
     return name+'-giu-dao-giua-doi.'+extension;
   }
 
