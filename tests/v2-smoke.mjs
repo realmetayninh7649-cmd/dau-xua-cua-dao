@@ -16,6 +16,7 @@ async function checkPage(label,width,height){
     if(await page.locator('#gdd-v2-main #chuc-sac').count())throw Error('Trang Chủ đang bung chuyên mục Chức sắc đầy đủ');
     await page.locator('#gdd-v2-audio-panel').waitFor({timeout:15000});
     await page.locator('#gdd-v2-calendar-panel').waitFor({timeout:15000});
+    const collapsedHomeHeight=await page.evaluate(()=>document.documentElement.scrollHeight);
     const audioPanel=page.locator('#gdd-v2-audio-panel'),calendarPanel=page.locator('#gdd-v2-calendar-panel');
     if(width<=900){
       if(await audioPanel.getAttribute('open')!==null)throw Error('Cột phụ âm thanh trên mobile chưa được thu gọn');
@@ -60,7 +61,7 @@ async function checkPage(label,width,height){
     if(width<=900&&!layout.sideBelow)throw Error('Cột phụ đang chèn vào giữa nội dung trên điện thoại');
     if(layout.overflow>3)throw Error('Nội dung tràn ngang: '+layout.overflow);
     if(layout.audioItemOverflow)throw Error('Một thẻ radio bị tràn chữ');
-    if(layout.pageHeight>10500)throw Error('Trang Chủ vẫn quá dài: '+layout.pageHeight+'px');
+    if(collapsedHomeHeight>10500)throw Error('Trang Chủ vẫn quá dài khi tiện ích gấp gọn: '+collapsedHomeHeight+'px');
     if(!layout.footer)throw Error('Thiếu phần phiên bản GitHub cuối trang');
     // Các nút đổi tháng, ngày lịch và điều khiển âm thanh vẫn hoạt động sau khi chuyển cột.
     if(width<=600){
@@ -122,7 +123,8 @@ async function checkPage(label,width,height){
       throw Error('Tên file QR PNG chưa đúng: '+qrFile.suggestedFilename());
     await page.locator('[data-close="detail"]').last().click().catch(()=>{});
     // Truy cập một chuyên mục: menu chỉ mở nội dung đầy đủ khi người xem yêu cầu.
-    await page.evaluate(()=>{location.hash='#chuc-sac'});
+    await page.evaluate(()=>{location.hash='#trang-chu';window.GDDApplySectionRoute?.()});
+    await page.evaluate(()=>{location.hash='#chuc-sac';window.GDDApplySectionRoute?.()});
     try{await page.locator('main > #chuc-sac:not([hidden])').waitFor({timeout:10000});}
     catch(error){
       const debug=await page.evaluate(()=>{
