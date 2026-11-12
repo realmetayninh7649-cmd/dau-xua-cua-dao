@@ -10,7 +10,7 @@
 
   // Ảnh tem do chủ kho tư liệu cung cấp, tách nền và lưu ngay trong GitHub Pages.
   // Không vẽ chữ hoặc đường vân bằng Canvas: dùng đúng chi tiết của tem mẫu.
-  const sealURL=new URL('assets/gdd-guilloche-hologram.avif?v=20261113-asset01',document.baseURI).href;
+  const sealURL=new URL('assets/gdd-guilloche-7-mau.png?v=20261113-corner-05',document.baseURI).href;
   let sealImage=null,sealPending=null;
   function ensureSeal(){
     if(sealImage&&sealImage.complete&&sealImage.naturalWidth)return Promise.resolve(sealImage);
@@ -29,19 +29,22 @@
   }
   function drawSeal(ctx,width,height){
     if(!sealImage?.naturalWidth)throw new Error('Tem hologram chưa sẵn sàng.');
-    // Neo theo 4 góc của chính TẤM ẢNH, không theo khung hiển thị:
-    // chữ bắt đầu sát mép trái ở nửa dưới và kết thúc cách đáy khoảng 2.5%.
-    // Cùng phép tính được dùng cho bản xem và bản tải xuống.
+    // Chức Sắc: hai mép tem BÁM THEO MÉP TRÁI và MÉP DƯỚI ẢNH THẬT
+    // (không phụ thuộc kích thước màn hình). Dùng CHUNG cho Xem ảnh và Tải ảnh.
+    // Độ dài tính theo cạnh ảnh: tem lớn/nhỏ tự thích ứng, không lơ lửng.
     const angle=Math.PI/4;
-    const span=Math.min(width*.68,height*.50);
+    const leg=Math.min(width*.45,height*.37);
+    const span=leg/Math.SQRT1_2;
     const bandHeight=span*(sealImage.naturalHeight/sealImage.naturalWidth);
-    const left=width*.012+bandHeight*.5*Math.sin(angle);
-    const top=height*.975-span*Math.sin(angle)-bandHeight*.5*Math.cos(angle);
+    const inset=Math.max(2,Math.min(width,height)*.012);
+    // Tọa độ hình chữ nhật sau xoay: x_min=inset, y_max=height-inset.
+    const left=inset+bandHeight*.5*Math.sin(angle);
+    const top=height-inset-leg-bandHeight*.5*Math.cos(angle);
     ctx.save();
     ctx.translate(left,top);
     ctx.rotate(angle);
-    // PNG gốc có alpha trong suốt; giữ đường vân và chữ đủ sáng, không phủ nền.
-    ctx.globalAlpha=.82;
+    // Giữ nét tem 7 màu, hạ độ phủ để vẫn nhìn rõ nền chân dung.
+    ctx.globalAlpha=.70;
     ctx.imageSmoothingEnabled=true;
     if('imageSmoothingQuality' in ctx)ctx.imageSmoothingQuality='high';
     ctx.drawImage(sealImage,0,-bandHeight/2,span,bandHeight);
