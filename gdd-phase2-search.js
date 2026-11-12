@@ -149,7 +149,10 @@
   function computeResults(){
    const q=norm($('#gdd-p2-q').value),tokens=q.split(' ').filter(Boolean);
    const branch=$('#gdd-p2-branch').value,rank=$('#gdd-p2-rank').value,kind=$('#gdd-p2-kind').value;
+   const matchesCurrentCode=q.startsWith('cs ')&&data.rows.some(item=>
+     item.kind==='people'&&norm(item.code)===q);
    const narrowed=data.rows.filter(item=>{
+     if(matchesCurrentCode)return item.kind==='people'&&norm(item.code)===q;
      if(kind!=='all'&&item.kind!==kind)return false;
      if(branch!=='all'&&item.branch!==branch)return false;
      if(rank!=='all'&&item.rank!==rank)return false;
