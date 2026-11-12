@@ -174,9 +174,9 @@
   window.__gddSectionRouter=true;
 
   const sectionList=[
+    ['ai-tin','Ai Tín','Tin tưởng niệm và sử liệu về người qui vị'],
     ['chuc-sac','Hồ sơ Chức sắc','Tiểu sử, phẩm vị và công nghiệp của bậc tiền nhân'],
     ['video-dao-su','Video Đạo Sử','Thước phim, ký sự và lời thuyết minh'],
-    ['ai-tin','Ai Tín','Tin tưởng niệm và sử liệu về người qui vị'],
     ['tai-lieu-so-hoa','Tài liệu số hóa','Thánh Lịnh, văn kiện và bản chụp lưu trữ'],
     ['bien-khao','Biên khảo','Những bài khảo cứu, đối chiếu sử liệu'],
     ['hinh-anh','Hình ảnh','Di ảnh, kỷ vật và tư liệu lịch sử'],
@@ -230,6 +230,10 @@
     .gdd-route-path a:hover{text-decoration:underline}
     .gdd-route-path span{margin-left:8px}
     body.gdd-separate-sections main > section.section{padding-top:34px}
+    /* Ai Tín ngay dưới Tưởng Niệm: cho thẻ trải hàng trên màn hình desktop, không chừa khoảng trống. */
+    @media(min-width:1250px){
+      body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="ai-tin"]{grid-column:1/-1!important}
+    }
     @media(max-width:920px){.gdd-preview-cards{grid-template-columns:1fr}.gdd-preview-thumb{width:160px;min-width:160px}}
     @media(max-width:560px){
       .gdd-directory{padding:35px 0 48px}.gdd-directory-inner,.gdd-route-path{width:calc(100% - 32px)}
