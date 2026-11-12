@@ -15,6 +15,21 @@
     details.append(summary,node);
     return details;
   }
+  function attachSide(aside,node,title,id){
+    if(!aside||!node)return;
+    let group=byId(id);
+    if(!group){
+      group=document.createElement('details');
+      group.id=id;
+      group.className='gdd-v2-side-group';
+      group.open=window.matchMedia('(min-width: 901px)').matches;
+      const summary=document.createElement('summary');
+      summary.textContent=title;
+      group.append(summary);
+      aside.append(group);
+    }
+    if(!group.contains(node))group.append(node);
+  }
   function openTargetFromHash(){
     const hash=location.hash;
     if(hash==='#gui-tu-lieu'||hash==='#chung-nhan'){
@@ -34,9 +49,11 @@
     const primary=byId('gdd-v2-main'),aside=byId('gdd-v2-aside');
     const memorial=$('#trang-chu .gdd-memorial-shell');
     if(memorial){memorial.id='gdd-v2-memorial';primary.append(memorial);}
-    for(const id of ['chuc-sac','video-dao-su','ai-tin','tai-lieu-so-hoa','bien-khao','hinh-anh']){
-      const section=byId(id);if(section)primary.append(section);
-    }
+    // Trang Chủ chỉ giới thiệu những tư liệu mới nhất từng mục.
+    // Các trang chuyên mục đầy đủ vẫn được giữ nguyên ở cấp main để mở khi nhấn Xem thêm.
+    const directory=byId('gdd-directory');
+    if(directory){primary.append(directory);directory.hidden=false;}
+
     // Đường vào cổng tra cứu luôn thấy trong thanh điều hướng chính.
     const nav=byId('main-nav'),homeLink=nav?.querySelector('a[href="#trang-chu"]');
     if(homeLink&&!nav.querySelector('a[href="#gdd-v2-search"]')){
@@ -47,7 +64,7 @@
         byId('menu-toggle')?.setAttribute('aria-expanded','false');
       });
     }
-    const audio=byId('am-thanh-dai-dao');if(audio)aside.append(audio);
+    const audio=byId('am-thanh-dai-dao');if(audio)attachSide(aside,audio,'Âm Thanh Đại Đạo','gdd-v2-audio-panel');
     const dashboard=byId('gdd-archive-dashboard');
     let statistics=dashboard?.querySelector('.gdd-statistics')||null;
     if(dashboard){
@@ -55,7 +72,7 @@
       const subheading=dashboard.querySelector('.gdd-dash-heading p');
       if(heading)heading.textContent='Lịch Âm – Dương';
       if(subheading)subheading.textContent='Xem lịch hôm nay, ngày qui vị và những lễ Đạo sắp đến.';
-      aside.append(dashboard);
+      attachSide(aside,dashboard,'Lịch Âm – Dương & Ngày kỷ niệm','gdd-v2-calendar-panel');
     }
     const support=document.createElement('div');
     support.id='gdd-v2-support';support.className='gdd-v2-support';
@@ -82,17 +99,16 @@
     const quick=$('.gdd-v2-quicklinks');
     if(quick){
       quick.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',()=>{
-        const details=a.hash==='#gui-tu-lieu'?byId('gui-tu-lieu')?.closest('details'):null;
+        const target=byId(a.hash.slice(1));
+        const details=target?.closest('details');
         if(details)details.open=true;
+        if(target)requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));
       }));
     }
     document.body.classList.add('gdd-v2-ready');
-    // Bộ điều hướng phiên bản cũ đã ẩn các mục trên Trang Chủ. V2 trả lại toàn bộ.
-    for(const section of [hero,...primary.querySelectorAll(':scope > section')])section.hidden=false;
-    const oldDirectory=byId('gdd-directory'),oldTrail=byId('gdd-route-path');
-    if(oldDirectory)oldDirectory.hidden=true;
-    if(oldTrail)oldTrail.hidden=true;
-    document.body.classList.remove('gdd-separate-sections');
+    // Cho bộ điều hướng gốc quyết định xem bản giới thiệu hay trang chuyên mục.
+    // Đã giữ gdd-directory trong cột chính, thay vì bung toàn bộ 28 hồ sơ trên Trang Chủ.
+    if(byId('gdd-directory'))byId('gdd-directory').hidden=false;
     openTargetFromHash();
     window.addEventListener('hashchange',openTargetFromHash);
     // Khi tải lại đường dẫn tới chuyên mục, không để màn hình đứng sai vị trí.
@@ -118,8 +134,8 @@
       const aside=byId('gdd-v2-aside');
       if(!aside)return;
       const audio=byId('am-thanh-dai-dao'),dash=byId('gdd-archive-dashboard');
-      if(audio&&!aside.contains(audio))aside.append(audio);
-      if(dash&&!aside.contains(dash))aside.append(dash);
+      if(audio&&!aside.contains(audio))attachSide(aside,audio,'Âm Thanh Đại Đạo','gdd-v2-audio-panel');
+      if(dash&&!aside.contains(dash))attachSide(aside,dash,'Lịch Âm – Dương & Ngày kỷ niệm','gdd-v2-calendar-panel');
       const stats=$('.gdd-statistics');
       if(stats&&byId('gdd-v2-stat-inner')&&!byId('gdd-v2-stat-inner').contains(stats))
         byId('gdd-v2-stat-inner').append(stats);
