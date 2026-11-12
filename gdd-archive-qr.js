@@ -12,7 +12,14 @@
     panel.dataset.gddQrInitialized='1';
     const url=panel.dataset.archiveUrl||'';
     const target=$('[data-gdd-qr-graphic]',panel);
-    if(!/^https:\/\//i.test(url)||!target){setStatus(panel,'Liên kết hồ sơ chưa hợp lệ.');return;}
+    // Website công khai phải là HTTPS; riêng localhost cho phép HTTP để kiểm thử QR.
+    let validUrl=false;
+    try{
+      const parsed=new URL(url);
+      validUrl=parsed.protocol==='https:'||
+        (parsed.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(parsed.hostname));
+    }catch{}
+    if(!validUrl||!target){setStatus(panel,'Liên kết hồ sơ chưa hợp lệ.');return;}
     if(typeof window.QRCode!=='function'){
       setStatus(panel,'Chưa tải được bộ tạo QR. Hãy kiểm tra Internet hoặc tải lại trang.');
       return;
