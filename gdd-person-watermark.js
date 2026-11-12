@@ -29,15 +29,22 @@
   }
   function drawSeal(ctx,width,height){
     if(!sealImage?.naturalWidth)throw new Error('Tem hologram chưa sẵn sàng.');
-    const span=Math.min(width*.76,height*.62);
+    // Neo theo 4 góc của chính TẤM ẢNH, không theo khung hiển thị:
+    // chữ bắt đầu sát mép trái ở nửa dưới và kết thúc cách đáy khoảng 2.5%.
+    // Cùng phép tính được dùng cho bản xem và bản tải xuống.
+    const angle=Math.PI/4;
+    const span=Math.min(width*.68,height*.50);
     const bandHeight=span*(sealImage.naturalHeight/sealImage.naturalWidth);
+    const left=width*.012+bandHeight*.5*Math.sin(angle);
+    const top=height*.975-span*Math.sin(angle)-bandHeight*.5*Math.cos(angle);
     ctx.save();
-    ctx.translate(width*.245,height*(height>=width?.67:.66));
-    ctx.rotate(Math.PI/4);
-    ctx.globalAlpha=.77;
+    ctx.translate(left,top);
+    ctx.rotate(angle);
+    // PNG gốc có alpha trong suốt; giữ đường vân và chữ đủ sáng, không phủ nền.
+    ctx.globalAlpha=.82;
     ctx.imageSmoothingEnabled=true;
     if('imageSmoothingQuality' in ctx)ctx.imageSmoothingQuality='high';
-    ctx.drawImage(sealImage,-span/2,-bandHeight/2,span,bandHeight);
+    ctx.drawImage(sealImage,0,-bandHeight/2,span,bandHeight);
     ctx.restore();
   }
   async function decodeImage(blob){
