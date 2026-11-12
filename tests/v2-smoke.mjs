@@ -12,7 +12,16 @@ async function checkPage(label,width,height){
   try{
     await page.goto(base,{waitUntil:'domcontentloaded',timeout:60000});
     await page.locator('body.gdd-v2-ready').waitFor({timeout:30000});
-    await page.locator('#gdd-v2-main #chuc-sac').waitFor();
+    await page.locator('#gdd-v2-main #gdd-directory:not([hidden])').waitFor();
+    if(await page.locator('#gdd-v2-main #chuc-sac').count())throw Error('Trang Chủ đang bung chuyên mục Chức sắc đầy đủ');
+    await page.locator('#gdd-v2-audio-panel').waitFor({timeout:15000});
+    await page.locator('#gdd-v2-calendar-panel').waitFor({timeout:15000});
+    const audioPanel=page.locator('#gdd-v2-audio-panel'),calendarPanel=page.locator('#gdd-v2-calendar-panel');
+    if(width<=900){
+      if(await audioPanel.getAttribute('open')!==null)throw Error('Cột phụ âm thanh trên mobile chưa được thu gọn');
+      await audioPanel.locator('summary').click();
+      await calendarPanel.locator('summary').click();
+    }
     await page.locator('#gdd-v2-aside #am-thanh-dai-dao').waitFor({timeout:15000});
     await page.locator('#gdd-v2-aside #gdd-archive-dashboard').waitFor({timeout:15000});
     await page.locator('#gdd-v2-statistics .gdd-statistics').waitFor({timeout:15000});
@@ -29,14 +38,29 @@ async function checkPage(label,width,height){
     if(!branchResult.toLowerCase().includes('hiệp thiên'))throw Error('Bộ lọc cơ quan sai');
     const layout=await page.evaluate(()=>{
       const e=id=>document.getElementById(id);
-      const children=[...e('gdd-v2-main').children].map(x=>x.id);
       const desired=['chuc-sac','video-dao-su','ai-tin','tai-lieu-so-hoa','bien-khao','hinh-anh'];
-      const actual=children.filter(x=>desired.includes(x));
-      const order=actual.join('|')===desired.join('|');
-      return {order,overflow:document.documentElement.scrollWidth-innerWidth,footer:!!e('gdd-site-build-version')};
+      const preview=[...e('gdd-directory').querySelectorAll('[data-preview-section]')].map(x=>x.dataset.previewSection);
+      const main=e('gdd-v2-main').getBoundingClientRect(),side=e('gdd-v2-aside').getBoundingClientRect();
+      const radio=e('gdd-radio-list');
+      const items=[...radio.querySelectorAll('.gdd-radio-item')];
+      return {order:preview.join('|')===desired.join('|'),
+        previewCount:preview.length,
+        overflow:document.documentElement.scrollWidth-innerWidth,
+        footer:!!e('gdd-site-build-version'),
+        sameRow:Math.abs(main.top-side.top)<70,
+        sideToRight:side.x>main.right-4,
+        sideBelow:side.top>=main.bottom-4,
+        pageHeight:document.documentElement.scrollHeight,
+        audioItemOverflow:items.some(x=>x.scrollWidth>x.clientWidth+4),
+        directoryVisible:!e('gdd-directory').hidden};
     });
     if(!layout.order)throw Error('Sai thứ tự mục chính');
+    if(!layout.directoryVisible||layout.previewCount!==6)throw Error('Chưa đủ sáu mục giới thiệu');
+    if(width>900&&(!layout.sameRow||!layout.sideToRight))throw Error('Máy tính chưa hiển thị đúng 2 cột');
+    if(width<=900&&!layout.sideBelow)throw Error('Cột phụ đang chèn vào giữa nội dung trên điện thoại');
     if(layout.overflow>3)throw Error('Nội dung tràn ngang: '+layout.overflow);
+    if(layout.audioItemOverflow)throw Error('Một thẻ radio bị tràn chữ');
+    if(layout.pageHeight>10500)throw Error('Trang Chủ vẫn quá dài: '+layout.pageHeight+'px');
     if(!layout.footer)throw Error('Thiếu phần phiên bản GitHub cuối trang');
     // Các nút đổi tháng, ngày lịch và điều khiển âm thanh vẫn hoạt động sau khi chuyển cột.
     if(width<=600){
@@ -67,7 +91,7 @@ async function checkPage(label,width,height){
         throw Error('Chọn số âm thanh không cập nhật trình phát');
     }
 
-    const portrait=page.locator('#gdd-v2-main #chuc-sac [data-open-kind="people"]').first();
+    const portrait=page.locator('#gdd-v2-main #gdd-directory [data-preview-section="chuc-sac"] [data-open-kind="people"]').first();
     await portrait.waitFor({timeout:20000});
     await portrait.click();
     await page.locator('#detail-overlay:not([hidden]) .gdd-archive-qr').waitFor({timeout:12000});
@@ -96,6 +120,13 @@ async function checkPage(label,width,height){
     const qrFile=await download;
     if(!/^CS-.+\.png$/i.test(qrFile.suggestedFilename()))
       throw Error('Tên file QR PNG chưa đúng: '+qrFile.suggestedFilename());
+    await page.locator('[data-close="detail"]').last().click().catch(()=>{});
+    // Truy cập một chuyên mục: menu chỉ mở nội dung đầy đủ khi người xem yêu cầu.
+    await page.evaluate(()=>{location.hash='#chuc-sac'});
+    await page.locator('main > #chuc-sac:not([hidden])').waitFor({timeout:10000});
+    if(await page.locator('#gdd-v2-columns').isVisible())throw Error('Cột Trang Chủ vẫn hiện trong chuyên mục đầy đủ');
+    await page.evaluate(()=>{location.hash='#trang-chu'});
+    await page.locator('#gdd-v2-main #gdd-directory:not([hidden])').waitFor({timeout:10000});
     const unexpected=errors.filter(x=>!/ResizeObserver loop limit exceeded/.test(x));
     if(unexpected.length)throw Error('Lỗi JavaScript: '+unexpected.slice(0,2).join(' | '));
     console.log('PASS '+label,JSON.stringify({layout,qr:{before:qr.before,code:qr.code,hasCanvas:qr.hasCanvas}}));
