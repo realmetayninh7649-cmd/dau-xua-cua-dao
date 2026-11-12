@@ -110,7 +110,7 @@
      const config=window.SITE_CONFIG||{};
      if(!config.supabaseUrl||!config.supabasePublishableKey)throw Error('Chưa kết nối dữ liệu Supabase.');
      const mod=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-     const client=mod.createClient(config.supabaseUrl,config.supabasePublishableKey);
+     const client=mod.createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
      const collected=await Promise.all(types.map(async t=>{
        try{return {type:t,rows:await fetchTable(client,t.key)}}
        catch(error){data.errors.push(t.label);console.warn('[GDD Search] '+t.key,error);return {type:t,rows:[]}}
