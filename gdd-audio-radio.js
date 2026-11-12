@@ -228,6 +228,11 @@ window.addEventListener('gdd:search-open-audio',async event=>{
       state.rows.push(row);
       renderList();
     }
+    if(state.category!=='all'){
+      state.category='all';
+      section.querySelectorAll('[data-gdd-radio-filter]').forEach(button=>
+        button.setAttribute('aria-pressed',String(button.dataset.gddRadioFilter==='all')));
+    }
     selectProgram(row,true);
     section.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){
