@@ -164,7 +164,7 @@ function videoSource(raw){
     const people=publicRows('people'),posts=publicRows('posts'),media=publicRows('media');
     $('#count-people').textContent=people.length;$('#count-posts').textContent=posts.length;$('#count-media').textContent=media.length;
     const q=norm($('#people-search').value.trim()),branch=$('#branch-filter').value,subgroup=$('#subgroup-filter').value;
-    const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
+    const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.archive_code,p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
     const shown=state.peopleExpanded?matching:matching.slice(0,6);
     $('#people-grid').innerHTML=shown.length?shown.map(p=>`<article class="person-card"><div class="person-media">${portrait(p)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span><p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
     $('#people-result-count').textContent=`Đang hiển thị ${shown.length} / ${matching.length} hồ sơ`;
@@ -201,6 +201,11 @@ function videoSource(raw){
     });
     if(state.admin){renderEditorList();renderInbox()}
   }
+  // Liên kết QR dùng tuyến hash sẵn có: mở đúng hồ sơ và cả album ảnh liên quan.
+  function archiveLink(kind,record){
+    const base=location.origin+location.pathname.replace(/index\\.html$/,'');
+    return base+'#'+prefixNames[kind]+'/'+encodeURIComponent(record.slug);
+  }
   function openDetail(kind,record,updateHash=true){
     if(!record)return;
     state.detail={kind,id:record.id};
@@ -217,7 +222,16 @@ function videoSource(raw){
     const url=safeUrl(kind==='videos'?record.video_url:kind==='documents'?record.file_url:'');
     const link=url?`<p class="detail-external"><a href="${escape(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${kind==='videos'?(videoSource(record.video_url)?.type==='facebook'?'Xem trên Facebook':'Xem video gốc'):'Mở tài liệu số'} ↗</a></p>`:'';
     const visual=kind==='videos'?`<div class="detail-video-preview" data-video-id="${escape(record.id)}">${videoPoster(record)}</div>`:`<div class="detail-cover">${src?`<img src="${escape(src)}" alt="${escape(title)}">`:`<div class="portrait-placeholder">${escape(sectionNames[kind])}</div>`}</div>`;
-    $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${link}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
+    const archiveCode=record.archive_code||'';
+    const archivePanel=archiveCode&&record.slug?`<section class="gdd-archive-qr" data-gdd-archive-qr data-archive-code="${escape(archiveCode)}" data-archive-url="${escape(archiveLink(kind,record))}">
+      <div class="gdd-archive-qr-heading"><strong>MÃ ĐỊNH DANH TƯ LIỆU</strong><code>${escape(archiveCode)}</code></div>
+      <div class="gdd-archive-qr-layout"><div class="gdd-archive-qr-frame"><div data-gdd-qr-graphic></div></div><div class="gdd-archive-qr-actions">
+      <p>Quét mã để mở thẳng hồ sơ này trên website GIỮ ĐẠO GIỮA ĐỜI.</p>
+      ${record.published?'':'<p class="gdd-archive-qr-warning">Bản nháp: đồng đạo chưa thể xem cho tới khi công bố.</p>'}
+      <button class="btn btn-primary" type="button" data-gdd-qr-download>Tải mã QR PNG</button>
+      <button class="btn btn-outline" type="button" data-gdd-qr-copy>Sao chép liên kết</button>
+      <small class="gdd-archive-qr-status" data-gdd-qr-status></small></div></div></section>`:'';
+    $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${link}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${archivePanel}${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
     $('#detail-overlay').hidden=false;document.body.classList.add('modal-open');$('.detail-panel').scrollTop=0;
     if(updateHash){history.replaceState(null,'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`)}
   }
@@ -262,7 +276,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     $('#editor-form').innerHTML=fields[kind].map(labelHTML).join('')+`<div class="form-actions"><button class="btn btn-primary" type="submit">${state.editingId?'Lưu thay đổi':'Đăng tư liệu'}</button>${state.editingId?'<button class="btn-delete" type="button" id="delete-record">Xóa tư liệu</button>':''}</div><p id="form-message" class="small-note" aria-live="polite"></p>`;
     if(state.editingId){const record=state.data[kind].find(x=>x.id===state.editingId);if(record){const form=$('#editor-form');for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;if(el.type==='checkbox')el.checked=Boolean(record[name]);else el.value=record[name]??''}}}
   }
-  function renderEditorList(){if(!state.admin)return;const kind=state.editorKind;$('#editor-list').innerHTML=state.data[kind].length?state.data[kind].map(r=>`<div class="editor-item"><div><b>${escape(recordTitle(kind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))}</span></div><button type="button" data-list-edit="${escape(kind)}" data-id="${escape(r.id)}">Sửa</button></div>`).join(''):'<p class="small-note">Chưa có tư liệu.</p>'}
+  function renderEditorList(){if(!state.admin)return;const kind=state.editorKind;$('#editor-list').innerHTML=state.data[kind].length?state.data[kind].map(r=>`<div class="editor-item"><div><b>${escape(recordTitle(kind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}</span></div><button type="button" data-list-qr="${escape(kind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(kind)}" data-id="${escape(r.id)}">Sửa</button></div>`).join(''):'<p class="small-note">Chưa có tư liệu.</p>'}
   function editRecord(kind,id){state.editorKind=kind;state.editingId=id;closeDetail();$('#admin-overlay').hidden=false;document.body.classList.add('modal-open');buildEditor();$('.admin-panel').scrollTop=120}
   async function uploadImage(file,kind){
     if(!file)return '';
@@ -373,7 +387,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       if(!record)data.slug=slugify(data.full_name||data.title)+'-'+Date.now().toString(36).slice(-6);
       // Lấy đúng ID từ câu lệnh insert/update để gắn toàn bộ ảnh vào bài, không cần người dùng bấm Sửa.
       const request=record?state.supabase.from(kind).update(data).eq('id',record.id):state.supabase.from(kind).insert(data);
-      const {data:saved,error}=await request.select('id').single();
+      const {data:saved,error}=await request.select('id,archive_code').single();
       if(error)throw error;
       const savedId=saved?.id||record?.id;
       if(!savedId)throw new Error('Đã lưu dữ liệu nhưng không lấy được mã bài viết.');
@@ -404,7 +418,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       state.editingId=null;
       albums?.resetAfterSuccess?.();
       buildEditor();
-      toast('Đã đăng tư liệu và lưu bộ ảnh thành công.');
+      toast('Đã lưu tư liệu '+(saved?.archive_code||'')+' và bộ ảnh.');
     }catch(err){
       $('#form-message').textContent='Không thể lưu: '+(err.message||'Lỗi không xác định');
       toast('Lỗi lưu tư liệu. Vui lòng xem thông báo dưới nút đăng.');
@@ -538,6 +552,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       const open=e.target.closest('[data-open-kind]');if(open){const kind=open.dataset.openKind,record=publicRows(kind).find(x=>x.id===open.dataset.id);openDetail(kind,record);return}
       const edit=e.target.closest('[data-edit-kind]');if(edit){editRecord(edit.dataset.editKind,edit.dataset.editId);return}
       const listEdit=e.target.closest('[data-list-edit]');if(listEdit){editRecord(listEdit.dataset.listEdit,listEdit.dataset.id);return}
+      const qr=e.target.closest('[data-list-qr]');if(qr){const kind=qr.dataset.listQr,record=state.data[kind]?.find(x=>x.id===qr.dataset.id);if(record){closeAdmin();openDetail(kind,record)}return}
       const incoming=e.target.closest('[data-submission-open]');if(incoming){showSubmission(incoming.dataset.submissionOpen);return}
       const reviewed=e.target.closest('[data-mark-reviewed]');if(reviewed){markReviewed(reviewed.dataset.markReviewed);return}
       if(e.target.id==='delete-record')deleteRecord();
