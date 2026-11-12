@@ -109,6 +109,7 @@
     // Cho bộ điều hướng gốc quyết định xem bản giới thiệu hay trang chuyên mục.
     // Đã giữ gdd-directory trong cột chính, thay vì bung toàn bộ 28 hồ sơ trên Trang Chủ.
     if(byId('gdd-directory'))byId('gdd-directory').hidden=false;
+    if(typeof window.GDDApplySectionRoute==='function')window.GDDApplySectionRoute();
     openTargetFromHash();
     window.addEventListener('hashchange',openTargetFromHash);
     // Khi tải lại đường dẫn tới chuyên mục, không để màn hình đứng sai vị trí.
