@@ -13,7 +13,27 @@
       'gdd-archive-dashboard', 'gdd-cal-qui-vi-list'
     ].includes(raw);
   };
-  let layout, support, statistics;
+  let layout, support, statistics, switcher;
+  const mobileLayout = window.matchMedia('(max-width: 900px)');
+  let currentView = 'main';
+
+  function setView(view, scrollToContent = false) {
+    currentView = view === 'aside' ? 'aside' : 'main';
+    if (!layout || !switcher) return;
+    const compact = mobileLayout.matches;
+    const main = id('gdd-p1-main'), aside = id('gdd-p1-aside');
+    main.hidden = compact && currentView !== 'main';
+    aside.hidden = compact && currentView !== 'aside';
+    layout.dataset.view = currentView;
+    for (const button of switcher.querySelectorAll('[data-p1-view]')) {
+      const active = button.dataset.p1View === currentView;
+      button.setAttribute('aria-selected', String(active));
+      button.tabIndex = active ? 0 : -1;
+    }
+    if (scrollToContent) requestAnimationFrame(() => {
+      switcher.scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
+  }
 
   function createPanel(name, label, node, openOnDesktop) {
     if (!node) return null;
@@ -60,6 +80,7 @@
     if (!layout) return;
     const isHome = homeRoute();
     layout.hidden = !isHome;
+    if (switcher) switcher.hidden = !isHome;
     support.hidden = !isHome;
     statistics.hidden = !isHome;
 
@@ -68,6 +89,10 @@
       ? 'gdd-p1-audio-panel'
       : (section === 'gdd-archive-dashboard' || section === 'gdd-cal-qui-vi-list')
         ? 'gdd-p1-calendar-panel' : null;
+    if (mobileLayout.matches) {
+      if (panelId) setView('aside');
+      else if (!section || section === 'trang-chu') setView('main');
+    } else setView('main');
     if (panelId) {
       const panel = id(panelId);
       if (panel) panel.open = true;
@@ -87,7 +112,26 @@
       '<aside id="gdd-p1-aside" class="gdd-p1-aside" aria-label="Âm Thanh Đại Đạo và Lịch Âm – Dương">' +
       '<div class="gdd-p1-side-intro"><span>TIỆN ÍCH ĐẠO SỬ</span><h2>Âm thanh &amp; Lịch</h2>' +
       '<p>Nghe thánh âm, xem lịch và những ngày tưởng niệm.</p></div></aside>';
-    hero.insertAdjacentElement('afterend', layout);
+    switcher = document.createElement('div');
+    switcher.id = 'gdd-p1-switch';
+    switcher.className = 'gdd-p1-switch';
+    switcher.setAttribute('role', 'tablist');
+    switcher.setAttribute('aria-label', 'Chọn khu vực Trang Chủ');
+    switcher.innerHTML = '<button type="button" role="tab" data-p1-view="main" aria-controls="gdd-p1-main" aria-selected="true"><span>01</span> NỘI DUNG CHÍNH</button>' +
+      '<button type="button" role="tab" data-p1-view="aside" aria-controls="gdd-p1-aside" aria-selected="false"><span>02</span> CỘT PHỤ · TIỆN ÍCH</button>';
+    hero.insertAdjacentElement('afterend', switcher);
+    switcher.insertAdjacentElement('afterend', layout);
+    switcher.addEventListener('click', event => {
+      const button = event.target.closest('[data-p1-view]');
+      if (button) setView(button.dataset.p1View, true);
+    });
+    switcher.addEventListener('keydown', event => {
+      if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      const next = currentView === 'main' ? 'aside' : 'main';
+      setView(next);
+      switcher.querySelector('[data-p1-view="'+next+'"]').focus();
+    });
 
     support = document.createElement('div');
     support.id = 'gdd-p1-support';
@@ -123,8 +167,9 @@
     // Có module được dựng sau DOMContentLoaded: chỉ thử gắn thêm một lần khi trang nạp xong.
     window.addEventListener('load', putModules, {once: true});
     window.addEventListener('hashchange', syncRoute);
-    const breakpoint = window.matchMedia('(max-width: 900px)');
+    const breakpoint = mobileLayout;
     breakpoint.addEventListener?.('change', event => {
+      setView('main');
       for (const name of ['gdd-p1-audio-panel', 'gdd-p1-calendar-panel']) {
         const panel = id(name);
         if (panel) panel.open = !event.matches;
