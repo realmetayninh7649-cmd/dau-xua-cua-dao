@@ -185,7 +185,7 @@
     return sorted().filter(p=>(branch==='all'||(p.branch||'Khác')===branch)
       &&(sub==='all'||p.subgroup===sub)
       &&(p.gender||'Chưa phân loại')===s.selectedSex
-      &&norm([p.full_name,p.secular_name,p.rank,p.branch,p.subgroup,p.birthplace,p.summary,p.biography].join(' ')).includes(q));}
+      &&norm([p.archive_code,p.archive_legacy_code,p.full_name,p.secular_name,p.rank,p.branch,p.subgroup,p.birthplace,p.summary,p.biography].join(' ')).includes(q));}
   const sourceMarkup=p=>{
     const url=safeURL(p.image_url),name=esc(p.full_name),image=url?`<img src="${esc(url)}" alt="Di ảnh ${name}" loading="lazy" decoding="async">`:
       `<div class="portrait-placeholder"><span class="symbol">✦</span></div>`;
