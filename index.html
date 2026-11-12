@@ -20,10 +20,11 @@
     } catch (_) {}
 
     const homeHash = hash => !hash || hash === '#trang-chu' || hash === '#dau-trang';
-    const startAtHome = reloading || homeHash(location.hash);
+    const detailLink = /^#(?:nhan-vat|bai-viet|hinh-anh-tu-lieu|video-dao-su|ai-tin|tai-lieu-so-hoa)\//.test(location.hash);
+    const startAtHome = (reloading && !detailLink) || homeHash(location.hash);
     if (!startAtHome) return; // Đừng đổi liên kết sâu do người đọc chủ động mở.
 
-    if (reloading && location.hash) {
+    if (reloading && location.hash && !detailLink) {
       try {
         history.replaceState(history.state, '', location.pathname + location.search);
       } catch (_) {}
