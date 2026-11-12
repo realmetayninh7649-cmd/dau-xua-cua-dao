@@ -64,7 +64,7 @@
   min-height:160px!important;
 }
 #detail-content .gdd-archive-qr--person [data-gdd-qr-graphic] :is(canvas,img){
-  display:block!important;
+  /* Giữ quy tắc ẩn canvas dự phòng do thư viện QR tự thiết lập. */
   width:160px!important;
   height:160px!important;
   max-width:160px!important;
