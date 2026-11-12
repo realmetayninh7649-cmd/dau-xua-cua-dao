@@ -164,9 +164,9 @@ function videoSource(raw){
     const people=publicRows('people'),posts=publicRows('posts'),media=publicRows('media');
     $('#count-people').textContent=people.length;$('#count-posts').textContent=posts.length;$('#count-media').textContent=media.length;
     const q=norm($('#people-search').value.trim()),branch=$('#branch-filter').value,subgroup=$('#subgroup-filter').value;
-    const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.archive_code,p.archive_legacy_code,p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
+    const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.archive_code,p.archive_legacy_code,...(p.archive_code_aliases||[]),p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
     const shown=state.peopleExpanded?matching:matching.slice(0,6);
-    $('#people-grid').innerHTML=shown.length?shown.map(p=>`<article class="person-card"><div class="person-media">${portrait(p)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span><p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
+    $('#people-grid').innerHTML=shown.length?shown.map(p=>`<article class="person-card"><div class="person-media">${portrait(p)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span>${p.archive_code?'<span class="gdd-person-archive-code">Mã định danh: <code>'+escape(p.archive_code)+'</code></span>':''}<p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
     $('#people-result-count').textContent=`Đang hiển thị ${shown.length} / ${matching.length} hồ sơ`;
     const more=$('#people-show-more');more.hidden=matching.length<=6;more.textContent=state.peopleExpanded?'Thu gọn hồ sơ ↑':'Xem thêm hồ sơ ↗';
     $('#article-list').innerHTML=posts.length?posts.slice(0,8).map(p=>{
@@ -376,8 +376,8 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     if(!branch||!rank){target.textContent='Chọn Cơ quan/Hệ thống và nhập Phẩm vị để xem trước nhóm mã.';return;}
     const category=personCodeCategory(branch,rank,get('subgroup'),get('full_name'));
     const unknown=category.endsWith('.KH')||category==='HTD.CQK';
-    target.innerHTML='<b>Nhóm mã sẽ được cấp:</b> <code>CS-'+escape(category)+'-0000X</code>'+
-      '<small>Số thứ tự thật sẽ được Supabase tự cấp khi lưu lần đầu; mỗi nhóm bắt đầu từ 00001.'+
+    target.innerHTML='<b>Nhóm mã khi công bố:</b> <code>CS-'+escape(category)+'-xxxxx</code>'+
+      '<small>Số thứ tự được Supabase tự cấp khi CÔNG BỐ. Cửu Trùng Đài và Hiệp Thiên Đài mỗi Đài có một dãy liên tục, không bắt đầu lại theo phẩm vị.'+
       (unknown?' Nhóm chưa xác định chính xác phẩm vị: xin kiểm tra thông tin trước khi đăng.':'')+'</small>';
   }
 
@@ -530,7 +530,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       state.editingId=null;
       albums?.resetAfterSuccess?.();
       buildEditor();
-      toast('Đã lưu tư liệu '+(saved?.archive_code||'')+' và bộ ảnh.');
+      toast('Đã lưu tư liệu '+(saved?.archive_code||'(bản nháp chưa cấp mã)')+' và bộ ảnh.');
     }catch(err){
       $('#form-message').textContent='Không thể lưu: '+(err.message||'Lỗi không xác định');
       toast('Lỗi lưu tư liệu. Vui lòng xem thông báo dưới nút đăng.');
