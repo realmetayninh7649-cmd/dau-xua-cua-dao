@@ -1,0 +1,231 @@
+/* Giai đoạn 1.3 — CHỈ sửa bố cục, KHÔNG đổi bộ màu nguyên thủy.
+   Màu kế thừa từ styles.css: --paper --white --ink --sub --green --gold --line.
+   Các phần đăng bài, QR, âm thanh, lịch và Supabase vẫn giữ nguyên. */
+
+/* Thanh điều hướng Chính/Phụ không được nổi đè logo hoặc nội dung. */
+@media(max-width:900px){
+  body.gdd-p1-ready .gdd-p1-switch{
+    position:relative!important;top:auto!important;z-index:1!important;
+    box-shadow:none!important;
+    margin-block:14px 0!important;padding:4px!important;
+    background:var(--paper)!important;border-color:var(--line)!important
+  }
+  body.gdd-p1-ready .gdd-p1-switch button{
+    min-height:41px!important;color:var(--ink)!important;
+    font-size:clamp(10px,2.6vw,12px)!important
+  }
+  body.gdd-p1-ready .gdd-p1-switch button[aria-selected="true"]{
+    background:var(--green)!important;border-color:var(--green)!important;
+    color:var(--white)!important;box-shadow:none!important
+  }
+  body.gdd-p1-ready .gdd-p1-switch button[aria-selected="true"]>span{
+    color:var(--white)!important
+  }
+}
+
+/* Giữ đúng màu nền, chữ và viền gốc; chỉ thay chiều rộng/khoảng cách. */
+body.gdd-p1-ready .gdd-p1-side-intro{background:var(--green)!important;border-color:var(--green)!important}
+body.gdd-p1-ready .gdd-p1-panel,
+body.gdd-p1-ready #gdd-p1-main #gdd-directory,
+body.gdd-p1-ready .gdd-p1-support-links a{
+  background:var(--white)!important;border-color:var(--line)!important
+}
+body.gdd-p1-ready .gdd-p1-panel>summary{background:var(--paper)!important;color:var(--green)!important}
+body.gdd-p1-ready .gdd-p1-support{background:var(--paper)!important;border-color:var(--line)!important}
+body.gdd-p1-ready .gdd-p1-statistics{background:var(--paper)!important;border-color:var(--line)!important}
+body.gdd-p1-ready .footer{background:var(--green)!important}
+body.gdd-p1-ready #gdd-p1-main .gdd-memorial-shell{
+  background:linear-gradient(125deg,#f3f1e9,#faf8f2 53%,#efece2)!important
+}
+
+/* Hai cột chính/phụ ở desktop; các chuyên mục được xếp vào lưới cân đối. */
+body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-directory-inner{
+  min-width:0!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-section{
+  min-width:0!important;
+  border-color:var(--line)!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-card{
+  box-shadow:none!important;min-width:0!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-copy,
+body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-header{
+  min-width:0!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-name{
+  overflow-wrap:anywhere;word-break:normal
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-thumb img{
+  max-width:100%;object-fit:contain
+}
+
+/* Máy tính rộng: Chức sắc trải ngang cả cột chính, năm mục sau chia 2 cột.
+   Mục Chức sắc có 4 hồ sơ chia theo hai Đài, không bị kéo giãn theo hàng khác. */
+@media(min-width:1250px){
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-directory-inner{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    align-items:start;column-gap:14px;row-gap:13px
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-directory-inner>
+    :is(.gdd-directory-eyebrow,h2,.gdd-directory-desc,.gdd-home-quick-nav,.gdd-directory-links){
+    grid-column:1/-1!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]{
+    grid-column:1/-1!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-section{
+    display:flex!important;flex-direction:column;align-self:stretch;
+    height:100%;padding:14px 12px!important;border:1px solid var(--line)!important;
+    border-radius:8px;background:var(--white);gap:8px
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-header{
+    margin:0!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-cards{
+    grid-template-columns:minmax(0,1fr)!important;gap:9px!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-footer{
+    margin-top:auto!important;padding-top:5px
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-card{
+    min-height:104px!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-thumb{
+    width:82px!important;min-width:82px!important;min-height:104px!important
+  }
+}
+@media(min-width:901px) and (max-width:1249px){
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-cards{
+    grid-template-columns:minmax(0,1fr)!important
+  }
+}
+
+/* KHẮC PHỤC LỖI CHỨC SẮC: 2 khối có chiều cao ảo 500–1200px và chữ bị cắt.
+   Quy tắc cũ dùng grid-template-rows: repeat(2,minmax(0,1fr)) và min-height:305px.
+   Luôn dùng chiều cao nội dung, không kế thừa chiều cao của ô lưới khác. */
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-people-split{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:start!important;gap:12px!important;width:100%!important;height:auto!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-people-branch{
+  align-self:start!important;height:auto!important;min-height:0!important;
+  padding:11px!important;background:var(--white)!important;
+  border-color:var(--line)!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-people-branch-head{
+  min-height:0!important;margin:0 0 9px!important;padding:0 0 8px!important;
+  grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-people-branch-head h4{
+  font-size:clamp(13px,1.4vw,17px)!important;line-height:1.4!important;
+  overflow-wrap:anywhere!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-people-branch-head span{
+  white-space:nowrap;font-size:10px!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-people-cards{
+  display:grid!important;grid-template-rows:none!important;
+  grid-auto-rows:auto!important;gap:9px!important;
+  flex:none!important;min-height:0!important;height:auto!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-person-mini{
+  display:grid!important;grid-template-columns:96px minmax(0,1fr)!important;
+  grid-template-rows:auto!important;align-items:stretch!important;
+  min-width:0!important;min-height:118px!important;height:auto!important;
+  max-height:none!important;width:100%!important;overflow:hidden
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-person-mini .gdd-preview-thumb{
+  grid-row:1!important;grid-column:1!important;
+  height:118px!important;min-height:118px!important;max-height:118px!important;
+  width:96px!important;min-width:96px!important;max-width:96px!important;
+  border-bottom:0!important;border-right:1px solid var(--line)!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-person-mini .gdd-preview-copy{
+  grid-row:1!important;grid-column:2!important;
+  padding:9px 10px!important;min-width:0!important;min-height:0!important;
+  gap:3px!important;overflow:hidden!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-person-mini .gdd-preview-meta{
+  min-height:0!important;max-height:none!important;font-size:10px!important;
+  line-height:1.4!important;-webkit-line-clamp:1!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-person-mini .gdd-preview-name{
+  min-height:0!important;max-height:none!important;font-size:13px!important;
+  line-height:1.4!important;-webkit-line-clamp:2!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-person-mini .gdd-preview-summary{
+  min-height:0!important;max-height:none!important;font-size:10px!important;
+  line-height:1.4!important;-webkit-line-clamp:1!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-person-mini .gdd-preview-hint{
+  margin-top:auto!important;font-size:10px!important;line-height:1.4!important;
+  align-self:start!important
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+  .gdd-home-people-branch .gdd-preview-empty{
+  min-height:0!important;height:auto!important;padding:12px!important
+}
+
+/* Màn hình vừa: chia mỗi Đài thành một hàng đủ chỗ chứa tên dài. */
+@media(max-width:1180px){
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-people-split{
+    grid-template-columns:minmax(0,1fr)!important;gap:11px!important
+  }
+}
+
+/* iPhone/Android: mỗi Đài một khối, hai hồ sơ dạng ảnh trái – chữ phải.
+   Không chia đôi màn hình thành hai cột dọc quá hẹp. */
+@media(max-width:640px){
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-section{
+    padding:14px 0!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-cards{
+    grid-template-columns:minmax(0,1fr)!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-people-split{
+    grid-template-columns:minmax(0,1fr)!important;gap:10px!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-people-branch{padding:9px!important}
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-people-branch-head h4{font-size:15px!important}
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-person-mini{grid-template-columns:86px minmax(0,1fr)!important;min-height:112px!important}
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-person-mini .gdd-preview-thumb{
+    height:112px!important;min-height:112px!important;max-height:112px!important;
+    width:86px!important;min-width:86px!important;max-width:86px!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-person-mini .gdd-preview-copy{padding:8px 9px!important}
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory .gdd-preview-footer{
+    margin-top:10px!important
+  }
+}
+@media(max-width:370px){
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-person-mini{grid-template-columns:74px minmax(0,1fr)!important}
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-person-mini .gdd-preview-thumb{
+    width:74px!important;min-width:74px!important;max-width:74px!important
+  }
+  body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"]
+    .gdd-home-person-mini .gdd-preview-name{font-size:12px!important}
+}
