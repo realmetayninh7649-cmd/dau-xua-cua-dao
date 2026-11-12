@@ -1,5 +1,5 @@
 /* GIỮ ĐẠO GIỮA ĐỜI — GIAI ĐOẠN 2: cổng tra cứu thống nhứt, không dấu, mã định danh.
- * Chỉ tìm bản ghi đã công bố; không sửa bảng, không dùng secret/service_role. */
+ * Chỉ đọc các bản ghi đã công bố; không thực hiện ghi dữ liệu hoặc quản trị. */
 (() => {
  'use strict';
  if(window.__GDDPhase2UnifiedSearch)return;window.__GDDPhase2UnifiedSearch=true;
