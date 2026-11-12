@@ -346,6 +346,13 @@
   };
   let active='';
   const applyRoute=()=>{
+    // V2 chủ trương cuộn một trang gồm đủ các chuyên mục: không ẩn theo hash.
+    if(document.body.classList.contains('gdd-v2-ready')){
+      for(const section of main.querySelectorAll(':scope > section'))section.hidden=false;
+      directory.hidden=true;trail.hidden=true;
+      document.body.classList.remove('gdd-separate-sections');
+      return;
+    }
     const route=getRoute();
     const changed=active!==route;
     active=route;

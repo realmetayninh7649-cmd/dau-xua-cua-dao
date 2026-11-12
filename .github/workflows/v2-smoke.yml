@@ -1,0 +1,41 @@
+name: V2 browser smoke test
+on:
+  push:
+    branches:
+      - feature/v2-layout-search-20261112
+  pull_request:
+    paths:
+      - 'gdd-v2-*'
+      - 'app.js'
+      - 'index.html'
+      - 'tests/v2-smoke.mjs'
+      - '.github/workflows/v2-smoke.yml'
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser smoke dependency
+        run: npm install --no-save playwright-core@1.56.1
+      - name: Check JavaScript syntax
+        run: |
+          node --check app.js
+          node --check gdd-v2-layout.js
+          node --check gdd-v2-search.js
+          node --check gdd-audio-radio.js
+      - name: Start test server and run Chromium
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/gdd-v2-server.log 2>&1 &
+          sleep 2
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/v2-smoke.mjs
+      - name: Upload browser screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-smoke-failures
+          path: /tmp/v2-*.png
+          if-no-files-found: ignore
