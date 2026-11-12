@@ -1,0 +1,20 @@
+/* Thanh điều hướng chỉ bật khi website được mở dưới dạng web app / Capacitor. */
+.gdd-app-tabs{display:none}
+@media (max-width:840px){
+  body.gdd-app-standalone{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  body.gdd-app-standalone .gdd-app-tabs{
+    display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+    position:fixed;z-index:10050;left:0;right:0;bottom:0;
+    background:#fffdf8;border-top:1px solid #d9d3c3;
+    box-shadow:0 -4px 20px #123b2a12;
+    padding:6px 4px max(6px,env(safe-area-inset-bottom));
+  }
+  .gdd-app-tabs a{
+    text-decoration:none;min-width:0;min-height:57px;display:flex;align-items:center;
+    justify-content:center;gap:5px;flex-direction:column;
+    border-radius:10px;color:#65746c;font:600 10px/1.2 'Be Vietnam Pro',system-ui,sans-serif;
+  }
+  .gdd-app-tabs a .gdd-app-tab-icon{font:normal 23px/1 system-ui,sans-serif}
+  .gdd-app-tabs a[aria-current="page"]{background:#edf3ee;color:#205448}
+  .gdd-app-tabs a:focus-visible{outline:2px solid #205448;outline-offset:-3px}
+}

@@ -1,0 +1,63 @@
+name: Kiểm tra ứng dụng iPhone / Android
+
+on:
+  push:
+    branches:
+      - feature/mobile-capacitor-starter
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'manifest.webmanifest'
+      - 'gdd-mobile-app.js'
+      - 'gdd-mobile-app.css'
+      - 'sw.js'
+      - 'offline.html'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/mobile-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-app-check:
+    name: Kiểm tra web app (không cần máy tính cá nhân)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Kiểm tra cú pháp và cấu trúc
+        run: |
+          node --check gdd-mobile-app.js
+          node --check sw.js
+          node --check scripts/prepare-mobile.mjs
+          node --check tests/pwa-smoke.mjs
+          node tests/pwa-smoke.mjs
+      - name: Thử chuẩn bị tài nguyên Capacitor
+        run: |
+          npm run mobile:prepare
+          test -s www/index.html
+          test -s www/manifest.webmanifest
+          test -s www/sw.js
+
+  ios-simulator-build:
+    name: Build iOS Simulator (không cài được trực tiếp lên iPhone)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cài đặt và tạo dự án Xcode trên máy Mac đám mây
+        run: |
+          npm install --no-audit --no-fund
+          npm run mobile:add:ios
+      - name: Build cho trình giả lập, không ký ứng dụng
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build

@@ -1,0 +1,15 @@
+{
+  "id": "./",
+  "name": "Giữ Đạo Giữa Đời – Dấu Xưa Cửa Đạo",
+  "short_name": "Giữ Đạo Giữa Đời",
+  "description": "Kho tư liệu Đạo sử, biên khảo và di sản Cao Đài Tòa Thánh Tây Ninh.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f5ed",
+  "theme_color": "#205448",
+  "icons": [
+    {"src": "./logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
