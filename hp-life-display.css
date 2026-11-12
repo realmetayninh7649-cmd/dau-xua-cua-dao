@@ -1,0 +1,44 @@
+/* Giữ riêng phạm vi phần HP LIFE và trình xem chứng nhận. */
+.gdd-learning-section .gdd-learning-intro{max-width:930px;line-height:1.8;margin-bottom:25px}
+.gdd-learning-section .gdd-learning-feature{display:grid;grid-template-columns:minmax(200px,295px) minmax(0,1fr);gap:28px;align-items:center;background:linear-gradient(115deg,#fffefa,#f8f4eb);border:1px solid #e1d6c2;box-shadow:0 8px 30px #2f291612;border-radius:18px;padding:24px;margin:23px 0}
+.gdd-learning-section .gdd-learning-badge-art{display:block;overflow:hidden;border-radius:13px;border:1px solid #e7dfeb;line-height:0;background:#f4effa;max-width:300px}
+.gdd-learning-section .gdd-learning-badge-art img{display:block;width:100%;height:auto}
+.gdd-learning-section .gdd-learning-kicker{display:block;font-size:11px;letter-spacing:.12em;font-weight:700;color:#846c48}
+.gdd-learning-section .gdd-learning-feature h3{font:700 clamp(23px,3vw,32px)/1.4 'Noto Serif',serif;margin:10px 0;color:#2b2c2a}
+.gdd-learning-section .gdd-learning-feature-info>p{line-height:1.8;margin:0 0 18px}
+.gdd-learning-section .gdd-learning-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 18px;margin:0 0 19px}
+.gdd-learning-section .gdd-learning-meta>div:last-child{grid-column:1/-1}
+.gdd-learning-section .gdd-learning-meta dt{font-size:12px;color:#7d705f}
+.gdd-learning-section .gdd-learning-meta dd{font-size:14px;margin:3px 0 0;font-weight:600;overflow-wrap:anywhere}
+.gdd-learning-section .gdd-learning-verify,.gdd-learning-section .gdd-learning-extra-button{display:inline-flex;align-items:center;gap:8px;border:1px solid #ae9768;border-radius:8px;background:#fffefa;color:#554527;font:600 13px/1.6 'Be Vietnam Pro',system-ui,sans-serif;text-decoration:none;padding:10px 14px;cursor:pointer}
+.gdd-learning-section .gdd-learning-verify:hover,.gdd-learning-section .gdd-learning-extra-button:hover{background:#f0e9db}
+.gdd-learning-section .gdd-learning-extra{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:20px 22px;background:#fff;border:1px solid #e1d6c2;border-radius:14px;margin-bottom:18px}
+.gdd-learning-section .gdd-learning-extra h3{font:700 19px/1.5 'Noto Serif',serif;margin:5px 0}
+.gdd-learning-section .gdd-learning-extra p{margin:0;font-size:13px;color:#6e6458}
+.gdd-learning-section .gdd-learning-extra-button{flex-shrink:0}
+.gdd-learning-section .gdd-learning-catalog{border:1px solid #e0d6c5;background:#fff;border-radius:13px;overflow:hidden}
+.gdd-learning-section .gdd-learning-catalog>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;padding:18px 22px;background:#f6f0e7;font-size:16px;cursor:pointer}
+.gdd-learning-section .gdd-learning-catalog>summary::-webkit-details-marker{display:none}
+.gdd-learning-section .gdd-learning-chevron{font-size:24px;transition:transform .2s}
+.gdd-learning-section .gdd-learning-catalog[open] .gdd-learning-chevron{transform:rotate(180deg)}
+.gdd-learning-section .gdd-learning-catalog-body{padding:10px 20px 18px}
+.gdd-learning-section .gdd-learning-catalog-body>p{font-size:12px;color:#726858;line-height:1.8}
+.gdd-learning-section .gdd-learning-course-list{margin:0;padding:0;list-style:none}
+.gdd-learning-section .gdd-learning-course{display:flex;align-items:center;gap:13px;border-top:1px solid #eee7db}
+.gdd-learning-section .gdd-learning-number{color:#8c8170;font-size:12px;min-width:25px;font-variant-numeric:tabular-nums}
+.gdd-learning-section .gdd-learning-course-button{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:13px;padding:14px 2px;border:0;background:transparent;color:#30352e;text-align:left;font:600 14px/1.6 'Be Vietnam Pro',system-ui,sans-serif;cursor:pointer}
+.gdd-learning-section .gdd-learning-course-button:hover,.gdd-learning-section .gdd-learning-course-button:focus-visible{color:#165e4f;text-decoration:underline}
+.gdd-learning-section .gdd-learning-course-button small,.gdd-learning-section .gdd-learning-course-unavailable small{font-size:11px;color:#567569;white-space:nowrap;font-weight:500}
+.gdd-learning-section .gdd-learning-course-unavailable{flex:1;padding:14px 2px;display:flex;justify-content:space-between;gap:12px;color:#746c60;font-size:14px}
+.gdd-learning-section .gdd-learning-course-unavailable small{color:#8d8071}
+.gdd-learning-section .gdd-learning-note{max-width:920px;font-size:12px;line-height:1.8;color:#756a5a;margin:17px 0 0}
+dialog.gdd-learning-dialog{width:min(94vw,1100px);max-height:93dvh;overflow:auto;border:0;border-radius:14px;padding:0;background:#fffaf3;color:#282722;box-shadow:0 15px 55px #0005}
+dialog.gdd-learning-dialog::backdrop{background:#121212c9}
+.gdd-learning-dialog-inner{padding:15px}
+.gdd-learning-dialog-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:11px}
+.gdd-learning-dialog-header h3{font:700 16px/1.5 'Noto Serif',serif;margin:0}
+.gdd-learning-dialog-close{flex:none;cursor:pointer;border:1px solid #d8d0c2;border-radius:50%;width:38px;height:38px;background:#fff;font-size:24px}
+.gdd-learning-dialog-image{display:block;width:100%;height:auto;max-height:72dvh;object-fit:contain;background:#fff;border:1px solid #eee5d7}
+.gdd-learning-dialog-actions{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:13px}
+.gdd-learning-dialog-actions a{color:#185847;font-weight:600}
+@media(max-width:720px){.gdd-learning-section .gdd-learning-feature{grid-template-columns:1fr;padding:16px;gap:18px}.gdd-learning-section .gdd-learning-badge-art{max-width:275px;margin:auto}.gdd-learning-section .gdd-learning-extra{flex-direction:column;align-items:flex-start;padding:17px}.gdd-learning-section .gdd-learning-catalog>summary{padding:15px;font-size:15px}.gdd-learning-section .gdd-learning-catalog-body{padding:10px 15px 16px}.gdd-learning-section .gdd-learning-course-button,.gdd-learning-section .gdd-learning-course-unavailable{flex-direction:column;align-items:flex-start;gap:2px}.gdd-learning-dialog-inner{padding:10px}}
