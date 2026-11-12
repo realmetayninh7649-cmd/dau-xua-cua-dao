@@ -95,7 +95,19 @@ async function checkPage(label,width,height){
     const portrait=page.locator('#gdd-v2-main #gdd-directory [data-preview-section="chuc-sac"] [data-open-kind="people"]').first();
     await portrait.waitFor({timeout:20000});
     await portrait.click();
-    await page.locator('#detail-overlay:not([hidden]) .gdd-archive-qr').waitFor({timeout:12000});
+    try{
+      await page.locator('#detail-overlay:not([hidden]) .gdd-archive-qr').waitFor({timeout:12000});
+    }catch(error){
+      const debug=await page.evaluate(()=>{
+        const b=document.querySelector('#gdd-v2-main #gdd-directory [data-preview-section="chuc-sac"] [data-open-kind="people"]');
+        const overlay=document.getElementById('detail-overlay');
+        return {hash:location.hash,buttonId:b?.dataset.id,buttonKind:b?.dataset.openKind,
+          buttonDisabled:b?.disabled,overlayHidden:overlay?.hidden,
+          content:document.getElementById('detail-content')?.innerText?.slice(0,250),
+          directoryVisible:!document.getElementById('gdd-directory')?.hidden};
+      });
+      throw Error('Nhấn hồ sơ không mở QR: '+JSON.stringify(debug));
+    }
     const qr=await page.evaluate(()=>{
       const c=document.querySelector('#detail-content');
       const card=c.querySelector('.gdd-archive-qr'),img=c.querySelector('.detail-cover');
