@@ -630,7 +630,29 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     document.addEventListener('click',e=>{
       const playback=e.target.closest('[data-video-play]');if(playback){playVideo(playback.dataset.videoPlay,playback);return}
       const close=e.target.closest('[data-close]');if(close){if(close.dataset.close==='detail')closeDetail();else closeAdmin();return}
-      const open=e.target.closest('[data-open-kind]');if(open){const kind=open.dataset.openKind,record=publicRows(kind).find(x=>x.id===open.dataset.id);openDetail(kind,record);return}
+      const open=e.target.closest('[data-open-kind]');
+       if(open){
+         const kind=open.dataset.openKind,id=open.dataset.id;
+         if(!['people','posts','media','videos','obituaries','documents'].includes(kind))return;
+         const record=publicRows(kind).find(x=>x.id===id);
+         if(record){openDetail(kind,record);return}
+         // Mục giới thiệu có thể tải trước khi dữ liệu app.js sẵn sàng trên iPhone.
+         (async()=>{
+           try{
+             let client=state.supabase;
+             if(!client){
+               const cfg=window.SITE_CONFIG||{};
+               if(!cfg.supabaseUrl||!cfg.supabasePublishableKey)return;
+               const sdk=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+               client=sdk.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
+             }
+             const {data,error}=await client.from(kind).select('*').eq('id',id).eq('published',true).maybeSingle();
+             if(!error&&data)openDetail(kind,data);
+             else toast('Hồ sơ chưa sẵn sàng để xem. Xin tải lại trang.');
+           }catch(error){console.warn('[GDD] Mở hồ sơ trực tiếp:',error);toast('Chưa thể mở hồ sơ, vui lòng thử lại.');}
+         })();
+         return;
+       }
       const edit=e.target.closest('[data-edit-kind]');if(edit){editRecord(edit.dataset.editKind,edit.dataset.editId);return}
       const listEdit=e.target.closest('[data-list-edit]');if(listEdit){editRecord(listEdit.dataset.listEdit,listEdit.dataset.id);return}
       const qr=e.target.closest('[data-list-qr]');if(qr){const kind=qr.dataset.listQr,record=state.data[kind]?.find(x=>x.id===qr.dataset.id);if(record){closeAdmin();openDetail(kind,record)}return}
