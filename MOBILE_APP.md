@@ -2,6 +2,31 @@
 
 Đây là bản **khởi tạo kỹ thuật**, chưa phải ứng dụng đã được build, kiểm thử thiết bị hay phát hành. Website GitHub Pages tiếp tục hoạt động trên nhánh chính như cũ. Để giảm chi phí bảo trì, bản ứng dụng đóng gói các tài nguyên web hiện có vào Capacitor, dùng lại Supabase để đồng bộ dữ liệu.
 
+## Dùng iPhone để kiểm thử — không cần máy Mac
+
+### Bản web app (không qua App Store)
+
+1. Sau khi PR đã được **kiểm thử và hợp nhất vào nhánh main**, đợi GitHub Pages xuất bản phiên bản mới.
+2. Mở **địa chỉ website đang hoạt động** trong Safari trên iPhone (không dùng trang mã nguồn github.com).
+3. Bấm **Chia sẻ → Thêm vào Màn hình chính → Mở dưới dạng ứng dụng web → Thêm**.
+4. Chạy biểu tượng ứng dụng và thử 5 tab: Trang chủ, Chức sắc, Biên khảo, Hình ảnh, Âm thanh. Các mục khác vẫn ở menu website.
+5. Thử tìm Chức sắc, mở ảnh, phát âm thanh, mở văn kiện và kiểm tra nội dung hiển thị từ Supabase.
+6. Tắt Wi-Fi và dữ liệu di động, mở lại trang: nếu Service Worker đã cài thành công thì trang sẽ báo ngoại tuyến; **chưa hỗ trợ lưu toàn bộ bài viết để đọc ngoại tuyến**.
+7. Mở lại mạng và thử nút **Thử kết nối lại**. Không dùng dữ liệu mẫu thay cho nội dung thật khi không có mạng.
+
+Chế độ thêm vào Màn hình chính trên iOS 26 **không** tự động biến website thành ứng dụng App Store.
+
+### Kiểm tra mã nguồn và trạng thái GitHub từ iPhone
+
+1. Mở mục Pull Requests của repository, tìm PR #24.
+2. Vào **Checks** để xem trạng thái job **Kiểm tra web app (không cần máy tính cá nhân)**.
+3. Nếu báo đỏ, **không merge**; xem log để sửa lỗi. Nếu xanh, đây mới là kiểm tra cấu trúc/cú pháp, không thay thế kiểm thử iPhone.
+4. Sau khi workflow được hợp nhất vào nhánh mặc định, có thể chạy **Actions → Kiểm tra ứng dụng iPhone / Android → Run workflow** để yêu cầu GitHub build bản cho **iOS Simulator** bằng máy Mac đám mây. File simulator không cài trực tiếp lên iPhone.
+
+### Bản cài thử trên iPhone bằng TestFlight (giai đoạn sau)
+
+Cần tài khoản Apple Developer đang hoạt động, App Store Connect, bundle ID, chứng chỉ ký và provisioning profile đúng. Máy Mac cục bộ không bắt buộc nếu dùng dịch vụ build từ xa trên macOS, nhưng vẫn phải cấu hình ký/phát hành và gửi bản build cho Apple. Không dán mật khẩu Apple ID, mã xác minh, chứng chỉ hoặc khóa bí mật vào GitHub công khai hay nội dung chat.
+
 ## Bắt đầu
 
 1. Cài Node.js 22+, npm; cài Android Studio nếu build Android; cần máy Mac và Xcode nếu build iOS (hoặc dịch vụ build iOS trên đám mây).
