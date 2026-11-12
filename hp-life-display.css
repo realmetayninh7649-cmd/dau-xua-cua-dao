@@ -54,9 +54,3 @@ dialog.gdd-learning-dialog::backdrop{background:#121212c9}
 .gdd-learning-dialog .gdd-learning-dialog-image{border:0;pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
 .gdd-learning-dialog .gdd-learning-dialog-image-wrap::after{content:"CHỈ XEM · GIỮ ĐẠO GIỮA ĐỜI";position:absolute;bottom:8px;right:8px;max-width:90%;font:600 10px/1.5 'Be Vietnam Pro',system-ui,sans-serif;color:#584a39;background:#ffffffe0;border:1px solid #d9d1c5;border-radius:4px;padding:4px 7px;pointer-events:none}
 .gdd-learning-dialog .gdd-learning-view-only{font:400 12px/1.7 'Be Vietnam Pro',system-ui,sans-serif;color:#74695b;margin:10px 0 2px;text-align:center}
-
-/* Khung xem PDF HP LIFE cho khóa học số 07. */
-.gdd-learning-dialog-pdf-wrap[hidden], .gdd-learning-dialog-image-wrap[hidden]{display:none!important}
-.gdd-learning-dialog-pdf-wrap{width:100%;height:min(72dvh,720px);background:white;border:1px solid #eee5d7}
-.gdd-learning-dialog-pdf{display:block;width:100%;height:100%;border:0;background:white}
-@media(max-width:720px){.gdd-learning-dialog-pdf-wrap{height:67dvh}}
