@@ -10,8 +10,25 @@
 
   // Ảnh tem do chủ kho tư liệu cung cấp, tách nền và lưu ngay trong GitHub Pages.
   // Không vẽ chữ hoặc đường vân bằng Canvas: dùng đúng chi tiết của tem mẫu.
-  const sealURL=new URL('assets/gdd-guilloche-hologram-7m.svg?v=20261113-foil06',document.baseURI).href;
-  let sealImage=null,sealPending=null;
+  const sealURL=new URL('assets/gdd-guilloche-7-mau.png?v=20261113-original-foil07',document.baseURI).href;
+  let sealImage=null,sealFoil=null,sealPending=null;
+  // Dựng lớp ngọc trai CHỈ theo vùng alpha của tem PNG gốc, không có nền chữ nhật.
+  // Lớp bạc nằm dưới hoa văn 7 màu, hạn chế ảnh nền làm tem xám/xỉn.
+  function makeFoil(image){
+    const foil=document.createElement('canvas');
+    foil.width=image.naturalWidth;foil.height=image.naturalHeight;
+    const brush=foil.getContext('2d',{alpha:true});
+    if(!brush)return image;
+    brush.drawImage(image,0,0);
+    brush.globalCompositeOperation='source-in';
+    brush.fillStyle='rgba(250,251,255,.74)';
+    brush.fillRect(0,0,foil.width,foil.height);
+    brush.globalCompositeOperation='source-over';
+    brush.globalAlpha=.98;
+    brush.drawImage(image,0,0);
+    brush.globalAlpha=1;
+    return foil;
+  }
   function ensureSeal(){
     if(sealImage&&sealImage.complete&&sealImage.naturalWidth)return Promise.resolve(sealImage);
     if(sealPending)return sealPending;
@@ -20,7 +37,7 @@
       image.decoding='async';
       image.onload=()=>{
         if(!image.naturalWidth||!image.naturalHeight){reject(new Error('Tài nguyên tem bảo vệ không hợp lệ.'));return;}
-        sealImage=image;resolve(image);
+        sealImage=image;sealFoil=makeFoil(image);resolve(image);
       };
       image.onerror=()=>reject(new Error('Không tải được tem hologram bảo vệ. Xin tải lại trang.'));
       image.src=sealURL;
@@ -29,27 +46,24 @@
   }
   function drawSeal(ctx,width,height){
     if(!sealImage?.naturalWidth)throw new Error('Tem hologram chưa sẵn sàng.');
-    // Chức Sắc: hai mép tem BÁM THEO MÉP TRÁI và MÉP DƯỚI ẢNH THẬT
-    // (không phụ thuộc kích thước màn hình). Dùng CHUNG cho Xem ảnh và Tải ảnh.
-    // Độ dài tính theo cạnh ảnh: tem lớn/nhỏ tự thích ứng, không lơ lửng.
+    // Neo theo pixel ẢNH GỐC, dùng chung cho Xem ảnh và Tải ảnh.
+    // Cho hai đầu ruy-băng lấn qua khung một phần BỀ DÀY của tem,
+    // không chỉ lấn vài pixel (đầu bo cong phải được cắt ngay tại viền ảnh).
     const angle=Math.PI/4;
-    const leg=Math.min(width*.45,height*.37);
+    const leg=Math.min(width*.46,height*.40);
     const span=leg/Math.SQRT1_2;
     const bandHeight=span*(sealImage.naturalHeight/sealImage.naturalWidth);
-    // Cố ý để đầu tem tràn qua khung ảnh vài pixel rồi Canvas tự cắt:
-    // hai mép nhìn thấy luôn chạm đúng viền TRÁI và ĐÁY (không có khoảng hở).
-    // Hiệu chỉnh theo kích thước ảnh gốc, không theo viewport hoặc px cố định.
-    const bleed=Math.max(2,Math.min(width,height)*.006);
+    const bleed=Math.max(7,bandHeight*.48);
     const left=-bleed+bandHeight*.5*Math.sin(angle);
     const top=height+bleed-leg-bandHeight*.5*Math.cos(angle);
     ctx.save();
     ctx.translate(left,top);
     ctx.rotate(angle);
-    // SVG Guilloché nền trong suốt, nét màu phản quang 7 sắc; không có mảng xám bẩn.
-    ctx.globalAlpha=.90;
+    // Foil RGBA đã được dựng một lần; không dùng multiply/overlay theo màu nền.
+    ctx.globalAlpha=1;
     ctx.imageSmoothingEnabled=true;
     if('imageSmoothingQuality' in ctx)ctx.imageSmoothingQuality='high';
-    ctx.drawImage(sealImage,0,-bandHeight/2,span,bandHeight);
+    ctx.drawImage(sealFoil||sealImage,0,-bandHeight/2,span,bandHeight);
     ctx.restore();
   }
   async function decodeImage(blob){

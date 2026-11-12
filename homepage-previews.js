@@ -281,6 +281,20 @@
     const cards=document.createElement('div');cards.className='gdd-preview-cards';cards.setAttribute('aria-label','Tư liệu mới: '+title);
     const footer=document.createElement('div');footer.className='gdd-preview-footer';
     const more=document.createElement('a');more.href='#'+id;more.className='gdd-preview-more';more.textContent='Xem thêm '+title+' ↗';
+    // Nút Trang Chủ → Hồ sơ Chức sắc: bật đúng chuyên mục rồi cuộn đến phần nội dung.
+    // Không dùng cuộn neo mặc định khi các module Trang Chủ ẩn/hiện theo hash.
+    if(id==='chuc-sac')more.addEventListener('click',event=>{
+      event.preventDefault();
+      const alreadyHere=location.hash==='#chuc-sac';
+      if(!alreadyHere)location.hash='#chuc-sac';
+      else window.dispatchEvent(new Event('hashchange'));
+      applyRoute();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        const target=document.getElementById('chuc-sac');
+        if(target&&!target.hidden&&getRoute()==='chuc-sac')
+          target.scrollIntoView({behavior:'instant',block:'start'});
+      }));
+    });
     footer.append(more);block.append(header,cards,footer);inner.append(block);
     sectionViews.set(id,cards);
   }
