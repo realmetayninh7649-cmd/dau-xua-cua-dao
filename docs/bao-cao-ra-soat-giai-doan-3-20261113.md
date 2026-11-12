@@ -32,6 +32,8 @@
 - 8 chuyên mục công khai: không phát hiện URL ảnh/tệp hoặc MP3 sai định dạng HTTPS theo điều kiện kiểm tra.
 - Kho ảnh đính kèm: không phát hiện đường dẫn không dùng HTTPS.
 
+**Kiểm tra bố cục mô phỏng:** Với Chromium và thẻ QR mô phỏng theo CSS Giai đoạn 3, đã kiểm tra chiều rộng 320px, 390px, 768px và 1440px; không tràn ngang. Mẫu QR có URL dài tương đương hồ sơ đang công khai được giải mã thành công ở kích thước hiển thị 160px và kích thước PNG xuất 1400px. Đây là kiểm tra thành phần/mẫu QR, **không phải kiểm thử tích hợp trên GitHub Pages hoặc Safari thực tế**.
+
 ## 4. Giới hạn kiểm thử
 
 Các kiểm tra trên **không chứng minh toàn bộ website không còn lỗi**. Chưa thực hiện kiểm thử đầu-cuối trên Safari iPhone thật, Android thật và tài khoản quản trị có quyền đăng/sửa bài. Chưa xác nhận từng URL ảnh/MP3/video/PDF có thể tải thực tế hoặc nội dung của mọi bài viết. Cần kiểm tra thực tế: mở/đóng hồ sơ, quét QR bằng camera, tải PNG, sao chép liên kết, tìm kiếm và bộ lọc, phát radio, chuyển tháng lịch, tải ảnh, quản trị và phiên bản chân trang.
