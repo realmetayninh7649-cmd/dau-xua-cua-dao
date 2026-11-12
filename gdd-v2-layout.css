@@ -312,3 +312,23 @@ body.gdd-v2-ready .gdd-v2-aside > .gdd-v2-side-heading h2{font-size:20px}
  body.gdd-v2-ready .gdd-v2-side-heading p{display:none}
  body.gdd-v2-ready #gdd-v2-aside .gdd-v2-side-group:not([open]) > :not(summary){display:none!important}
 }
+
+/* Lời ngỏ: bỏ họa tiết vàng diện tích lớn đang che chữ trong bản in dài trên iPhone. */
+body.gdd-v2-ready #gioi-thieu.about{
+  background:linear-gradient(150deg,#f7f5ee 0%,#f1eee5 100%)!important;
+  color:#204a3d!important;border-top:1px solid #e4ddd0!important
+}
+body.gdd-v2-ready #gioi-thieu.about::before,
+body.gdd-v2-ready #gioi-thieu.about::after{content:none!important;display:none!important}
+body.gdd-v2-ready #gioi-thieu .gdd-about-prose{color:#51675a!important}
+body.gdd-v2-ready #gioi-thieu :is(.gdd-about-heading h2,.gdd-about-heading h2 em){
+  color:#214f40!important
+}
+body.gdd-v2-ready #gioi-thieu .gdd-about-prose p{max-width:72ch;overflow-wrap:anywhere}
+@media(max-width:640px){
+ body.gdd-v2-ready #gioi-thieu.about{padding:26px 0!important}
+ body.gdd-v2-ready #gioi-thieu .gdd-about-grid{gap:13px!important}
+ body.gdd-v2-ready #gioi-thieu .gdd-about-heading h2{font-size:clamp(23px,6vw,28px)}
+ body.gdd-v2-ready #gioi-thieu .gdd-about-prose{font-size:12px!important;line-height:1.78!important}
+ body.gdd-v2-ready #gioi-thieu .gdd-about-prose p{margin-bottom:14px!important}
+}
