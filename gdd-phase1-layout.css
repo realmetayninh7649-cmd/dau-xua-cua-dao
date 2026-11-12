@@ -137,3 +137,31 @@ body.gdd-p1-ready .footer .footer-brand small{color:#d6dfd5!important}
  .gdd-p1-statistics .gdd-visitor-block{grid-template-columns:minmax(0,1fr)}
  .gdd-p1-statistics .gdd-statistics{padding:9px}
 }
+
+/* Giai đoạn 1.1 — điện thoại có CHÍNH / PHỤ rõ ràng, không kéo dài thành một cột. */
+.gdd-p1-switch{display:none}
+.gdd-p1-layout[hidden],.gdd-p1-switch[hidden]{display:none!important}
+.gdd-p1-main[hidden],.gdd-p1-aside[hidden]{display:none!important}
+@media(max-width:900px){
+ .gdd-p1-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+   width:min(720px,calc(100% - 28px));margin:17px auto 0;padding:6px;
+   border:1px solid #d8ccaf;border-radius:12px;background:#f4efe3;
+   position:sticky;top:7px;z-index:35;box-shadow:0 8px 24px rgba(16,55,40,.10)}
+ .gdd-p1-switch button{min-width:0;min-height:45px;display:flex;align-items:center;
+   justify-content:center;gap:7px;padding:9px 8px;border:1px solid transparent;
+   border-radius:9px;background:transparent;color:#4c6659;cursor:pointer;
+   font:700 11px/1.4 'Be Vietnam Pro',sans-serif;text-align:center}
+ .gdd-p1-switch button>span{color:#9b8357;font-weight:700;font-size:10px}
+ .gdd-p1-switch button[aria-selected='true']{background:#1d4b40;color:#fffef6;
+   border-color:#285b4b;box-shadow:0 3px 10px rgba(20,57,43,.13)}
+ .gdd-p1-switch button[aria-selected='true']>span{color:#e8ce93}
+ .gdd-p1-switch button:focus-visible{outline:3px solid #b3935b;outline-offset:2px}
+ .gdd-p1-layout{margin-top:13px}
+ .gdd-p1-layout[data-view='aside'] .gdd-p1-aside{padding:2px 0 13px}
+ .gdd-p1-side-intro{border-radius:10px}
+}
+@media(max-width:370px){
+ .gdd-p1-switch{width:calc(100% - 20px);gap:5px;padding:5px}
+ .gdd-p1-switch button{font-size:9px;gap:4px;min-height:44px;padding:7px 5px}
+ .gdd-p1-switch button>span{font-size:9px}
+}
