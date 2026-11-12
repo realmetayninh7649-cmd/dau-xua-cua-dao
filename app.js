@@ -164,7 +164,7 @@ function videoSource(raw){
     const people=publicRows('people'),posts=publicRows('posts'),media=publicRows('media');
     $('#count-people').textContent=people.length;$('#count-posts').textContent=posts.length;$('#count-media').textContent=media.length;
     const q=norm($('#people-search').value.trim()),branch=$('#branch-filter').value,subgroup=$('#subgroup-filter').value;
-    const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.archive_code,p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
+    const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.archive_code,p.archive_legacy_code,p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
     const shown=state.peopleExpanded?matching:matching.slice(0,6);
     $('#people-grid').innerHTML=shown.length?shown.map(p=>`<article class="person-card"><div class="person-media">${portrait(p)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span><p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
     $('#people-result-count').textContent=`Đang hiển thị ${shown.length} / ${matching.length} hồ sơ`;
@@ -270,11 +270,71 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     return `<label>${escape(label)}<input type="${type==='url'?'url':'text'}" name="${name}"${req}></label>`;
   }
 
+  // Xem trước nhóm mã định danh. Bộ đếm thực tế và việc chống trùng được xử lý trong Supabase.
+  function personCodeCategory(branch,rank,subgroup,name){
+    const b=norm(branch),r=norm(rank),g=norm(subgroup),n=norm(name);
+    const has=(value,term)=>value.includes(term);
+    if(has(b,'cuu trung')){
+      if(has(g,'ban kien truc')||has(r,'ban kien truc'))return 'CTD.BKT';
+      if(has(r,'chanh phoi su'))return 'CTD.CPT';
+      if(has(r,'giao tong'))return 'CTD.GT';
+      if(has(r,'chuong phap')||has(n,'chuong phap'))return 'CTD.CP';
+      if(has(r,'dau su'))return 'CTD.ĐS';
+      if(has(r,'phoi su'))return 'CTD.PS';
+      if(has(r,'giao su'))return 'CTD.GS';
+      if(has(r,'giao huu'))return 'CTD.GH';
+      if(has(r,'le sanh'))return 'CTD.LS';
+      if(has(r,'chuc viec')||has(r,'pho tri su')||has(r,'chanh tri su'))return 'CTD.CV';
+      if(has(r,'dao huu'))return 'CTD.DH';
+      return 'CTD.KH';
+    }
+    if(has(b,'hiep thien')){
+      if(has(g,'bo phap chanh')||has(r,'bo phap chanh'))return 'HTD.BPC';
+      if(has(g,'bo nhac')||has(r,'bo nhac'))return 'HTD.BN';
+      if(has(g,'ban the dao')||has(r,'ban the dao'))return 'HTD.BTD';
+      if(has(r,'ho phap'))return 'HTD.HP';
+      if(has(r,'thuong pham'))return 'HTD.TP';
+      if(has(r,'thuong sanh'))return 'HTD.TS';
+      if(has(r,'chon quan')||has(r,'thoi quan'))return 'HTD.TQ';
+      return 'HTD.CQK';
+    }
+    if(has(b,'phuoc thien')){
+      for(const [text,code] of [['thanh nhon','TN'],['chon nhon','CN'],['hien nhon','HN'],['dao nhon','DN'],['giao thien','GT'],['chi thien','CT'],['thua su','TT']])
+        if(has(r,text))return 'PT.'+code;
+      return 'PT.KH';
+    }
+    if(has(b,'hanh chanh')){
+      if(has(g,'ban the dao')||has(r,'ban the dao'))return 'HCD.BTD';
+      if(has(r,'chuc viec')||has(r,'tri su'))return 'HCD.CV';
+      return 'HCD.KH';
+    }
+    return 'KH.KH';
+  }
+  function refreshPersonCodePreview(){
+    const form=$('#editor-form'),target=$('#person-code-preview');
+    if(!target||state.editorKind!=='people')return;
+    const saved=state.editingId?state.data.people.find(p=>p.id===state.editingId):null;
+    if(saved?.archive_code){
+      target.innerHTML='<b>Mã định danh đã cấp:</b> <code>'+escape(saved.archive_code)+'</code>'+
+        '<small>Mã được giữ cố định để tra cứu lâu dài; sửa thông tin không tự đổi mã cũ.</small>';
+      return;
+    }
+    const get=name=>form.elements[name]?.value||'';
+    const branch=get('branch'),rank=get('rank');
+    if(!branch||!rank){target.textContent='Chọn Cơ quan/Hệ thống và nhập Phẩm vị để xem trước nhóm mã.';return;}
+    const category=personCodeCategory(branch,rank,get('subgroup'),get('full_name'));
+    const unknown=category.endsWith('.KH')||category==='HTD.CQK';
+    target.innerHTML='<b>Nhóm mã sẽ được cấp:</b> <code>CS-'+escape(category)+'-0000X</code>'+
+      '<small>Số thứ tự thật sẽ được Supabase tự cấp khi lưu lần đầu; mỗi nhóm bắt đầu từ 00001.'+
+      (unknown?' Nhóm chưa xác định chính xác phẩm vị: xin kiểm tra thông tin trước khi đăng.':'')+'</small>';
+  }
+
   function buildEditor(){
     const kind=state.editorKind;$('#editor-heading').textContent=state.editingId?'Sửa tư liệu':'Thêm '+(sectionNames[kind]||'tư liệu');
     $$('.editor-tabs button').forEach(b=>b.classList.toggle('is-selected',b.dataset.kind===kind));
-    $('#editor-form').innerHTML=fields[kind].map(labelHTML).join('')+`<div class="form-actions"><button class="btn btn-primary" type="submit">${state.editingId?'Lưu thay đổi':'Đăng tư liệu'}</button>${state.editingId?'<button class="btn-delete" type="button" id="delete-record">Xóa tư liệu</button>':''}</div><p id="form-message" class="small-note" aria-live="polite"></p>`;
+    $('#editor-form').innerHTML=fields[kind].map(labelHTML).join('')+(kind==='people'?'<div class="gdd-person-code-preview" id="person-code-preview" aria-live="polite"></div>':'')+`<div class="form-actions"><button class="btn btn-primary" type="submit">${state.editingId?'Lưu thay đổi':'Đăng tư liệu'}</button>${state.editingId?'<button class="btn-delete" type="button" id="delete-record">Xóa tư liệu</button>':''}</div><p id="form-message" class="small-note" aria-live="polite"></p>`;
     if(state.editingId){const record=state.data[kind].find(x=>x.id===state.editingId);if(record){const form=$('#editor-form');for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;if(el.type==='checkbox')el.checked=Boolean(record[name]);else el.value=record[name]??''}}}
+    if(kind==='people')refreshPersonCodePreview();
   }
   function renderEditorList(){if(!state.admin)return;const kind=state.editorKind;$('#editor-list').innerHTML=state.data[kind].length?state.data[kind].map(r=>`<div class="editor-item"><div><b>${escape(recordTitle(kind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}</span></div><button type="button" data-list-qr="${escape(kind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(kind)}" data-id="${escape(r.id)}">Sửa</button></div>`).join(''):'<p class="small-note">Chưa có tư liệu.</p>'}
   function editRecord(kind,id){state.editorKind=kind;state.editingId=id;closeDetail();$('#admin-overlay').hidden=false;document.body.classList.add('modal-open');buildEditor();$('.admin-panel').scrollTop=120}
@@ -546,6 +606,8 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     $$('.editor-tabs button').forEach(b=>b.addEventListener('click',()=>{state.editorKind=b.dataset.kind;state.editingId=null;buildEditor();renderEditorList()}));
     $('#editor-new').addEventListener('click',()=>{state.editingId=null;buildEditor()});
     $('#editor-form').addEventListener('submit',saveRecord);
+    $('#editor-form').addEventListener('input',refreshPersonCodePreview);
+    $('#editor-form').addEventListener('change',refreshPersonCodePreview);
     document.addEventListener('click',e=>{
       const playback=e.target.closest('[data-video-play]');if(playback){playVideo(playback.dataset.videoPlay,playback);return}
       const close=e.target.closest('[data-close]');if(close){if(close.dataset.close==='detail')closeDetail();else closeAdmin();return}
