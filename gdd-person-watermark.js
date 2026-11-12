@@ -140,7 +140,7 @@
     try{ name=decodeURIComponent(new URL(original,location.href).pathname.split('/').pop()||''); }catch{}
     name=name.replace(/\.(?:jpe?g|png|webp|gif|avif|bmp)$/i,'');
     if(!name)name=label||'chuc-sac';
-    name=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d')
+    name=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase()
       .replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||'chuc-sac';
     return name+'-giu-dao-giua-doi.'+extension;
   }
