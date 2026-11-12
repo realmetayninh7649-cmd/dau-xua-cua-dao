@@ -8,86 +8,109 @@
   const LABEL='GIỮ ĐẠO GIỮA ĐỜI • TIỆM PHỤC CHẾ ẢNH';
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
+  // Tem guilloché xà cừ: nền trong suốt, vân đan nét mảnh, chữ nổi ánh bạc.
+  // Cùng một hàm vẽ được dùng cho ảnh tải và ảnh xem toàn màn hình.
   function drawSeal(ctx,width,height){
     const edge=Math.min(width,height);
-    const ribbonWidth=Math.min(width*.94,height*.76);
-    const ribbonHeight=clamp(edge*.115,32,170);
-    const centerX=width*.285;
-    const centerY=height*.78;
+    const ribbonWidth=Math.min(width*.84,height*.65);
+    const ribbonHeight=clamp(edge*.104,27,132);
+    const centerX=width*.245, centerY=height*.80;
+    const left=-ribbonWidth/2, top=-ribbonHeight/2;
+    const frame=()=>{ctx.beginPath();ctx.rect(left,top,ribbonWidth,ribbonHeight);};
 
     ctx.save();
     ctx.translate(centerX,centerY);
-    ctx.rotate(Math.PI/4); // dải chéo từ góc trái xuống góc phải dưới
-    const left=-ribbonWidth/2,top=-ribbonHeight/2;
-    const frame=()=>{ctx.beginPath();ctx.rect(left,top,ribbonWidth,ribbonHeight);};
+    ctx.rotate(Math.PI*.248);
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
 
-    // Nền xà cừ xuyên thấu, không có mảng đen và không che chân dung.
-    const iridescent=ctx.createLinearGradient(left,top,left+ribbonWidth,top+ribbonHeight);
-    iridescent.addColorStop(0,'#b3d8ec');
-    iridescent.addColorStop(.17,'#e9bef1');
-    iridescent.addColorStop(.33,'#f3e0a1');
-    iridescent.addColorStop(.48,'#c8f4e5');
-    iridescent.addColorStop(.66,'#c9cbf1');
-    iridescent.addColorStop(.82,'#f3cbb9');
-    iridescent.addColorStop(1,'#c0e6f1');
-    ctx.globalAlpha=.16;
-    ctx.fillStyle=iridescent;
-    frame();ctx.fill();
+    // Foil pastel ánh xà cừ, mỏng như dấu in trên ảnh giấy cổ.
+    const foil=ctx.createLinearGradient(left,top,left+ribbonWidth,top+ribbonHeight);
+    foil.addColorStop(0,'#a9dffb');
+    foil.addColorStop(.14,'#f4bbe8');
+    foil.addColorStop(.29,'#f9e8b0');
+    foil.addColorStop(.45,'#bfe9e7');
+    foil.addColorStop(.61,'#cabdfa');
+    foil.addColorStop(.79,'#f5d3b5');
+    foil.addColorStop(1,'#b4e6f2');
+    ctx.globalAlpha=.23;ctx.fillStyle=foil;frame();ctx.fill();
 
-    // Hai viền kép và guilloché/đường an ninh sóng mịn.
-    ctx.globalAlpha=.31;
-    ctx.strokeStyle='#f6faff';
-    ctx.lineWidth=Math.max(1,ribbonHeight*.012);
-    frame();ctx.stroke();
-    ctx.strokeStyle='#b7a3d1';
-    ctx.lineWidth=Math.max(.7,ribbonHeight*.008);
-    ctx.strokeRect(left+ribbonHeight*.06,top+ribbonHeight*.06,
-      ribbonWidth-ribbonHeight*.12,ribbonHeight*.88);
-
-    ctx.save();frame();ctx.clip();
-    const waves=22,segments=150;
-    for(let line=0;line<waves;line++){
-      const y0=top+ribbonHeight*(line+.5)/waves;
+    // Viền an ninh ba lớp, không tạo dải trắng bệt.
+    for(let i=0;i<3;i++){
+      const pad=ribbonHeight*(.018+i*.058);
       ctx.beginPath();
-      ctx.strokeStyle=line%3===0?'#f6f9ff':line%3===1?'#b5ddf8':'#e9bcda';
-      ctx.globalAlpha=line%3===0?.31:.24;
-      ctx.lineWidth=Math.max(.65,ribbonHeight*.006);
-      for(let step=0;step<=segments;step++){
-        const frac=step/segments;
-        const px=left+frac*ribbonWidth;
-        const py=y0+Math.sin(frac*Math.PI*14+line*.63)*ribbonHeight*.19
-          +Math.sin(frac*Math.PI*7-line*.39)*ribbonHeight*.065;
-        if(step===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+      ctx.rect(left+pad,top+pad,ribbonWidth-2*pad,ribbonHeight-2*pad);
+      ctx.lineWidth=Math.max(.45,ribbonHeight*(i===0?.014:.007));
+      ctx.strokeStyle=i===1?'#dfbdea':i===2?'#c2eeea':'#f8f5ff';
+      ctx.globalAlpha=i===0?.60:.46;
+      ctx.stroke();
+    }
+
+    // Những vân guilloché giao thoa như tem bảo an, không dùng ô vuông.
+    ctx.save();frame();ctx.clip();
+    const segments=180,threads=36;
+    for(let n=0;n<threads;n++){
+      ctx.beginPath();
+      const y0=top+ribbonHeight*(n+.5)/threads;
+      ctx.lineWidth=Math.max(.42,ribbonHeight*.005);
+      ctx.strokeStyle=['#fbf6ff','#a7d3f9','#dca9dc','#b1eac7','#f4e2a2'][n%5];
+      ctx.globalAlpha=.42;
+      for(let j=0;j<=segments;j++){
+        const t=j/segments;
+        const x=left+t*ribbonWidth;
+        const y=y0+
+          Math.sin(t*Math.PI*23+n*.32)*ribbonHeight*.084+
+          Math.sin(t*Math.PI*8.5-n*.57)*ribbonHeight*.041;
+        if(j===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
       }
       ctx.stroke();
     }
+    // Rosette ẩn, lặp lại đều như dây tem chống hàng giả.
+    for(let k=0;k<9;k++){
+      const cx=left+(k+.5)*ribbonWidth/9;
+      const cy=(k%2===0?-.06:.06)*ribbonHeight;
+      for(let m=0;m<3;m++){
+        ctx.beginPath();
+        const rx=ribbonHeight*(.28+m*.08),ry=ribbonHeight*(.16+m*.065);
+        ctx.strokeStyle=['#f7f4ff','#95d5e2','#f8c2ec'][m];
+        ctx.globalAlpha=.30;
+        ctx.lineWidth=Math.max(.45,ribbonHeight*.004);
+        for(let n=0;n<=64;n++){
+          const theta=n/64*Math.PI*2;
+          const px=cx+rx*Math.cos(theta*5)*Math.cos(theta);
+          const py=cy+ry*Math.sin(theta*5)*Math.sin(theta);
+          if(n===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+        }
+        ctx.stroke();
+      }
+    }
     ctx.restore();
 
-    // Chữ nổi xà cừ: đủ nhìn thấy nhưng độ mờ gần mẫu giấy ảnh cổ.
-    let fontSize=Math.min(45,ribbonHeight*.38);
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
-    while(fontSize>10){
-      ctx.font='700 '+fontSize+'px Georgia, "Noto Serif", serif';
-      if(ctx.measureText(LABEL).width<=ribbonWidth-ribbonHeight*.24)break;
-      fontSize-=.5;
+    // Chữ kim tuyến nổi: bóng tím xám và nét ngà làm rõ trên nền sáng/tối.
+    const textWidth=ribbonWidth-ribbonHeight*.28;
+    let size=Math.min(51,ribbonHeight*.43);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    while(size>10){
+      ctx.font='700 '+size+'px Georgia, "Noto Serif", serif';
+      if(ctx.measureText(LABEL).width<=textWidth)break;
+      size-=.5;
     }
-    const tint=ctx.createLinearGradient(left,0,left+ribbonWidth,0);
-    tint.addColorStop(0,'#f8ebed');
-    tint.addColorStop(.25,'#fffef9');
-    tint.addColorStop(.53,'#fcf1c8');
-    tint.addColorStop(.75,'#f1faff');
-    tint.addColorStop(1,'#fae8f9');
-    ctx.globalAlpha=.30;
-    ctx.strokeStyle='#7b819d';
-    ctx.lineJoin='round';
-    ctx.lineWidth=Math.max(.7,fontSize*.11);
-    ctx.strokeText(LABEL,0,ribbonHeight*.015);
-    ctx.globalAlpha=.39;
-    ctx.fillStyle=tint;
-    ctx.shadowColor='#f3eaf8';
-    ctx.shadowBlur=Math.max(1,ribbonHeight*.04);
-    ctx.fillText(LABEL,0,0);
+    const metallic=ctx.createLinearGradient(left,0,left+ribbonWidth,0);
+    metallic.addColorStop(0,'#efe9ff');
+    metallic.addColorStop(.19,'#ffffff');
+    metallic.addColorStop(.39,'#f4d1e9');
+    metallic.addColorStop(.57,'#fff4d6');
+    metallic.addColorStop(.76,'#d8f8ff');
+    metallic.addColorStop(1,'#fff2ff');
+    ctx.globalAlpha=.58;
+    ctx.lineWidth=Math.max(.9,size*.095);
+    ctx.strokeStyle='#66516b';
+    ctx.strokeText(LABEL,0,ribbonHeight*.012,textWidth);
+    ctx.globalAlpha=.87;
+    ctx.fillStyle=metallic;
+    ctx.shadowColor='rgba(255,250,255,.80)';
+    ctx.shadowBlur=Math.max(.5,ribbonHeight*.018);
+    ctx.fillText(LABEL,0,0,textWidth);
     ctx.restore();
   }
 
@@ -145,5 +168,5 @@
     return name+'-giu-dao-giua-doi.'+extension;
   }
 
-  window.GDDPersonPhotoWatermark=Object.freeze({fromBlob,fileName,label:LABEL});
+  window.GDDPersonPhotoWatermark=Object.freeze({fromBlob,drawSeal,fileName,label:LABEL});
 })();
