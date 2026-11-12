@@ -8,112 +8,38 @@
   const LABEL='GIỮ ĐẠO GIỮA ĐỜI • TIỆM PHỤC CHẾ ẢNH';
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
-  // Tem guilloché xà cừ: nền trong suốt, vân đan nét mảnh, chữ nổi ánh bạc.
-  // Cùng một hàm vẽ được dùng cho ảnh tải và ảnh xem toàn màn hình.
+  // Ảnh tem do chủ kho tư liệu cung cấp, tách nền và lưu ngay trong GitHub Pages.
+  // Không vẽ chữ hoặc đường vân bằng Canvas: dùng đúng chi tiết của tem mẫu.
+  const sealURL=new URL('assets/gdd-guilloche-hologram.avif?v=20261113-asset01',document.baseURI).href;
+  let sealImage=null,sealPending=null;
+  function ensureSeal(){
+    if(sealImage&&sealImage.complete&&sealImage.naturalWidth)return Promise.resolve(sealImage);
+    if(sealPending)return sealPending;
+    sealPending=new Promise((resolve,reject)=>{
+      const image=new Image();
+      image.decoding='async';
+      image.onload=()=>{
+        if(!image.naturalWidth||!image.naturalHeight){reject(new Error('Tài nguyên tem bảo vệ không hợp lệ.'));return;}
+        sealImage=image;resolve(image);
+      };
+      image.onerror=()=>reject(new Error('Không tải được tem hologram bảo vệ. Xin tải lại trang.'));
+      image.src=sealURL;
+    }).catch(error=>{sealPending=null;throw error;});
+    return sealPending;
+  }
   function drawSeal(ctx,width,height){
-    const edge=Math.min(width,height);
-    const ribbonWidth=Math.min(width*.84,height*.65);
-    const ribbonHeight=clamp(edge*.104,27,132);
-    const centerX=width*.245, centerY=height*.80;
-    const left=-ribbonWidth/2, top=-ribbonHeight/2;
-    const frame=()=>{ctx.beginPath();ctx.rect(left,top,ribbonWidth,ribbonHeight);};
-
+    if(!sealImage?.naturalWidth)throw new Error('Tem hologram chưa sẵn sàng.');
+    const span=Math.min(width*.76,height*.62);
+    const bandHeight=span*(sealImage.naturalHeight/sealImage.naturalWidth);
     ctx.save();
-    ctx.translate(centerX,centerY);
-    ctx.rotate(Math.PI*.248);
-    ctx.lineCap='round';
-    ctx.lineJoin='round';
-
-    // Foil pastel ánh xà cừ, mỏng như dấu in trên ảnh giấy cổ.
-    const foil=ctx.createLinearGradient(left,top,left+ribbonWidth,top+ribbonHeight);
-    foil.addColorStop(0,'#a9dffb');
-    foil.addColorStop(.14,'#f4bbe8');
-    foil.addColorStop(.29,'#f9e8b0');
-    foil.addColorStop(.45,'#bfe9e7');
-    foil.addColorStop(.61,'#cabdfa');
-    foil.addColorStop(.79,'#f5d3b5');
-    foil.addColorStop(1,'#b4e6f2');
-    ctx.globalAlpha=.23;ctx.fillStyle=foil;frame();ctx.fill();
-
-    // Viền an ninh ba lớp, không tạo dải trắng bệt.
-    for(let i=0;i<3;i++){
-      const pad=ribbonHeight*(.018+i*.058);
-      ctx.beginPath();
-      ctx.rect(left+pad,top+pad,ribbonWidth-2*pad,ribbonHeight-2*pad);
-      ctx.lineWidth=Math.max(.45,ribbonHeight*(i===0?.014:.007));
-      ctx.strokeStyle=i===1?'#dfbdea':i===2?'#c2eeea':'#f8f5ff';
-      ctx.globalAlpha=i===0?.60:.46;
-      ctx.stroke();
-    }
-
-    // Những vân guilloché giao thoa như tem bảo an, không dùng ô vuông.
-    ctx.save();frame();ctx.clip();
-    const segments=180,threads=36;
-    for(let n=0;n<threads;n++){
-      ctx.beginPath();
-      const y0=top+ribbonHeight*(n+.5)/threads;
-      ctx.lineWidth=Math.max(.42,ribbonHeight*.005);
-      ctx.strokeStyle=['#fbf6ff','#a7d3f9','#dca9dc','#b1eac7','#f4e2a2'][n%5];
-      ctx.globalAlpha=.42;
-      for(let j=0;j<=segments;j++){
-        const t=j/segments;
-        const x=left+t*ribbonWidth;
-        const y=y0+
-          Math.sin(t*Math.PI*23+n*.32)*ribbonHeight*.084+
-          Math.sin(t*Math.PI*8.5-n*.57)*ribbonHeight*.041;
-        if(j===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-      }
-      ctx.stroke();
-    }
-    // Rosette ẩn, lặp lại đều như dây tem chống hàng giả.
-    for(let k=0;k<9;k++){
-      const cx=left+(k+.5)*ribbonWidth/9;
-      const cy=(k%2===0?-.06:.06)*ribbonHeight;
-      for(let m=0;m<3;m++){
-        ctx.beginPath();
-        const rx=ribbonHeight*(.28+m*.08),ry=ribbonHeight*(.16+m*.065);
-        ctx.strokeStyle=['#f7f4ff','#95d5e2','#f8c2ec'][m];
-        ctx.globalAlpha=.30;
-        ctx.lineWidth=Math.max(.45,ribbonHeight*.004);
-        for(let n=0;n<=64;n++){
-          const theta=n/64*Math.PI*2;
-          const px=cx+rx*Math.cos(theta*5)*Math.cos(theta);
-          const py=cy+ry*Math.sin(theta*5)*Math.sin(theta);
-          if(n===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
-        }
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-
-    // Chữ kim tuyến nổi: bóng tím xám và nét ngà làm rõ trên nền sáng/tối.
-    const textWidth=ribbonWidth-ribbonHeight*.28;
-    let size=Math.min(51,ribbonHeight*.43);
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    while(size>10){
-      ctx.font='700 '+size+'px Georgia, "Noto Serif", serif';
-      if(ctx.measureText(LABEL).width<=textWidth)break;
-      size-=.5;
-    }
-    const metallic=ctx.createLinearGradient(left,0,left+ribbonWidth,0);
-    metallic.addColorStop(0,'#efe9ff');
-    metallic.addColorStop(.19,'#ffffff');
-    metallic.addColorStop(.39,'#f4d1e9');
-    metallic.addColorStop(.57,'#fff4d6');
-    metallic.addColorStop(.76,'#d8f8ff');
-    metallic.addColorStop(1,'#fff2ff');
-    ctx.globalAlpha=.58;
-    ctx.lineWidth=Math.max(.9,size*.095);
-    ctx.strokeStyle='#66516b';
-    ctx.strokeText(LABEL,0,ribbonHeight*.012,textWidth);
-    ctx.globalAlpha=.87;
-    ctx.fillStyle=metallic;
-    ctx.shadowColor='rgba(255,250,255,.80)';
-    ctx.shadowBlur=Math.max(.5,ribbonHeight*.018);
-    ctx.fillText(LABEL,0,0,textWidth);
+    ctx.translate(width*.245,height*(height>=width?.67:.66));
+    ctx.rotate(Math.PI/4);
+    ctx.globalAlpha=.77;
+    ctx.imageSmoothingEnabled=true;
+    if('imageSmoothingQuality' in ctx)ctx.imageSmoothingQuality='high';
+    ctx.drawImage(sealImage,-span/2,-bandHeight/2,span,bandHeight);
     ctx.restore();
   }
-
   async function decodeImage(blob){
     if(!blob||!/^image\/(?:png|jpe?g|webp|avif|gif|bmp)$/i.test(blob.type))
       throw new Error('Tệp này không phải ảnh thông dụng để đóng dấu.');
@@ -139,6 +65,7 @@
   }
 
   async function fromBlob(blob){
+    await ensureSeal();
     const image=await decodeImage(blob);
     const width=image.naturalWidth,height=image.naturalHeight;
     if(width<1||height<1)throw new Error('Ảnh không có kích thước hợp lệ.');
@@ -168,5 +95,5 @@
     return name+'-giu-dao-giua-doi.'+extension;
   }
 
-  window.GDDPersonPhotoWatermark=Object.freeze({fromBlob,drawSeal,fileName,label:LABEL});
+  window.GDDPersonPhotoWatermark=Object.freeze({fromBlob,drawSeal,ensureSeal,fileName,label:LABEL});
 })();
