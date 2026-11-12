@@ -87,6 +87,12 @@
       }));
     }
     document.body.classList.add('gdd-v2-ready');
+    // Bộ điều hướng phiên bản cũ đã ẩn các mục trên Trang Chủ. V2 trả lại toàn bộ.
+    for(const section of [hero,...primary.querySelectorAll(':scope > section')])section.hidden=false;
+    const oldDirectory=byId('gdd-directory'),oldTrail=byId('gdd-route-path');
+    if(oldDirectory)oldDirectory.hidden=true;
+    if(oldTrail)oldTrail.hidden=true;
+    document.body.classList.remove('gdd-separate-sections');
     openTargetFromHash();
     window.addEventListener('hashchange',openTargetFromHash);
     // Khi tải lại đường dẫn tới chuyên mục, không để màn hình đứng sai vị trí.
