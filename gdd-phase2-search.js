@@ -16,7 +16,7 @@
  ];
  const branchNames=['Cửu Trùng Đài','Hiệp Thiên Đài','Phước Thiện','Hành chánh Đạo','Khác'];
  const norm=text=>String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/[._\-\/]+/g,' ').replace(/\s+/g,' ').trim();
- const safeUrl=url=>{try{const u=new URL(String(url||''),location.href);return u.protocol==='https:'?u.href:''}catch{return ''}};
+ const safeUrl=url=>{if(typeof url!=='string'||!url.trim())return '';try{const u=new URL(url,location.href);return u.protocol==='https:'?u.href:''}catch{return ''}};
  const formatName=(kind,row)=>kind==='people'?row.full_name:kind==='gdd_memorials'?(row.person_name||row.title):row.title;
  const data={rows:[],loaded:false,loading:null,errors:[],limit:12,last:[],timer:null};
  const el=(tag,attrs={},children=[])=>{
@@ -67,8 +67,12 @@
    $('#gdd-p2-search-form').addEventListener('submit',submit);
    const query=$('#gdd-p2-q');
    query.addEventListener('input',()=>schedule());
-   for(const selector of ['#gdd-p2-branch','#gdd-p2-rank','#gdd-p2-kind'])
-     $(selector).addEventListener('change',()=>schedule(true));
+   $('#gdd-p2-branch').addEventListener('change',()=>{
+      refreshRanks();
+      schedule(true);
+    });
+    for(const selector of ['#gdd-p2-rank','#gdd-p2-kind'])
+      $(selector).addEventListener('change',()=>schedule(true));
    $('#gdd-p2-clear').addEventListener('click',()=>{
      query.value='';branch.value='all';$('#gdd-p2-rank').value='all';kind.value='all';schedule(true);query.focus();
    });
@@ -125,14 +129,24 @@
        const href=type.key==='gdd_audio_programs'?'#am-thanh-dai-dao':'#'+type.prefix+'/'+encodeURIComponent(row.slug||'');
        return {kind:type.key,label:type.label,row,person,name,rank,branch,code,image,href,searchable};
      }));
-     const ranks=[...new Set(data.rows.filter(r=>r.kind==='people'||r.kind==='gdd_memorials').map(r=>r.rank).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
-     const rankSelect=$('#gdd-p2-rank');
-     for(const rank of ranks)rankSelect.append(el('option',{value:rank,text:rank}));
+     refreshRanks();
      data.loaded=true;
    })().finally(()=>{data.loading=null});
    return data.loading;
  }
- function computeResults(){
+ function refreshRanks(){
+    const branch=$('#gdd-p2-branch')?.value||'all';
+    const selector=$('#gdd-p2-rank');
+    if(!selector)return;
+    const old=selector.value;
+    const ranks=[...new Set(data.rows.filter(r=>(r.kind==='people'||r.kind==='gdd_memorials')&&r.rank
+      &&(branch==='all'||r.branch===branch)).map(r=>r.rank))]
+      .sort((a,b)=>a.localeCompare(b,'vi'));
+    selector.replaceChildren(el('option',{value:'all',text:'Tất cả phẩm vị'}));
+    for(const rank of ranks)selector.append(el('option',{value:rank,text:rank}));
+    if(ranks.includes(old))selector.value=old;
+  }
+  function computeResults(){
    const q=norm($('#gdd-p2-q').value),tokens=q.split(' ').filter(Boolean);
    const branch=$('#gdd-p2-branch').value,rank=$('#gdd-p2-rank').value,kind=$('#gdd-p2-kind').value;
    const narrowed=data.rows.filter(item=>{
