@@ -58,6 +58,13 @@
     const memorial = $('#trang-chu .gdd-memorial-shell');
     if (memorial && memorial.parentElement !== mainColumn) mainColumn.prepend(memorial);
     const directory = id('gdd-directory');
+    // Đưa đúng khối giới thiệu Ai Tín hiện có xuống ngay sau Tưởng Niệm Chức Sắc.
+    // Không nhân bản dữ liệu và không thay đổi trang chuyên mục Ai Tín.
+    const aiTinPreview = directory?.querySelector('[data-preview-section="ai-tin"]')
+      || mainColumn.querySelector('[data-preview-section="ai-tin"]');
+    if (memorial && aiTinPreview && aiTinPreview.previousElementSibling !== memorial) {
+      memorial.insertAdjacentElement('afterend', aiTinPreview);
+    }
     if (directory && directory.parentElement !== mainColumn) mainColumn.append(directory);
 
     const audio = id('am-thanh-dai-dao');
@@ -104,6 +111,21 @@
     const hero = id('trang-chu');
     const about = id('gioi-thieu');
     if (!hero || !about || id('gdd-p1-layout')) return;
+
+    // Khung Ai Tín được chuyển lên Trang Chủ; các mục và chức năng khác giữ nguyên.
+    const aiTinStyle = document.createElement('style');
+    aiTinStyle.id = 'gdd-p1-ai-tin-placement-style';
+    aiTinStyle.textContent = `
+      #gdd-p1-main > [data-preview-section="ai-tin"] {
+        min-width:0; max-width:100%; border:1px solid var(--p1-line,#ded9ce);
+        border-radius:12px; background:var(--p1-cream,#f7f5ef);
+        padding:24px 18px;
+      }
+      @media(max-width:560px) {
+        #gdd-p1-main > [data-preview-section="ai-tin"] {padding:20px 13px;}
+      }
+    `;
+    document.head.append(aiTinStyle);
 
     layout = document.createElement('div');
     layout.id = 'gdd-p1-layout';
