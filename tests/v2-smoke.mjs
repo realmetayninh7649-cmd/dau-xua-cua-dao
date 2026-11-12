@@ -94,6 +94,13 @@ async function checkPage(label,width,height){
 
     const portrait=page.locator('#gdd-v2-main #gdd-directory [data-preview-section="chuc-sac"] [data-open-kind="people"]').first();
     await portrait.waitFor({timeout:20000});
+    await page.evaluate(()=>{
+      window.__v2PreviewClicks=[];
+      document.addEventListener('click',event=>{
+        const button=event.target.closest?.('[data-preview-section] [data-open-kind]');
+        if(button)window.__v2PreviewClicks.push({kind:button.dataset.openKind,id:button.dataset.id,time:Date.now()});
+      },true);
+    });
     await portrait.click();
     try{
       await page.locator('#detail-overlay:not([hidden]) .gdd-archive-qr').waitFor({timeout:12000});
@@ -104,7 +111,9 @@ async function checkPage(label,width,height){
         return {hash:location.hash,buttonId:b?.dataset.id,buttonKind:b?.dataset.openKind,
           buttonDisabled:b?.disabled,overlayHidden:overlay?.hidden,
           content:document.getElementById('detail-content')?.innerText?.slice(0,250),
-          directoryVisible:!document.getElementById('gdd-directory')?.hidden};
+          directoryVisible:!document.getElementById('gdd-directory')?.hidden,
+          clickTrace:window.__v2PreviewClicks,toast:document.getElementById('toast')?.textContent,
+          online:!!window.SITE_CONFIG?.supabaseUrl,documentReady:document.readyState};
       });
       throw Error('Nhấn hồ sơ không mở QR: '+JSON.stringify(debug));
     }
