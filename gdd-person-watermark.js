@@ -10,7 +10,7 @@
 
   // Ảnh tem do chủ kho tư liệu cung cấp, tách nền và lưu ngay trong GitHub Pages.
   // Không vẽ chữ hoặc đường vân bằng Canvas: dùng đúng chi tiết của tem mẫu.
-  const sealURL=new URL('assets/gdd-guilloche-7-mau.png?v=20261113-corner-05',document.baseURI).href;
+  const sealURL=new URL('assets/gdd-guilloche-hologram-7m.svg?v=20261113-foil06',document.baseURI).href;
   let sealImage=null,sealPending=null;
   function ensureSeal(){
     if(sealImage&&sealImage.complete&&sealImage.naturalWidth)return Promise.resolve(sealImage);
@@ -36,15 +36,17 @@
     const leg=Math.min(width*.45,height*.37);
     const span=leg/Math.SQRT1_2;
     const bandHeight=span*(sealImage.naturalHeight/sealImage.naturalWidth);
-    const inset=Math.max(2,Math.min(width,height)*.012);
-    // Tọa độ hình chữ nhật sau xoay: x_min=inset, y_max=height-inset.
-    const left=inset+bandHeight*.5*Math.sin(angle);
-    const top=height-inset-leg-bandHeight*.5*Math.cos(angle);
+    // Cố ý để đầu tem tràn qua khung ảnh vài pixel rồi Canvas tự cắt:
+    // hai mép nhìn thấy luôn chạm đúng viền TRÁI và ĐÁY (không có khoảng hở).
+    // Hiệu chỉnh theo kích thước ảnh gốc, không theo viewport hoặc px cố định.
+    const bleed=Math.max(2,Math.min(width,height)*.006);
+    const left=-bleed+bandHeight*.5*Math.sin(angle);
+    const top=height+bleed-leg-bandHeight*.5*Math.cos(angle);
     ctx.save();
     ctx.translate(left,top);
     ctx.rotate(angle);
-    // Giữ nét tem 7 màu, hạ độ phủ để vẫn nhìn rõ nền chân dung.
-    ctx.globalAlpha=.70;
+    // SVG Guilloché nền trong suốt, nét màu phản quang 7 sắc; không có mảng xám bẩn.
+    ctx.globalAlpha=.90;
     ctx.imageSmoothingEnabled=true;
     if('imageSmoothingQuality' in ctx)ctx.imageSmoothingQuality='high';
     ctx.drawImage(sealImage,0,-bandHeight/2,span,bandHeight);
