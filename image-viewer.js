@@ -104,7 +104,7 @@
   const stage=$('gdd-image-stage'), full=$('gdd-image-full'), loading=$('gdd-image-loading'),
     stamp=$('gdd-image-stamp');
   const caption=$('gdd-image-caption'), download=$('gdd-image-download'), orig=$('gdd-image-original');
-  let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false;
+  let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false, viewTicket=0;
   const pointers=new Map();
   let start=null, lastTap=0;
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -161,6 +161,7 @@
   function openImage(src, name, isPerson=false){
     const url=safeSource(src);if(!url)return;
     previousFocus=document.activeElement;
+    ++viewTicket;
     title=(name||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(isPerson);
     if(personPhoto&&!window.GDDPersonPhotoWatermark?.drawSeal){
       alert('Tem bảo vệ ảnh chưa sẵn sàng. Xin tải lại website rồi thử lại.');
@@ -180,23 +181,30 @@
     // Ảnh có thể đã ở bộ đệm trước khi onload được gọi.
     if(full.complete&&full.naturalWidth)imageReady();
   }
-  function imageReady(){
+  async function imageReady(){
+    const ticket=viewTicket;
     try{
-      if(!renderStamp()&&personPhoto){
-        full.style.visibility='hidden';loading.hidden=false;
-        loading.textContent='Không thể hiện tem bảo vệ. Xin tải lại website.';
-        return;
+      if(personPhoto){
+        full.style.visibility='hidden';
+        loading.hidden=false;
+        loading.textContent='Đang hiển thị tem Guilloché…';
+        // Chỉ mở ảnh Chức sắc khi tài nguyên tem đã nạp thật sự.
+        await window.GDDPersonPhotoWatermark.ensureSeal();
+        if(ticket!==viewTicket||viewer.hidden||!personPhoto)return;
       }
+      if(!renderStamp()&&personPhoto)throw new Error('Không vẽ được tem Guilloché.');
+      if(ticket!==viewTicket||viewer.hidden)return;
       full.style.visibility='';
       loading.hidden=true;reset();
       caption.textContent=personPhoto?
-        `Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · Tem hologram xuất hiện khi xem và khi tải.`:
+        `Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · Tem Guilloché 7 màu hiển thị cả khi xem và khi tải.`:
         `Ảnh gốc: ${full.naturalWidth} × ${full.naturalHeight} px · Chạm hai lần hoặc chụm hai ngón để phóng to.`;
     }catch(error){
-      console.warn('[GDD Watermark Viewer]',error);
+      if(ticket!==viewTicket||viewer.hidden)return;
+      console.warn('[GDD Guilloche Viewer]',error);
       if(personPhoto)full.style.visibility='hidden';
       stamp.hidden=true;loading.hidden=false;
-      loading.textContent='Không thể tạo tem hologram cho ảnh này.';
+      loading.textContent='Không thể tải tem bảo vệ. Xin tải lại trang.';
     }
   }
   full.addEventListener('load',imageReady);
@@ -206,6 +214,7 @@
   function closeImage(){
     if(viewer.hidden)return;
     viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
+    ++viewTicket;
     pointers.clear();start=null;source='';personPhoto=false;full.removeAttribute('src');
     full.style.visibility='';stamp.hidden=true;stamp.width=0;stamp.height=0;
     if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
