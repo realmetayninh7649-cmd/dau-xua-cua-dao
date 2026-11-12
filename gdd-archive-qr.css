@@ -1,0 +1,15 @@
+/* DẤU XƯA CỬA ĐẠO — thẻ mã định danh và QR cho từng hồ sơ. */
+.gdd-archive-qr{margin:28px 0;padding:22px;border:1px solid #d9d8c8;border-radius:14px;background:#faf9f4;color:#1a372c}
+.gdd-archive-qr-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 18px;font-size:13px;letter-spacing:.06em}
+.gdd-archive-qr-heading code{font-size:13px;letter-spacing:0;background:#e8eee8;padding:7px 10px;border-radius:5px;overflow-wrap:anywhere}
+.gdd-archive-qr-layout{display:flex;align-items:center;gap:22px}
+.gdd-archive-qr-frame{padding:16px;flex:none;background:white;border:1px solid #d8dfd7;border-radius:10px}
+.gdd-archive-qr-frame [data-gdd-qr-graphic]{width:196px;height:196px}
+.gdd-archive-qr-frame canvas,.gdd-archive-qr-frame img{max-width:none!important}
+.gdd-archive-qr-actions{flex:1;min-width:0}
+.gdd-archive-qr-actions p{font-size:13px;line-height:1.6;margin:0 0 14px}
+.gdd-archive-qr-actions .btn{display:inline-flex;margin:0 6px 8px 0;white-space:normal}
+.gdd-archive-qr-status{display:block;font-size:11px;line-height:1.6;color:#52675c;margin-top:5px}
+.gdd-archive-qr-warning{color:#a35435!important}
+#editor-list [data-list-qr]{background:#edf3ee;color:#20513d;border:1px solid #c6d8c9;border-radius:6px;padding:7px 12px;cursor:pointer;font-weight:700}
+@media(max-width:600px){.gdd-archive-qr{padding:15px}.gdd-archive-qr-layout{flex-direction:column;align-items:stretch}.gdd-archive-qr-frame{align-self:center}.gdd-archive-qr-heading{align-items:flex-start}.gdd-archive-qr-actions .btn{width:100%;justify-content:center}}
