@@ -184,6 +184,10 @@
   function matching(){
     const branch=branchFilter.value,sub=subgroupFilter.value;
     const q=norm(searchInput.value),terms=q.split(' ').filter(Boolean);
+    // Mã cũ có thể trùng với mã mới sau lần thống nhất số thứ tự.
+    // Nếu người đọc nhập chính xác mã đang dùng, chỉ mở hồ sơ có mã HIỆN HÀNH.
+    if(q.startsWith('cs ')&&sorted().some(p=>norm(p.archive_code)===q))
+      return sorted().filter(p=>norm(p.archive_code)===q);
     return sorted().filter(p=>{
       // Có nhập tên, Thánh danh, Thế danh hoặc mã: tìm trong TOÀN BỘ hồ sơ,
       // bất kể tab Nam/Nữ, cơ quan hay phân nhóm đang được chọn.
