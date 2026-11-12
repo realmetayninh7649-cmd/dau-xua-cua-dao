@@ -19,8 +19,8 @@ async function checkPage(label,width,height){
     const audioPanel=page.locator('#gdd-v2-audio-panel'),calendarPanel=page.locator('#gdd-v2-calendar-panel');
     if(width<=900){
       if(await audioPanel.getAttribute('open')!==null)throw Error('Cột phụ âm thanh trên mobile chưa được thu gọn');
-      await audioPanel.locator('summary').click();
-      await calendarPanel.locator('summary').click();
+      await audioPanel.locator(':scope > summary').click();
+      await calendarPanel.locator(':scope > summary').click();
     }
     await page.locator('#gdd-v2-aside #am-thanh-dai-dao').waitFor({timeout:15000});
     await page.locator('#gdd-v2-aside #gdd-archive-dashboard').waitFor({timeout:15000});
@@ -123,7 +123,17 @@ async function checkPage(label,width,height){
     await page.locator('[data-close="detail"]').last().click().catch(()=>{});
     // Truy cập một chuyên mục: menu chỉ mở nội dung đầy đủ khi người xem yêu cầu.
     await page.evaluate(()=>{location.hash='#chuc-sac'});
-    await page.locator('main > #chuc-sac:not([hidden])').waitFor({timeout:10000});
+    try{await page.locator('main > #chuc-sac:not([hidden])').waitFor({timeout:10000});}
+    catch(error){
+      const debug=await page.evaluate(()=>{
+        const s=document.getElementById('chuc-sac'),cols=document.getElementById('gdd-v2-columns');
+        return {hash:location.hash,sectionParent:s?.parentElement?.id,
+          sectionHidden:s?.hidden,display:s?getComputedStyle(s).display:null,
+          columnsHidden:cols?.hidden,columnsDisplay:cols?getComputedStyle(cols).display:null,
+          ready:document.body.classList.contains('gdd-v2-ready')};
+      });
+      throw Error('Trang chuyên mục chưa hiện: '+JSON.stringify(debug));
+    }
     if(await page.locator('#gdd-v2-columns').isVisible())throw Error('Cột Trang Chủ vẫn hiện trong chuyên mục đầy đủ');
     await page.evaluate(()=>{location.hash='#trang-chu'});
     await page.locator('#gdd-v2-main #gdd-directory:not([hidden])').waitFor({timeout:10000});
