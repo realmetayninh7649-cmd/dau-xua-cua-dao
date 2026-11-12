@@ -188,7 +188,7 @@
       // Có nhập tên, Thánh danh, Thế danh hoặc mã: tìm trong TOÀN BỘ hồ sơ,
       // bất kể tab Nam/Nữ, cơ quan hay phân nhóm đang được chọn.
       if(terms.length){
-        const haystack=norm([p.archive_code,p.archive_legacy_code,p.full_name,p.secular_name,
+        const haystack=norm([p.archive_code,p.archive_legacy_code,...(p.archive_code_aliases||[]),p.full_name,p.secular_name,
           p.rank,p.branch,p.subgroup,p.birthplace,p.summary,p.biography].join(' '));
         return terms.every(term=>haystack.includes(term));
       }
@@ -205,6 +205,7 @@
       <div class="person-body"><span class="person-rank">${esc(p.rank||'Chức sắc')}</span>
       <div class="gdd-people-gender">${esc(p.gender||'Chưa phân loại')}</div><h3>${name}</h3>
       <span class="person-years">${esc(p.years||'Đang bổ sung niên đại')}</span>
+      ${p.archive_code?'<span class="gdd-person-archive-code">Mã định danh: <code>'+esc(p.archive_code)+'</code></span>':''}
       <p>${esc(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p>
       <div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span>
       <button type="button" class="card-link" data-open-kind="people" data-id="${esc(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`;
@@ -301,7 +302,7 @@
         Array.from({length:2},(_,i)=>candidates[(homeRotationTick*2+i)%candidates.length]);
       return {...group,rows};
     });
-    const signature=JSON.stringify(groups.map(g=>g.rows.map(p=>[p.id,p.full_name,p.rank,p.summary,p.image_url,p.sort_order])));
+    const signature=JSON.stringify(groups.map(g=>g.rows.map(p=>[p.id,p.full_name,p.rank,p.archive_code,p.summary,p.image_url,p.sort_order])));
     if(box.dataset.gddHomeBranches===signature && box.querySelector('.gdd-home-people-split'))return;
     const card=p=>{
       const image=safeURL(p.image_url);
@@ -309,6 +310,7 @@
         <span class="gdd-preview-thumb">${image?`<img src="${esc(image)}" alt="Di ảnh ${esc(p.full_name)}" loading="lazy" decoding="async">`:'<span class="gdd-preview-fallback" aria-hidden="true">✦</span>'}</span>
         <span class="gdd-preview-copy"><span class="gdd-preview-meta">${esc(p.rank||'Chức sắc')}</span>
         <strong class="gdd-preview-name">${esc(p.full_name)}</strong>
+        ${p.archive_code?'<span class="gdd-person-archive-code gdd-person-archive-code--mini">Mã: <code>'+esc(p.archive_code)+'</code></span>':''}
         <span class="gdd-preview-summary">${esc(p.summary||'Hồ sơ Chức sắc tiền bối')}</span>
         <span class="gdd-preview-hint">Xem chi tiết ↗</span></span></button>`;
     };
