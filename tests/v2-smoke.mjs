@@ -49,7 +49,16 @@ async function checkPage(label,width,height){
        text:card.innerText};
     });
     if(!qr.before||!qr.download||!qr.code.startsWith('CS-')||!qr.text.includes('KHO TƯ LIỆU ĐẠO SỬ'))throw Error('Thẻ QR không đúng bố cục');
-    if(!qr.hasCanvas)throw Error('QR canvas chưa tạo');
+    if(!qr.hasCanvas) {
+      const diag=await page.evaluate(()=>{
+        const panel=document.querySelector('#detail-content .gdd-archive-qr');
+        return {status:panel?.querySelector('[data-gdd-qr-status]')?.textContent,
+          lib:typeof window.QRCode,
+          canvas:panel?.querySelector('canvas')?.outerHTML?.slice(0,150),
+          image:panel?.querySelector('[data-gdd-qr-graphic] img')?.outerHTML?.slice(0,150)};
+      });
+      throw Error('QR canvas chưa tạo: '+JSON.stringify(diag));
+    }
     const unexpected=errors.filter(x=>!/ResizeObserver loop limit exceeded/.test(x));
     if(unexpected.length)throw Error('Lỗi JavaScript: '+unexpected.slice(0,2).join(' | '));
     console.log('PASS '+label,JSON.stringify({layout,qr:{before:qr.before,code:qr.code,hasCanvas:qr.hasCanvas}}));
