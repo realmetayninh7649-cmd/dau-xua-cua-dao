@@ -1,7 +1,7 @@
 /* HP LIFE: khung xem chứng nhận, không cung cấp tính năng tải từ giao diện. */
 (()=>{'use strict';
 const safe=/^certificates\/[a-zA-Z0-9._-]+\.(?:jpg|jpeg|png|webp)$/;
-let dialog,photo,heading,pdfFrame,pdfWrap,photoWrap;
+let dialog,photo,heading;
 function closeViewer(){
  if(!dialog)return;
  if(typeof dialog.close==='function')dialog.close();else dialog.removeAttribute('open');
@@ -11,29 +11,19 @@ function prepare(){
  dialog=document.createElement('dialog');
  dialog.className='gdd-learning-dialog';
  dialog.setAttribute('aria-label','Xem chứng nhận HP LIFE');
- dialog.innerHTML='<div class="gdd-learning-dialog-inner"><div class="gdd-learning-dialog-header"><h3></h3><button type="button" class="gdd-learning-dialog-close" aria-label="Đóng">×</button></div><div class="gdd-learning-dialog-image-wrap"><img class="gdd-learning-dialog-image" alt="" draggable="false"></div><div class="gdd-learning-dialog-pdf-wrap" hidden><iframe class="gdd-learning-dialog-pdf" title="Chứng nhận HP LIFE" loading="lazy"></iframe></div><p class="gdd-learning-view-only">Chứng nhận được hiển thị để tham khảo; website không cung cấp chức năng tải xuống.</p></div>';
+ dialog.innerHTML='<div class="gdd-learning-dialog-inner"><div class="gdd-learning-dialog-header"><h3></h3><button type="button" class="gdd-learning-dialog-close" aria-label="Đóng">×</button></div><div class="gdd-learning-dialog-image-wrap"><img class="gdd-learning-dialog-image" alt="" draggable="false"></div><p class="gdd-learning-view-only">Chứng nhận được hiển thị để tham khảo; website không cung cấp chức năng tải xuống.</p></div>';
  document.body.append(dialog);
- photo=dialog.querySelector('img');heading=dialog.querySelector('h3');photoWrap=dialog.querySelector('.gdd-learning-dialog-image-wrap');pdfWrap=dialog.querySelector('.gdd-learning-dialog-pdf-wrap');pdfFrame=dialog.querySelector('iframe');
+ photo=dialog.querySelector('img');heading=dialog.querySelector('h3');
  dialog.querySelector('.gdd-learning-dialog-close').addEventListener('click',closeViewer);
  dialog.addEventListener('click',e=>{if(e.target===dialog)closeViewer()});
 }
 document.addEventListener('click',e=>{
- const btn=e.target.closest?.('.gdd-learning-section [data-gdd-cert-open], .gdd-learning-section [data-gdd-cert-pdf]');
+ const btn=e.target.closest?.('.gdd-learning-section [data-gdd-cert-open]');
  if(!btn)return;
- const url=btn.getAttribute('data-gdd-cert-open');
- const pdf=btn.getAttribute('data-gdd-cert-pdf');
- const allowedPdf='https://api.life-global.org/learning/api/certificates/8df306c5-cae7-43e2-acb2-7c5232655979';
- if(!(url && safe.test(url)) && pdf!==allowedPdf)return;
+ const url=btn.getAttribute('data-gdd-cert-open');if(!url||!safe.test(url))return;
  e.preventDefault();prepare();
  const name=btn.getAttribute('data-gdd-cert-title')||'Chứng nhận HP LIFE';
- heading.textContent=name;
- if(pdf===allowedPdf){
-   photoWrap.hidden=true;photo.removeAttribute('src');
-   pdfWrap.hidden=false;pdfFrame.src=pdf+'#toolbar=0&navpanes=0';
- } else {
-   pdfFrame.removeAttribute('src');pdfWrap.hidden=true;
-   photoWrap.hidden=false;photo.src=url;photo.alt='Chứng nhận '+name;
- }
+ heading.textContent=name;photo.src=url;photo.alt='Chứng nhận '+name;
  if(typeof dialog.showModal==='function')dialog.showModal();
  else if(typeof dialog.show==='function')dialog.show();
  else dialog.setAttribute('open','');
