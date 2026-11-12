@@ -365,10 +365,18 @@
   const preview=$('[data-preview-section="chuc-sac"] .gdd-preview-cards');
   if(preview){
     new MutationObserver(()=>renderHomepagePreview()).observe(preview,{childList:true});
+    // Không đổi thẻ trong khi đang cuộn/chạm trên điện thoại: tránh thay nút
+    // giữa pointerdown và click khiến người đọc không mở được hồ sơ.
+    let lastInteraction=0;
+    const freeze=()=>{lastInteraction=Date.now()};
+    window.addEventListener('scroll',freeze,{passive:true});
+    document.addEventListener('pointerdown',freeze,{passive:true});
+    preview.addEventListener('focusin',freeze);
     // Chỉ xoay khi đang xem Trang Chủ. Ngừng tạm thời nếu tab ẩn,
     // đang mở chi tiết, hoặc đang tương tác bằng chuột/bàn phím với thẻ.
     setInterval(()=>{
       if(!s.ready||document.hidden||preview.closest('#gdd-directory')?.hidden)return;
+      if(Date.now()-lastInteraction<20000)return;
       if(document.querySelector('#detail-overlay')?.hidden===false)return;
       if(preview.contains(document.activeElement)&&document.activeElement?.matches?.(':focus-visible'))return;
       if(window.matchMedia('(hover:hover) and (pointer:fine)').matches&&preview.matches(':hover'))return;
