@@ -396,6 +396,7 @@
       });
     }
   };
+  window.GDDApplySectionRoute=applyRoute;
   window.addEventListener('hashchange',applyRoute);
   applyRoute();
 })();
