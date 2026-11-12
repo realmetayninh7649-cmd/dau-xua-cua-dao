@@ -232,6 +232,41 @@ function videoSource(raw){
       <button class="btn btn-outline" type="button" data-gdd-qr-copy>Sao chép liên kết</button>
       <small class="gdd-archive-qr-status" data-gdd-qr-status></small></div></div></section>`:'';
     $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${link}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${archivePanel}${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
+    // Thẻ QR Chức sắc: hiển thị ngay dưới tên/phẩm vị, phía trên chơn dung.
+    // Tái sử dụng mã QR và hai nút có sẵn, không thay đổi mã hay liên kết hồ sơ.
+    if(kind==='people'&&archiveCode){
+      const content=$('#detail-content');
+      const panel=$('[data-gdd-archive-qr]',content);
+      const portrait=$('.detail-cover',content);
+      const frame=panel?.querySelector('.gdd-archive-qr-frame');
+      const actions=panel?.querySelector('.gdd-archive-qr-actions');
+      if(panel&&portrait&&frame&&actions){
+        panel.classList.add('gdd-archive-qr--person');
+        panel.dataset.archiveName=title;
+        const card=document.createElement('div');
+        card.className='gdd-archive-qr-card';
+        const top=document.createElement('div');
+        top.className='gdd-archive-qr-card-top';
+        const big=document.createElement('strong');
+        big.textContent='ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ';
+        const small=document.createElement('span');
+        small.textContent='KHO TƯ LIỆU ĐẠO SỬ';
+        top.append(big,small);
+        const name=document.createElement('strong');
+        name.className='gdd-archive-qr-person-name';
+        name.textContent=title;
+        const code=document.createElement('div');
+        code.className='gdd-archive-qr-person-code';
+        const prefix=document.createElement('span');
+        prefix.textContent='Mã hồ sơ: ';
+        const number=document.createElement('code');
+        number.textContent=archiveCode;
+        code.append(prefix,number);
+        card.append(top,frame,name,code);
+        panel.replaceChildren(card,actions);
+        portrait.before(panel);
+      }
+    }
     $('#detail-overlay').hidden=false;document.body.classList.add('modal-open');$('.detail-panel').scrollTop=0;
     if(updateHash){history.replaceState(null,'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`)}
   }
