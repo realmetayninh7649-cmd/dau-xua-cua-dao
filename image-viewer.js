@@ -39,6 +39,8 @@
       overflow:hidden; position:relative; flex:1 1 auto; min-height:0;
       display:flex; justify-content:center; align-items:center; cursor:grab; }
     .gdd-image-stage:active { cursor:grabbing; }
+    .gdd-image-stamp { position:absolute; z-index:2; pointer-events:none; transform-origin:center center; display:block; }
+    .gdd-image-stamp[hidden] { display:none!important; }
     .gdd-image-stage img { display:block; max-width:calc(100% - 24px); max-height:calc(100% - 18px);
       width:auto; height:auto; object-fit:contain; transform-origin:center center;
       will-change:transform; -webkit-user-drag:none; user-drag:none;
@@ -81,7 +83,8 @@
       <button class="gdd-image-icon" type="button" id="gdd-image-close" aria-label="Đóng ảnh">×</button>
     </div>
     <div class="gdd-image-stage" id="gdd-image-stage">
-      <img id="gdd-image-full" alt="Ảnh tư liệu nguyên bản">
+      <img id="gdd-image-full" alt="Ảnh tư liệu">
+      <canvas id="gdd-image-stamp" class="gdd-image-stamp" aria-hidden="true" hidden></canvas>
       <div class="gdd-image-loading" id="gdd-image-loading">Đang mở ảnh…</div>
     </div>
     <div class="gdd-image-bottom">
@@ -98,12 +101,38 @@
   document.body.appendChild(viewer);
 
   const $ = id => document.getElementById(id);
-  const stage=$('gdd-image-stage'), full=$('gdd-image-full'), loading=$('gdd-image-loading');
+  const stage=$('gdd-image-stage'), full=$('gdd-image-full'), loading=$('gdd-image-loading'),
+    stamp=$('gdd-image-stamp');
   const caption=$('gdd-image-caption'), download=$('gdd-image-download'), orig=$('gdd-image-original');
   let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false;
   const pointers=new Map();
   let start=null, lastTap=0;
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  function positionStamp(){
+    if(!personPhoto||stamp.hidden||!full.offsetWidth||!full.offsetHeight)return;
+    stamp.style.left=((stage.clientWidth-full.offsetWidth)/2)+'px';
+    stamp.style.top=((stage.clientHeight-full.offsetHeight)/2)+'px';
+    stamp.style.width=full.offsetWidth+'px';
+    stamp.style.height=full.offsetHeight+'px';
+    stamp.style.transform=full.style.transform||'none';
+  }
+  function renderStamp(){
+    if(!personPhoto){stamp.hidden=true;return true;}
+    const maker=window.GDDPersonPhotoWatermark;
+    if(!maker||typeof maker.drawSeal!=='function')return false;
+    const w=full.naturalWidth,h=full.naturalHeight;
+    if(!w||!h)return false;
+    const ratio=Math.min(1,2200/Math.max(w,h));
+    stamp.width=Math.max(1,Math.round(w*ratio));
+    stamp.height=Math.max(1,Math.round(h*ratio));
+    const ctx=stamp.getContext('2d',{alpha:true});
+    if(!ctx)return false;
+    ctx.clearRect(0,0,stamp.width,stamp.height);
+    maker.drawSeal(ctx,stamp.width,stamp.height);
+    stamp.hidden=false;
+    requestAnimationFrame(positionStamp);
+    return true;
+  }
   const safeSource=src=>{
     try { const u=new URL(src,location.href);return ['https:','http:'].includes(u.protocol)?u.href:''; }
     catch { return ''; }
@@ -116,6 +145,7 @@
     const maxY=Math.max(0,(h*scale-stage.clientHeight)/2)+Math.min(70,stage.clientHeight*.06);
     if(scale<=1){x=0;y=0;} else {x=clamp(x,-maxX,maxX);y=clamp(y,-maxY,maxY);}
     full.style.transform=`translate3d(${x}px,${y}px,0) scale(${scale})`;
+    positionStamp();
     $('gdd-image-scale').textContent=Math.round(scale*100)+'%';
     $('gdd-image-minus').disabled=scale<=1;
     $('gdd-image-plus').disabled=scale>=8;
@@ -132,13 +162,18 @@
     const url=safeSource(src);if(!url)return;
     previousFocus=document.activeElement;
     title=(name||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(isPerson);
+    if(personPhoto&&!window.GDDPersonPhotoWatermark?.drawSeal){
+      alert('Tem bảo vệ ảnh chưa sẵn sàng. Xin tải lại website rồi thử lại.');
+      return;
+    }
+    stamp.hidden=true;
     $('gdd-image-title').textContent=title;
     full.alt=title;full.removeAttribute('src');full.src=url;
     orig.href=url;orig.hidden=personPhoto;
-    download.textContent=personPhoto?'↓ Tải ảnh có dấu':'↓ Tải ảnh gốc';
+    download.textContent=personPhoto?'↓ Tải Ảnh':'↓ Tải ảnh gốc';
     loading.hidden=false;loading.textContent='Đang mở ảnh…';
     caption.textContent=personPhoto?
-      'Ảnh xem giữ nguyên. Khi tải qua website sẽ có dấu ánh kim mờ ở góc dưới.':
+      'Ảnh hiển thị với dấu hologram ánh kim mờ ở góc dưới.':
       'Chụm hai ngón tay để phóng to; kéo để xem chi tiết.';
     viewer.hidden=false;document.body.classList.add('gdd-photo-open');reset();
     $('gdd-image-close').focus({preventScroll:true});
@@ -146,10 +181,23 @@
     if(full.complete&&full.naturalWidth)imageReady();
   }
   function imageReady(){
-    loading.hidden=true;reset();
-    caption.textContent=personPhoto?
-      `Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · Bản tải qua nút sẽ có dấu bản quyền mờ.`:
-      `Ảnh gốc: ${full.naturalWidth} × ${full.naturalHeight} px · Chạm hai lần hoặc chụm hai ngón để phóng to.`;
+    try{
+      if(!renderStamp()&&personPhoto){
+        full.style.visibility='hidden';loading.hidden=false;
+        loading.textContent='Không thể hiện tem bảo vệ. Xin tải lại website.';
+        return;
+      }
+      full.style.visibility='';
+      loading.hidden=true;reset();
+      caption.textContent=personPhoto?
+        `Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · Tem hologram xuất hiện khi xem và khi tải.`:
+        `Ảnh gốc: ${full.naturalWidth} × ${full.naturalHeight} px · Chạm hai lần hoặc chụm hai ngón để phóng to.`;
+    }catch(error){
+      console.warn('[GDD Watermark Viewer]',error);
+      if(personPhoto)full.style.visibility='hidden';
+      stamp.hidden=true;loading.hidden=false;
+      loading.textContent='Không thể tạo tem hologram cho ảnh này.';
+    }
   }
   full.addEventListener('load',imageReady);
   full.addEventListener('error',()=>{loading.hidden=false;loading.textContent=personPhoto?
@@ -159,6 +207,7 @@
     if(viewer.hidden)return;
     viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
     pointers.clear();start=null;source='';personPhoto=false;full.removeAttribute('src');
+    full.style.visibility='';stamp.hidden=true;stamp.width=0;stamp.height=0;
     if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
   }
   $('gdd-image-close').addEventListener('click',closeImage);
@@ -207,7 +256,7 @@
   stage.addEventListener('pointerup',pointerEnd);
   stage.addEventListener('pointercancel',pointerEnd);
   stage.addEventListener('lostpointercapture',pointerEnd);
-  window.addEventListener('resize',()=>{if(!viewer.hidden)updateTransform()});
+  window.addEventListener('resize',()=>{if(!viewer.hidden){updateTransform();requestAnimationFrame(positionStamp)}});
   document.addEventListener('keydown',e=>{
     if(viewer.hidden)return;
     if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeImage();}
@@ -240,7 +289,7 @@
     if(!url)return;
     const old=btn.textContent;
     btn.disabled=true;
-    btn.textContent=markPerson?'Đang dán dấu lên ảnh…':'Đang chuẩn bị ảnh…';
+    btn.textContent=markPerson?'Đang xử lý ảnh…':'Đang chuẩn bị ảnh…';
     try {
       const response=await fetch(url,{mode:'cors',credentials:'omit'});
       if(!response.ok)throw Error('Nguồn ảnh không cho phép tải');
@@ -308,7 +357,7 @@
       if(isPerson){
         detail.querySelectorAll('.gdd-album-open:not([data-gdd-person-download])').forEach(link=>{
           link.dataset.gddPersonDownload='1';
-          link.textContent='↓ Tải ảnh có dấu';
+          link.textContent='↓ Tải Ảnh';
           link.removeAttribute('target');
           link.addEventListener('click',event=>{
             event.preventDefault();
@@ -327,7 +376,7 @@
         detail.dataset.gddKind==='people'));
       const save=document.createElement('button');
       save.type='button';save.className='gdd-image-action';
-      save.textContent=isPerson?'↓ Tải ảnh có dấu':'↓ Tải ảnh gốc';
+      save.textContent=isPerson?'↓ Tải Ảnh':'↓ Tải ảnh gốc';
       save.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),
         save,detail.dataset.gddKind==='people'));
       bar.append(show,save);cover.after(bar);
