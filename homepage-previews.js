@@ -346,11 +346,33 @@
   };
   let active='';
   const applyRoute=()=>{
-    // V2 chủ trương cuộn một trang gồm đủ các chuyên mục: không ẩn theo hash.
+    // V2: Trang Chủ gọn như trước, chỉ hiển thị bản giới thiệu 1–2 tư liệu mỗi mục.
+    // Khi chọn một chuyên mục, mở mục đầy đủ ở chiều ngang toàn trang.
     if(document.body.classList.contains('gdd-v2-ready')){
-      for(const section of main.querySelectorAll(':scope > section'))section.hidden=false;
-      directory.hidden=true;trail.hidden=true;
-      document.body.classList.remove('gdd-separate-sections');
+      const route=getRoute(),changed=active!==route;
+      active=route;
+      const isHome=['trang-chu','gioi-thieu','gui-tu-lieu'].includes(route);
+      const full=new Set(['chuc-sac','video-dao-su','ai-tin','tai-lieu-so-hoa','bien-khao','hinh-anh']);
+      const columns=find('#gdd-v2-columns'),support=find('#gdd-v2-support');
+      for(const section of main.querySelectorAll(':scope > section')){
+        if(full.has(section.id))section.hidden=isHome||section.id!==route;
+        else if(section.id==='gdd-v2-search'||section.id==='trang-chu'||section.id==='gioi-thieu'||section.id==='gdd-v2-statistics')
+          section.hidden=!isHome;
+        else if(section===stats)section.hidden=!isHome;
+      }
+      if(columns)columns.hidden=!isHome;
+      if(support)support.hidden=!isHome;
+      directory.hidden=!isHome;
+      trail.hidden=isHome;
+      document.body.classList.toggle('gdd-separate-sections',!isHome);
+      const found=sectionList.find(x=>x[0]===route);
+      path.textContent=' / '+(found?found[1]:'');
+      if(changed){
+        requestAnimationFrame(()=>{
+          if(route==='gioi-thieu')find('#gioi-thieu')?.scrollIntoView({behavior:'instant',block:'start'});
+          else if(!location.hash.includes('/'))window.scrollTo({top:0,behavior:'instant'});
+        });
+      }
       return;
     }
     const route=getRoute();
