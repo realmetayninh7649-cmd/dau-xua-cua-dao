@@ -80,7 +80,7 @@
     ctx.fillText('KHO TƯ LIỆU ĐẠO SỬ',700,206);
     ctx.fillStyle='#ffffff';ctx.fillRect(282,245,836,836);
     ctx.strokeStyle='#e5e2d8';ctx.lineWidth=2;ctx.strokeRect(282,245,836,836);
-    ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,310,273,780,780);
+    ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,350,313,700,700);
     ctx.fillStyle='#154d46';ctx.font='bold 40px sans-serif';
     const lines=wrappedText(ctx,name.toUpperCase(),1220,2);
     const start=lines.length>1?1142:1172;
