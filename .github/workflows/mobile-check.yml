@@ -1,6 +1,9 @@
 name: Kiểm tra ứng dụng iPhone / Android
 
 on:
+  push:
+    branches:
+      - feature/mobile-capacitor-starter
   pull_request:
     paths:
       - 'index.html'
