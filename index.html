@@ -191,8 +191,15 @@
 
     <section class="section section-anchor" id="chuc-sac">
       <div class="wrap">
-        <div class="section-top"><div><div class="eyebrow">HỒ SƠ NHÂN VẬT</div><h2>Chư Chức sắc <em>tiền bối</em></h2><p>Tra cứu theo tên, phẩm vị, cơ quan Đạo hoặc quê quán.</p></div><span class="section-index">01 / TƯ LIỆU NHÂN VẬT</span></div>
-        <div class="filter-panel"><label class="search-box" for="people-search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.5"/><path d="m16 16 5 5"/></svg><input id="people-search" type="search" placeholder="Tìm tên, phẩm vị, quê quán…" autocomplete="off"></label><label class="sr-only" for="branch-filter">Lọc theo cơ quan</label><select id="branch-filter"><option value="all">Tất cả cơ quan</option><option value="Cửu Trùng Đài">Cửu Trùng Đài</option><option value="Hiệp Thiên Đài">Hiệp Thiên Đài</option><option value="Phước Thiện">Phước Thiện</option><option value="Hành chánh Đạo">Cơ quan Hành chánh Đạo khác</option><option value="Khác">Khác</option></select><label class="sr-only" for="subgroup-filter">Lọc theo phân nhóm</label><select id="subgroup-filter" aria-label="Phân nhóm Chức sắc"><option value="all">Tất cả phân nhóm</option></select></div>
+        <div class="section-top"><div><div class="eyebrow">HỒ SƠ NHÂN VẬT</div><h2>Chư Chức sắc <em>tiền bối</em></h2><p>Tra cứu Chức sắc theo Thánh danh, Thế danh, phẩm vị, cơ quan Đạo hoặc mã định danh. Có thể nhập không dấu.</p></div><span class="section-index">01 / TƯ LIỆU NHÂN VẬT</span></div>
+        <div class="filter-panel"><label class="search-box" for="people-search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.5"/><path d="m16 16 5 5"/></svg><input id="people-search" type="search" placeholder="Nhập Thánh danh, Thế danh hoặc mã CS-…" autocomplete="off" aria-describedby="gdd-people-query-help"></label><label class="sr-only" for="branch-filter">Lọc theo cơ quan</label><select id="branch-filter"><option value="all">Tất cả cơ quan</option><option value="Cửu Trùng Đài">Cửu Trùng Đài</option><option value="Hiệp Thiên Đài">Hiệp Thiên Đài</option><option value="Phước Thiện">Phước Thiện</option><option value="Hành chánh Đạo">Cơ quan Hành chánh Đạo khác</option><option value="Khác">Khác</option></select><label class="sr-only" for="subgroup-filter">Lọc theo phân nhóm</label><select id="subgroup-filter" aria-label="Phân nhóm Chức sắc"><option value="all">Tất cả phân nhóm</option></select></div>
+        <p id="gdd-people-query-help" class="gdd-people-query-help">
+          Ví dụ cách tìm:
+          <code>Bao Dao Chon Quan Ho Tan Khoa</code>,
+          <code>Ho Tan Khoa</code> hoặc
+          <code>CS-HTD.TQ-00010</code>.
+          <span>Chỉ cần gõ tên hay mã là tìm trong tất cả hồ sơ Nam phái, Nữ phái và chưa phân loại.</span>
+        </p>
         <div id="people-grid" class="people-grid" aria-live="polite"></div>
         <div class="results-footer"><span id="people-result-count"></span><button id="people-show-more" class="link-button" type="button" hidden>Xem thêm hồ sơ <span>↗</span></button></div>
       </div>
@@ -1032,7 +1039,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 <script defer src="gdd-calendar-reminder-subscription.js?v=20261109-nam-am-01"></script>
 <script defer src="gdd-calendar-festivals.js?v=20261109-nam-am-01"></script>
 <script defer src="gdd-memorial.js?v=20261109-auto6mb-02"></script>
-<script defer src="gdd-people-organizer.js?v=20261112-rank-codes-01"></script>
+<script defer src="gdd-people-organizer.js?v=20261113-search-all-01"></script>
 <!-- CHỈNH HIỂN THỊ PHÂN LOẠI CHỨC SẮC -->
 
 <style>
