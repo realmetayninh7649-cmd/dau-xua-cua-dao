@@ -213,23 +213,6 @@ section.addEventListener('click',e=>{
  const item=e.target.closest('[data-gdd-radio-play]');
  if(item){const row=state.rows.find(r=>r.id===item.dataset.gddRadioPlay);if(row)selectProgram(row,true)}
 });
-// Kết quả tra cứu toàn kho mở đúng số âm thanh, kể cả bài chưa tải trong trang đầu.
-window.addEventListener('gdd:v2-open-audio',async event=>{
-  const id=String(event.detail?.id||'');
-  if(!/^[0-9a-f-]{36}$/i.test(id))return;
-  try{
-    let row=state.rows.find(item=>item.id===id);
-    if(!row){
-      const supa=await getClient();
-      const {data,error}=await supa.from(TABLE).select('*').eq('id',id).eq('published',true).maybeSingle();
-      if(error||!data){playStatus.textContent='Không tìm thấy chương trình âm thanh đã công bố.';return;}
-      row=data;
-    }
-    if(!state.rows.some(item=>item.id===id))state.rows.push(row);
-    selectProgram(row,true);
-    section.scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(error){playStatus.textContent='Không mở được chương trình: '+(error.message||'Vui lòng thử lại');}
-});
 more.addEventListener('click',()=>fetchPublic(false));
 function stepTrack(direction){
  if(state.rows.length<2)return;

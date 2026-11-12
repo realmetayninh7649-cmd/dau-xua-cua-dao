@@ -224,38 +224,19 @@ function videoSource(raw){
     const visual=kind==='videos'?`<div class="detail-video-preview" data-video-id="${escape(record.id)}">${videoPoster(record)}</div>`:`<div class="detail-cover">${src?`<img src="${escape(src)}" alt="${escape(title)}">`:`<div class="portrait-placeholder">${escape(sectionNames[kind])}</div>`}</div>`;
     const archiveCode=record.archive_code||'';
     const archivePanel=archiveCode&&record.slug?`<section class="gdd-archive-qr" data-gdd-archive-qr data-archive-code="${escape(archiveCode)}" data-archive-url="${escape(archiveLink(kind,record))}">
-      <div class="gdd-archive-qr-heading"><span>ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ</span><strong>KHO TƯ LIỆU ĐẠO SỬ</strong></div>
-      <div class="gdd-archive-qr-layout"><div class="gdd-archive-qr-frame"><div data-gdd-qr-graphic></div></div>
-      <div class="gdd-archive-qr-actions"><p class="gdd-archive-qr-person">${escape(title)}</p>
-      <p class="gdd-archive-qr-code">Mã hồ sơ: <code>${escape(archiveCode)}</code></p>
-      <p class="gdd-archive-qr-hint">Quét để xem trực tiếp đúng hồ sơ trên website.</p>
-      ${record.published?'':'<p class="gdd-archive-qr-warning">Bản nháp: chỉ người quản trị xem được.</p>'}
-      <div class="gdd-archive-qr-controls">
-        <button class="btn btn-primary" type="button" data-gdd-qr-download>Tải QR PNG</button>
-        <button class="btn btn-outline" type="button" data-gdd-qr-copy>Sao chép liên kết</button>
-      </div>
+      <div class="gdd-archive-qr-heading"><strong>MÃ ĐỊNH DANH TƯ LIỆU</strong><code>${escape(archiveCode)}</code></div>
+      <div class="gdd-archive-qr-layout"><div class="gdd-archive-qr-frame"><div data-gdd-qr-graphic></div></div><div class="gdd-archive-qr-actions">
+      <p>Quét mã để mở thẳng hồ sơ này trên website GIỮ ĐẠO GIỮA ĐỜI.</p>
+      ${record.published?'':'<p class="gdd-archive-qr-warning">Bản nháp: đồng đạo chưa thể xem cho tới khi công bố.</p>'}
+      <button class="btn btn-primary" type="button" data-gdd-qr-download>Tải mã QR PNG</button>
+      <button class="btn btn-outline" type="button" data-gdd-qr-copy>Sao chép liên kết</button>
       <small class="gdd-archive-qr-status" data-gdd-qr-status></small></div></div></section>`:'';
     $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${link}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${archivePanel}${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
     $('#detail-overlay').hidden=false;document.body.classList.add('modal-open');$('.detail-panel').scrollTop=0;
     if(updateHash){history.replaceState(null,'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`)}
   }
   function closeDetail(){ $('#detail-overlay').hidden=true;$('#detail-content').replaceChildren();state.detail=null;document.body.classList.remove('modal-open');if(/^#(nhan-vat|bai-viet|hinh-anh-tu-lieu|video-dao-su|ai-tin|tai-lieu-so-hoa)\//.test(location.hash))history.replaceState(null,'','#chuc-sac') }
-  async function syncHash(){
-    const match=location.hash.match(/^#([^/]+)\/(.+)$/);
-    if(!match)return;
-    const kind=kindFromPrefix[match[1]];if(!kind)return;
-    let slug='';try{slug=decodeURIComponent(match[2]);}catch{return;}
-    const row=publicRows(kind).find(x=>x.slug===slug);
-    if(row){openDetail(kind,row,false);return;}
-    // Với kho dữ liệu lớn hơn 500 mục, tra cứu trực tiếp bản ghi công khai theo slug.
-    if(!state.supabase)return;
-    const currentHash=location.hash;
-    try{
-      const {data:found,error}=await state.supabase.from(kind).select('*').eq('slug',slug).maybeSingle();
-      if(error||!found||(!state.admin&&!found.published)||location.hash!==currentHash)return;
-      openDetail(kind,found,false);
-    }catch(error){console.warn('[GDD Deep Link]',error);}
-  }
+  function syncHash(){const match=location.hash.match(/^#([^/]+)\/(.+)$/);if(!match)return;const kind=kindFromPrefix[match[1]];if(!kind)return;const slug=decodeURIComponent(match[2]);const row=publicRows(kind).find(x=>x.slug===slug);if(row)openDetail(kind,row,false)}
 
   function closeAdmin(){ $('#admin-overlay').hidden=true;document.body.classList.remove('modal-open') }
   async function openAdmin(){
