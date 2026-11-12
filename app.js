@@ -236,7 +236,24 @@ function videoSource(raw){
     if(updateHash){history.replaceState(null,'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`)}
   }
   function closeDetail(){ $('#detail-overlay').hidden=true;$('#detail-content').replaceChildren();state.detail=null;document.body.classList.remove('modal-open');if(/^#(nhan-vat|bai-viet|hinh-anh-tu-lieu|video-dao-su|ai-tin|tai-lieu-so-hoa)\//.test(location.hash))history.replaceState(null,'','#chuc-sac') }
-  function syncHash(){const match=location.hash.match(/^#([^/]+)\/(.+)$/);if(!match)return;const kind=kindFromPrefix[match[1]];if(!kind)return;const slug=decodeURIComponent(match[2]);const row=publicRows(kind).find(x=>x.slug===slug);if(row)openDetail(kind,row,false)}
+  async function syncHash(){
+    const match=location.hash.match(/^#([^/]+)\/(.+)$/);
+    if(!match)return;
+    const kind=kindFromPrefix[match[1]];
+    if(!kind)return;
+    let slug='';
+    try{slug=decodeURIComponent(match[2]);}catch{return;}
+    const row=publicRows(kind).find(x=>x.slug===slug);
+    if(row){openDetail(kind,row,false);return;}
+    // Đường dẫn từ cổng tra cứu vẫn mở đúng khi một chuyên mục có hàng ngàn tư liệu.
+    if(!state.supabase)return;
+    const requestHash=location.hash;
+    try{
+      const {data,error}=await state.supabase.from(kind).select('*')
+        .eq('slug',slug).eq('published',true).maybeSingle();
+      if(!error&&data&&location.hash===requestHash)openDetail(kind,data,false);
+    }catch(error){console.warn('[GDD Search] Không thể mở liên kết hồ sơ:',error);}
+  }
 
   function closeAdmin(){ $('#admin-overlay').hidden=true;document.body.classList.remove('modal-open') }
   async function openAdmin(){
