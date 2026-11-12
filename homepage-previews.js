@@ -296,6 +296,7 @@
     const title=source.querySelector('h3')?.textContent?.trim()||'Tư liệu Đạo sử';
     const summary=source.querySelector('.person-body p,.editorial-copy p,.archive-card-copy p,.gallery-card p')?.textContent?.trim()||'';
     const meta=source.querySelector('.person-rank,.article-tag,.archive-type,.person-years')?.textContent?.trim()||'';
+    const code=id==='chuc-sac'?source.querySelector('.gdd-person-archive-code code')?.textContent?.trim()||'':'';
     const image=source.querySelector('.person-media img,.editorial-image img,.gallery-visual img,.archive-thumb img')?.getAttribute('src')||'';
     const action=source.matches('[data-open-kind][data-id]')?source:source.querySelector('[data-open-kind][data-id]');
     // Khi URL từ nội dung chưa hợp lệ, không nhúng trực tiếp vào DOM.
@@ -312,6 +313,15 @@
     const body=document.createElement('span');body.className='gdd-preview-copy';
     if(meta){const info=document.createElement('span');info.className='gdd-preview-meta';info.textContent=meta;body.append(info)}
     const name=document.createElement('strong');name.className='gdd-preview-name';name.textContent=title;body.append(name);
+    if(code){
+      const archive=document.createElement('span');
+      archive.className='gdd-person-archive-code gdd-person-archive-code--mini';
+      archive.append('Mã: ');
+      const chip=document.createElement('code');
+      chip.textContent=code;
+      archive.append(chip);
+      body.append(archive);
+    }
     if(summary){const desc=document.createElement('span');desc.className='gdd-preview-summary';desc.textContent=summary;body.append(desc)}
     const more=document.createElement('span');more.className='gdd-preview-hint';more.textContent='Xem chi tiết ↗';body.append(more);
     card.append(media,body);return card;
