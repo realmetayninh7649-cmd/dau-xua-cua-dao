@@ -1,0 +1,56 @@
+/* GDD 13/11/2026 — Không tự phóng to ô tìm kiếm trên iOS.
+   Giữ nguyên màu sắc và bố cục gốc, không vô hiệu hóa zoom bằng tay. */
+#gdd-people-query-help{
+  margin:-12px 0 18px;
+  color:var(--sub);
+  font:400 12px/1.8 var(--sans);
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+#gdd-people-query-help code{
+  display:inline-block;
+  color:var(--green);
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:1px 6px;
+  font:600 11px/1.6 var(--sans);
+  overflow-wrap:anywhere;
+  white-space:normal;
+  vertical-align:baseline;
+}
+#gdd-people-query-help>span{
+  display:block;
+  margin-top:5px;
+  font-weight:500;
+}
+#chuc-sac .filter-panel,
+#chuc-sac .search-box{min-width:0}
+#chuc-sac #people-search{min-width:0;max-width:100%}
+@media(max-width:900px){
+  /* Safari trên iPhone thường tự phóng to ô nhập khi font nhỏ hơn 16px. */
+  #chuc-sac #people-search,
+  #chuc-sac #branch-filter,
+  #chuc-sac #subgroup-filter,
+  #gdd-p2-search #gdd-p2-q,
+  #gdd-p2-search .gdd-p2-search-filters select{
+    font-size:16px!important;
+    line-height:1.45!important;
+  }
+  #chuc-sac .search-box{max-width:100%;overflow:hidden}
+  #chuc-sac #people-search{
+    width:100%;
+    padding:13px 0;
+  }
+  #chuc-sac .filter-panel{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  #gdd-people-query-help{
+    margin:-9px 0 15px;
+    font-size:11px;
+    line-height:1.75;
+  }
+}
+@media(max-width:370px){
+  #gdd-people-query-help code{font-size:10px}
+}
