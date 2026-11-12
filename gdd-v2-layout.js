@@ -112,6 +112,13 @@
     if(typeof window.GDDApplySectionRoute==='function')window.GDDApplySectionRoute();
     openTargetFromHash();
     window.addEventListener('hashchange',openTargetFromHash);
+    // Một số nút đóng chi tiết dùng history.replaceState (không phát hashchange).
+    // Đồng bộ lại chế độ trang chủ/chuyên mục khi người đọc đóng hồ sơ.
+    document.addEventListener('click',event=>{
+      if(event.target.closest('[data-close="detail"]')){
+        requestAnimationFrame(()=>window.GDDApplySectionRoute?.());
+      }
+    });
     // Khi tải lại đường dẫn tới chuyên mục, không để màn hình đứng sai vị trí.
     if(['#gui-tu-lieu','#chung-nhan'].includes(location.hash))
       requestAnimationFrame(()=>byId(location.hash.slice(1))?.scrollIntoView({block:'start'}));
