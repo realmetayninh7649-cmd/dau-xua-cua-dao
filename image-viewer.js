@@ -20,7 +20,9 @@
       padding:10px 13px; font:600 12px/1.4 'Be Vietnam Pro',system-ui,sans-serif;
       border-radius:5px; cursor:pointer; }
     .gdd-image-action:hover { background:#e5eee8; }
+    .gdd-person-watermark-status { flex-basis:100%; font-size:11px; color:#386454; line-height:1.5; }
     .gdd-image-viewer[hidden] { display:none!important; }
+    #gdd-image-original[hidden] { display:none!important; }
     .gdd-image-viewer { position:fixed!important; z-index:10000!important; inset:0;
       display:flex; flex-direction:column; width:100vw!important; max-width:100vw!important; box-sizing:border-box; background:#0d1213; color:#f4f5f1;
       font:500 13px/1.5 'Be Vietnam Pro',system-ui,sans-serif;
@@ -98,7 +100,7 @@
   const $ = id => document.getElementById(id);
   const stage=$('gdd-image-stage'), full=$('gdd-image-full'), loading=$('gdd-image-loading');
   const caption=$('gdd-image-caption'), download=$('gdd-image-download'), orig=$('gdd-image-original');
-  let scale=1, x=0, y=0, source='', title='', previousFocus=null;
+  let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false;
   const pointers=new Map();
   let start=null, lastTap=0;
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -126,15 +128,18 @@
   };
   const reset=()=>{scale=1;x=0;y=0;updateTransform();};
   const imgTitle=img=>img.alt||img.closest('.person-card,.gallery-card')?.querySelector('h3')?.textContent||'Ảnh tư liệu';
-  function openImage(src, name){
+  function openImage(src, name, isPerson=false){
     const url=safeSource(src);if(!url)return;
     previousFocus=document.activeElement;
-    title=(name||'Ảnh tư liệu').trim();source=url;
+    title=(name||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(isPerson);
     $('gdd-image-title').textContent=title;
     full.alt=title;full.removeAttribute('src');full.src=url;
-    orig.href=url;
+    orig.href=url;orig.hidden=personPhoto;
+    download.textContent=personPhoto?'↓ Tải ảnh có dấu':'↓ Tải ảnh gốc';
     loading.hidden=false;loading.textContent='Đang mở ảnh…';
-    caption.textContent='Chụm hai ngón tay để phóng to; kéo để xem chi tiết.';
+    caption.textContent=personPhoto?
+      'Ảnh xem giữ nguyên. Khi tải qua website sẽ có dấu ánh kim mờ ở góc dưới.':
+      'Chụm hai ngón tay để phóng to; kéo để xem chi tiết.';
     viewer.hidden=false;document.body.classList.add('gdd-photo-open');reset();
     $('gdd-image-close').focus({preventScroll:true});
     // Ảnh có thể đã ở bộ đệm trước khi onload được gọi.
@@ -142,14 +147,18 @@
   }
   function imageReady(){
     loading.hidden=true;reset();
-    caption.textContent=`Ảnh gốc: ${full.naturalWidth} × ${full.naturalHeight} px · Chạm hai lần hoặc chụm hai ngón để phóng to.`;
+    caption.textContent=personPhoto?
+      `Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · Bản tải qua nút sẽ có dấu bản quyền mờ.`:
+      `Ảnh gốc: ${full.naturalWidth} × ${full.naturalHeight} px · Chạm hai lần hoặc chụm hai ngón để phóng to.`;
   }
   full.addEventListener('load',imageReady);
-  full.addEventListener('error',()=>{loading.hidden=false;loading.textContent='Không thể hiển thị ảnh. Hãy chọn “Mở ảnh gốc”.';});
+  full.addEventListener('error',()=>{loading.hidden=false;loading.textContent=personPhoto?
+    'Không thể hiển thị ảnh. Xin kiểm tra đường dẫn tư liệu.':
+    'Không thể hiển thị ảnh. Hãy chọn “Mở ảnh gốc”.';});
   function closeImage(){
     if(viewer.hidden)return;
     viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
-    pointers.clear();start=null;source='';full.removeAttribute('src');
+    pointers.clear();start=null;source='';personPhoto=false;full.removeAttribute('src');
     if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
   }
   $('gdd-image-close').addEventListener('click',closeImage);
@@ -213,24 +222,61 @@
     const name=(label||'anh-tu-lieu').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70)||'anh-tu-lieu';
     return name+'.jpg';
   };
-  async function downloadImage(url,label,btn){
+  function noticeWatermark(btn,message){
+    const actions=btn.closest('.gdd-image-actions');
+    if(actions){
+      let note=actions.querySelector('.gdd-person-watermark-status');
+      if(!note){
+        note=document.createElement('span');
+        note.className='gdd-person-watermark-status';
+        note.setAttribute('role','status');
+        actions.appendChild(note);
+      }
+      note.textContent=message;
+    }
+    caption.textContent=message;
+  }
+  async function downloadImage(url,label,btn,markPerson=false){
     if(!url)return;
     const old=btn.textContent;
-    btn.disabled=true;btn.textContent='Đang chuẩn bị ảnh…';
+    btn.disabled=true;
+    btn.textContent=markPerson?'Đang dán dấu lên ảnh…':'Đang chuẩn bị ảnh…';
     try {
       const response=await fetch(url,{mode:'cors',credentials:'omit'});
-      if(!response.ok)throw Error('Không thể tải trực tiếp');
-      const blob=await response.blob();
-      if(!blob.type.startsWith('image/'))throw Error('Tệp không phải hình ảnh');
-      const blobUrl=URL.createObjectURL(blob),a=document.createElement('a');
-      a.href=blobUrl;a.download=filename(url,label);document.body.appendChild(a);a.click();a.remove();
+      if(!response.ok)throw Error('Nguồn ảnh không cho phép tải');
+      const original=await response.blob();
+      if(!original.type.startsWith('image/'))throw Error('Tệp này không phải hình ảnh');
+      let output=original,name=filename(url,label);
+      if(markPerson){
+        if(!window.GDDPersonPhotoWatermark)throw Error('Bộ tạo dấu ảnh chưa sẵn sàng. Vui lòng tải lại trang.');
+        const marked=await window.GDDPersonPhotoWatermark.fromBlob(original);
+        output=marked.blob;
+        name=window.GDDPersonPhotoWatermark.fileName(url,label,marked.extension);
+      }
+      const blobUrl=URL.createObjectURL(output),a=document.createElement('a');
+      a.href=blobUrl;
+      a.download=name;
+      document.body.appendChild(a);
+      a.click();a.remove();
       setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
-      caption.textContent='Đã yêu cầu lưu ảnh gốc. Trên iPhone, hãy kiểm tra ứng dụng Tệp / Tải về.';
+      noticeWatermark(btn,markPerson?
+        'Đã yêu cầu lưu ảnh có dấu bản quyền mờ. Trên iPhone, hãy kiểm tra Tệp / Tải về.':
+        'Đã yêu cầu lưu ảnh gốc. Trên iPhone, hãy kiểm tra Tệp / Tải về.');
     } catch(err) {
-      caption.textContent='Nguồn ảnh không cho tải trực tiếp. Nhấn “Mở ảnh gốc”, rồi chạm giữ ảnh để lưu trên iPhone.';
+      console.warn('[GDD Photo Download]',err);
+      const message=markPerson?
+        'Chưa thể tạo bản có dấu cho ảnh này. Ảnh gốc không được tải thay thế. '+(err?.message||''):
+        'Nguồn ảnh không cho tải trực tiếp. Nhấn “Mở ảnh gốc”, rồi chạm giữ ảnh để lưu trên iPhone.';
+      noticeWatermark(btn,message);
     } finally {btn.disabled=false;btn.textContent=old;}
   }
-  download.addEventListener('click',()=>downloadImage(source,title,download));
+  download.addEventListener('click',()=>downloadImage(source,title,download,personPhoto));
+  
+  // Chỉ ảnh trong khu Hồ sơ Chức sắc, không áp dụng cho Hình ảnh, Video hoặc Biên khảo.
+  function isPersonFrame(frame){
+    return Boolean(frame.closest('#people-grid, #gdd-people-list, [data-preview-section="chuc-sac"]')||
+      frame.closest('#detail-content[data-gdd-kind="people"]'));
+  }
   
   // Nhấn vào vùng có kính lúp để xem ảnh; hồ sơ/tựa bài vẫn mở qua nút riêng.
   // #gdd-people-list là danh sách Chức sắc Nam/Nữ mới, không nằm trong #people-grid.
@@ -250,23 +296,44 @@
     // Bắt click trong capture trước sự kiện mở hồ sơ tại app.js.
     e.preventDefault();
     e.stopImmediatePropagation();
-    openImage(src,imgTitle(img));
+    openImage(src,imgTitle(img),isPersonFrame(frame));
   },true);
 
-  // Mỗi khi trang chi tiết mở, thêm nút phóng to/tải ảnh, không sửa cấu trúc hồ sơ.
+  // Thẻ chi tiết được tạo động: chỉ Chức sắc có nút lưu ảnh kèm dấu mờ.
   const detail=document.getElementById('detail-content');
   if(detail){
     const injectControls=()=>{
-      const cover=detail.querySelector('.detail-cover');const img=cover?.querySelector('img');
+      const isPerson=detail.dataset.gddKind==='people';
+      // Bộ ảnh liên quan trong hồ sơ Chức sắc: bấm liên kết cũng tải bản có dấu.
+      if(isPerson){
+        detail.querySelectorAll('.gdd-album-open:not([data-gdd-person-download])').forEach(link=>{
+          link.dataset.gddPersonDownload='1';
+          link.textContent='↓ Tải ảnh có dấu';
+          link.removeAttribute('target');
+          link.addEventListener('click',event=>{
+            event.preventDefault();
+            downloadImage(link.href,link.closest('figure')?.querySelector('figcaption')?.textContent||'Chức sắc',
+              link,true);
+          });
+        });
+      }
+      const cover=detail.querySelector('.detail-cover');
+      const img=cover?.querySelector('img');
       if(!img||cover.nextElementSibling?.classList.contains('gdd-image-actions'))return;
       const bar=document.createElement('div');bar.className='gdd-image-actions';
-      const show=document.createElement('button');show.type='button';show.className='gdd-image-action';show.textContent='⤢ Xem ảnh toàn màn hình';
-      show.addEventListener('click',()=>openImage(img.currentSrc||img.src,imgTitle(img)));
-      const save=document.createElement('button');save.type='button';save.className='gdd-image-action';save.textContent='↓ Tải ảnh gốc';
-      save.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),save));
+      const show=document.createElement('button');
+      show.type='button';show.className='gdd-image-action';show.textContent='⤢ Xem ảnh toàn màn hình';
+      show.addEventListener('click',()=>openImage(img.currentSrc||img.src,imgTitle(img),
+        detail.dataset.gddKind==='people'));
+      const save=document.createElement('button');
+      save.type='button';save.className='gdd-image-action';
+      save.textContent=isPerson?'↓ Tải ảnh có dấu':'↓ Tải ảnh gốc';
+      save.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),
+        save,detail.dataset.gddKind==='people'));
       bar.append(show,save);cover.after(bar);
     };
     const observer=new MutationObserver(injectControls);
-    observer.observe(detail,{childList:true});injectControls();
+    observer.observe(detail,{childList:true,subtree:true});
+    injectControls();
   }
 })();
