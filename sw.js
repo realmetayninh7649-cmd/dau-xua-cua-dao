@@ -4,7 +4,7 @@ const CACHE_NAME = 'gdd-offline-shell-v1';
 const OFFLINE_URL = new URL('./offline.html', self.registration.scope).href;
 const LOGO_URL = new URL('./logo.png', self.registration.scope).href;
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.add(OFFLINE_URL)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll([OFFLINE_URL, LOGO_URL])).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil(
