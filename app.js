@@ -203,7 +203,7 @@ function videoSource(raw){
   }
   // Liên kết QR dùng tuyến hash sẵn có: mở đúng hồ sơ và cả album ảnh liên quan.
   function archiveLink(kind,record){
-    const base=location.origin+location.pathname.replace(/index\\.html$/,'');
+    const base=location.origin+location.pathname.replace(/index\.html$/,'');
     return base+'#'+prefixNames[kind]+'/'+encodeURIComponent(record.slug);
   }
   function openDetail(kind,record,updateHash=true){
