@@ -37,6 +37,36 @@ async function checkPage(label,width,height){
     });
     if(!layout.order)throw Error('Sai thứ tự mục chính');
     if(layout.overflow>3)throw Error('Nội dung tràn ngang: '+layout.overflow);
+    if(!layout.footer)throw Error('Thiếu phần phiên bản GitHub cuối trang');
+    // Các nút đổi tháng, ngày lịch và điều khiển âm thanh vẫn hoạt động sau khi chuyển cột.
+    if(width<=600){
+      const toggle=page.locator('#gdd-cal-toggle');
+      if(await toggle.isVisible())await toggle.click();
+    }
+    const calendarBefore=await page.locator('#gdd-cal-month').innerText();
+    await page.locator('#gdd-cal-next').click();
+    const calendarAfter=await page.locator('#gdd-cal-month').innerText();
+    if(calendarAfter===calendarBefore)throw Error('Nút chuyển tháng tiếp theo không hoạt động');
+    await page.locator('#gdd-cal-prev').click();
+    if((await page.locator('#gdd-cal-month').innerText())!==calendarBefore)
+      throw Error('Nút trở về tháng trước không hoạt động');
+    await page.locator('#gdd-cal-days button').first().click();
+    if(!(await page.locator('#gdd-cal-selected').innerText()).trim())
+      throw Error('Không hiển thị ngày được chọn');
+    await page.locator('#gdd-radio-audio').waitFor();
+    const repeat=page.locator('#gdd-radio-repeat-one');
+    const repeatBefore=await repeat.getAttribute('aria-pressed');
+    await repeat.click();
+    if((await repeat.getAttribute('aria-pressed'))===repeatBefore)
+      throw Error('Nút lặp bài âm thanh không thay đổi trạng thái');
+    await repeat.click();
+    const playRow=page.locator('#gdd-radio-list [data-gdd-radio-play]').first();
+    if(await playRow.count()){
+      await playRow.click();
+      if((await page.locator('#gdd-radio-title').innerText()).includes('Mời chọn'))
+        throw Error('Chọn số âm thanh không cập nhật trình phát');
+    }
+
     const portrait=page.locator('#gdd-v2-main #chuc-sac [data-open-kind="people"]').first();
     await portrait.waitFor({timeout:20000});
     await portrait.click();
@@ -59,6 +89,13 @@ async function checkPage(label,width,height){
       });
       throw Error('QR canvas chưa tạo: '+JSON.stringify(diag));
     }
+
+    // Xuất QR đúng PNG; không chạm vào dữ liệu quản trị.
+    const download=page.waitForEvent('download',{timeout:10000});
+    await page.locator('#detail-content [data-gdd-qr-download]').click();
+    const qrFile=await download;
+    if(!/^CS-.+\.png$/i.test(qrFile.suggestedFilename()))
+      throw Error('Tên file QR PNG chưa đúng: '+qrFile.suggestedFilename());
     const unexpected=errors.filter(x=>!/ResizeObserver loop limit exceeded/.test(x));
     if(unexpected.length)throw Error('Lỗi JavaScript: '+unexpected.slice(0,2).join(' | '));
     console.log('PASS '+label,JSON.stringify({layout,qr:{before:qr.before,code:qr.code,hasCanvas:qr.hasCanvas}}));
