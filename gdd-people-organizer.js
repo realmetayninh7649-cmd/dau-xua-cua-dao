@@ -8,7 +8,7 @@
   window.__gddPeopleOrganizer20261105 = true;
   const $=(s,root=document)=>root.querySelector(s);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase();
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/[._\-/]+/g,' ').replace(/\s+/g,' ').trim();
   const safeURL=v=>{try{const u=new URL(String(v));return /^https?:$/.test(u.protocol)?u.href:'';}catch{return '';}};
   const cfg=window.SITE_CONFIG||{};
   const root=$('#chuc-sac'),grid=$('#people-grid'),filters=root?.querySelector('.filter-panel');
@@ -181,11 +181,23 @@
     if(av!=null&&bv!=null&&av!==bv)return av-bv;
     return String(b.created_at||'').localeCompare(String(a.created_at||''))||String(a.id).localeCompare(String(b.id));
   });}
-  function matching(){const branch=branchFilter.value,sub=subgroupFilter.value,q=norm(searchInput.value);
-    return sorted().filter(p=>(branch==='all'||(p.branch||'Khác')===branch)
-      &&(sub==='all'||p.subgroup===sub)
-      &&(p.gender||'Chưa phân loại')===s.selectedSex
-      &&norm([p.archive_code,p.archive_legacy_code,p.full_name,p.secular_name,p.rank,p.branch,p.subgroup,p.birthplace,p.summary,p.biography].join(' ')).includes(q));}
+  function matching(){
+    const branch=branchFilter.value,sub=subgroupFilter.value;
+    const q=norm(searchInput.value),terms=q.split(' ').filter(Boolean);
+    return sorted().filter(p=>{
+      // Có nhập tên, Thánh danh, Thế danh hoặc mã: tìm trong TOÀN BỘ hồ sơ,
+      // bất kể tab Nam/Nữ, cơ quan hay phân nhóm đang được chọn.
+      if(terms.length){
+        const haystack=norm([p.archive_code,p.archive_legacy_code,p.full_name,p.secular_name,
+          p.rank,p.branch,p.subgroup,p.birthplace,p.summary,p.biography].join(' '));
+        return terms.every(term=>haystack.includes(term));
+      }
+      // Khi không nhập từ khóa, giữ nguyên chức năng duyệt từng phân mục.
+      return (branch==='all'||(p.branch||'Khác')===branch)
+        &&(sub==='all'||p.subgroup===sub)
+        &&(p.gender||'Chưa phân loại')===s.selectedSex;
+    });
+  }
   const sourceMarkup=p=>{
     const url=safeURL(p.image_url),name=esc(p.full_name),image=url?`<img src="${esc(url)}" alt="Di ảnh ${name}" loading="lazy" decoding="async">`:
       `<div class="portrait-placeholder"><span class="symbol">✦</span></div>`;
@@ -198,13 +210,20 @@
       <button type="button" class="card-link" data-open-kind="people" data-id="${esc(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`;
   };
   function renderList(){if(!s.ready)return;
+    const isSearch=Boolean(norm(searchInput.value));
     const arr=matching(),visible=arr.slice(0,s.visible);
-    area.innerHTML=visible.length?visible.map(sourceMarkup).join(''):'<div class="empty-state"><b>Chưa có hồ sơ trong phân mục này.</b>Hãy chọn cơ quan khác hoặc kiểm tra mục Chưa phân loại.</div>';
-    totalLabel.textContent=`Đang hiển thị ${visible.length} / ${arr.length} hồ sơ ${s.selectedSex.toLowerCase()}`;
+    area.innerHTML=visible.length?visible.map(sourceMarkup).join(''):
+      isSearch?'<div class="empty-state"><b>Không tìm thấy hồ sơ phù hợp.</b>Xin thử tên không dấu, Thế danh hoặc mã định danh khác.</div>':
+      '<div class="empty-state"><b>Chưa có hồ sơ trong phân mục này.</b>Hãy chọn cơ quan khác hoặc kiểm tra mục Chưa phân loại.</div>';
+    totalLabel.textContent=isSearch?
+      `Đang hiển thị ${visible.length} / ${arr.length} kết quả toàn bộ Chức sắc (Nam, Nữ và chưa phân loại)`:
+      `Đang hiển thị ${visible.length} / ${arr.length} hồ sơ ${s.selectedSex.toLowerCase()}`;
     more.hidden=arr.length<=6;more.textContent=arr.length>s.visible?`Xem thêm ${Math.min(6,arr.length-s.visible)} hồ sơ ↗`:'Thu gọn ↑';
-    tabs.querySelectorAll('[data-gdd-sex]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.gddSex===s.selectedSex)));
+    tabs.querySelectorAll('[data-gdd-sex]').forEach(b=>b.setAttribute('aria-pressed',
+      String(!isSearch&&b.dataset.gddSex===s.selectedSex)));
     const unsure=sorted().filter(p=>(p.gender||'Chưa phân loại')==='Chưa phân loại').length;
-    notice.textContent=unsure?`${unsure} hồ sơ chưa phân loại` : '';
+    notice.textContent=isSearch?'Đang tìm trong tất cả hồ sơ; không cần chọn Nam hoặc Nữ.':
+      (unsure?`${unsure} hồ sơ chưa phân loại` : '');
     renderHomepagePreview();
   }
   function setSex(sex){if(!sexOptions.some(([v])=>v===sex))return;s.selectedSex=sex;s.visible=6;renderList();}
