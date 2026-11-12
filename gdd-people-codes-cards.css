@@ -66,3 +66,16 @@
   .person-body .gdd-person-archive-code,
   .person-body .gdd-person-archive-code code{font-size:10px}
 }
+/* Ưu tiên chiều cao theo nội dung khi có thêm mã: không ép chữ trong ô nhỏ. */
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"] .gdd-home-person-mini{
+  min-height:142px!important;
+  height:auto!important;
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"] .gdd-home-person-mini .gdd-preview-thumb{
+  min-height:142px!important;
+  max-height:none!important;
+}
+body.gdd-p1-ready #gdd-p1-main #gdd-directory [data-preview-section="chuc-sac"] .gdd-home-person-mini .gdd-preview-copy{
+  min-height:142px!important;
+  height:auto!important;
+}
