@@ -24,6 +24,13 @@
   let editorSeq = 0, detailSeq = 0;
   // Giữ tệp trong bộ nhớ cho đến khi người quản trị bấm Đăng/Lưu MỘT LẦN.
   let pendingFiles = [];
+  // Giải phóng URL xem trước khi bỏ ảnh, đổi bài hoặc đăng xong.
+  function releaseThumbnails(items){
+    for(const item of items){
+      if(item.previewUrl){URL.revokeObjectURL(item.previewUrl);item.previewUrl='';}
+    }
+  }
+  function clearPendingFiles(){releaseThumbnails(pendingFiles);pendingFiles=[];}
   let panelContext = '';
   let uploading = false;
 
@@ -76,13 +83,17 @@
     .gdd-admin-photos {display:flex;flex-direction:column;gap:11px;margin-top:15px;}
     .gdd-admin-photo {display:grid;grid-template-columns:68px minmax(0,1fr);gap:12px;background:#fff;border:1px solid #e0e6dd;border-radius:6px;padding:10px;}
     .gdd-admin-photo img {width:68px;height:85px;object-fit:contain;background:#e8ece5;border-radius:4px;}
+    .gdd-album-pending-thumb {position:relative;width:68px;height:85px;min-width:0;overflow:hidden;border-radius:5px;background:#eff2ea;}
+    .gdd-album-pending-thumb img {display:block;width:100%;height:100%;object-fit:contain;background:#eff2ea;}
+    .gdd-album-pending-thumb .gdd-album-photo-no {position:absolute;right:3px;bottom:3px;min-height:0;padding:2px 5px;border-radius:3px;background:#183a31d9;color:#fff;font:700 10px/1.35 'Be Vietnam Pro',sans-serif;}
+    .gdd-album-pending-thumb--empty .gdd-album-photo-no {position:static;display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#eff2ea;color:#7e8b80;font:700 17px Georgia,serif;}
     .gdd-admin-photo .gdd-album-field {margin:0 0 8px;}
     .gdd-admin-photo .gdd-album-field input {margin-top:5px;}
     .gdd-admin-photo .gdd-album-commands {margin:0;gap:6px;}
     .gdd-album-photo-no {display:flex;align-items:center;justify-content:center;min-height:70px;font:700 17px Georgia,serif;color:#7e8b80;background:#eff2ea;border-radius:5px;}
     .gdd-album-selection {margin:12px 0 16px;}
     .gdd-album-empty {font:400 12px/1.75 'Be Vietnam Pro',sans-serif;color:#778279;margin:14px 0 0;}
-    @media(max-width:530px){.gdd-album-grid{gap:10px;}.gdd-album h3{font-size:18px;}.gdd-album-figure figcaption{font-size:11px;}#gdd-admin-album-panel{padding:15px 12px;}.gdd-admin-photo{grid-template-columns:56px minmax(0,1fr);gap:8px;}.gdd-admin-photo img{width:56px;height:73px;}.gdd-album-btn{font-size:11px;padding:8px 9px;}}
+    @media(max-width:530px){.gdd-album-grid{gap:10px;}.gdd-album h3{font-size:18px;}.gdd-album-figure figcaption{font-size:11px;}#gdd-admin-album-panel{padding:15px 12px;}.gdd-admin-photo{grid-template-columns:56px minmax(0,1fr);gap:8px;}.gdd-admin-photo img,.gdd-album-pending-thumb{width:56px;height:73px;}.gdd-album-btn{font-size:11px;padding:8px 9px;}}
   `;
   document.head.appendChild(style);
 
@@ -187,6 +198,16 @@
       const row=document.createElement('div');row.className='gdd-admin-photo';
       const indexDisplay=document.createElement('div');indexDisplay.className='gdd-album-photo-no';
       indexDisplay.textContent=String(index+1).padStart(2,'0');
+      // Mỗi tệp được xem trước tại đúng vị trí chú thích và giữ nguyên khi đổi thứ tự.
+      const thumbnail=document.createElement('div');thumbnail.className='gdd-album-pending-thumb';
+      if(item.previewUrl){
+        const image=document.createElement('img');
+        image.src=item.previewUrl;image.alt='Ảnh '+(index+1)+': '+item.file.name;
+        image.loading='lazy';image.decoding='async';
+        image.addEventListener('error',()=>{image.remove();thumbnail.classList.add('gdd-album-pending-thumb--empty');});
+        thumbnail.appendChild(image);
+      }else thumbnail.classList.add('gdd-album-pending-thumb--empty');
+      thumbnail.appendChild(indexDisplay);
       const content=document.createElement('div');
       const fn=document.createElement('p');fn.className='gdd-album-note';fn.style.margin='0 0 5px';
       fn.textContent=item.file.name+' · '+(item.file.size/1024/1024).toFixed(2)+' MB'+(item.saved?' · Đã lưu':'');
@@ -201,8 +222,8 @@
       const add=(text,action,disabled=false)=>{const btn=document.createElement('button');btn.type='button';btn.className='gdd-album-btn';btn.textContent=text;btn.disabled=disabled||!!item.saved||uploading;btn.addEventListener('click',action);cmds.appendChild(btn);};
       add('↑',()=>{[pendingFiles[index-1],pendingFiles[index]]=[pendingFiles[index],pendingFiles[index-1]];renderQueue();},index===0);
       add('↓',()=>{[pendingFiles[index+1],pendingFiles[index]]=[pendingFiles[index],pendingFiles[index+1]];renderQueue();},index===pendingFiles.length-1);
-      add('Gỡ',()=>{pendingFiles.splice(index,1);renderQueue();});
-      content.append(fn,label,cmds);row.append(indexDisplay,content);target.appendChild(row);
+      add('Gỡ',()=>{const [removed]=pendingFiles.splice(index,1);if(removed)releaseThumbnails([removed]);renderQueue();});
+      content.append(fn,label,cmds);row.append(thumbnail,content);target.appendChild(row);
     });
   }
   function renderPanel(){
@@ -211,7 +232,7 @@
     const owner=isEditing()&&editing&&kind===editing.kind?editing:null;
     const context=kind+':'+(owner?.id||'new');
     // Khi đổi bài hoặc đổi chuyên mục, tệp chọn ở bài cũ không được gắn nhầm.
-    if(panelContext!==context){pendingFiles=[];panelContext=context;}
+    if(panelContext!==context){clearPendingFiles();panelContext=context;}
     const actions=editor.querySelector('.form-actions');
     if(actions&&panel.parentElement!==editor)actions.before(panel);
     if(!actions)return;
@@ -230,7 +251,12 @@
     `;
     $('#gdd-album-files').addEventListener('change',e=>{
       const files=Array.from(e.target.files||[]);
-      pendingFiles=files.map(file=>({file,caption:'',saved:false}));
+      clearPendingFiles();
+      pendingFiles=files.map(file=>{
+        let previewUrl='';
+        try{previewUrl=URL.createObjectURL(file);}catch{}
+        return {file,caption:'',saved:false,previewUrl};
+      });
       if(files.length>MAX_FILES)setStatus(`Đã chọn ${files.length} ảnh; chỉ được tối đa ${MAX_FILES}.`);
       else setStatus(files.length?`Đã chọn ${files.length} ảnh. Điền nội dung rồi nhấn nút Đăng tư liệu/Lưu thay đổi ở bên dưới.`:'');
       renderQueue();
@@ -347,7 +373,7 @@
     pendingCount:()=>pendingFiles.filter(item=>!item.saved).length,
     validatePending,
     uploadPending,
-    resetAfterSuccess:()=>{pendingFiles=[];editing=null;panelContext='';panel.dataset.context='';}
+    resetAfterSuccess:()=>{clearPendingFiles();editing=null;panelContext='';panel.dataset.context='';}
   };
 
   if(editor){

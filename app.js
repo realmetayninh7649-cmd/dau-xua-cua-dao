@@ -390,7 +390,26 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     if(state.editingId){const record=state.data[kind].find(x=>x.id===state.editingId);if(record){const form=$('#editor-form');for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;if(el.type==='checkbox')el.checked=Boolean(record[name]);else el.value=record[name]??''}}}
     if(kind==='people')refreshPersonCodePreview();
   }
-  function renderEditorList(){if(!state.admin)return;const kind=state.editorKind;$('#editor-list').innerHTML=state.data[kind].length?state.data[kind].map(r=>`<div class="editor-item"><div><b>${escape(recordTitle(kind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}</span></div><button type="button" data-list-qr="${escape(kind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(kind)}" data-id="${escape(r.id)}">Sửa</button></div>`).join(''):'<p class="small-note">Chưa có tư liệu.</p>'}
+  // Tìm nhanh trong loại tư liệu đang chọn; không tác động dữ liệu hoặc trạng thái đã công bố.
+  function renderEditorList(){
+    if(!state.admin)return;
+    const kind=state.editorKind;
+    const rows=state.data[kind]||[];
+    const input=$('#editor-record-search');
+    const term=norm(input?.value.trim()||'');
+    const matched=term?rows.filter(r=>norm([
+      recordTitle(kind,r),r.archive_code,r.slug,r.secular_name,r.rank,r.category,r.deceased_name
+    ].filter(Boolean).join(' ')).includes(term)):rows;
+    const info=$('#editor-search-count');
+    if(info)info.textContent=term
+      ?`Tìm thấy ${matched.length}/${rows.length} tư liệu trong ${sectionNames[kind]}.`
+      :`${rows.length} tư liệu trong ${sectionNames[kind]}.`;
+    $('#editor-list').innerHTML=matched.length?matched.map(r=>
+      `<div class="editor-item"><div><b>${escape(recordTitle(kind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}</span></div><button type="button" data-list-qr="${escape(kind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(kind)}" data-id="${escape(r.id)}">Sửa</button></div>`
+    ).join(''):rows.length
+      ?'<p class="small-note">Không tìm thấy tư liệu phù hợp. Thử nhập tên hoặc mã hồ sơ khác.</p>'
+      :'<p class="small-note">Chưa có tư liệu.</p>';
+  }
   function editRecord(kind,id){state.editorKind=kind;state.editingId=id;closeDetail();$('#admin-overlay').hidden=false;document.body.classList.add('modal-open');buildEditor();$('.admin-panel').scrollTop=120}
   async function uploadImage(file,kind){
     if(!file)return '';
@@ -657,7 +676,8 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       btn.disabled=false;
     });
     $('#logout-button').addEventListener('click',async()=>{if(state.supabase)await state.supabase.auth.signOut();state.user=null;state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;closeAdmin();await fetchData();toast('Đã đăng xuất')});
-    $$('.editor-tabs button').forEach(b=>b.addEventListener('click',()=>{state.editorKind=b.dataset.kind;state.editingId=null;buildEditor();renderEditorList()}));
+    $('.editor-tabs button').forEach(b=>b.addEventListener('click',()=>{state.editorKind=b.dataset.kind;state.editingId=null;$('#editor-record-search').value='';buildEditor();renderEditorList()}));
+    $('#editor-record-search').addEventListener('input',renderEditorList);
     $('#editor-new').addEventListener('click',()=>{state.editingId=null;buildEditor()});
     $('#editor-form').addEventListener('submit',saveRecord);
     $('#editor-form').addEventListener('input',refreshPersonCodePreview);

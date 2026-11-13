@@ -80,12 +80,12 @@
   
 <script defer src="gdd-image-optimizer.js?v=20261109-auto6mb-01"></script>
 <script defer src="vendor/qrcode.min.js?v=20261113-local"></script>
-<script defer src="app.js?v=20261113-photo-kind-01"></script>
+<script defer src="app.js?v=20261114-admin-list-search-01"></script>
 <script defer src="gdd-archive-qr.js?v=20261113-ios-save-04"></script>
 
   <script defer src="gdd-person-watermark.js?v=20261113-final-master-08"></script>
   <script defer src="image-viewer.js?v=20261113-seal03"></script>
-  <script defer src="dao-su-albums.js?v=20261109-auto6mb-02"></script>
+  <script defer src="dao-su-albums.js?v=20261114-queue-thumbnails-01"></script>
 <script defer src="homepage-previews.js?v=20261113-people-navfix-02"></script>  <script defer src="gdd-video-aspect.js?v=20261107-01"></script>
   <script defer src="gdd-document-export.js?v=20261107-02"></script>
   <script defer src="gdd-audio-radio.js?v=20261113-search-01"></script>
@@ -105,6 +105,13 @@
 
 <link rel="stylesheet" href="hp-life-display.css?v=20261113-05"><script defer src="hp-life-display.js?v=20261113-05"></script>
   <link rel="stylesheet" href="gdd-people-codes-cards.css?v=20261113-01">
+<style id="gdd-editor-search-style-20261114">
+.gdd-editor-search{display:flex;flex-direction:column;gap:7px;margin:12px 0 18px;max-width:100%}
+.gdd-editor-search label{font-size:12px;font-weight:700;color:#315449}
+.gdd-editor-search input{width:100%;min-height:44px;box-sizing:border-box;padding:11px 13px;border:1px solid #cfd8ce;border-radius:7px;background:#fff;color:#263a30;font:13px/1.5 'Be Vietnam Pro',sans-serif}
+.gdd-editor-search input:focus{outline:2px solid #8cac9d;outline-offset:1px}
+.gdd-editor-search small{font-size:11px;line-height:1.55;color:#66766b}
+</style>
 </head>
 <body>
   <div class="thin-bar"><div class="wrap top-bar-inner"><span>ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ</span><span>TƯ LIỆU · BIÊN KHẢO · DI SẢN</span></div></div>
@@ -306,7 +313,7 @@
       <div class="editor-tabs" role="group" aria-label="Loại tư liệu"><button class="is-selected" type="button" data-kind="people">Chức sắc</button><button type="button" data-kind="videos">Video</button><button type="button" data-kind="obituaries">Ai Tín</button><button type="button" data-kind="documents">Tài liệu số</button><button type="button" data-kind="posts">Biên khảo</button><button type="button" data-kind="media">Hình ảnh</button></div>
       <div class="editor-heading"><h3 id="editor-heading">Thêm hồ sơ Chức sắc</h3><button type="button" class="link-button" id="editor-new">+ Soạn mới</button></div>
       <form id="editor-form" class="admin-form"></form>
-      <div class="editor-items"><h3>Tư liệu đã đăng / bản nháp</h3><div id="editor-list"></div></div>
+      <div class="editor-items"><h3>Tư liệu đã đăng / bản nháp</h3><div class="gdd-editor-search"><label for="editor-record-search">Tìm nhanh trong mục đang chọn</label><input id="editor-record-search" type="search" placeholder="Nhập tên bài, tên Chức sắc hoặc mã hồ sơ…" autocomplete="off" aria-controls="editor-list"><small id="editor-search-count" role="status" aria-live="polite"></small></div><div id="editor-list"></div></div>
       <section class="incoming-submissions" aria-label="Tư liệu do tín hữu gửi"><h3>Hộp thư tư liệu tín hữu</h3><p class="small-muted">Chỉ tài khoản quản trị xem được. Tư liệu không tự động công bố.</p><div id="submission-inbox"></div><div id="submission-reader" hidden></div></section>
     </div>
   </section></div>
