@@ -364,29 +364,77 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     }
     return 'KH.KH';
   }
+  // Nhóm mã xem trước để đối chiếu; Supabase vẫn cấp mã/số thứ tự thật.
+  function personClassificationSignature(form, category){
+    const get=name=>String(form.elements[name]?.value||'').trim();
+    return JSON.stringify([get('full_name'),get('branch'),get('rank'),get('subgroup'),category]);
+  }
   function refreshPersonCodePreview(){
     const form=$('#editor-form'),target=$('#person-code-preview');
     if(!target||state.editorKind!=='people')return;
     const saved=state.editingId?state.data.people.find(p=>p.id===state.editingId):null;
+    const panel=$('#gdd-person-publish-check',form);
+    const confirmed=$('#gdd-person-classification-confirm',form);
+    const get=name=>String(form.elements[name]?.value||'').trim();
+    const name=get('full_name'),branch=get('branch'),rank=get('rank'),subgroup=get('subgroup');
+    const category=personCodeCategory(branch,rank,subgroup,name);
+    const signature=personClassificationSignature(form,category);
+    const needsCheck=Boolean(form.elements.published?.checked)&&!saved?.archive_code;
+    if(panel){
+      panel.hidden=!needsCheck;
+      if(panel.dataset.signature!==signature){
+        panel.dataset.signature=signature;
+        if(confirmed)confirmed.checked=false;
+      }
+      const valid=Boolean(name&&branch&&rank);
+      if(confirmed)confirmed.disabled=!valid||!needsCheck;
+      const summary=$('#gdd-person-classification-summary',panel);
+      const note=$('#gdd-person-classification-note',panel);
+      if(summary){
+        summary.innerHTML='<div><dt>Danh xưng</dt><dd>'+escape(name||'Chưa nhập')+'</dd></div>'+
+          '<div><dt>Cơ quan Đạo</dt><dd>'+escape(branch||'Chưa xác định')+'</dd></div>'+
+          '<div><dt>Phẩm vị</dt><dd>'+escape(rank||'Chưa nhập')+'</dd></div>'+
+          '<div><dt>Phân nhóm</dt><dd>'+escape(subgroup||'Chưa phân nhóm')+'</dd></div>'+
+          '<div><dt>Nhóm mã dự kiến</dt><dd><code>'+escape(valid?'CS-'+category:'Chưa xác định')+'</code></dd></div>';
+      }
+      if(note){
+        const special=category.endsWith('.KH')||category==='HTD.CQK'||category==='KH.KH';
+        note.textContent=!valid
+          ?'Cần có Danh xưng, Cơ quan Đạo và Phẩm vị trước khi cấp mã. Có thể bỏ chọn Công bố để lưu bản nháp.'
+          :special
+            ?'Nhóm mã đặc biệt: xin mở Thông tin bổ sung để đối chiếu kỹ Phẩm vị và Phân nhóm trước khi xác nhận.'
+            :'Xin đối chiếu với bài viết trước khi xác nhận. Số thứ tự sẽ do Supabase cấp, không cấp thử tại đây.';
+      }
+    }
     if(saved?.archive_code){
       target.innerHTML='<b>Mã định danh đã cấp:</b> <code>'+escape(saved.archive_code)+'</code>'+
         '<small>Mã được giữ cố định để tra cứu lâu dài; sửa thông tin không tự đổi mã cũ.</small>';
       return;
     }
-    const get=name=>form.elements[name]?.value||'';
-    const branch=get('branch'),rank=get('rank');
-    if(!branch||!rank){target.textContent='Chọn Cơ quan/Hệ thống và nhập Phẩm vị để xem trước nhóm mã.';return;}
-    const category=personCodeCategory(branch,rank,get('subgroup'),get('full_name'));
+    if(!branch||!rank){
+      target.textContent='Chọn Cơ quan/Hệ thống và nhập Phẩm vị để xem trước nhóm mã.';
+      return;
+    }
     const unknown=category.endsWith('.KH')||category==='HTD.CQK';
     target.innerHTML='<b>Nhóm mã khi công bố:</b> <code>CS-'+escape(category)+'-xxxxx</code>'+
       '<small>Số thứ tự được Supabase tự cấp khi CÔNG BỐ. Cửu Trùng Đài và Hiệp Thiên Đài mỗi Đài có một dãy liên tục, không bắt đầu lại theo phẩm vị.'+
-      (unknown?' Nhóm chưa xác định chính xác phẩm vị: xin kiểm tra thông tin trước khi đăng.':'')+'</small>';
+      (unknown?' Nhóm đặc biệt: xin đối chiếu kỹ trước khi xác nhận.':'')+'</small>';
   }
-
   function buildEditor(){
     const kind=state.editorKind;$('#editor-heading').textContent=state.editingId?'Sửa tư liệu':'Thêm '+(sectionNames[kind]||'tư liệu');
     $$('.editor-tabs button').forEach(b=>b.classList.toggle('is-selected',b.dataset.kind===kind));
-    $('#editor-form').innerHTML=fields[kind].map(labelHTML).join('')+(kind==='people'?'<div class="gdd-person-code-preview" id="person-code-preview" aria-live="polite"></div>':'')+`<div class="form-actions"><button class="btn btn-primary" type="submit">${state.editingId?'Lưu thay đổi':'Đăng tư liệu'}</button>${state.editingId?'<button class="btn-delete" type="button" id="delete-record">Xóa tư liệu</button>':''}</div><p id="form-message" class="small-note" aria-live="polite"></p>`;
+    const peopleExtra=kind==='people'
+      ?'<div class="gdd-person-code-preview" id="person-code-preview" aria-live="polite"></div>'+
+        '<section class="gdd-person-publish-check" id="gdd-person-publish-check" aria-labelledby="gdd-person-classification-title" hidden>'+
+        '<h4 id="gdd-person-classification-title">Kiểm tra phân loại trước khi cấp mã</h4>'+
+        '<p>Kiểm tra đúng Cơ quan Đạo, Phẩm vị và nhóm mã. Nếu chưa chắc chắn, hãy lưu bản nháp.</p>'+
+        '<dl id="gdd-person-classification-summary"></dl>'+
+        '<p class="gdd-person-classification-note" id="gdd-person-classification-note"></p>'+
+        '<label class="gdd-person-classification-consent"><input type="checkbox" id="gdd-person-classification-confirm" name="gdd_person_confirm" value="1">'+
+        '<span>Tôi đã kiểm tra đúng Cơ quan Đạo, Phẩm vị và nhóm mã dự kiến của hồ sơ này.</span></label>'+
+        '</section>'
+      :'';
+    $('#editor-form').innerHTML=fields[kind].map(labelHTML).join('')+peopleExtra+`<div class="form-actions"><button class="btn btn-primary" type="submit">${state.editingId?'Lưu thay đổi':'Đăng tư liệu'}</button>${state.editingId?'<button class="btn-delete" type="button" id="delete-record">Xóa tư liệu</button>':''}</div><p id="form-message" class="small-note" aria-live="polite"></p>`;
     if(state.editingId){const record=state.data[kind].find(x=>x.id===state.editingId);if(record){const form=$('#editor-form');for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;if(el.type==='checkbox')el.checked=Boolean(record[name]);else el.value=record[name]??''}}}
     if(kind==='people')refreshPersonCodePreview();
   }
@@ -509,6 +557,24 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         data[name]=el.type==='checkbox'?el.checked:el.value.trim()||null;
       }
       if(kind==='people'){
+        // Không cho cấp mã lần đầu khi phân loại chưa được biên tập viên đối chiếu.
+        // Mã đã cấp trước đây không bị đổi và không yêu cầu xác nhận lại.
+        if(data.published&&!record?.archive_code){
+          const category=personCodeCategory(data.branch,data.rank,data.subgroup,data.full_name);
+          const panel=$('#gdd-person-publish-check',form);
+          const checkbox=$('#gdd-person-classification-confirm',form);
+          const signature=personClassificationSignature(form,category);
+          const valid=Boolean(data.full_name&&data.branch&&data.rank);
+          if(!valid||!checkbox?.checked||checkbox.disabled||panel?.dataset.signature!==signature){
+            if(panel){
+              panel.hidden=false;
+              panel.scrollIntoView({behavior:'smooth',block:'center'});
+            }
+            throw new Error(!valid
+              ?'Cần kiểm tra Danh xưng, Cơ quan Đạo và Phẩm vị trước khi công bố. Có thể lưu bản nháp.'
+              :'Xin xác nhận đúng Cơ quan Đạo, Phẩm vị và nhóm mã trước khi cấp mã định danh lần đầu.');
+          }
+        }
         const d=data.death_lunar_day,m=data.death_lunar_month;
         if(Boolean(d)!==Boolean(m))throw new Error('Ngày kỷ niệm qui vị phải nhập đủ ngày và tháng âm lịch.');
         if(d&&(!Number.isInteger(Number(d))||Number(d)<1||Number(d)>30||

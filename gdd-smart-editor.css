@@ -64,3 +64,41 @@
  #editor-form .gdd-smart-extra,
  #gdd-memorial-form .gdd-smart-extra{padding:10px}
 }
+
+/* Xác nhận nhóm mã chỉ tại hồ sơ Chức Sắc chưa được cấp mã */
+#editor-form #gdd-person-publish-check[hidden]{display:none!important}
+#editor-form .gdd-person-publish-check{
+  margin:12px 0 15px;padding:13px 14px;border:1px solid #cbd9d0;border-radius:9px;
+  background:#f5f8f1;color:#244a40;min-width:0
+}
+#editor-form .gdd-person-publish-check h4{
+  margin:0 0 7px;font:700 15px/1.5 'Noto Serif',Georgia,serif;color:#204f43
+}
+#editor-form .gdd-person-publish-check>p{
+  margin:0 0 10px;font:400 11px/1.7 'Be Vietnam Pro',sans-serif;color:#597367
+}
+#editor-form .gdd-person-publish-check dl{display:grid;gap:0;margin:10px 0;border-top:1px solid #d7e2d9}
+#editor-form .gdd-person-publish-check dl>div{
+  display:grid;grid-template-columns:minmax(90px,40%) minmax(0,1fr);
+  column-gap:8px;padding:8px 0;border-bottom:1px solid #d7e2d9;align-items:start
+}
+#editor-form .gdd-person-publish-check dt{
+  color:#69796d;font:500 11px/1.55 'Be Vietnam Pro',sans-serif
+}
+#editor-form .gdd-person-publish-check dd{
+  color:#224b3e;margin:0;overflow-wrap:anywhere;font:700 11px/1.55 'Be Vietnam Pro',sans-serif
+}
+#editor-form .gdd-person-publish-check dd code{
+  color:#235347;background:#e8f0e9;padding:2px 5px;border-radius:4px
+}
+#editor-form .gdd-person-classification-consent{
+  display:flex;align-items:flex-start;gap:9px;padding:10px;
+  background:#fff;border:1px solid #c9d7cb;border-radius:7px;cursor:pointer;
+  font:700 11px/1.65 'Be Vietnam Pro',sans-serif;color:#235247;margin:10px 0 0
+}
+#editor-form .gdd-person-classification-consent input{
+  width:19px;height:19px;flex:none;margin:1px 0 0;accent-color:#215448
+}
+#editor-form .gdd-person-classification-consent input:disabled{
+  opacity:.4;cursor:not-allowed
+}
