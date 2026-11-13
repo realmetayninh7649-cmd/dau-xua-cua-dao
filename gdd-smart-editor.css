@@ -1,0 +1,66 @@
+/* Biểu mẫu thông minh: CSS chỉ trong Quản trị và Tưởng Niệm */
+#editor-form .gdd-smart-primary,
+#gdd-memorial-form .gdd-smart-primary{
+  display:grid;gap:12px;padding:14px;margin:0 0 12px;
+  background:#f5f8f1;border:1px solid #d7e0d7;border-radius:9px;min-width:0;
+}
+#editor-form .gdd-smart-heading,
+#gdd-memorial-form .gdd-smart-heading{
+  font:700 18px/1.5 'Noto Serif',Georgia,serif;color:#244b40;margin:0;
+}
+#editor-form .gdd-smart-hint,
+#gdd-memorial-form .gdd-smart-hint{
+  font:400 12px/1.7 'Be Vietnam Pro',sans-serif;color:#64766b;margin:0;
+}
+#editor-form .gdd-smart-primary label,
+#gdd-memorial-form .gdd-smart-primary label{min-width:0;margin:0}
+#editor-form .gdd-smart-primary textarea.tall,
+#gdd-memorial-form .gdd-smart-primary textarea[name=body]{min-height:220px;resize:vertical}
+#editor-form .gdd-smart-scan,
+#gdd-memorial-form .gdd-smart-scan{
+  width:100%;min-height:44px;background:#e7f0e8;color:#215248;
+  border:1px solid #bfd1c4;border-radius:7px;
+  padding:10px 12px;font:700 12px/1.5 'Be Vietnam Pro',sans-serif;
+  cursor:pointer;
+}
+#editor-form .gdd-smart-scan:focus-visible,
+#gdd-memorial-form .gdd-smart-scan:focus-visible{outline:2px solid #719f83;outline-offset:2px}
+#editor-form .gdd-smart-feedback,
+#gdd-memorial-form .gdd-smart-feedback{
+  color:#345f4e;font:500 11px/1.7 'Be Vietnam Pro',sans-serif;margin:0;
+}
+#editor-form .gdd-smart-feedback[hidden],
+#gdd-memorial-form .gdd-smart-feedback[hidden]{display:none!important}
+#editor-form .gdd-smart-more,
+#gdd-memorial-form .gdd-smart-more{
+  margin:0 0 15px;min-width:0;border:1px solid #d7ded4;
+  border-radius:8px;background:#fffdfa;
+}
+#editor-form .gdd-smart-more>summary,
+#gdd-memorial-form .gdd-smart-more>summary{
+  padding:13px 14px;font:700 12px/1.65 'Be Vietnam Pro',sans-serif;
+  color:#235147;cursor:pointer;
+}
+#editor-form .gdd-smart-more>summary small,
+#gdd-memorial-form .gdd-smart-more>summary small{
+  color:#a18152;font-size:10px;margin-left:5px;
+}
+#editor-form .gdd-smart-extra,
+#gdd-memorial-form .gdd-smart-extra{
+  display:grid;gap:12px;padding:11px 13px;
+  border-top:1px solid #e4e7de;min-width:0;
+}
+#editor-form .gdd-smart-extra label,
+#gdd-memorial-form .gdd-smart-extra label{margin:0;min-width:0}
+#editor-form .gdd-smart-extra .gdd-two-col,
+#gdd-memorial-form .gdd-smart-extra .gdd-two-col{min-width:0}
+#editor-form .gdd-smart-publish,
+#gdd-memorial-form .gdd-smart-publish{margin:8px 0 14px}
+#editor-form .gdd-smart-publish label,
+#gdd-memorial-form .gdd-smart-publish label{margin:0}
+@media(max-width:600px){
+ #editor-form .gdd-smart-primary,
+ #gdd-memorial-form .gdd-smart-primary{padding:11px}
+ #editor-form .gdd-smart-extra,
+ #gdd-memorial-form .gdd-smart-extra{padding:10px}
+}
