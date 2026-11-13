@@ -64,7 +64,7 @@
     }
     return lines;
   }
-  function downloadPersonPNG(panel,qr,code){
+  function renderPersonPNG(panel,qr,code){
     const name=panel.dataset.archiveName||'Hồ sơ Chức sắc';
     const output=document.createElement('canvas'),ctx=output.getContext('2d');
     if(!ctx)throw Error('Thiết bị không hỗ trợ xuất ảnh QR.');
@@ -89,18 +89,12 @@
     ctx.fillText('Mã hồ sơ:',700,1273);
     ctx.fillStyle='#154d46';ctx.font='bold 34px sans-serif';
     ctx.fillText(code,700,1320,1210);
-    const link=document.createElement('a');
-    link.download=code.replace(/[\\/:*?"<>|]/g,'-')+'.png';
-    link.href=output.toDataURL('image/png');
-    document.body.appendChild(link);link.click();link.remove();
-    setStatus(panel,'Đã tạo thẻ QR PNG với tên và mã hồ sơ.');
+    return output;
   }
-  function downloadPNG(panel){
-    const qr=$('canvas',panel);
-    const code=panel.dataset.archiveCode||'DXCD-TU-LIEU';
-    if(panel.classList.contains('gdd-archive-qr--person')&&qr){downloadPersonPNG(panel,qr,code);return;}
-    if(!qr){setStatus(panel,'QR chưa sẵn sàng. Xin tải lại trang để thử.');return;}
+  // Giữ nguyên bố cục QR; trả canvas thay vì giả định rằng link data: đã tải thành công.
+  function renderStandardPNG(qr,code){
     const output=document.createElement('canvas'),ctx=output.getContext('2d');
+    if(!ctx)throw Error('Thiết bị không hỗ trợ xuất ảnh QR.');
     output.width=1200;output.height=1350;
     ctx.fillStyle='#ffffff';ctx.fillRect(0,0,output.width,output.height);
     ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,120,120,960,960);
@@ -108,9 +102,91 @@
     ctx.font='bold 34px sans-serif';ctx.fillText('DẤU XƯA CỬA ĐẠO',600,1150);
     ctx.font='28px monospace';ctx.fillText(code,600,1210);
     ctx.font='24px sans-serif';ctx.fillText('Quét để xem hồ sơ tư liệu',600,1260);
-    const a=document.createElement('a');a.download=code+'.png';a.href=output.toDataURL('image/png');
-    document.body.appendChild(a);a.click();a.remove();
-    setStatus(panel,'Đã tạo ảnh QR PNG. Trên iPhone, chọn Lưu ảnh hoặc Lưu vào Tệp nếu trình duyệt hỏi.');
+    return output;
+  }
+  function pngFile(canvas,code){
+    // Đổi data: sang File/Blob thật NGAY trong thao tác nhấn.
+    // iOS Safari/WebView không đáng tin cậy với <a download href="data:...">.
+    const data=canvas.toDataURL('image/png');
+    if(!data.startsWith('data:image/png;base64,'))throw Error('Không tạo được ảnh PNG.');
+    const raw=atob(data.slice(data.indexOf(',')+1));
+    const bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    const filename=(code||'ma-qr').replace(/[\\/:*?"<>|]/g,'-')+'.png';
+    const blob=new Blob([bytes],{type:'image/png'});
+    return {blob,filename,file:typeof File==='function'?new File([blob],filename,{type:'image/png'}):null};
+  }
+  function showSavePreview(panel,blob,filename){
+    // Trong trình duyệt nhúng không hỗ trợ chia sẻ File: hiện PNG thật để chạm giữ/lưu.
+    document.getElementById('gdd-qr-save-preview')?.remove();
+    const blobURL=URL.createObjectURL(blob);
+    const view=document.createElement('div');
+    view.id='gdd-qr-save-preview';
+    view.setAttribute('role','dialog');
+    view.setAttribute('aria-modal','true');
+    view.setAttribute('aria-label','Lưu hình PNG mã QR');
+    view.style.cssText='position:fixed;inset:0;z-index:10050;background:#10201beb;display:flex;align-items:center;justify-content:center;overflow:auto;padding:20px';
+    const card=document.createElement('div');
+    card.style.cssText='width:min(450px,100%);max-height:100%;overflow:auto;padding:17px;border-radius:12px;background:#fffefa;color:#174d43;text-align:center;box-shadow:0 12px 40px #0005';
+    const title=document.createElement('strong');title.textContent='Mã QR PNG đã sẵn sàng';
+    title.style.cssText='display:block;font-size:17px;margin-bottom:9px';
+    const help=document.createElement('p');
+    help.textContent='Trên iPhone: chạm giữ hình bên dưới rồi chọn “Lưu vào Ảnh”. Hoặc nhấn “Mở hình PNG” và dùng nút Chia sẻ để lưu vào Tệp.';
+    help.style.cssText='font-size:12px;line-height:1.7;margin:0 0 11px';
+    const image=document.createElement('img');image.src=blobURL;image.alt='Ảnh mã QR để lưu: '+filename;
+    image.style.cssText='display:block;width:min(100%,360px);height:auto;max-height:55vh;object-fit:contain;margin:auto auto 13px;border:1px solid #d8d8d0;user-select:auto;-webkit-user-select:auto;-webkit-touch-callout:default';
+    const actions=document.createElement('div');
+    actions.style.cssText='display:flex;justify-content:center;flex-wrap:wrap;gap:8px';
+    const open=document.createElement('a');open.href=blobURL;open.target='_blank';open.rel='noopener noreferrer';
+    open.textContent='Mở hình PNG';open.style.cssText='display:inline-block;padding:11px 14px;border-radius:6px;background:#154d46;color:#fff;text-decoration:none;font-weight:700;font-size:12px';
+    const save=document.createElement('a');save.href=blobURL;save.download=filename;
+    save.textContent='Tải PNG';save.style.cssText='display:inline-block;padding:11px 14px;border-radius:6px;border:1px solid #154d46;color:#154d46;text-decoration:none;font-weight:700;font-size:12px';
+    const close=document.createElement('button');close.type='button';close.textContent='Đóng';
+    close.style.cssText='padding:11px 14px;border:1px solid #ccc;border-radius:6px;background:#eee;color:#263b33;font-weight:700;font-size:12px';
+    const dismiss=()=>{
+      view.remove();
+      setTimeout(()=>URL.revokeObjectURL(blobURL),120000);
+    };
+    close.addEventListener('click',dismiss,{once:true});
+    view.addEventListener('click',event=>{if(event.target===view)dismiss();});
+    actions.append(open,save,close);card.append(title,help,image,actions);view.append(card);
+    document.body.appendChild(view);
+    setStatus(panel,'Đã mở ảnh PNG để lưu. Hãy chạm giữ hình hoặc nhấn Mở hình PNG.');
+    close.focus({preventScroll:true});
+  }
+  function downloadPNG(panel){
+    const qr=$('[data-gdd-qr-graphic] canvas',panel);
+    if(!qr){setStatus(panel,'QR chưa sẵn sàng. Xin tải lại trang để thử.');return;}
+    const code=panel.dataset.archiveCode||'DXCD-TU-LIEU';
+    const output=panel.classList.contains('gdd-archive-qr--person')
+      ?renderPersonPNG(panel,qr,code):renderStandardPNG(qr,code);
+    const {blob,filename,file}=pngFile(output,code);
+    // iPhone/iPad: mở bảng chia sẻ hệ thống TRONG lượt chạm, để chọn Lưu hình ảnh hoặc Lưu vào Tệp.
+    const apple=/iPad|iPhone|iPod/i.test(navigator.userAgent)||
+      (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    let shareSupported=false;
+    if(apple&&file&&typeof navigator.share==='function'){
+      try{shareSupported=typeof navigator.canShare==='function'&&navigator.canShare({files:[file]});}catch{}
+    }
+    if(shareSupported){
+      try{
+        const sharing=navigator.share({files:[file],title:'Mã QR '+code});
+        Promise.resolve(sharing).then(()=>{
+          setStatus(panel,'Đã mở bảng chia sẻ. Chọn Lưu hình ảnh hoặc Lưu vào Tệp trên iPhone.');
+        }).catch(err=>{
+          if(err?.name==='AbortError')setStatus(panel,'Đã hủy lưu QR. Nhấn Tải mã QR PNG để thử lại.');
+          else showSavePreview(panel,blob,filename);
+        });
+        return;
+      }catch(err){console.warn('[GDD QR share]',err);}
+    }
+    if(apple){showSavePreview(panel,blob,filename);return;}
+    // Máy tính/Android: tải tệp Blob bằng URL tạm, thay cho data URL.
+    const tempURL=URL.createObjectURL(blob);
+    const link=document.createElement('a');link.download=filename;link.href=tempURL;
+    document.body.appendChild(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(tempURL),60000);
+    setStatus(panel,'Đã yêu cầu tải mã QR PNG. Hãy kiểm tra thư mục Tải về.');
   }
   function start(){
     const detail=$('#detail-content');
