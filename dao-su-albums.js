@@ -24,13 +24,83 @@
   let editorSeq = 0, detailSeq = 0;
   // Giữ tệp trong bộ nhớ cho đến khi người quản trị bấm Đăng/Lưu MỘT LẦN.
   let pendingFiles = [];
-  // Giải phóng URL xem trước khi bỏ ảnh, đổi bài hoặc đăng xong.
+  // Chỉ lưu ảnh xem trước đã THU NHỎ trong bộ nhớ; không sửa File gốc.
   function releaseThumbnails(items){
     for(const item of items){
-      if(item.previewUrl){URL.revokeObjectURL(item.previewUrl);item.previewUrl='';}
+      item.previewData='';
+      item.previewError='';
+      item.thumbnailElement=null;
     }
   }
   function clearPendingFiles(){releaseThumbnails(pendingFiles);pendingFiles=[];}
+
+  // FileReader hoạt động ổn định với tệp từ Ảnh/Tệp trên iOS.
+  // Đọc từng tệp, giải mã rồi tạo JPEG thu nhỏ để không giữ 30 ảnh lớn trong RAM.
+  function buildPreview(item){
+    return new Promise(resolve=>{
+      const finish=(data,error)=>{
+        if(pendingFiles.includes(item)){
+          item.previewData=data||'';
+          item.previewError=error||'';
+          updateThumbnail(item);
+        }
+        resolve();
+      };
+      const reader=new FileReader();
+      reader.onerror=()=>finish('','Không đọc được ảnh xem trước.');
+      reader.onload=()=>{
+        if(!pendingFiles.includes(item)){resolve();return;}
+        const data=reader.result;
+        if(typeof data!=='string'||!data.startsWith('data:')){finish('','Không đọc được định dạng ảnh.');return;}
+        const image=new Image();
+        image.onerror=()=>finish('','Thiết bị chưa hỗ trợ xem trước định dạng ảnh này.');
+        image.onload=()=>{
+          if(!pendingFiles.includes(item)){resolve();return;}
+          try{
+            const w=image.naturalWidth,h=image.naturalHeight;
+            if(!w||!h)throw Error('Ảnh không có kích thước.');
+            const scale=Math.min(1,240/w,300/h);
+            const canvas=document.createElement('canvas');
+            canvas.width=Math.max(1,Math.round(w*scale));
+            canvas.height=Math.max(1,Math.round(h*scale));
+            const ctx=canvas.getContext('2d');
+            if(!ctx)throw Error('Không dựng được ảnh thu nhỏ.');
+            ctx.drawImage(image,0,0,canvas.width,canvas.height);
+            finish(canvas.toDataURL('image/jpeg',.78));
+          }catch(err){
+            // Tệp PNG/JPEG thường hiển thị trực tiếp dù canvas không khả dụng.
+            finish(data,'');
+          }
+        };
+        image.src=data;
+      };
+      try{reader.readAsDataURL(item.file);}
+      catch(err){finish('','Không đọc được ảnh xem trước.');}
+    });
+  }
+  async function loadPreviewsSequentially(items){
+    for(const item of items){
+      if(!pendingFiles.includes(item))break;
+      await buildPreview(item);
+    }
+  }
+  function updateThumbnail(item){
+    const box=item.thumbnailElement;
+    if(!box)return;
+    box.querySelector('img')?.remove();
+    if(item.previewData){
+      const image=document.createElement('img');
+      image.alt='Xem trước: '+item.file.name;
+      image.decoding='async';
+      image.src=item.previewData;
+      box.insertBefore(image,box.firstChild);
+      box.classList.remove('gdd-album-pending-thumb--empty');
+      box.title='Xem trước '+item.file.name;
+    }else{
+      box.classList.add('gdd-album-pending-thumb--empty');
+      if(item.previewError)box.title=item.previewError;
+    }
+  }
   let panelContext = '';
   let uploading = false;
 
@@ -198,16 +268,12 @@
       const row=document.createElement('div');row.className='gdd-admin-photo';
       const indexDisplay=document.createElement('div');indexDisplay.className='gdd-album-photo-no';
       indexDisplay.textContent=String(index+1).padStart(2,'0');
-      // Mỗi tệp được xem trước tại đúng vị trí chú thích và giữ nguyên khi đổi thứ tự.
-      const thumbnail=document.createElement('div');thumbnail.className='gdd-album-pending-thumb';
-      if(item.previewUrl){
-        const image=document.createElement('img');
-        image.src=item.previewUrl;image.alt='Ảnh '+(index+1)+': '+item.file.name;
-        image.loading='lazy';image.decoding='async';
-        image.addEventListener('error',()=>{image.remove();thumbnail.classList.add('gdd-album-pending-thumb--empty');});
-        thumbnail.appendChild(image);
-      }else thumbnail.classList.add('gdd-album-pending-thumb--empty');
+      // Ảnh thu nhỏ đi cùng File và chú thích ngay cả khi đổi thứ tự.
+      const thumbnail=document.createElement('div');
+      thumbnail.className='gdd-album-pending-thumb gdd-album-pending-thumb--empty';
       thumbnail.appendChild(indexDisplay);
+      item.thumbnailElement=thumbnail;
+      updateThumbnail(item);
       const content=document.createElement('div');
       const fn=document.createElement('p');fn.className='gdd-album-note';fn.style.margin='0 0 5px';
       fn.textContent=item.file.name+' · '+(item.file.size/1024/1024).toFixed(2)+' MB'+(item.saved?' · Đã lưu':'');
@@ -252,14 +318,12 @@
     $('#gdd-album-files').addEventListener('change',e=>{
       const files=Array.from(e.target.files||[]);
       clearPendingFiles();
-      pendingFiles=files.map(file=>{
-        let previewUrl='';
-        try{previewUrl=URL.createObjectURL(file);}catch{}
-        return {file,caption:'',saved:false,previewUrl};
-      });
+      pendingFiles=files.map(file=>({file,caption:'',saved:false,previewData:'',previewError:'',thumbnailElement:null}));
       if(files.length>MAX_FILES)setStatus(`Đã chọn ${files.length} ảnh; chỉ được tối đa ${MAX_FILES}.`);
       else setStatus(files.length?`Đã chọn ${files.length} ảnh. Điền nội dung rồi nhấn nút Đăng tư liệu/Lưu thay đổi ở bên dưới.`:'');
       renderQueue();
+      // Xem trước bất đồng bộ, mỗi lần chỉ giải mã một ảnh để tránh treo Safari.
+      void loadPreviewsSequentially(pendingFiles.slice());
       // FileList không còn cần: giữ tệp File trong queue để người dùng đổi thứ tự.
     });
     renderQueue();
