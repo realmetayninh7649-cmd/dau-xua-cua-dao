@@ -263,6 +263,18 @@ function upgrade(form,kind){
   }
  }
 }
+// Đúng trình tự nhập hồ sơ: bài chính → thông tin thêm → bộ ảnh → công bố → xác nhận mã → lưu.
+function arrangeEditorTail(form){
+ const actions=form.querySelector(':scope > .form-actions');
+ const publish=form.querySelector(':scope > .gdd-smart-publish');
+ const primary=form.querySelector(':scope > .gdd-smart-primary');
+ if(!actions||!publish||!primary)return;
+ const album=form.querySelector(':scope > #gdd-admin-album-panel');
+ const confirm=form.querySelector(':scope > #gdd-person-publish-check');
+ // Không chuyển tệp ảnh hay dựng lại panel: chỉ dời chính phần tử DOM, giữ trạng thái ảnh đang chọn.
+ if(album&&album.nextElementSibling!==publish)form.insertBefore(album,publish);
+ if(confirm&&confirm.nextElementSibling!==actions)form.insertBefore(confirm,actions);
+}
 function init(){
  const form=$('#editor-form');
  if(form){
@@ -270,6 +282,7 @@ function init(){
    if(form.querySelector(':scope > label')&&!$('.gdd-smart-primary',form)){
     upgrade(form,$('.editor-tabs button.is-selected')?.dataset.kind||'people');
    }
+   arrangeEditorTail(form);
   };
   new MutationObserver(mount).observe(form,{childList:true});
   mount();
