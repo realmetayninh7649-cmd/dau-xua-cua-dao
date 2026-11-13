@@ -25,6 +25,78 @@ function parseDate(value){
   if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==mm-1||dt.getUTCDate()!==d)throw Error('Ngày qui vị không hợp lệ.');
   return {y,m:mm,d,time};
 }
+// Dùng đúng bộ lịch âm Việt Nam UTC+7 của website cho phép đổi ngược Âm → Dương.
+// Giữ cache theo NĂM âm lịch để đổi ngày, chọn tháng nhuận mà không đoán tháng.
+const lunarYearCache=new Map();
+function lunarYearIndex(year){
+  if(!Number.isInteger(year)||year<1900||year>2100)
+    throw Error('Xin nhập năm Âm lịch từ 1900 đến 2100.');
+  if(lunarYearCache.has(year))return lunarYearCache.get(year);
+  const convert=window.GDDVietnameseLunar?.solarToLunar;
+  if(typeof convert!=='function')
+    throw Error('Bộ lịch Âm – Dương chưa sẵn sàng. Vui lòng tải lại trang.');
+  const dates=new Map(),months=[];
+  // Tết rơi trong khoảng cuối tháng Giêng – tháng Hai; toàn bộ năm âm
+  // được bao phủ từ 1/1 năm đó đến 31/3 năm dương kế tiếp.
+  const start=Date.UTC(year,0,1),end=Date.UTC(year+1,2,31);
+  for(let t=start;t<=end;t+=86400000){
+    const dt=new Date(t);
+    const l=convert(dt.getUTCDate(),dt.getUTCMonth()+1,dt.getUTCFullYear());
+    if(l.year!==year)continue;
+    const monthKey=l.month+(l.leap?'n':'');
+    if(l.day===1)months.push({key:monthKey,month:l.month,leap:!!l.leap});
+    dates.set(l.day+'-'+monthKey,
+      dt.getUTCFullYear()+'-'+pad(dt.getUTCMonth()+1)+'-'+pad(dt.getUTCDate()));
+  }
+  if(months.length<12)throw Error('Không tính được đủ năm Âm lịch này; xin thử năm khác.');
+  const index={months,dates};
+  lunarYearCache.set(year,index);
+  return index;
+}
+function lunarToSolar(day,monthKey,year){
+  if(!Number.isInteger(day)||day<1||day>30)
+    throw Error('Ngày Âm lịch phải từ mùng 1 đến ngày 30.');
+  const index=lunarYearIndex(year);
+  if(!index.months.some(m=>m.key===monthKey))
+    throw Error('Tháng Âm lịch này không tồn tại trong năm đã chọn.');
+  const result=index.dates.get(day+'-'+monthKey);
+  if(!result)
+    throw Error('Ngày đã nhập không tồn tại trong tháng Âm lịch này (tháng có thể chỉ 29 ngày).');
+  return result;
+}
+function refreshLunarMonths(selected){
+  const yearField=$('#gdd-cuu-lunar-year'),monthField=$('#gdd-cuu-lunar-month');
+  const year=Number(yearField?.value);
+  if(!yearField?.value||!Number.isInteger(year)||year<1900||year>2100)return;
+  const index=lunarYearIndex(year);
+  const previous=selected||monthField.value;
+  monthField.replaceChildren();
+  for(const item of index.months){
+    const option=document.createElement('option');
+    option.value=item.key;
+    option.textContent='Tháng '+item.month+(item.leap?' nhuận':'');
+    monthField.append(option);
+  }
+  if(index.months.some(m=>m.key===previous))monthField.value=previous;
+  const can=['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+  const chi=['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+  const hint=$('#gdd-cuu-lunar-year-note');
+  if(hint)hint.textContent='Năm '+can[(year+6)%10]+' '+chi[(year+8)%12]+
+    (index.months.length===13?' · Có tháng nhuận':'');
+}
+function selectedCalendar(){
+  return document.querySelector('input[name="gdd-cuu-type"]:checked')?.value||'lunar';
+}
+function updateCalendarMode(){
+  const isLunar=selectedCalendar()==='lunar';
+  const lunarFields=$('#gdd-cuu-lunar-fields'),solarField=$('#gdd-cuu-solar-label');
+  lunarFields.hidden=!isLunar;solarField.hidden=isLunar;
+  const lunarNote=$('#gdd-cuu-lunar-year-note');
+  if(lunarNote)lunarNote.hidden=!isLunar;
+  for(const input of lunarFields.querySelectorAll('input,select'))input.disabled=!isLunar;
+  const solar=$('#gdd-cuu-date');
+  solar.disabled=isLunar;
+}
 function lunarText(dt){
   const converter=window.GDDVietnameseLunar?.solarToLunar;
   if(typeof converter!=='function')throw Error('Bộ lịch Âm – Dương chưa tải. Hãy tải lại trang.');
@@ -215,7 +287,14 @@ const css=`
 #gdd-tuan-cuu-utility .gdd-cuu-lead{font-size:11px;line-height:1.7;color:#64766b;margin:0 0 14px}
 #gdd-tuan-cuu-utility .gdd-cuu-form{display:grid;gap:10px;margin:0}
 #gdd-tuan-cuu-utility .gdd-cuu-form label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#31584d}
-#gdd-tuan-cuu-utility .gdd-cuu-form input{box-sizing:border-box;width:100%;min-height:43px;padding:9px 10px;border:1px solid #cdd6cd;border-radius:7px;background:#fffdf8;color:#203c33;font:12px/1.4 'Be Vietnam Pro',sans-serif}
+#gdd-tuan-cuu-utility .gdd-cuu-form input:not([type=radio]),#gdd-tuan-cuu-utility .gdd-cuu-form select{box-sizing:border-box;width:100%;min-width:0;min-height:43px;padding:9px 8px;border:1px solid #cdd6cd;border-radius:7px;background:#fffdf8;color:#203c33;font:12px/1.4 'Be Vietnam Pro',sans-serif}
+#gdd-tuan-cuu-utility .gdd-cuu-mode{min-width:0;border:0;padding:0;margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#gdd-tuan-cuu-utility .gdd-cuu-mode legend{font-size:11px;font-weight:700;color:#31584d;margin:0 0 6px}
+#gdd-tuan-cuu-utility .gdd-cuu-mode label{display:flex;align-items:center;gap:5px;min-width:0;padding:7px 10px;background:#f2f6f1;border:1px solid #cdd8cf;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700}
+#gdd-tuan-cuu-utility .gdd-cuu-mode input[type=radio]{accent-color:#205448;flex:none}
+#gdd-tuan-cuu-utility .gdd-cuu-lunar-fields{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr) minmax(0,1fr);gap:8px;align-items:end}
+#gdd-tuan-cuu-utility #gdd-cuu-lunar-year-note{margin:-4px 0 1px;font:500 10px/1.5 'Be Vietnam Pro',sans-serif;color:#7d6d51}
+#gdd-tuan-cuu-utility #gdd-cuu-lunar-fields[hidden],#gdd-tuan-cuu-utility #gdd-cuu-solar-label[hidden]{display:none!important}
 #gdd-tuan-cuu-utility .gdd-cuu-form button,#gdd-tuan-cuu-utility .gdd-cuu-export button{min-height:40px;border:0;border-radius:6px;background:#215448;color:#fff;font:700 11px/1.5 'Be Vietnam Pro',sans-serif;padding:9px 13px;cursor:pointer}
 #gdd-tuan-cuu-utility .gdd-cuu-form button:disabled,#gdd-tuan-cuu-utility .gdd-cuu-export button:disabled{opacity:.55;cursor:wait}
 #gdd-tuan-cuu-utility .gdd-cuu-error{color:#ad4d3b!important}
@@ -252,31 +331,58 @@ function mount(){
   const details=document.createElement('details');
   details.id='gdd-tuan-cuu-utility';details.className='gdd-p1-panel gdd-cuu-panel';
   details.innerHTML='<summary><span class="gdd-p1-utility-name">TÍNH NGÀY TUẦN CỬU</span><small class="gdd-p1-utility-desc">Tiểu Tường · Đại Tường · PDF / Word</small></summary>'+
-    '<div class="gdd-cuu-content"><p class="gdd-cuu-lead">Nhập ngày qui vị Dương lịch để tra đủ 9 kỳ Cửu và hai kỳ Tường.</p>'+
+    '<div class="gdd-cuu-content"><p class="gdd-cuu-lead">Nhập ngày qui vị theo Âm lịch (mặc định) hoặc Dương lịch để tra đủ 9 kỳ Cửu và hai kỳ Tường.</p>'+
     '<form class="gdd-cuu-form" id="gdd-cuu-form"><label>Họ tên / Thánh danh<input type="text" id="gdd-cuu-name" maxlength="160" placeholder="Danh xưng người qui vị" autocomplete="off"></label>'+
-    '<label>Ngày qui vị (Dương lịch)<input type="date" id="gdd-cuu-date" min="1900-01-01" max="2100-12-31" required></label>'+
+    '<fieldset class="gdd-cuu-mode"><legend>Ngày qui vị theo</legend><label><input type="radio" name="gdd-cuu-type" value="lunar" checked> Âm lịch</label><label><input type="radio" name="gdd-cuu-type" value="solar"> Dương lịch</label></fieldset>'+
+    '<div id="gdd-cuu-lunar-fields" class="gdd-cuu-lunar-fields"><label>Ngày<input type="number" id="gdd-cuu-lunar-day" min="1" max="30" required inputmode="numeric"></label><label>Tháng<select id="gdd-cuu-lunar-month" required></select></label><label>Năm<input type="number" id="gdd-cuu-lunar-year" min="1900" max="2100" required inputmode="numeric"></label></div>'+
+    '<p id="gdd-cuu-lunar-year-note"></p>'+
+    '<label id="gdd-cuu-solar-label" hidden>Ngày qui vị (Dương lịch)<input type="date" id="gdd-cuu-date" min="1900-01-01" max="2100-12-31" disabled required></label>'+
     '<button type="submit">Tính ngày Tuần Cửu</button></form><p id="gdd-cuu-status" role="status" aria-live="polite"></p>'+
     '<div id="gdd-cuu-result" hidden></div>'+
     '<p class="gdd-cuu-cite">Đối chiếu <a href="https://caodai.com.vn/df/tinh-tuan-cuu.html" target="_blank" rel="noopener noreferrer">tiện ích của Hội Thánh</a>.</p></div>';
   const anniversary=aside.querySelector('.gdd-p1-anniversary-link');
   const calendar=aside.querySelector('#gdd-p1-calendar-panel');
   if(anniversary)anniversary.after(details);else if(calendar)calendar.after(details);else aside.append(details);
-  $('#gdd-cuu-date').value=localToday();
-  $('#gdd-cuu-form').addEventListener('submit',ev=>{
-    ev.preventDefault();clearDownload();
-    try{
-      const date=$('#gdd-cuu-date');
-      if(!date.checkValidity()){date.reportValidity();return}
-      current=makeSchedule($('#gdd-cuu-name').value,date.value);
-      renderResults(current);
-      status(current.year<1968?'Ngày trước 1968: vui lòng đối chiếu thêm với tư liệu lịch sử.':'Đã tính đầy đủ 11 kỳ lễ.');
-    }catch(err){current=null;$('#gdd-cuu-result').hidden=true;status(err?.message||String(err),true)}
-  });
-  for(const id of ['gdd-cuu-name','gdd-cuu-date'])$('#'+id).addEventListener('input',()=>{
+  const today=localToday();
+  $('#gdd-cuu-date').value=today;
+  // Mặc định nhập Âm lịch theo ngày Việt Nam, có danh sách tháng nhuận chính xác.
+  try{
+    const dt=parseDate(today);
+    const l=window.GDDVietnameseLunar.solarToLunar(dt.d,dt.m,dt.y);
+    $('#gdd-cuu-lunar-year').value=String(l.year);
+    $('#gdd-cuu-lunar-day').value=String(l.day);
+    refreshLunarMonths(l.month+(l.leap?'n':''));
+  }catch(err){status('Không đọc được ngày Âm lịch hiện tại: '+err.message,true)}
+  updateCalendarMode();
+  const invalidate=()=>{
     if(!current)return;
     current=null;clearDownload();$('#gdd-cuu-result').hidden=true;
     status('Thông tin đã thay đổi. Nhấn Tính ngày Tuần Cửu để cập nhật.');
+  };
+  $('#gdd-cuu-form').addEventListener('submit',ev=>{
+    ev.preventDefault();clearDownload();
+    try{
+      const isLunar=selectedCalendar()==='lunar';
+      let isoDate;
+      if(isLunar){
+        isoDate=lunarToSolar(
+          Number($('#gdd-cuu-lunar-day').value),
+          $('#gdd-cuu-lunar-month').value,
+          Number($('#gdd-cuu-lunar-year').value));
+      }else isoDate=$('#gdd-cuu-date').value;
+      current=makeSchedule($('#gdd-cuu-name').value,isoDate);
+      renderResults(current);
+      status(current.year<1968?'Đã tính đủ 11 kỳ lễ. Với ngày trước 1968, xin đối chiếu thêm lịch sử.':'Đã tính đầy đủ 11 kỳ lễ theo lịch Việt Nam.');
+    }catch(err){current=null;$('#gdd-cuu-result').hidden=true;status(err?.message||String(err),true)}
   });
+  $('#gdd-cuu-lunar-year').addEventListener('change',()=>{
+    try{refreshLunarMonths()}catch(err){status(err.message,true)}
+    invalidate();
+  });
+  for(const radio of document.querySelectorAll('input[name="gdd-cuu-type"]'))
+    radio.addEventListener('change',()=>{updateCalendarMode();invalidate()});
+  for(const id of ['gdd-cuu-name','gdd-cuu-date','gdd-cuu-lunar-day','gdd-cuu-lunar-month','gdd-cuu-lunar-year'])
+    $('#'+id).addEventListener('input',invalidate);
   $('#gdd-cuu-result').addEventListener('click',e=>{
     const b=e.target.closest('[data-cuu-format]');
     if(b)exportResult(b.dataset.cuuFormat);
