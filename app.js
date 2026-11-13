@@ -676,7 +676,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       btn.disabled=false;
     });
     $('#logout-button').addEventListener('click',async()=>{if(state.supabase)await state.supabase.auth.signOut();state.user=null;state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;closeAdmin();await fetchData();toast('Đã đăng xuất')});
-    $('.editor-tabs button').forEach(b=>b.addEventListener('click',()=>{state.editorKind=b.dataset.kind;state.editingId=null;$('#editor-record-search').value='';buildEditor();renderEditorList()}));
+    $$('.editor-tabs button').forEach(b=>b.addEventListener('click',()=>{state.editorKind=b.dataset.kind;state.editingId=null;$('#editor-record-search').value='';buildEditor();renderEditorList()}));
     $('#editor-record-search').addEventListener('input',renderEditorList);
     $('#editor-new').addEventListener('click',()=>{state.editingId=null;buildEditor()});
     $('#editor-form').addEventListener('submit',saveRecord);
