@@ -10,25 +10,10 @@
 
   // Ảnh tem do chủ kho tư liệu cung cấp, tách nền và lưu ngay trong GitHub Pages.
   // Không vẽ chữ hoặc đường vân bằng Canvas: dùng đúng chi tiết của tem mẫu.
-  const sealURL=new URL('assets/gdd-guilloche-7-mau.png?v=20261113-original-foil07',document.baseURI).href;
-  let sealImage=null,sealFoil=null,sealPending=null;
-  // Dựng lớp ngọc trai CHỈ theo vùng alpha của tem PNG gốc, không có nền chữ nhật.
-  // Lớp bạc nằm dưới hoa văn 7 màu, hạn chế ảnh nền làm tem xám/xỉn.
-  function makeFoil(image){
-    const foil=document.createElement('canvas');
-    foil.width=image.naturalWidth;foil.height=image.naturalHeight;
-    const brush=foil.getContext('2d',{alpha:true});
-    if(!brush)return image;
-    brush.drawImage(image,0,0);
-    brush.globalCompositeOperation='source-in';
-    brush.fillStyle='rgba(250,251,255,.74)';
-    brush.fillRect(0,0,foil.width,foil.height);
-    brush.globalCompositeOperation='source-over';
-    brush.globalAlpha=.98;
-    brush.drawImage(image,0,0);
-    brush.globalAlpha=1;
-    return foil;
-  }
+  const sealURL=new URL('assets/gdd-guilloche-7-mau-master.png?v=20261113-final-fullres08',document.baseURI).href;
+  let sealImage=null,sealPending=null;
+  // Tem PNG master 2168px đã cân chỉnh ngọc trai - 7 màu tại tài nguyên gốc.
+  // Không phủ lớp bạc xám hay hiệu ứng hòa trộn nào lên màu nguồn.
   function ensureSeal(){
     if(sealImage&&sealImage.complete&&sealImage.naturalWidth)return Promise.resolve(sealImage);
     if(sealPending)return sealPending;
@@ -37,7 +22,7 @@
       image.decoding='async';
       image.onload=()=>{
         if(!image.naturalWidth||!image.naturalHeight){reject(new Error('Tài nguyên tem bảo vệ không hợp lệ.'));return;}
-        sealImage=image;sealFoil=makeFoil(image);resolve(image);
+        sealImage=image;resolve(image);
       };
       image.onerror=()=>reject(new Error('Không tải được tem hologram bảo vệ. Xin tải lại trang.'));
       image.src=sealURL;
@@ -59,11 +44,12 @@
     ctx.save();
     ctx.translate(left,top);
     ctx.rotate(angle);
-    // Foil RGBA đã được dựng một lần; không dùng multiply/overlay theo màu nền.
+    // Đúng RGBA gốc đã chỉnh: source-over, alpha=1 để màu sắc không bị tối bớt.
+    ctx.globalCompositeOperation='source-over';
     ctx.globalAlpha=1;
     ctx.imageSmoothingEnabled=true;
     if('imageSmoothingQuality' in ctx)ctx.imageSmoothingQuality='high';
-    ctx.drawImage(sealFoil||sealImage,0,-bandHeight/2,span,bandHeight);
+    ctx.drawImage(sealImage,0,-bandHeight/2,span,bandHeight);
     ctx.restore();
   }
   async function decodeImage(blob){
