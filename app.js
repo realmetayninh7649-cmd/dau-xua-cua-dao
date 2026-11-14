@@ -270,14 +270,38 @@ function videoSource(raw){
       }
     }
     $('#detail-overlay').hidden=false;document.body.classList.add('modal-open');$('.detail-panel').scrollTop=0;
-    if(updateHash){history.replaceState(null,'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`)}
+    if(updateHash){
+      // Mỗi lần mở hồ sơ tạo một bước lịch sử, để Back trở về đúng chuyên mục.
+      history.pushState({...history.state,__gddLayer:'detail'},'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`);
+    }
   }
-  function closeDetail(){ $('#detail-overlay').hidden=true;$('#detail-content').replaceChildren();state.detail=null;document.body.classList.remove('modal-open');if(/^#(nhan-vat|bai-viet|hinh-anh-tu-lieu|video-dao-su|ai-tin|tai-lieu-so-hoa)\//.test(location.hash))history.replaceState(null,'','#chuc-sac') }
+  const detailRoute=/^#(nhan-vat|bai-viet|hinh-anh-tu-lieu|video-dao-su|ai-tin|tai-lieu-so-hoa)\//;
+  const detailSections={people:'chuc-sac',posts:'bien-khao',media:'hinh-anh',videos:'video-dao-su',obituaries:'ai-tin',documents:'tai-lieu-so-hoa'};
+  function dismissDetail(){
+    if($('#detail-overlay').hidden)return;
+    $('#detail-overlay').hidden=true;
+    $('#detail-content').replaceChildren();
+    state.detail=null;
+    if($('#admin-overlay').hidden)document.body.classList.remove('modal-open');
+  }
+  function closeDetail(navigate=true){
+    if($('#detail-overlay').hidden)return;
+    const kind=state.detail?.kind;
+    dismissDetail();
+    if(!navigate)return;
+    if(history.state?.__gddLayer==='detail'){
+      history.back();
+    }else if(detailRoute.test(location.hash)){
+      // Trường hợp mở bằng QR/liên kết trực tiếp: không lùi khỏi website.
+      history.replaceState({...history.state,__gddLayer:null},'','#'+(detailSections[kind]||'chuc-sac'));
+      window.dispatchEvent(new Event('hashchange'));
+    }
+  }
   async function syncHash(){
     const match=location.hash.match(/^#([^/]+)\/(.+)$/);
-    if(!match)return;
+    if(!match){dismissDetail();return;}
     const kind=kindFromPrefix[match[1]];
-    if(!kind)return;
+    if(!kind){dismissDetail();return;}
     let slug='';
     try{slug=decodeURIComponent(match[2]);}catch{return;}
     const row=publicRows(kind).find(x=>x.slug===slug);
@@ -292,8 +316,19 @@ function videoSource(raw){
     }catch(error){console.warn('[GDD Search] Không thể mở liên kết hồ sơ:',error);}
   }
 
-  function closeAdmin(){ $('#admin-overlay').hidden=true;document.body.classList.remove('modal-open') }
+  function dismissAdmin(){
+    $('#admin-overlay').hidden=true;
+    if($('#detail-overlay').hidden)document.body.classList.remove('modal-open');
+  }
+  function closeAdmin(navigate=true){
+    if($('#admin-overlay').hidden)return;
+    dismissAdmin();
+    if(navigate&&history.state?.__gddLayer==='admin')history.back();
+  }
   async function openAdmin(){
+    if($('#admin-overlay').hidden){
+      history.pushState({...history.state,__gddLayer:'admin'},'',location.href);
+    }
     $('#admin-overlay').hidden=false;document.body.classList.add('modal-open');$('.admin-panel').scrollTop=0;
     if(!state.supabase){$('#login-message').textContent='Chưa kết nối cơ sở dữ liệu trực tuyến. Xem tệp HƯỚNG-DẪN.md để hoàn tất cài đặt.';$('#login-form button').disabled=true;return}
     if(state.user){await verifyAdmin();return}
@@ -471,7 +506,19 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       more.setAttribute('aria-expanded',String(expanded));
     }
   }
-  function editRecord(kind,id){state.editorKind=kind;state.editingId=id;closeDetail();$('#admin-overlay').hidden=false;document.body.classList.add('modal-open');buildEditor();$('.admin-panel').scrollTop=120}
+  function editRecord(kind,id){
+    state.editorKind=kind;state.editingId=id;
+    if(!$('#detail-overlay').hidden){
+      closeDetail(false);
+      if(detailRoute.test(location.hash)){
+        history.replaceState({...history.state,__gddLayer:null},'','#'+(detailSections[kind]||'chuc-sac'));
+        window.dispatchEvent(new Event('hashchange'));
+      }
+    }
+    if($('#admin-overlay').hidden)history.pushState({...history.state,__gddLayer:'admin'},'',location.href);
+    $('#admin-overlay').hidden=false;document.body.classList.add('modal-open');
+    buildEditor();$('.admin-panel').scrollTop=120;
+  }
   async function uploadImage(file,kind){
     if(!file)return '';
     if(file.type==='application/pdf'){
@@ -773,13 +820,24 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       const open=e.target.closest('[data-open-kind]');if(open){const kind=open.dataset.openKind,record=publicRows(kind).find(x=>x.id===open.dataset.id);openDetail(kind,record);return}
       const edit=e.target.closest('[data-edit-kind]');if(edit){editRecord(edit.dataset.editKind,edit.dataset.editId);return}
       const listEdit=e.target.closest('[data-list-edit]');if(listEdit){editRecord(listEdit.dataset.listEdit,listEdit.dataset.id);return}
-      const qr=e.target.closest('[data-list-qr]');if(qr){const kind=qr.dataset.listQr,record=state.data[kind]?.find(x=>x.id===qr.dataset.id);if(record){closeAdmin();openDetail(kind,record)}return}
+      const qr=e.target.closest('[data-list-qr]');if(qr){const kind=qr.dataset.listQr,record=state.data[kind]?.find(x=>x.id===qr.dataset.id);if(record){closeAdmin(false);openDetail(kind,record)}return}
       const incoming=e.target.closest('[data-submission-open]');if(incoming){showSubmission(incoming.dataset.submissionOpen);return}
       const reviewed=e.target.closest('[data-mark-reviewed]');if(reviewed){markReviewed(reviewed.dataset.markReviewed);return}
       if(e.target.id==='delete-record')deleteRecord();
     });
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#detail-overlay').hidden)closeDetail();else if(!$('#admin-overlay').hidden)closeAdmin()}});
     window.addEventListener('hashchange',syncHash);
+    window.addEventListener('popstate',()=>{
+      // Quay lại dùng Back trên iPhone, Android, PC; ưu tiên màn hình lịch sử.
+      if(!$('#admin-overlay').hidden&&history.state?.__gddLayer!=='admin')dismissAdmin();
+      else if(history.state?.__gddLayer==='admin'&&$('#admin-overlay').hidden){
+        $('#admin-overlay').hidden=false;
+        document.body.classList.add('modal-open');
+      }
+      if(!detailRoute.test(location.hash))dismissDetail();
+      // Khi Back chỉ đóng ảnh phủ trên hồ sơ, không dựng lại nội dung hồ sơ
+      // (tránh mất vị trí đọc); hashchange riêng lo các URL đã đổi.
+    });
     const ob=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){$$('[data-nav]').forEach(x=>x.classList.toggle('active',x.dataset.nav===entry.target.id))}})},{rootMargin:'-25% 0px -55% 0px'});
     $$('.section-anchor').forEach(s=>ob.observe(s));
   }

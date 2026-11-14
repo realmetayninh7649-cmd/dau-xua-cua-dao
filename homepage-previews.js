@@ -225,7 +225,8 @@
     .gdd-preview-empty{grid-column:1/-1;color:#777f76;background:#fbfaf6;border:1px dashed #ddd9cf;border-radius:5px;padding:16px;font:400 12px/1.8 'Be Vietnam Pro',sans-serif}
     .gdd-directory-links{display:flex;gap:15px;flex-wrap:wrap;margin-top:20px}
     .gdd-directory-links a{color:#1f6559;font:700 12px/1.6 'Be Vietnam Pro',sans-serif;text-underline-offset:4px}
-    .gdd-route-path{width:min(1160px,calc(100% - 48px));margin:22px auto 0;padding:0;font:600 12px/1.6 'Be Vietnam Pro',sans-serif;color:#a0804a}
+    .gdd-route-path{width:min(1160px,calc(100% - 48px));margin:22px auto 0;padding:0;font:600 12px/1.6 'Be Vietnam Pro',sans-serif;color:#a0804a;display:flex;align-items:center;gap:4px;min-height:38px}
+    .gdd-route-close{margin-left:auto;min-width:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #dcd6ca;border-radius:50%;background:#fffdf8;color:#275248!important;font:700 24px/1 system-ui,sans-serif;text-decoration:none!important}
     .gdd-route-path a{color:#35645b;text-decoration:none}
     .gdd-route-path a:hover{text-decoration:underline}
     .gdd-route-path span{margin-left:8px}
@@ -362,7 +363,13 @@
   const trail=document.createElement('nav');trail.id='gdd-route-path';trail.className='gdd-route-path';
   trail.setAttribute('aria-label','Đường dẫn chuyên mục');
   const back=document.createElement('a');back.href='#trang-chu';back.textContent='Trang Chủ';
-  const path=document.createElement('span');trail.append(back,path);
+  const path=document.createElement('span');
+  const dismiss=document.createElement('a');
+  dismiss.className='gdd-route-close';
+  dismiss.href='#trang-chu';
+  dismiss.textContent='×';
+  dismiss.setAttribute('aria-label','Đóng chuyên mục và về Trang Chủ');
+  trail.append(back,path,dismiss);
   directory.insertAdjacentElement('afterend',trail);
 
   const getRoute=()=>{

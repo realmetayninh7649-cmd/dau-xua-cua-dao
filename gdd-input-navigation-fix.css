@@ -1,0 +1,34 @@
+/* Nhập liệu iPhone/iPad và máy tính: ưu tiên thao tác bôi đen, sao chép, dán gốc.
+   Chỉ áp dụng vào ô văn bản, không chặn thao tác chọn/di chuyển con trỏ của iOS. */
+#editor-form textarea,
+#editor-form input[type="text"],
+#editor-form input[type="url"],
+#gdd-memorial-form textarea,
+#gdd-memorial-form input[type="text"],
+.contribute-form textarea,
+.contribute-form input[type="text"] {
+  -webkit-user-select:text!important;
+  user-select:text!important;
+  -webkit-touch-callout:default!important;
+  touch-action:auto!important;
+  caret-color:#20574b;
+  scroll-behavior:auto!important;
+}
+#admin-overlay .admin-panel,
+.gdd-memorial-dialog,
+#detail-overlay .detail-panel {
+  -webkit-overflow-scrolling:touch;
+  scroll-behavior:auto!important;
+}
+@media (max-width:900px),(pointer:coarse) {
+  #editor-form textarea,
+  #editor-form input[type="text"],
+  #editor-form input[type="url"],
+  #gdd-memorial-form textarea,
+  #gdd-memorial-form input[type="text"],
+  .contribute-form textarea,
+  .contribute-form input[type="text"] {
+    font-size:16px!important;
+    line-height:1.65;
+  }
+}

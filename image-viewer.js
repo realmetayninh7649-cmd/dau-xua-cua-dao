@@ -176,6 +176,10 @@
     caption.textContent=personPhoto?
       'Ảnh hiển thị với dấu hologram ánh kim mờ ở góc dưới.':
       'Chụm hai ngón tay để phóng to; kéo để xem chi tiết.';
+    if(viewer.hidden){
+      // Một bước history riêng: Back đóng ảnh, vẫn giữ hồ sơ đang xem phía dưới.
+      history.pushState({...history.state,__gddLayer:'photo'},'',location.href);
+    }
     viewer.hidden=false;document.body.classList.add('gdd-photo-open');reset();
     $('gdd-image-close').focus({preventScroll:true});
     // Ảnh có thể đã ở bộ đệm trước khi onload được gọi.
@@ -211,15 +215,19 @@
   full.addEventListener('error',()=>{loading.hidden=false;loading.textContent=personPhoto?
     'Không thể hiển thị ảnh. Xin kiểm tra đường dẫn tư liệu.':
     'Không thể hiển thị ảnh. Hãy chọn “Mở ảnh gốc”.';});
-  function closeImage(){
+  function closeImage(navigate=true){
     if(viewer.hidden)return;
     viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
     ++viewTicket;
     pointers.clear();start=null;source='';personPhoto=false;full.removeAttribute('src');
     full.style.visibility='';stamp.hidden=true;stamp.width=0;stamp.height=0;
     if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
+    if(navigate&&history.state?.__gddLayer==='photo')history.back();
   }
-  $('gdd-image-close').addEventListener('click',closeImage);
+  $('gdd-image-close').addEventListener('click',()=>closeImage()); 
+  window.addEventListener('popstate',()=>{
+    if(!viewer.hidden&&history.state?.__gddLayer!=='photo')closeImage(false);
+  });
   $('gdd-image-minus').addEventListener('click',()=>zoomTo(scale/1.5));
   $('gdd-image-plus').addEventListener('click',()=>zoomTo(scale*1.5));
   $('gdd-image-reset').addEventListener('click',reset);
