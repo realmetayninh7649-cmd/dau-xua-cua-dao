@@ -221,6 +221,26 @@ function videoSource(raw){
     const dateNotes=kind==='people'&&record.date_notes?`<p class="detail-meta">Ngày tháng: ${escape(record.date_notes)}</p>`:'';
     const url=safeUrl(kind==='videos'?record.video_url:kind==='documents'?record.file_url:'');
     const link=url?`<p class="detail-external"><a href="${escape(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${kind==='videos'?(videoSource(record.video_url)?.type==='facebook'?'Xem trên Facebook':'Xem video gốc'):'Mở tài liệu số'} ↗</a></p>`:'';
+    // Riêng mục Tài liệu số hóa: có cả Xem PDF và Tải PDF khi đã đính kèm PDF.
+    // Supabase Storage hỗ trợ ?download=tên-tệp.pdf để trả tệp dưới dạng tải xuống,
+    // kể cả khi Safari bỏ qua thuộc tính download trên liên kết khác miền.
+    let pdfFileLink=link;
+    if(kind==='documents'&&url){
+      try{
+        const pdfSource=new URL(url);
+        if(/\.pdf$/i.test(pdfSource.pathname)){
+          const pdfName=slugify(record.title||'tai-lieu')+'.pdf';
+          if(pdfSource.protocol==='https:' &&
+              /^[a-z0-9-]+\.supabase\.co$/i.test(pdfSource.hostname) &&
+              /^\/storage\/v1\/object\/(?:public|sign)\/dao-su-documents\//.test(pdfSource.pathname)){
+            pdfSource.searchParams.set('download',pdfName);
+          }
+          pdfFileLink='<p class="detail-external" style="display:flex;flex-wrap:wrap;gap:10px">'+
+            '<a href="'+escape(url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Xem PDF ↗</a>'+
+            '<a href="'+escape(pdfSource.href)+'" download="'+escape(pdfName)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline" title="Tải PDF về thiết bị">↓ Tải PDF</a></p>';
+        }
+      }catch{}
+    }
     const visual=kind==='videos'?`<div class="detail-video-preview" data-video-id="${escape(record.id)}">${videoPoster(record)}</div>`:`<div class="detail-cover">${src?`<img src="${escape(src)}" alt="${escape(title)}">`:`<div class="portrait-placeholder">${escape(sectionNames[kind])}</div>`}</div>`;
     const archiveCode=record.archive_code||'';
     const archivePanel=archiveCode&&record.slug?`<section class="gdd-archive-qr" data-gdd-archive-qr data-archive-code="${escape(archiveCode)}" data-archive-url="${escape(archiveLink(kind,record))}">
@@ -231,7 +251,7 @@ function videoSource(raw){
       <button class="btn btn-primary" type="button" data-gdd-qr-download>Tải mã QR PNG</button>
       <button class="btn btn-outline" type="button" data-gdd-qr-copy>Sao chép liên kết</button>
       <small class="gdd-archive-qr-status" data-gdd-qr-status></small></div></div></section>`:'';
-    $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${link}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${archivePanel}${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
+    $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${pdfFileLink}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${archivePanel}${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
     // Chỉ tải ảnh có dấu đối với hồ sơ Chức sắc; không đổi dữ liệu hoặc file gốc.
     $('#detail-content').dataset.gddKind=kind;
     // Thẻ QR Chức sắc: hiển thị ngay dưới tên/phẩm vị, phía trên chơn dung.
