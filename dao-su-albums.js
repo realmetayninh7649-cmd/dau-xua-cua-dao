@@ -24,81 +24,60 @@
   let editorSeq = 0, detailSeq = 0;
   // Giữ tệp trong bộ nhớ cho đến khi người quản trị bấm Đăng/Lưu MỘT LẦN.
   let pendingFiles = [];
-  // Chỉ lưu ảnh xem trước đã THU NHỎ trong bộ nhớ; không sửa File gốc.
+  // Xem ảnh nhỏ ngay khi chọn từ Ảnh/Tệp, trước khi tải lên Supabase.
+  // Blob URL không sao chép toàn bộ ảnh thành chuỗi base64 và không giải mã tuần tự
+  // bằng canvas gây thiếu RAM với hàng chục ảnh lớn trên Safari iPhone.
   function releaseThumbnails(items){
     for(const item of items){
-      item.previewData='';
+      if(item.previewUrl){
+        try{URL.revokeObjectURL(item.previewUrl);}catch{}
+      }
+      item.previewUrl='';
       item.previewError='';
       item.thumbnailElement=null;
     }
   }
   function clearPendingFiles(){releaseThumbnails(pendingFiles);pendingFiles=[];}
-
-  // FileReader hoạt động ổn định với tệp từ Ảnh/Tệp trên iOS.
-  // Đọc từng tệp, giải mã rồi tạo JPEG thu nhỏ để không giữ 30 ảnh lớn trong RAM.
-  function buildPreview(item){
-    return new Promise(resolve=>{
-      const finish=(data,error)=>{
-        if(pendingFiles.includes(item)){
-          item.previewData=data||'';
-          item.previewError=error||'';
-          updateThumbnail(item);
-        }
-        resolve();
-      };
-      const reader=new FileReader();
-      reader.onerror=()=>finish('','Không đọc được ảnh xem trước.');
-      reader.onload=()=>{
-        if(!pendingFiles.includes(item)){resolve();return;}
-        const data=reader.result;
-        if(typeof data!=='string'||!data.startsWith('data:')){finish('','Không đọc được định dạng ảnh.');return;}
-        const image=new Image();
-        image.onerror=()=>finish('','Thiết bị chưa hỗ trợ xem trước định dạng ảnh này.');
-        image.onload=()=>{
-          if(!pendingFiles.includes(item)){resolve();return;}
-          try{
-            const w=image.naturalWidth,h=image.naturalHeight;
-            if(!w||!h)throw Error('Ảnh không có kích thước.');
-            const scale=Math.min(1,240/w,300/h);
-            const canvas=document.createElement('canvas');
-            canvas.width=Math.max(1,Math.round(w*scale));
-            canvas.height=Math.max(1,Math.round(h*scale));
-            const ctx=canvas.getContext('2d');
-            if(!ctx)throw Error('Không dựng được ảnh thu nhỏ.');
-            ctx.drawImage(image,0,0,canvas.width,canvas.height);
-            finish(canvas.toDataURL('image/jpeg',.78));
-          }catch(err){
-            // Tệp PNG/JPEG thường hiển thị trực tiếp dù canvas không khả dụng.
-            finish(data,'');
-          }
-        };
-        image.src=data;
-      };
-      try{reader.readAsDataURL(item.file);}
-      catch(err){finish('','Không đọc được ảnh xem trước.');}
-    });
-  }
-  async function loadPreviewsSequentially(items){
-    for(const item of items){
-      if(!pendingFiles.includes(item))break;
-      await buildPreview(item);
+  function makePreviewUrl(item){
+    try{
+      item.previewUrl=URL.createObjectURL(item.file);
+      item.previewError='';
+    }catch(error){
+      item.previewUrl='';
+      item.previewError='Không tạo được ảnh xem trước. File gốc vẫn giữ để tải lên.';
     }
   }
   function updateThumbnail(item){
     const box=item.thumbnailElement;
     if(!box)return;
-    box.querySelector('img')?.remove();
-    if(item.previewData){
+    box.replaceChildren();
+    const number=document.createElement('span');
+    number.className='gdd-album-photo-no';
+    number.textContent=String(pendingFiles.indexOf(item)+1).padStart(2,'0');
+    if(item.previewUrl){
       const image=document.createElement('img');
       image.alt='Xem trước: '+item.file.name;
       image.decoding='async';
-      image.src=item.previewData;
-      box.insertBefore(image,box.firstChild);
+      image.loading=pendingFiles.indexOf(item)<4?'eager':'lazy';
+      image.src=item.previewUrl;
+      image.addEventListener('error',()=>{
+        if(item.thumbnailElement!==box)return;
+        image.remove();
+        box.classList.add('gdd-album-pending-thumb--empty');
+        item.previewError='Ảnh không hiển thị được trên thiết bị này; tệp vẫn được giữ để đăng.';
+        box.title=item.previewError;
+        const fallback=document.createElement('small');
+        fallback.className='gdd-album-preview-error';
+        fallback.textContent='Không xem trước';
+        box.insertBefore(fallback,box.firstChild);
+      },{once:true});
+      box.append(image,number);
       box.classList.remove('gdd-album-pending-thumb--empty');
       box.title='Xem trước '+item.file.name;
     }else{
       box.classList.add('gdd-album-pending-thumb--empty');
-      if(item.previewError)box.title=item.previewError;
+      box.title=item.previewError||'Không có ảnh xem trước';
+      box.append(number);
     }
   }
   let panelContext = '';
@@ -157,6 +136,7 @@
     .gdd-album-pending-thumb img {display:block;width:100%;height:100%;object-fit:contain;background:#eff2ea;}
     .gdd-album-pending-thumb .gdd-album-photo-no {position:absolute;right:3px;bottom:3px;min-height:0;padding:2px 5px;border-radius:3px;background:#183a31d9;color:#fff;font:700 10px/1.35 'Be Vietnam Pro',sans-serif;}
     .gdd-album-pending-thumb--empty .gdd-album-photo-no {position:static;display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#eff2ea;color:#7e8b80;font:700 17px Georgia,serif;}
+    .gdd-album-preview-error {position:absolute;top:4px;left:2px;right:2px;text-align:center;font:600 9px/1.3 'Be Vietnam Pro',sans-serif;color:#607569;}
     .gdd-admin-photo .gdd-album-field {margin:0 0 8px;}
     .gdd-admin-photo .gdd-album-field input {margin-top:5px;}
     .gdd-admin-photo .gdd-album-commands {margin:0;gap:6px;}
@@ -266,12 +246,9 @@
     target.appendChild(summary);
     pendingFiles.forEach((item,index)=>{
       const row=document.createElement('div');row.className='gdd-admin-photo';
-      const indexDisplay=document.createElement('div');indexDisplay.className='gdd-album-photo-no';
-      indexDisplay.textContent=String(index+1).padStart(2,'0');
-      // Ảnh thu nhỏ đi cùng File và chú thích ngay cả khi đổi thứ tự.
+      // Giữ ảnh thu nhỏ đi kèm File/chú thích khi đổi thứ tự.
       const thumbnail=document.createElement('div');
       thumbnail.className='gdd-album-pending-thumb gdd-album-pending-thumb--empty';
-      thumbnail.appendChild(indexDisplay);
       item.thumbnailElement=thumbnail;
       updateThumbnail(item);
       const content=document.createElement('div');
@@ -318,12 +295,12 @@
     $('#gdd-album-files').addEventListener('change',e=>{
       const files=Array.from(e.target.files||[]);
       clearPendingFiles();
-      pendingFiles=files.map(file=>({file,caption:'',saved:false,previewData:'',previewError:'',thumbnailElement:null}));
-      if(files.length>MAX_FILES)setStatus(`Đã chọn ${files.length} ảnh; chỉ được tối đa ${MAX_FILES}.`);
-      else setStatus(files.length?`Đã chọn ${files.length} ảnh. Điền nội dung rồi nhấn nút Đăng tư liệu/Lưu thay đổi ở bên dưới.`:'');
+      pendingFiles=files.map(file=>({file,caption:'',saved:false,previewUrl:'',previewError:'',thumbnailElement:null}));
+      // Tạo URL cho từng ảnh ngay khi chọn, không đợi FileReader hoặc thao tác đăng bài.
+      for(const item of pendingFiles)makePreviewUrl(item);
+      if(files.length>MAX_FILES)setStatus('Đã chọn '+files.length+' ảnh; chỉ được tối đa '+MAX_FILES+'.');
+      else setStatus(files.length?'Đã chọn '+files.length+' ảnh. Ảnh nhỏ hiển thị bên trái để ghi chú ngay.':'');
       renderQueue();
-      // Xem trước bất đồng bộ, mỗi lần chỉ giải mã một ảnh để tránh treo Safari.
-      void loadPreviewsSequentially(pendingFiles.slice());
       // FileList không còn cần: giữ tệp File trong queue để người dùng đổi thứ tự.
     });
     renderQueue();
