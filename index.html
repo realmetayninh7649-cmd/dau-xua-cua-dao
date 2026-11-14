@@ -808,6 +808,12 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 })();
 </script>
 <!-- KẾT THÚC CẬP NHẬT DẤU XƯA CỬA ĐẠO -->
+<style id="gdd-album-picker-ios-20261115">
+#gdd-admin-album-panel .gdd-album-ios-picker{position:relative;display:block;min-height:82px}
+#gdd-admin-album-panel .gdd-album-choose-label{display:block;width:max-content;max-width:100%;margin-top:10px;padding:11px 18px;background:#195147;color:#fff;border-radius:7px;font:700 14px/1.5 'Be Vietnam Pro',sans-serif}
+#gdd-admin-album-panel .gdd-album-input-overlay{position:absolute;z-index:2;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;display:block!important;margin:0;border:0}
+#gdd-admin-album-panel #gdd-album-picker-count{min-height:24px;margin:8px 0;color:#245549}
+</style>
 <!-- GIỮ ĐẠO GIỮA ĐỜI | ALBUM KHÔNG GIỚI HẠN TỔNG SỐ ẢNH | 04-11-2026 -->
 <script id="gdd-album-unlimited-20261104">
 (() => {
@@ -825,6 +831,20 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
   let busy = false;
   let client = null;
   let installed = false;
+  // Giữ ảnh nhỏ trong bộ nhớ khi vừa chọn; không đụng đến tệp gốc hoặc Storage.
+  function releasePreview(item){if(item?.previewUrl){try{URL.revokeObjectURL(item.previewUrl)}catch{} item.previewUrl='';}}
+  function clearQueue(){queue.forEach(releasePreview);queue=[];}
+  function makeQueuedImage(file,key){
+    const item={file,key,caption:'',saved:false,previewUrl:''};
+    try{item.previewUrl=URL.createObjectURL(file)}catch{}
+    return item;
+  }
+  function showPickerCount(){
+    const el=document.getElementById('gdd-album-picker-count');
+    if(el)el.textContent=queue.length
+      ?'Đã nhận '+queue.length+' ảnh vào danh sách phía dưới. Có thể chọn thêm nhiều lượt.'
+      :'Chưa có ảnh nào được chọn. Chạm “Chọn ảnh” để lấy ảnh từ điện thoại.';
+  }
 
   const $ = (s, root=document) => root.querySelector(s);
   function status(s) { const el = $('#gdd-album-status'); if (el) el.textContent=s; }
@@ -853,7 +873,15 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     const frag=document.createDocumentFragment();
     queue.forEach((item,i)=>{
       const row=document.createElement('div'); row.className='gdd-admin-photo';
-      const no=document.createElement('div'); no.className='gdd-album-photo-no'; no.textContent=String(i+1).padStart(2,'0');
+      const thumbnail=document.createElement('div');thumbnail.className='gdd-album-pending-thumb';
+      const no=document.createElement('span');no.className='gdd-album-photo-no';no.textContent=String(i+1).padStart(2,'0');
+      if(item.previewUrl){
+        const image=document.createElement('img');image.src=item.previewUrl;
+        image.alt='Xem trước '+item.file.name;image.decoding='async';image.loading=i<5?'eager':'lazy';
+        image.addEventListener('error',()=>{image.remove();thumbnail.classList.add('gdd-album-pending-thumb--empty');thumbnail.title='Không xem trước được ảnh, nhưng tệp vẫn nằm trong danh sách.';},{once:true});
+        thumbnail.appendChild(image);
+      }else{thumbnail.classList.add('gdd-album-pending-thumb--empty');thumbnail.title='Tệp đã chọn, không hiển thị được ảnh nhỏ.';}
+      thumbnail.appendChild(no);
       const body=document.createElement('div');
       const label=document.createElement('p'); label.className='gdd-album-note'; label.textContent=item.file.name+' · '+(item.file.size/1048576).toFixed(2)+' MB'+(item.saved?' · Đã lưu':'');
       const field=document.createElement('label'); field.className='gdd-album-field'; field.textContent='Chú thích ảnh '+(i+1);
@@ -867,8 +895,8 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       };
       btn('↑',i===0,()=>{[queue[i],queue[i-1]]=[queue[i-1],queue[i]];renderList();});
       btn('↓',i===queue.length-1,()=>{[queue[i],queue[i+1]]=[queue[i+1],queue[i]];renderList();});
-      btn('Gỡ',false,()=>{queue.splice(i,1);renderList();});
-      body.append(label,field,actions);row.append(no,body);frag.appendChild(row);
+      btn('Gỡ',false,()=>{const [removed]=queue.splice(i,1);releasePreview(removed);renderList();showPickerCount();});
+      body.append(label,field,actions);row.append(thumbnail,body);frag.appendChild(row);
     });
     list.appendChild(frag);
   }
@@ -940,29 +968,46 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     const input=$('#gdd-album-files');
     if (!panel||!input||!window.GDDAlbums) return;
     const nextContext=panel.dataset.context||'';
-    if(nextContext!==context){queue=[];context=nextContext;}
+    if(nextContext!==context){clearQueue();context=nextContext;}
     if(input.dataset.unlimitedBound==='1'){ensureAdminPager(panel);return;}
     // Bỏ listener chọn 30 ảnh của phiên bản cũ, giữ toàn bộ form và dữ liệu.
     const clean=input.cloneNode(true);clean.dataset.unlimitedBound='1';
+    clean.accept='image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif';
     input.replaceWith(clean);
     const desc=panel.querySelector('p.gdd-album-note');
-    if(desc)desc.innerHTML='Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, ảnh gốc lớn được <b>tự tối ưu dưới 6 MB</b> (JPG/PNG/WebP/HEIC nếu hỗ trợ). Nên chọn 10–20 ảnh/lượt trên iPhone để tránh đứng máy. Bấm <b>Đăng tư liệu</b> một lần; giữ trang mở khi đang tải.';
-    const chooser=clean.closest('label');if(chooser)chooser.firstChild.textContent='Chọn thêm ảnh từ album iPhone hoặc ứng dụng Tệp (có thể chọn nhiều lượt)\n        ';
+    if(desc)desc.innerHTML=nextContext.startsWith('documents:')
+      ?'Phần này chỉ đính kèm <b>ảnh chụp các trang tư liệu</b> (JPG/PNG/WebP/HEIC), không nhận PDF. PDF chính chọn ở ô <b>“Hoặc tải PDF / ảnh tài liệu lên”</b> phía trên. Có thể chọn ảnh nhiều lượt, tự tối ưu dưới 6 MB.'
+      :'Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, ảnh lớn tự tối ưu dưới 6 MB (JPG/PNG/WebP/HEIC). Nên chọn 10–20 ảnh/lượt trên iPhone.';
+    const chooser=clean.closest('label');
+    if(chooser){
+      chooser.firstChild.textContent='Chọn ảnh tư liệu từ iPhone hoặc ứng dụng Tệp';
+      chooser.classList.add('gdd-album-ios-picker');
+      const action=document.createElement('span');action.className='gdd-album-choose-label';action.textContent='＋ Chọn ảnh';
+      chooser.appendChild(action);
+      const count=document.createElement('div');count.id='gdd-album-picker-count';count.className='gdd-album-status';
+      chooser.after(count);
+      // Input vẫn là input file thật, phủ trong suốt trên nút để iOS nhận thao tác chạm.
+      // Không dùng display:none hoặc click() giả lập.
+      clean.classList.add('gdd-album-input-overlay');
+      showPickerCount();
+    }
     clean.addEventListener('change',()=>{
       if(busy)return;
       const selected=Array.from(clean.files||[]);let added=0;const problems=[];
+      if(!selected.length){showPickerCount();return;}
       for(const file of selected){
         try{validFile(file);
           // Loại trường hợp chọn trùng cùng tệp trong các lượt (vẫn cho ảnh khác cùng tên).
           const key=file.name+'|'+file.size+'|'+file.lastModified;
           if(queue.some(item=>item.key===key))continue;
-          queue.push({file,key,caption:'',saved:false});added++;
+          queue.push(makeQueuedImage(file,key));added++;
         }catch(e){problems.push(e.message);}
       }
-      clean.value='';renderList();
-      status((added?'Đã thêm '+added+' ảnh; tổng cộng '+queue.length+' ảnh. ':'')+(problems.length?problems.join('; '):'Chọn thêm hoặc nhấn Đăng tư liệu.'));
+      // Reset file input cho lượt chọn tiếp theo; số tệp đã nhận hiển thị ở dưới.
+      clean.value='';renderList();showPickerCount();
+      status((added?'Đã nhận thêm '+added+' ảnh; tổng cộng '+queue.length+' ảnh. ':'')+(problems.length?problems.join('; '):'Có thể ghi chú hoặc nhấn Đăng tư liệu.'));
     });
-    renderList();ensureAdminPager(panel);
+    renderList();showPickerCount();ensureAdminPager(panel);
   }
   async function uploadPending(kind,id,onProgress){
     if(busy)throw Error('Bộ ảnh đang được tải lên.');
@@ -1012,7 +1057,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     const old=window.GDDAlbums;
     window.GDDAlbums={
       pendingCount:pending,validatePending:validate,uploadPending,
-      resetAfterSuccess:()=>{queue=[];context=null;old.resetAfterSuccess?.();}
+      resetAfterSuccess:()=>{clearQueue();context=null;old.resetAfterSuccess?.();showPickerCount();}
     };
     const editor=$('#editor-form');
     if(editor){new MutationObserver(takePicker).observe(editor,{childList:true,subtree:true});takePicker();}
