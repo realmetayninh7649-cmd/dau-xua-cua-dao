@@ -288,7 +288,7 @@
     s.rows=rows;s.ready=true;
     if(s.selectedSex==='Nam' && !rows.some(p=>p.gender==='Nam') && !rows.some(p=>p.gender==='Nữ')
        && rows.some(p=>(p.gender||'Chưa phân loại')==='Chưa phân loại')) s.selectedSex='Chưa phân loại';
-    document.body.classList.add('gdd-people-enhanced');renderList();renderManager();
+    document.body.classList.add('gdd-people-enhanced');renderList();
   }
   // Trang Chủ: 2 Chức sắc mỗi Đài, tự động đổi cặp sau mỗi 15 giây.
   // Giữ nguyên cách sắp xếp trong quản trị; chỉ thay những thẻ xem trước.
@@ -328,61 +328,9 @@
     box.dataset.gddHomeBranches=signature;
   }
 
-  // Quản trị: thêm khu vực quản lý riêng BÊN DƯỚI danh sách bài hiện có.
-  const adminArea=$('#admin-editor-area'),editorList=$('#editor-list');
-  let manager=null,managerList=null,adminMessage=null;
-  if(adminArea&&editorList){
-    manager=document.createElement('section');manager.className='gdd-people-manager';manager.id='gdd-people-manager';
-    manager.innerHTML=`<h4>Phân loại Nam/Nữ và sắp xếp Chức sắc</h4>
-      <p>Chọn đúng Nam hoặc Nữ cho từng hồ sơ. Dùng ↑ / ↓ để đổi thứ tự xuất hiện trong thư mục và Trang Chủ; thứ tự được lưu trực tuyến. Hồ sơ chưa xác định để riêng, không trộn với Nam/Nữ.</p>
-      <div class="gdd-manager-tools"><select id="gdd-manager-branch" aria-label="Lọc cơ quan trong quản trị">
-      <option value="all">Tất cả cơ quan</option>${['Cửu Trùng Đài','Hiệp Thiên Đài','Phước Thiện','Hành chánh Đạo','Khác'].map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}
-      </select><select id="gdd-manager-sex" aria-label="Lọc Nam Nữ trong quản trị">
-      <option value="all">Tất cả Nam/Nữ</option>${sexOptions.map(([x])=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}
-      </select></div><div id="gdd-manager-status" role="status"></div><div id="gdd-manager-rows"></div>`;
-    editorList.parentElement.append(manager);
-    managerList=$('#gdd-manager-rows',manager);adminMessage=$('#gdd-manager-status',manager);
-    manager.querySelector('#gdd-manager-branch').addEventListener('change',e=>{s.managerBranch=e.target.value;renderManager()});
-    manager.querySelector('#gdd-manager-sex').addEventListener('change',e=>{s.managerSex=e.target.value;renderManager()});
-    manager.addEventListener('change',async e=>{
-      const select=e.target.closest('[data-gdd-assign]');if(!select||s.busy)return;
-      const person=s.rows.find(p=>p.id===select.dataset.gddAssign);if(!person)return;
-      s.busy=true;select.disabled=true;adminMessage.textContent='Đang lưu phân loại…';
-      const previous=person.gender||'Chưa phân loại';
-      const {error}=await s.client.from('people').update({gender:select.value}).eq('id',person.id);
-      if(error){select.value=previous;adminMessage.textContent='Không thể lưu: '+error.message}
-      else{person.gender=select.value;adminMessage.textContent='Đã lưu phân loại '+person.full_name;renderList();}
-      s.busy=false;await fetchRows().catch(err=>{adminMessage.textContent=err.message;});
-    });
-    manager.addEventListener('click',async e=>{
-      const b=e.target.closest('[data-gdd-move]');if(!b||s.busy)return;
-      const id=b.dataset.id,delta=b.dataset.gddMove==='up'?-1:1;
-      const global=sorted(),arr=managerRows(),i=arr.findIndex(p=>p.id===id),other=arr[i+delta];if(i<0||!other)return;
-      const a=global.findIndex(p=>p.id===id),z=global.findIndex(p=>p.id===other.id);if(a<0||z<0)return;
-      [global[a],global[z]]=[global[z],global[a]];
-      s.busy=true;adminMessage.textContent='Đang lưu thứ tự…';manager.querySelectorAll('button,select').forEach(el=>el.disabled=true);
-      const {error}=await s.client.rpc('gdd_set_people_order',{p_ids:global.map(p=>p.id)});
-      if(error)adminMessage.textContent='Không thể sắp xếp: '+error.message;
-      else adminMessage.textContent='Đã lưu thứ tự hồ sơ.';
-      s.busy=false;manager.querySelectorAll('button,select').forEach(el=>el.disabled=false);
-      await fetchRows().catch(err=>{adminMessage.textContent=err.message;});
-    });
-    new MutationObserver(()=>renderManager()).observe(adminArea,{attributes:true,attributeFilter:['hidden']});
-    new MutationObserver(()=>renderManager()).observe($('.editor-tabs')||adminArea,{subtree:true,attributes:true,attributeFilter:['class']});
-  }
-  function managerRows(){return sorted().filter(p=>(s.managerBranch==='all'||(p.branch||'Khác')===s.managerBranch)&&
-    (s.managerSex==='all'||(p.gender||'Chưa phân loại')===s.managerSex));}
-  function renderManager(){if(!manager)return;
-    const active=adminArea&&!adminArea.hidden&&$('.editor-tabs button.is-selected')?.dataset.kind==='people';
-    manager.hidden=!active;if(!active||!s.ready)return;
-    const arr=managerRows();
-    managerList.innerHTML=arr.length?arr.map((p,i)=>`<div class="gdd-manage-row"><div class="gdd-manage-name">
-      <strong>${esc(p.full_name)}</strong><small>${esc(p.rank||'Chức sắc')} · ${esc(p.branch||'Khác')} ${p.published?'':'· BẢN NHÁP'}</small></div>
-      <div class="gdd-manage-actions"><select data-gdd-assign="${esc(p.id)}" aria-label="Phân loại ${esc(p.full_name)}">
-      ${sexOptions.map(([sex])=>`<option value="${esc(sex)}" ${(p.gender||'Chưa phân loại')===sex?'selected':''}>${esc(sex)}</option>`).join('')}</select>
-      <button type="button" data-gdd-move="up" data-id="${esc(p.id)}" aria-label="Đưa lên: ${esc(p.full_name)}" ${i===0?'disabled':''}>↑</button>
-      <button type="button" data-gdd-move="down" data-id="${esc(p.id)}" aria-label="Đưa xuống: ${esc(p.full_name)}" ${i===arr.length-1?'disabled':''}>↓</button></div></div>`).join(''):'<p>Chưa có hồ sơ ở nhóm này.</p>';
-  }
+  // Bỏ bảng phân loại/sắp xếp hàng loạt trong Quản trị để giao diện gọn.
+  // Hồ sơ vẫn lấy Nam/Nữ từ biểu mẫu Chức Sắc; thứ tự đã lưu giữ nguyên.
+  // Bộ lọc và hiển thị Chức Sắc công khai không thay đổi.
   // Khi app.js tải lại nội dung sau khi đăng, cập nhật dữ liệu mới ở mô-đun.
   if(editorList){let timer=0;new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(()=>{
     if(!adminArea?.hidden)fetchRows().catch(()=>{});
