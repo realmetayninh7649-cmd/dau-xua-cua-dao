@@ -78,6 +78,14 @@ export async function uploadPreservedAsset(file,{supabase,endpoint=DEFAULT_API,o
   if(!file||!file.name||!Number.isSafeInteger(file.size)||file.size<1)throw Error('Chưa chọn tệp hợp lệ');
   if(!supabase?.auth?.getSession)throw Error('Cần phiên Quản trị viên Supabase');
   endpoint=endpoint.replace(/\/$/,'');
+  let final;
+  if(file.size<=6*1024*1024){
+    // iPhone/iPad: upload in a single request, preserving every original byte.
+    // Ignore stale localStorage multipart sessions from older versions.
+    const qs=new URLSearchParams({name:file.name,size:String(file.size)});
+    final=await retry(()=>call(supabase,endpoint,'/v1/uploads/small?'+qs,'PUT',file,'application/octet-stream'));
+    emit(onProgress,{phase:'original',finishedParts:1,totalParts:1,bytes:file.size,total:file.size});
+  }else{
   let session=resumeSession||await call(supabase,endpoint,'/v1/uploads/start','POST',
     json({name:file.name,size:file.size}), 'application/json');
   if(!session.key||!UUID.test(session.id)||!session.uploadId||!Number.isSafeInteger(session.partBytes))throw Error('Phiên tải lên không hợp lệ');
@@ -95,8 +103,9 @@ export async function uploadPreservedAsset(file,{supabase,endpoint=DEFAULT_API,o
     emit(onSession,{...session,uploadedParts:[...parts.values()]});
     emit(onProgress,{phase:'original',finishedParts:parts.size,totalParts:partCount,bytes:Math.min(file.size,parts.size*partBytes),total:file.size});
   }
-  const final=await call(supabase,endpoint,'/v1/uploads/complete','POST',
+  final=await call(supabase,endpoint,'/v1/uploads/complete','POST',
     json({key:session.key,uploadId:session.uploadId,size:file.size,parts:[...parts.values()].sort((a,b)=>a.partNumber-b.partNumber)}),'application/json');
+  }
   emit(onProgress,{phase:'original-preserved',bytes:file.size,total:file.size});
   const ext=file.name.split('.').pop().toLowerCase();
   const images=new Set(['jpeg','jpg','png','webp','gif','tif','tiff','heic','heif','avif']);
