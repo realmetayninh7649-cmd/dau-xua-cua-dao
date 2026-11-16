@@ -748,16 +748,44 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
 
   async function initSupabase(){
     if(!configured){state.data=demo;$('#mode-banner').hidden=false;render();syncHash();return}
+    let stage='tải thư viện kết nối';
     try{
-      const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-      state.supabase=createClient(config.supabaseUrl,config.supabasePublishableKey);
+      let supabaseModule=null;
+      try{
+        supabaseModule=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+      }catch(primaryError){
+        console.warn('Không tải được Supabase từ jsDelivr, thử nguồn dự phòng.',primaryError);
+        try{
+          supabaseModule=await import('https://esm.sh/@supabase/supabase-js@2?bundle');
+        }catch(secondaryError){
+          console.error('Cả hai nguồn tải thư viện đều không hoạt động.',secondaryError);
+          throw new Error('Không tải được thư viện Supabase từ hai nguồn. Hãy thử mở web bằng Safari.');
+        }
+      }
+      if(typeof supabaseModule?.createClient!=='function')throw new Error('Thư viện Supabase không cung cấp createClient.');
+      stage='khởi tạo kết nối';
+      state.supabase=supabaseModule.createClient(config.supabaseUrl,config.supabasePublishableKey);
+      stage='kiểm tra phiên đăng nhập';
       const {data:{session}}=await state.supabase.auth.getSession();
       state.user=session?.user||null;
       if(state.user)await verifyAdmin();
+      stage='tải dữ liệu';
       await fetchData();
       if(state.admin)buildEditor();
       state.supabase.auth.onAuthStateChange((_event,session)=>{state.user=session?.user||null;if(!state.user){state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;fetchData()}});
-    }catch(err){toast('Không kết nối được Supabase. Hãy kiểm tra URL, key và kết nối mạng.');console.error(err);state.data=demo;$('#mode-banner').hidden=false;render();syncHash()}
+      $('#mode-banner').hidden=true;
+    }catch(err){
+      console.error('Không thể khởi tạo website tại bước '+stage,err);
+      const reason=String(err?.message||err||'Lỗi chưa xác định').slice(0,180);
+      if(stage==='tải dữ liệu'){
+        // Lỗi đọc/hiển thị dữ liệu không đồng nghĩa mất kết nối hay sai API key.
+        $('#mode-banner').hidden=true;
+        toast('Có lỗi khi tải hoặc hiển thị dữ liệu: '+reason);
+        return;
+      }
+      toast('Lỗi khởi tạo ('+stage+'): '+reason);
+      state.data=demo;$('#mode-banner').hidden=false;render();syncHash();
+    }
   }
   function updateSubgroupFilter(preferred='all'){
     const branch=$('#branch-filter').value,select=$('#subgroup-filter');
