@@ -158,3 +158,71 @@ test('không cho user khác hoàn tất hay gửi phần lên khóa của admin 
     assert.equal(b.objects.size,0);
   }finally{restore()}
 });
+
+test('iPhone PNG nhỏ: lưu trực tiếp nguyên từng byte, không dùng phiên multipart',async()=>{
+  const b=mockR2(),restore=grantAdmin();
+  try{
+    const bytes=new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,5,4,3,2]);
+    const url='/v1/uploads/small?'+new URLSearchParams({name:'anh-tho.png',size:String(bytes.length)});
+    const response=await worker.fetch(req(url,'PUT',bytes,'admin',{'content-type':'application/octet-stream'}),env(b));
+    assert.equal(response.status,201,await response.text().catch(()=>''));
+    // Body is already consumed above by response.text(); retrieve stored object from R2.
+    assert.equal(b.sessions.size,0);
+    const originals=[...b.objects.entries()].filter(([key])=>key.startsWith('originals/'));
+    assert.equal(originals.length,1);
+    assert.deepEqual([...originals[0][1].content],[...bytes]);
+    const metadatas=[...b.objects.entries()].filter(([key])=>key.startsWith('meta/'));
+    assert.equal(metadatas.length,1);
+    const metadata=JSON.parse(new TextDecoder().decode(metadatas[0][1].content));
+    assert.equal(metadata.originalBytes,bytes.length);
+    assert.equal(metadata.published,false);
+    assert.equal(metadata.preview,false);
+    const stranger=await worker.fetch(new Request(base+'/v1/assets/'+metadata.id),env(b));
+    assert.equal(stranger.status,403);
+  }finally{restore()}
+});
+
+test('từ chối sai dung lượng, sai định dạng và khách không quyền ở tuyến PUT nhỏ',async()=>{
+  const b=mockR2(),restore=grantAdmin();
+  try{
+    const bytes=new Uint8Array([1,2,3,4,5,6,7]);
+    const wrong=await worker.fetch(req('/v1/uploads/small?name=test.png&size=100','PUT',bytes),env(b));
+    assert.equal(wrong.status,400);
+    const illegal=await worker.fetch(req('/v1/uploads/small?name=malware.exe&size=7','PUT',bytes),env(b));
+    assert.equal(illegal.status,400);
+    const denied=await worker.fetch(req('/v1/uploads/small?name=scan.pdf&size=7','PUT',bytes,'other'),env(b));
+    assert.equal(denied.status,403);
+    assert.equal(b.objects.size,0);
+  }finally{restore()}
+});
+
+test('multipart R2 uploadId chứa dấu chấm là mã hợp lệ và Content-Length có thể vắng mặt',async()=>{
+  const b=mockR2(),restore=grantAdmin();
+  try{
+    const original=b.createMultipartUpload;
+    b.createMultipartUpload=async (key,opts)=>{
+      const s=await original(key,opts);
+      const entry=b.sessions.get(s.uploadId);
+      b.sessions.delete(s.uploadId);
+      entry.id='Opaque.ID-1';
+      b.sessions.set(entry.id,entry);
+      return {uploadId:entry.id};
+    };
+    const start=await worker.fetch(req('/v1/uploads/start','POST',{name:'test.pdf',size:4},'admin',{'content-type':'application/json'}),env(b));
+    assert.equal(start.status,201);
+    const session=await start.json();
+    assert.equal(session.uploadId,'Opaque.ID-1');
+    const q=new URLSearchParams({key:session.key,uploadId:session.uploadId,part:'1'});
+    const data=new Uint8Array([37,80,68,70]);
+    const response=await worker.fetch(new Request(base+'/v1/uploads/part?'+q,{
+      method:'PUT',headers:{origin,authorization:'Bearer admin','content-type':'application/octet-stream'},body:data
+    }),env(b));
+    assert.equal(response.status,200);
+    const p=await response.json();
+    const done=await worker.fetch(req('/v1/uploads/complete','POST',{
+      key:session.key,uploadId:session.uploadId,size:4,parts:[p]
+    },'admin',{'content-type':'application/json'}),env(b));
+    assert.equal(done.status,201);
+    assert.deepEqual([...b.objects.get(session.key).content],[...data]);
+  }finally{restore()}
+});
