@@ -1,0 +1,64 @@
+# GDDĐ v2.0.0-DK01 — only inspect Cloudflare configuration; never deploy.
+name: "GDD DK01 - Kiem tra Cloudflare R2"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-worker:
+    name: "Xac minh ket noi Worker va R2"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Kiem tra Cloudflare API va lien ket R2 (chi doc)"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, re, sys, urllib.error, urllib.request
+
+          token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+          account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+          if not token:
+              sys.exit("LOI: Thieu GitHub Secret CLOUDFLARE_API_TOKEN.")
+          if not re.fullmatch(r"[a-fA-F0-9]{32}", account_id):
+              sys.exit("LOI: GitHub Variable CLOUDFLARE_ACCOUNT_ID phai co dung 32 ky tu hex.")
+
+          def cf_read(path):
+              req = urllib.request.Request(
+                  "https://api.cloudflare.com/client/v4" + path,
+                  headers={"Authorization": "Bearer " + token,
+                           "Accept": "application/json"},
+                  method="GET"
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as response:
+                      data = json.loads(response.read())
+              except urllib.error.HTTPError as exc:
+                  sys.exit("LOI: Cloudflare tra HTTP %s. Kiem tra Account ID / quyen token." % exc.code)
+              except Exception as exc:
+                  sys.exit("LOI: Khong the ket noi Cloudflare (%s)." % type(exc).__name__)
+              if data.get("success") is not True:
+                  sys.exit("LOI: Cloudflare khong chap nhan yeu cau, hay kiem tra quyen token.")
+              return data.get("result") or {}
+
+          status = cf_read("/accounts/" + account_id + "/tokens/verify")
+          if status.get("status") != "active":
+              sys.exit("LOI: Token chua active hoac da het han.")
+          print("OK: Account token hoat dong.")
+
+          worker = cf_read("/accounts/" + account_id + "/workers/scripts/gdd-r2-gateway/settings")
+          bindings = worker.get("bindings") or []
+          r2 = [b for b in bindings if b.get("type") == "r2_bucket" and b.get("name") == "GDD_BUCKET"]
+          if not r2:
+              sys.exit("LOI: Worker chua co lien ket R2 ten GDD_BUCKET.")
+          if r2[0].get("bucket_name") != "gdd-dau-xua-cua-dao":
+              sys.exit("LOI: GDD_BUCKET dang ket noi sai ten kho R2.")
+          print("OK: gdd-r2-gateway da lien ket dung bucket.")
+          print("HOAN TAT: DK01 preflight chi doc. Khong co Worker hay du lieu nao bi thay doi.")
+          PY
