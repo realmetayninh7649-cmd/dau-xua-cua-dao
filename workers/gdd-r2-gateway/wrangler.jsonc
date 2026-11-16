@@ -15,5 +15,9 @@
     "logs": {
       "enabled": true
     }
+  },
+  "vars": {
+    "SUPABASE_URL": "https://gwpdgubxoquhrfbolftq.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_9l_chqaqGQ69Nfx63Chjrw_RA2yPaGa"
   }
 }
