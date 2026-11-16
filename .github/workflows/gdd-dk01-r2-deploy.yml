@@ -3,10 +3,10 @@ name: "GDD DK01 - Trien khai R2 gateway an toan"
 on:
   push:
     branches: [main]
-  pull_request:
     paths:
       - "workers/gdd-r2-gateway/**"
       - ".github/workflows/gdd-dk01-r2-deploy.yml"
+  pull_request:
     paths:
       - "workers/gdd-r2-gateway/**"
       - ".github/workflows/gdd-dk01-r2-deploy.yml"
