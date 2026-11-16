@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>GDDĐ DK01.2 – Thử nghiệm lưu R2</title>
+<style>
+body{background:#f8f6ef;color:#234638;font:16px/1.6 system-ui,-apple-system,sans-serif;margin:0}
+main{max-width:720px;margin:24px auto;padding:24px;background:white;border:1px solid #ddd;border-radius:16px}
+h1{font-size:1.5rem}label{display:block;font-weight:600;margin:16px 0 7px}
+input{max-width:100%;width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccc;border-radius:8px}
+button{background:#215746;color:white;border:0;border-radius:8px;padding:12px 17px;margin-top:16px;font-weight:700}
+button:disabled{opacity:.5}progress{width:100%;height:18px}
+#status{white-space:pre-wrap;overflow-wrap:anywhere}
+.note{background:#f0f4ee;padding:13px;border-radius:9px}
+a{color:#215746}
+</style>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+<main>
+<p><strong>GDDĐ v2.0.0-DK01.2 · THỬ NGHIỆM RIÊNG</strong></p>
+<h1>Lưu tư liệu nguyên mẫu lên R2</h1>
+<p class="note">Trang không nằm trong menu công khai, không đăng bài và không cung cấp bản gốc cho độc giả. Chỉ Quản trị viên đã đăng nhập Web Đạo mới sử dụng được. Hãy thử bằng tệp nhỏ không quan trọng trước.</p>
+<p id="auth" role="status">Đang kiểm tra quyền Quản trị viên…</p>
+<section id="area" hidden>
+<label for="files">Chọn ảnh, PDF hoặc Word</label>
+<input id="files" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.tif,.tiff,.heic,.heif,.avif,.pdf,.doc,.docx">
+<button id="upload" type="button">Tải tệp thử lên R2</button>
+<progress id="progress" max="100" value="0" hidden></progress>
+<p id="status" role="status" aria-live="polite">Chưa chọn tệp.</p>
+</section>
+<p><a href="./index.html">Trở về Web Đạo</a></p>
+</main>
+<script type="module">
+import {uploadPreservedAsset} from './workers/gdd-r2-gateway/client/uploader.mjs';
+const el=id=>document.getElementById(id);
+const tell=(id,msg)=>{el(id).textContent=msg};
+let supabase;
+try{
+ const cfg=window.SITE_CONFIG;
+ if(!cfg?.supabaseUrl||!cfg?.supabasePublishableKey)throw Error('Chưa có cấu hình Supabase.');
+ const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+ supabase=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
+ const {data,error}=await supabase.auth.getUser();
+ if(error||!data?.user)throw Error('Hãy đăng nhập Quản trị viên tại Web Đạo trước khi tải thử.');
+ const {data:admin,error:adminError}=await supabase.from('admin_users').select('user_id').eq('user_id',data.user.id).maybeSingle();
+ if(adminError||!admin)throw Error('Tài khoản chưa được cấp quyền Quản trị viên.');
+ tell('auth','Đã xác minh Quản trị viên. Các tệp tải lên vẫn riêng tư và chưa được đăng lên website.');
+ el('area').hidden=false;
+}catch(e){tell('auth',String(e?.message||e))}
+el('upload').addEventListener('click',async()=>{
+ const files=[...el('files').files];
+ if(!files.length){tell('status','Hãy chọn tệp trước.');return}
+ el('upload').disabled=true;el('files').disabled=true;el('progress').hidden=false;
+ const messages=[];
+ try{
+  for(let i=0;i<files.length;i++){
+   const file=files[i];
+   const key='gdd-r2-resume-'+[file.name,file.size,file.lastModified].join('_');
+   let resume;
+   try{resume=JSON.parse(localStorage.getItem(key)||'null')}catch{resume=null}
+   tell('status','Tệp '+(i+1)+'/'+files.length+': '+file.name+'\nĐang tải nguyên mẫu…');
+   const result=await uploadPreservedAsset(file,{
+    supabase,
+    resumeSession:resume,
+    onSession:s=>{try{localStorage.setItem(key,JSON.stringify(s))}catch{}},
+    onProgress:p=>{
+      if(p.phase==='original'){
+       el('progress').value=Math.round(p.bytes/p.total*100);
+       tell('status',file.name+' — đã tải '+el('progress').value+'% nguyên mẫu');
+      }else if(p.phase==='optimizing')tell('status',file.name+' — đang tạo ảnh '+p.variant);
+      else if(p.phase==='optimized-error')tell('status','Đã lưu bản gốc; lỗi tạo bản nhẹ: '+p.message);
+    }
+   });
+   try{localStorage.removeItem(key)}catch{}
+   messages.push(file.name+' — '+result.status+', '+result.originalBytes+' byte, ID: '+result.id);
+   el('progress').value=Math.round((i+1)/files.length*100);
+   tell('status',messages.join('\n'));
+  }
+  tell('status',messages.join('\n')+'\n\nTệp vẫn riêng tư và chưa gắn vào bài viết.');
+ }catch(e){tell('status','Lỗi: '+(e?.message||e)+'\nCó thể chọn lại đúng tệp để tiếp tục phần đang tải.')}
+ finally{el('upload').disabled=false;el('files').disabled=false}
+});
+</script>
+</body>
+</html>
