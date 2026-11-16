@@ -163,11 +163,15 @@ function videoSource(raw){
   const linkedPerson = personId => state.data.people.find(x=>x.id===personId);
   // Chỉ đổi mục hiển thị. Bài gốc, ảnh, mã định danh và liên kết QR không bị chuyển.
   const movableKinds=['posts','media','videos','obituaries','documents'];
-  const displayTarget=(kind,record)=>state.placements.find(p=>p.owner_kind===kind&&p.owner_id===record.id)?.target_kind||kind;
+  const placementOf=(kind,record)=>state.placements.find(p=>p.owner_kind===kind&&p.owner_id===record.id);
+  const displayTarget=(kind,record)=>placementOf(kind,record)?.target_kind||kind;
   const displayedEntries=target=>movableKinds.flatMap(originKind=>
     publicRows(originKind).filter(record=>displayTarget(originKind,record)===target)
       .map(record=>({record,originKind}))
-  ).sort((a,b)=>new Date(b.record.created_at||0)-new Date(a.record.created_at||0));
+  ).sort((a,b)=>{
+    const newest=e=>new Date(placementOf(e.originKind,e.record)?.updated_at||e.record.created_at||0).getTime();
+    return newest(b)-newest(a);
+  });
   const imageFromRecord=x=>safeUrl(x.cover_url||x.image_url||
     (/\.(png|jpe?g|webp)(\?|$)/i.test(x.file_url||'')?x.file_url:''));
 
@@ -808,7 +812,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       const {data,error}=await state.supabase.from('submissions').select('*').order('created_at',{ascending:false}).limit(200);
       state.data.submissions=error?[]:data||[];
     } else state.data.submissions=[];
-    const {data:placements,error:placementError}=await state.supabase.from('gdd_content_placements').select('owner_kind,owner_id,target_kind');
+    const {data:placements,error:placementError}=await state.supabase.from('gdd_content_placements').select('owner_kind,owner_id,target_kind,updated_at');
     if(placementError)console.warn('Không tải được vị trí hiển thị:',placementError);
     state.placements=placementError?[]:(placements||[]);
     updateSubgroupFilter();render();syncHash();
