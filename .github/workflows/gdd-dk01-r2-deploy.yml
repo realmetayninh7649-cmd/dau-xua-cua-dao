@@ -96,4 +96,20 @@ jobs:
               print("OK: Khong co tuyen cong khai doc tep tu R2.")
           else:
               raise SystemExit("LOI: Duong dan tep dang mo cong khai.")
+
+          # Phép thử không gửi JWT, bắt buộc Worker trả 403 mà không ghi tệp.
+          request = urllib.request.Request(
+              base + "/v1/uploads/start",
+              data=b'{"name":"check.pdf","size":1024}',
+              headers={"Content-Type":"application/json","User-Agent":"GDD-DK01-CI/1.0"},
+              method="POST"
+          )
+          try:
+              urllib.request.urlopen(request, timeout=10)
+          except urllib.error.HTTPError as exc:
+              if exc.code != 403:
+                  raise SystemExit("LOI: Upload khi chua dang nhap phai bi chan (HTTP %d)." % exc.code)
+              print("OK: API upload yeu cau Quản trị viên, khong co ghi tu lieu.")
+          else:
+              raise SystemExit("LOI: API upload khong co JWT dang duoc mo cong khai.")
           PY
