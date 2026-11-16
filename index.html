@@ -80,7 +80,7 @@
   
 <script defer src="gdd-image-optimizer.js?v=20261109-auto6mb-01"></script>
 <script defer src="vendor/qrcode.min.js?v=20261113-local"></script>
-<script defer src="app.js?v=20261117-supabase-init-diagnostic-03"></script>
+<script defer src="app.js?v=20261117-compact-content-transfer-01"></script>
 <script defer src="gdd-archive-qr.js?v=20261113-ios-save-04"></script>
 
   <script defer src="gdd-person-watermark.js?v=20261113-final-master-08"></script>
@@ -144,6 +144,29 @@
  #hinh-anh .gdd-gallery-categories button{font-size:11px;min-height:37px}
  #gallery-grid .gallery-card .gdd-gallery-open{font-size:9px}
 }
+</style>
+<style id="gdd-content-transfer-20261117">
+/* Quản trị: thêm duy nhất một biểu tượng ⇄ nhỏ vào dòng bài, không mở rộng trang. */
+.admin-panel .editor-item .gdd-record-label{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.admin-panel .editor-item .gdd-record-actions{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px}
+.admin-panel .editor-item .gdd-record-actions button{min-width:28px;min-height:34px;padding:5px;color:#205247;font-weight:700;font-size:11px}
+.admin-panel .editor-item [data-list-transfer]{border:1px solid #c8d3c8;border-radius:5px;background:#f3f6ef;font-size:18px!important}
+.gdd-transfer-dialog[hidden]{display:none!important}
+.gdd-transfer-dialog{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(20,39,31,.5);padding:16px}
+.gdd-transfer-box{position:relative;width:min(410px,100%);max-height:calc(100dvh - 36px);overflow:auto;border-radius:12px;background:#faf8f2;border:1px solid #d9cfbb;box-shadow:0 16px 60px rgba(10,23,18,.27);padding:25px 20px;color:#285045}
+.gdd-transfer-box h4{font:600 20px/1.5 'Noto Serif',serif;margin:0 32px 10px 0}
+.gdd-transfer-x{position:absolute;top:12px;right:13px;width:32px;height:32px;border:1px solid #d5d7cb;background:white;border-radius:50%;font-size:21px;color:#285045}
+.gdd-transfer-record{font-size:13px;line-height:1.6;font-weight:700;margin:0 0 18px;overflow-wrap:anywhere}
+.gdd-transfer-box form{display:grid;gap:10px}
+.gdd-transfer-box label{font-size:12px;font-weight:700}
+.gdd-transfer-box select{width:100%;max-width:100%;min-height:46px;font:14px/1.4 'Be Vietnam Pro',sans-serif;padding:10px;background:white;color:#24483d;border:1px solid #b8c8bb;border-radius:6px}
+.gdd-transfer-note{font-size:11px;line-height:1.65;color:#637269;margin:6px 0}
+#gdd-transfer-status{font-size:12px;line-height:1.5;color:#9a453f;min-height:0;margin:0}
+.gdd-transfer-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:7px}
+.gdd-transfer-actions button{border:1px solid #aebfaf;border-radius:6px;background:#fff;padding:10px 13px;font-size:12px;color:#225046;font-weight:700}
+#gdd-transfer-confirm{background:#185148;color:white;border-color:#185148}
+#gdd-transfer-confirm:disabled{opacity:.6}
+@media(max-width:520px){.admin-panel .editor-item{gap:6px}.admin-panel .editor-item .gdd-record-actions{gap:2px}.gdd-transfer-box{padding:24px 18px}}
 </style>
 </head>
 <body>
@@ -356,6 +379,23 @@
       <div class="editor-heading"><h3 id="editor-heading">Thêm hồ sơ Chức sắc</h3><button type="button" class="link-button" id="editor-new">+ Soạn mới</button></div>
       <form id="editor-form" class="admin-form"></form>
       <div class="editor-items"><h3>Tư liệu đã đăng / bản nháp</h3><div class="gdd-editor-search"><label for="editor-record-search">Tìm nhanh trong mục đang chọn</label><input id="editor-record-search" type="search" placeholder="Nhập tên bài, tên Chức sắc hoặc mã hồ sơ…" autocomplete="off" aria-controls="editor-list"><small id="editor-search-count" role="status" aria-live="polite"></small></div><div id="editor-list"></div><button id="editor-list-toggle" class="gdd-editor-list-toggle" type="button" aria-controls="editor-list" aria-expanded="false" hidden>Xem thêm tư liệu</button></div>
+      <div id="gdd-transfer-dialog" class="gdd-transfer-dialog" hidden>
+        <section class="gdd-transfer-box" role="dialog" aria-modal="true" aria-labelledby="gdd-transfer-title">
+          <button type="button" id="gdd-transfer-close" class="gdd-transfer-x" aria-label="Đóng hộp chuyển mục">×</button>
+          <h4 id="gdd-transfer-title">Chuyển mục hiển thị</h4>
+          <p class="gdd-transfer-record" id="gdd-transfer-record"></p>
+          <form id="gdd-transfer-form">
+            <label for="gdd-transfer-target">Hiển thị bài tại mục</label>
+            <select id="gdd-transfer-target" required></select>
+            <p class="gdd-transfer-note">Chỉ thay đổi vị trí hiển thị. Nội dung gốc, hình ảnh, mã định danh và đường dẫn QR vẫn được giữ nguyên. Có thể chuyển về mục gốc.</p>
+            <p id="gdd-transfer-status" role="status" aria-live="polite"></p>
+            <div class="gdd-transfer-actions">
+              <button type="button" id="gdd-transfer-cancel">Hủy</button>
+              <button type="submit" id="gdd-transfer-confirm">Xác nhận chuyển</button>
+            </div>
+          </form>
+        </section>
+      </div>
       <section class="incoming-submissions" aria-label="Tư liệu do tín hữu gửi"><h3>Hộp thư tư liệu tín hữu</h3><p class="small-muted">Chỉ tài khoản quản trị xem được. Tư liệu không tự động công bố.</p><div id="submission-inbox"></div><div id="submission-reader" hidden></div></section>
     </div>
   </section></div>
