@@ -1,9 +1,19 @@
 {
   "name": "gdd-r2-gateway",
   "main": "./src/index.mjs",
-  "compatibility_date": "2026-11-17",
+  "compatibility_date": "2026-11-16",
   "workers_dev": true,
   "r2_buckets": [
-    { "binding": "GDD_BUCKET", "bucket_name": "gdd-dau-xua-cua-dao" }
-  ]
+    {
+      "binding": "GDD_BUCKET",
+      "bucket_name": "gdd-dau-xua-cua-dao"
+    }
+  ],
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true
+    }
+  }
 }
