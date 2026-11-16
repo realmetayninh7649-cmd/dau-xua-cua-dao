@@ -1128,10 +1128,10 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
   }
   // Dùng tải từng phần cho PDF trên 6 MB, hạn chế lỗi mạng iCloud/Safari.
   // Cùng cơ chế TUS đã có trong app.js cho video lớn; không thay đổi Storage/RLS.
-  async function uploadPdfAttachment(supa,path,file,onProgress){
+  async function uploadDocumentAttachment(supa,path,file,onProgress,contentType){
     const storage=supa.storage.from('dao-su-documents');
     if(file.size<=6*1024*1024){
-      const {error}=await storage.upload(path,file,{contentType:'application/pdf',cacheControl:'3600',upsert:false});
+      const {error}=await storage.upload(path,file,{contentType,cacheControl:'3600',upsert:false});
       if(error)throw error;
     }else{
       const {data:{session},error:authError}=await supa.auth.getSession();
@@ -1146,9 +1146,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           uploadDataDuringCreation:true,removeFingerprintOnSuccess:true,
           chunkSize:6*1024*1024,
           headers:{authorization:'Bearer '+session.access_token},
-          metadata:{bucketName:'dao-su-documents',objectName:path,contentType:'application/pdf',cacheControl:'3600'},
+          metadata:{bucketName:'dao-su-documents',objectName:path,contentType,cacheControl:'3600'},
           onError:reject,
-          onProgress:(uploaded,total)=>onProgress?.('Đang tải PDF '+Math.min(100,Math.round(uploaded/total*100))+'%…'),
+          onProgress:(uploaded,total)=>onProgress?.('Đang tải tệp '+Math.min(100,Math.round(uploaded/total*100))+'%…'),
           onSuccess:resolve
         }).start();
       });
@@ -1173,18 +1173,21 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       let position=Math.max(0,top?.[0]?.sort_order||0);
       const items=queue.filter(x=>!x.saved);
       for(const item of items){
-        const message=`Đang tải ảnh ${done+1}/${items.length}: ${item.file.name}. Xin giữ trang mở.`;
+        const message=`Đang tải tệp ${done+1}/${items.length}: ${item.file.name}. Xin giữ trang mở.`;
         status(message);onProgress?.(message);
-        if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
-        const pdf=kind==='documents'&&isPdf(item.file);
-        const prepared=pdf?item.file:await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{status(message);onProgress?.(message)}});
+        const pdf=isPdf(item.file),word=kind==='media'&&isWord(item.file);
+        const docFile=(pdf&&['media','documents'].includes(kind))||word;
+        if(!docFile&&!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
+        const prepared=docFile?item.file:await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{status(message);onProgress?.(message)}});
         item.file=prepared;
+        const extension=pdf?'pdf':word?wordExt(item.file):EXT[prepared.type];
+        if(!extension)throw Error('Không xác định được định dạng tệp: '+item.file.name);
         const suffix=(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2));
-        const path=`${kind}/${Date.now()}-${suffix}.${pdf?'pdf':EXT[prepared.type]}`;
-        const destination=pdf?'dao-su-documents':BUCKET;
-        const contentType=pdf?'application/pdf':prepared.type;
+        const path=`${kind}/${Date.now()}-${suffix}.${extension}`;
+        const destination=docFile?'dao-su-documents':BUCKET;
+        const contentType=pdf?'application/pdf':word?WORD_TYPES[extension]:prepared.type;
         let url;
-        if(pdf)url=await uploadPdfAttachment(supa,path,prepared,message=>{status(message);onProgress?.(message)});
+        if(docFile)url=await uploadDocumentAttachment(supa,path,prepared,message=>{status(message);onProgress?.(message)},contentType);
         else{
           const {error:upError}=await supa.storage.from(destination).upload(path,prepared,{contentType,cacheControl:'3600',upsert:false});
           if(upError)throw upError;
@@ -1192,15 +1195,15 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         }
         const order=position+1;
         const {error:rowError}=await supa.from(TABLE).insert({owner_kind:kind,owner_id:id,image_url:url,
-          caption:item.caption.trim()||(pdf?'Tài liệu PDF ':'Ảnh tư liệu ')+String(order).padStart(2,'0'),sort_order:order});
+          caption:item.caption.trim()||(docFile?item.file.name:'Ảnh tư liệu '+String(order).padStart(2,'0')),sort_order:order});
         if(rowError)throw rowError;
         position=order;item.saved=true;done++;
-        const progress=`Đã lưu ${done}/${items.length} ảnh; còn ${pending()} ảnh chờ tải.`;
+        const progress=`Đã lưu ${done}/${items.length} tệp; còn ${pending()} tệp chờ tải.`;
         status(progress);onProgress?.(progress);
       }
-      status('Đã lưu đủ '+done+' ảnh, không giới hạn tổng số ảnh của bài.');
+      status('Đã lưu đủ '+done+' tệp đính kèm.');
     }catch(err){
-      const message=`Đã tải thành công ${done} ảnh; còn ${pending()} ảnh chưa tải. Lỗi: ${err.message||err}`;
+      const message=`Đã tải thành công ${done} tệp; còn ${pending()} tệp chưa tải. Lỗi: ${err.message||err}`;
       status(message);throw err;
     }finally{busy=false;if(input)input.disabled=false;renderList();}
   }
