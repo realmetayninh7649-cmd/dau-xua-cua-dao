@@ -80,7 +80,7 @@
   
 <script defer src="gdd-image-optimizer.js?v=20261109-auto6mb-01"></script>
 <script defer src="vendor/qrcode.min.js?v=20261113-local"></script>
-<script defer src="app.js?v=20261114-document-pdf-download-06"></script>
+<script defer src="app.js?v=20261117-gallery-categories-short-cards-01"></script>
 <script defer src="gdd-archive-qr.js?v=20261113-ios-save-04"></script>
 
   <script defer src="gdd-person-watermark.js?v=20261113-final-master-08"></script>
@@ -125,6 +125,25 @@
 .gdd-facebook-mark{display:inline-grid;place-items:center;width:23px;height:23px;flex:0 0 23px;border:1px solid currentColor;border-radius:50%;font:bold 17px/1 Arial,sans-serif}
 .gdd-about-facebook{margin-top:12px}
 .footer .gdd-facebook-link{color:#ebddbd;font-size:11px;margin-top:9px}
+</style>
+<style id="gdd-gallery-five-categories-20261117">
+/* Giới hạn thay đổi cho thư viện Hình ảnh. */
+#hinh-anh .gdd-gallery-categories{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center}
+#hinh-anh .gdd-gallery-categories button{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;min-height:38px;padding:8px 12px;border:1px solid #d9d7c9;border-radius:999px;background:#fffcf6;color:#285247;font:600 12px/1.35 'Be Vietnam Pro',sans-serif;text-align:center}
+#hinh-anh .gdd-gallery-categories button:hover{border-color:#a48a62;background:#f4efe5}
+#hinh-anh .gdd-gallery-categories button.is-selected{background:#185148;color:#fff;border-color:#185148}
+#hinh-anh .gdd-gallery-categories button:focus-visible{outline:2px solid #b78f53;outline-offset:2px}
+#hinh-anh .gdd-gallery-cat-count{min-width:18px;padding:1px 5px;border-radius:999px;background:rgba(20,76,65,.08);font-size:10px;line-height:1.6}
+#hinh-anh .gdd-gallery-categories button.is-selected .gdd-gallery-cat-count{background:rgba(255,255,255,.2)}
+#hinh-anh .gdd-gallery-category-count{font-size:11px;color:#747d73;margin:0 0 18px}
+#gallery-grid .gallery-card h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere}
+#gallery-grid .gallery-card p.gdd-gallery-excerpt{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;max-height:3.2em;line-height:1.6;overflow-wrap:anywhere;white-space:normal}
+#gallery-grid .gallery-card .gdd-gallery-open{display:block;margin-top:8px;font-size:10px;font-weight:700;color:#265b4e}
+@media(max-width:620px){
+ #hinh-anh .gdd-gallery-categories{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding-bottom:7px;margin-bottom:8px}
+ #hinh-anh .gdd-gallery-categories button{font-size:11px;min-height:37px}
+ #gallery-grid .gallery-card .gdd-gallery-open{font-size:9px}
+}
 </style>
 </head>
 <body>
@@ -252,6 +271,15 @@
 
     <section class="section section-anchor" id="hinh-anh"><div class="wrap">
       <div class="section-top"><div><div class="eyebrow">HÌNH ẢNH &amp; KỶ VẬT</div><h2>Di ảnh và <em>tư liệu xưa</em></h2><p>Nơi tập hợp ảnh chân dung, hình lễ nghi, văn kiện và ảnh chụp lưu niệm.</p></div><span class="section-index">03 / THƯ VIỆN ẢNH</span></div>
+      <div id="gallery-category-filters" class="gdd-gallery-categories" role="group" aria-label="Lọc bộ ảnh theo chuyên mục">
+        <button type="button" data-gallery-category="all" aria-pressed="true" class="is-selected">Tất cả bộ ảnh<span class="gdd-gallery-cat-count" aria-hidden="true"></span></button>
+        <button type="button" data-gallery-category="Tòa Thánh Tây Ninh xưa" aria-pressed="false">Tòa Thánh Tây Ninh xưa<span class="gdd-gallery-cat-count" aria-hidden="true"></span></button>
+        <button type="button" data-gallery-category="Tang lễ Chức sắc" aria-pressed="false">Tang lễ Chức sắc<span class="gdd-gallery-cat-count" aria-hidden="true"></span></button>
+        <button type="button" data-gallery-category="Hành đạo và Sinh hoạt Đạo" aria-pressed="false">Hành đạo và Sinh hoạt Đạo<span class="gdd-gallery-cat-count" aria-hidden="true"></span></button>
+        <button type="button" data-gallery-category="Dấu tích Đạo sử xưa và nay" aria-pressed="false">Dấu tích Đạo sử xưa và nay<span class="gdd-gallery-cat-count" aria-hidden="true"></span></button>
+        <button type="button" data-gallery-category="Tư liệu hình ảnh khác" aria-pressed="false">Tư liệu hình ảnh khác<span class="gdd-gallery-cat-count" aria-hidden="true"></span></button>
+      </div>
+      <p id="gallery-category-count" class="gdd-gallery-category-count" aria-live="polite"></p>
       <div id="gallery-grid" class="gallery-grid" aria-live="polite"></div>
       <p class="gallery-note">* Khi đăng ảnh, nên ghi năm chụp (nếu biết), xuất xứ, người cung cấp và tình trạng bản gốc.</p>
     </div></section>
