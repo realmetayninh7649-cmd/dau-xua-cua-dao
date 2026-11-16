@@ -3,6 +3,10 @@ name: "GDD DK01 - Kiem tra Cloudflare R2"
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/gdd-dk01-cloudflare-preflight.yml'
 
 permissions:
   contents: read
@@ -28,11 +32,20 @@ jobs:
               sys.exit("LOI: Thieu GitHub Secret CLOUDFLARE_API_TOKEN.")
           if not re.fullmatch(r"[a-fA-F0-9]{32}", account_id):
               sys.exit("LOI: GitHub Variable CLOUDFLARE_ACCOUNT_ID phai co dung 32 ky tu hex.")
+          # New Cloudflare account tokens created/rotated in 2026 start with
+          # cfat_. Check structure only. NEVER print or reveal the secret.
+          if not token.startswith("cfat_"):
+              sys.exit("LOI: GitHub Secret khong dung dang Account API Token moi (phai bat dau bang cfat_). Kiem tra da dan gia tri ma bi mat, khong phai ID hay lenh curl.")
+          if len(token) < 42 or len(token) > 80 or any(c.isspace() for c in token):
+              sys.exit("LOI: Secret API Token co do dai hoac khoang trang bat thuong. Hay sao chep chi ma token.")
+          print("OK: Token co dinh dang Account API Token, chua xac thuc duoc.")
 
           # Read the exact Worker settings endpoint. This call both tests the
           # limited Individual Workers Editor token and inspects the binding.
           # Unlike a token-verification route, it needs no other account rights.
-          path = "/accounts/" + account_id + "/workers/scripts/gdd-r2-gateway/settings"
+          # Official verify endpoint for ACCOUNT API tokens.
+          # Directly distinguish invalid credentials from missing Worker access.
+          path = "/accounts/" + account_id + "/tokens/verify"
           request = urllib.request.Request(
               "https://api.cloudflare.com/client/v4" + path,
               headers={
@@ -66,8 +79,30 @@ jobs:
               codes = [str(e.get("code", "?")) for e in result.get("errors", [])]
               print("CLOUDFLARE_ERROR_CODES=%s" % ",".join(codes))
               sys.exit("LOI: Cloudflare khong tra ve ket qua thanh cong.")
+          check = result.get("result") or {}
+          if check.get("status") != "active":
+              sys.exit("LOI: Token chua active, da het han hoac bi vo hieu hoa.")
+          print("OK: Account API Token hoat dong voi Cloudflare.")
+
+          # Next verify Worker binding with the same token.
+          path = "/accounts/" + account_id + "/workers/scripts/gdd-r2-gateway/settings"
+          request = urllib.request.Request(
+              "https://api.cloudflare.com/client/v4" + path,
+              headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
+              method="GET",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  result = json.loads(response.read().decode("utf-8"))
+          except urllib.error.HTTPError as exc:
+              print("WORKER_SETTINGS_HTTP_STATUS=%s" % exc.code)
+              sys.exit("LOI: Token hop le nhung khong doc duoc Worker settings. Kiem tra quyen Editor va ten Worker.")
+          except Exception as exc:
+              sys.exit("LOI: Khong doc duoc Worker settings (%s)." % type(exc).__name__)
+          if result.get("success") is not True:
+              sys.exit("LOI: Worker settings tra ve loi API.")
           worker = result.get("result") or {}
-          print("OK: GitHub Secret va Account ID co the truy cap Worker settings.")
+          print("OK: Token co the truy cap Worker settings.")
           bindings = worker.get("bindings") or []
           r2 = [b for b in bindings if b.get("type") == "r2_bucket" and b.get("name") == "GDD_BUCKET"]
           if not r2:
