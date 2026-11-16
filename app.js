@@ -191,7 +191,7 @@ function videoSource(raw){
     }).join(''):'<div class="empty-state"><b>Chưa có bài biên khảo.</b>Ban Biên Tập đang sưu tầm tư liệu.</div>';
     const activeGallery=galleryCategories.includes(state.galleryCategory)?state.galleryCategory:'all';
     const visibleMedia=activeGallery==='all'?media:media.filter(m=>galleryCategoryOf(m)===activeGallery);
-    $('#gallery-category-filters [data-gallery-category]').forEach(btn=>{
+    $$('#gallery-category-filters [data-gallery-category]').forEach(btn=>{
       const category=btn.dataset.galleryCategory;
       const selected=category===activeGallery;
       btn.classList.toggle('is-selected',selected);
