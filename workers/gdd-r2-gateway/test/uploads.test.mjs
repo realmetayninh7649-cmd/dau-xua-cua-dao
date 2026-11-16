@@ -9,7 +9,7 @@ const origin='https://realmetayninh7649-cmd.github.io';
 const MB=1024*1024;
 function req(path,method='GET',body,token='admin',headers={}) {
   return new Request(base+path,{
-    method,headers:{origin,authorization:'Bearer '+token,...headers},
+    method,headers:{origin,authorization:'Bearer '+token,...(body instanceof Uint8Array?{'content-length':String(body.byteLength)}:{}),...headers},
     ...(body!==undefined?{body:typeof body==='string'||body instanceof Uint8Array?body:JSON.stringify(body)}:{})
   });
 }
