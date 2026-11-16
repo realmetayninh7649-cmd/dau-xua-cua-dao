@@ -1,9 +1,10 @@
 // GDDĐ v2.0.0-DK01.2 — Bảo tồn nguyên mẫu & bản xem nhẹ.
 // Bản gốc là R2 PRIVATE; KHÔNG có tuyến GET original hoặc URL tải gốc công khai.
-export const VERSION = 'GDDĐ v2.0.0-DK01.2';
+export const VERSION = 'GDDĐ v2.0.0-DK01.2.1';
 const PROBE = '__gdd_internal__/dk01_read_probe_only';
 const MB = 1024 * 1024;
 const PART_BYTES = 8 * MB;
+const SMALL_LIMIT = 6 * MB;
 const MAX_PARTS = 10000;
 const MAX_ASSET_BYTES = PART_BYTES * MAX_PARTS;
 const ORIGIN = 'https://realmetayninh7649-cmd.github.io';
@@ -46,7 +47,8 @@ function originalKey(owner,id,ext){return 'originals/'+owner+'/'+id+'/original.'
 function validOriginalKey(key,owner) {
   return new RegExp('^originals/'+owner+'/([a-f0-9-]{36})/original\\.(jpg|jpeg|png|webp|gif|tif|tiff|heic|heif|avif|pdf|doc|docx)$','i').test(key);
 }
-function parseUploadId(value){return typeof value==='string'&&value.length>=8&&value.length<=256&&/^[A-Za-z0-9_+\-=/]+$/.test(value)}
+// R2 multipart uploadId is an opaque provider-generated identifier: do not restrict it to base64.
+function parseUploadId(value){return typeof value==='string'&&value.length>=4&&value.length<=1024&&/^[\x21-\x7e]+$/.test(value)}
 function parseR2Parts(parts,size) {
   const expected=Math.ceil(size/PART_BYTES);
   if (!Array.isArray(parts)||parts.length!==expected||expected<1||expected>MAX_PARTS)throw Error('parts');
@@ -91,6 +93,37 @@ function isDerivative(bytes,variant) {
 }
 async function api(req,env,url,cors,user) {
   const path=url.pathname;
+  // iOS / small files: one authenticated PUT avoids fragile multipart sessions.
+  // Never compress or transform source bytes. No public GET endpoint is exposed.
+  if(path==='/v1/uploads/small' && req.method==='PUT'){
+    const name=cleanName(url.searchParams.get('name'));
+    const ext=name.split('.').pop().toLowerCase();
+    const definition=MEDIA[ext];
+    const declared=Number(url.searchParams.get('size'));
+    if(!definition||!Number.isSafeInteger(declared)||declared<1||declared>SMALL_LIMIT)
+      return failure(400,'Loại tệp hoặc kích thước không hợp lệ',cors);
+    const advertised=req.headers.get('content-length');
+    if(advertised!==null&&(Number(advertised)!==declared))
+      return failure(400,'Kích thước tệp không khớp',cors);
+    if(!req.body)return failure(400,'Tệp trống',cors);
+    let bytes;
+    try{bytes=await req.arrayBuffer()}catch{return failure(400,'Không đọc được tệp',cors)}
+    if(bytes.byteLength!==declared)return failure(400,'Tệp nhận được không nguyên vẹn',cors);
+    const id=uuid(),key=originalKey(user.id,id,ext);
+    try{
+      const obj=await env.GDD_BUCKET.put(key,bytes,{
+        httpMetadata:{contentType:definition[0],contentDisposition:'attachment',cacheControl:'private, no-store'},
+        customMetadata:{owner:user.id,assetId:id,declaredSize:String(declared),originalName:name,kind:definition[1]}
+      });
+      if(!obj||obj.size!==declared)return failure(503,'R2 chưa xác nhận đủ dữ liệu',cors);
+      const meta={id,owner:user.id,key,kind:definition[1],mime:definition[0],
+        originalBytes:declared,originalName:name,originalEtag:obj.etag,
+        preview:false,download:false,published:false,createdAt:new Date().toISOString()};
+      await saveMeta(env,meta);
+      return respond({id,originalBytes:declared,originalPreserved:true,previewReady:false,
+        downloadReady:false,publiclyAccessible:false,uploadMode:'single'},201,cors);
+    }catch{return failure(503,'Không lưu được tệp nguyên mẫu vào R2',cors)}
+  }
   if(path==='/v1/uploads/start' && req.method==='POST') {
     let body;
     try{body=await jsonBody(req)}catch{return failure(400,'Thông tin tệp không hợp lệ',cors)}
@@ -110,12 +143,16 @@ async function api(req,env,url,cors,user) {
   if(path==='/v1/uploads/part' && req.method==='PUT') {
     const key=url.searchParams.get('key')||'',uploadId=url.searchParams.get('uploadId'),part=Number(url.searchParams.get('part'));
     if(!validOriginalKey(key,user.id)||!parseUploadId(uploadId)||!Number.isInteger(part)||part<1||part>MAX_PARTS)return failure(400,'Phiên tải không hợp lệ',cors);
-    const len=Number(req.headers.get('content-length')||0);
-    if(!Number.isSafeInteger(len)||len<1||len>PART_BYTES||!req.body)return failure(413,'Phần tệp vượt 8 MB hoặc không hợp lệ',cors);
+    // Browser/Cloudflare may omit Content-Length; inspect real bytes instead.
+    const given=req.headers.get('content-length');
+    if(given!==null&&(!Number.isSafeInteger(Number(given))||Number(given)<1||Number(given)>PART_BYTES))
+      return failure(413,'Phần tệp vượt 8 MB hoặc không hợp lệ',cors);
+    if(!req.body)return failure(400,'Tệp trống',cors);
     try{
       const upload=env.GDD_BUCKET.resumeMultipartUpload(key,uploadId);
       const bytes=await req.arrayBuffer();
-      if(bytes.byteLength!==len)return failure(400,'Dung lượng phần tệp không khớp',cors);
+      if(bytes.byteLength<1||bytes.byteLength>PART_BYTES)return failure(413,'Phần tệp vượt 8 MB',cors);
+      if(given!==null&&bytes.byteLength!==Number(given))return failure(400,'Dung lượng phần tệp không khớp',cors);
       const {etag,partNumber}=await upload.uploadPart(part,bytes);
       return respond({etag,partNumber},200,cors);
     }catch{return failure(503,'Tải phần tệp thất bại; có thể thử lại',cors)}
