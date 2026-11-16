@@ -375,6 +375,7 @@ function videoSource(raw){
   }
 
   function dismissAdmin(){
+    closeTransfer();
     $('#admin-overlay').hidden=true;
     if($('#detail-overlay').hidden)document.body.classList.remove('modal-open');
   }
@@ -536,14 +537,14 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
   function renderEditorList(){
     if(!state.admin)return;
     const kind=state.editorKind;
-    const rows=state.data[kind]||[];
+    const rows=kind==='people'
+      ?state.data.people.map(record=>({record,originKind:'people'}))
+      :displayedEntries(kind);
     const term=norm($('#editor-record-search')?.value.trim()||'');
-    const matched=term?rows.filter(r=>norm([
-      recordTitle(kind,r),r.archive_code,r.slug,r.secular_name,r.rank,r.category,r.deceased_name
+    const matched=term?rows.filter(({record:r,originKind})=>norm([
+      recordTitle(originKind,r),r.archive_code,r.slug,r.secular_name,r.rank,r.category,r.deceased_name
     ].filter(Boolean).join(' ')).includes(term)):rows;
-    const visibleLimit=4;
-    const expanded=!term&&state.editorListExpanded;
-    // Khi có tìm kiếm, hiện toàn bộ kết quả trong một khung cuộn gọn.
+    const visibleLimit=4,expanded=!term&&state.editorListExpanded;
     const visible=term||expanded?matched:matched.slice(0,visibleLimit);
     const info=$('#editor-search-count');
     if(info)info.textContent=term
@@ -553,9 +554,11 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         :`${rows.length} tư liệu trong ${sectionNames[kind]}.`;
     const list=$('#editor-list');
     list.classList.toggle('gdd-editor-list-scroll',Boolean(term)||(expanded&&matched.length>visibleLimit));
-    list.innerHTML=visible.length?visible.map(r=>
-      `<div class="editor-item"><div><b>${escape(recordTitle(kind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}</span></div><button type="button" data-list-qr="${escape(kind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(kind)}" data-id="${escape(r.id)}">Sửa</button></div>`
-    ).join(''):rows.length
+    list.innerHTML=visible.length?visible.map(({record:r,originKind})=>{
+      const moved=originKind!==kind?' · Chuyển từ '+sectionNames[originKind]:'';
+      const actions=`<button type="button" data-list-qr="${escape(originKind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(originKind)}" data-id="${escape(r.id)}">Sửa</button>${originKind!=='people'&&r.published?`<button type="button" data-list-transfer="${escape(originKind)}" data-id="${escape(r.id)}" title="Chuyển mục hiển thị" aria-label="Chuyển mục hiển thị">⇄</button>`:''}`;
+      return `<div class="editor-item"><div class="gdd-record-label"><b>${escape(recordTitle(originKind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}${escape(moved)}</span></div><div class="gdd-record-actions">${actions}</div></div>`;
+    }).join(''):rows.length
       ?'<p class="small-note">Không tìm thấy tư liệu phù hợp. Thử nhập tên hoặc mã hồ sơ khác.</p>'
       :'<p class="small-note">Chưa có tư liệu.</p>';
     const more=$('#editor-list-toggle');
@@ -564,6 +567,51 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       more.textContent=expanded?'Thu gọn danh sách':`Xem thêm ${rows.length-visibleLimit} tư liệu`;
       more.setAttribute('aria-expanded',String(expanded));
     }
+  }
+  function closeTransfer(){
+    const panel=$('#gdd-transfer-dialog');
+    if(panel)panel.hidden=true;
+    state.transferSelection=null;
+  }
+  function openTransfer(originKind,id){
+    if(!state.admin||!movableKinds.includes(originKind))return;
+    const record=state.data[originKind].find(x=>x.id===id);
+    if(!record||!record.published)return toast('Chỉ chuyển mục những tư liệu đã công bố.');
+    state.transferSelection={originKind,id};
+    const target=$('#gdd-transfer-target');
+    target.innerHTML=movableKinds.map(kind=>`<option value="${escape(kind)}">${kind===originKind?'Giữ tại mục gốc – ':''}${escape(sectionNames[kind])}</option>`).join('');
+    target.value=displayTarget(originKind,record);
+    $('#gdd-transfer-record').textContent=recordTitle(originKind,record);
+    $('#gdd-transfer-dialog').hidden=false;
+    $('#gdd-transfer-status').textContent='';
+    target.focus();
+  }
+  async function submitTransfer(e){
+    e.preventDefault();
+    const selection=state.transferSelection;
+    if(!state.admin||!state.supabase||!selection)return;
+    const {originKind,id}=selection;
+    const record=state.data[originKind]?.find(x=>x.id===id);
+    if(!record||!record.published)return closeTransfer();
+    const target=$('#gdd-transfer-target').value;
+    const note=$('#gdd-transfer-status');
+    if(!movableKinds.includes(target))return;
+    if(displayTarget(originKind,record)===target){closeTransfer();return}
+    const btn=$('#gdd-transfer-confirm');
+    btn.disabled=true;note.textContent='Đang chuyển mục hiển thị…';
+    try{
+      const table=state.supabase.from('gdd_content_placements');
+      const request=target===originKind
+        ?table.delete().eq('owner_kind',originKind).eq('owner_id',id)
+        :table.upsert({owner_kind:originKind,owner_id:id,target_kind:target,updated_at:new Date().toISOString()},{onConflict:'owner_kind,owner_id'});
+      const {error}=await request;
+      if(error)throw error;
+      closeTransfer();
+      await fetchData();
+      toast('Đã chuyển mục hiển thị sang '+sectionNames[target]+'. Bài gốc và mã QR được giữ nguyên.');
+    }catch(error){
+      note.textContent='Chưa chuyển được: '+(error.message||String(error));
+    }finally{btn.disabled=false}
   }
   function editRecord(kind,id){
     state.editorKind=kind;state.editingId=id;
@@ -908,6 +956,10 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       $('#editor-list').scrollTop=0;renderEditorList();
     });
     $('#editor-new').addEventListener('click',()=>{state.editingId=null;buildEditor()});
+    $('#gdd-transfer-form').addEventListener('submit',submitTransfer);
+    $('#gdd-transfer-close').addEventListener('click',closeTransfer);
+    $('#gdd-transfer-cancel').addEventListener('click',closeTransfer);
+    $('#gdd-transfer-dialog').addEventListener('click',e=>{if(e.target.id==='gdd-transfer-dialog')closeTransfer()});
     $('#editor-form').addEventListener('submit',saveRecord);
     $('#editor-form').addEventListener('input',refreshPersonCodePreview);
     $('#editor-form').addEventListener('change',refreshPersonCodePreview);
@@ -916,13 +968,14 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       const close=e.target.closest('[data-close]');if(close){if(close.dataset.close==='detail')closeDetail();else closeAdmin();return}
       const open=e.target.closest('[data-open-kind]');if(open){const kind=open.dataset.openKind,record=publicRows(kind).find(x=>x.id===open.dataset.id);openDetail(kind,record);return}
       const edit=e.target.closest('[data-edit-kind]');if(edit){editRecord(edit.dataset.editKind,edit.dataset.editId);return}
+      const transfer=e.target.closest('[data-list-transfer]');if(transfer){openTransfer(transfer.dataset.listTransfer,transfer.dataset.id);return}
       const listEdit=e.target.closest('[data-list-edit]');if(listEdit){editRecord(listEdit.dataset.listEdit,listEdit.dataset.id);return}
       const qr=e.target.closest('[data-list-qr]');if(qr){const kind=qr.dataset.listQr,record=state.data[kind]?.find(x=>x.id===qr.dataset.id);if(record){closeAdmin(false);openDetail(kind,record)}return}
       const incoming=e.target.closest('[data-submission-open]');if(incoming){showSubmission(incoming.dataset.submissionOpen);return}
       const reviewed=e.target.closest('[data-mark-reviewed]');if(reviewed){markReviewed(reviewed.dataset.markReviewed);return}
       if(e.target.id==='delete-record')deleteRecord();
     });
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#detail-overlay').hidden)closeDetail();else if(!$('#admin-overlay').hidden)closeAdmin()}});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#gdd-transfer-dialog').hidden)closeTransfer();else if(!$('#detail-overlay').hidden)closeDetail();else if(!$('#admin-overlay').hidden)closeAdmin()}});
     window.addEventListener('hashchange',syncHash);
     window.addEventListener('popstate',()=>{
       // Quay lại dùng Back trên iPhone, Android, PC; ưu tiên màn hình lịch sử.
