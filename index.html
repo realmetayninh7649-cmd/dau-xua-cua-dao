@@ -944,7 +944,8 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     if(isDocumentFile(f)){
       if(!supportsDocument())throw Error('PDF hoặc Word chỉ được đính kèm trong mục Hình ảnh hoặc Tài liệu số: '+f.name);
       if(isWord(f)&&activeKind()!=='media')throw Error('Word hiện chỉ được đính kèm trong mục Hình ảnh: '+f.name);
-      if(f.size>15*1024*1024)throw Error('Tệp '+f.name+' vượt giới hạn 15 MB.');
+      // Không chặn theo dung lượng cố định trong trình duyệt.
+      // Supabase Storage vẫn áp dụng giới hạn toàn dự án nếu có; giữ nguyên bytes gốc.
       return;
     }
     if(!window.GDDImageOptimizer?.isImage(f))throw Error(
@@ -1093,9 +1094,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     input.replaceWith(clean);
     const desc=panel.querySelector('p.gdd-album-note');
     if(desc)desc.innerHTML=nextContext.startsWith('media:')
-      ?'Chọn chung <b>ảnh, PDF và Word (.doc, .docx)</b> trong một Bộ ảnh kèm theo; ảnh tự tối ưu dưới 6 MB, PDF/Word tối đa 15 MB/tệp. Tệp văn bản giữ nguyên định dạng để đọc hoặc tải về. Có thể chọn thêm nhiều lượt.'
+      ?'Chọn chung <b>ảnh, PDF và Word (.doc, .docx)</b> trong một Bộ ảnh kèm theo. Ảnh tự tối ưu dưới 6 MB; PDF/Word được giữ nguyên 100% tệp gốc, không nén giảm chất lượng. Tệp lớn tự tải từng phần, không giới hạn 15 MB trong biểu mẫu; hạn mức thực tế tùy Supabase. Có thể chọn thêm nhiều lượt.'
       :nextContext.startsWith('documents:')
-      ?'Chọn <b>nhiều ảnh và nhiều PDF</b> trong một bài Số hóa; tối ưu ảnh dưới 6 MB và PDF tối đa 15 MB/tệp. PDF chính vẫn có ô riêng phía trên. Có thể chọn thêm nhiều lượt và ghi chú từng tệp.'
+      ?'Chọn <b>nhiều ảnh và nhiều PDF</b> trong một bài Số hóa; ảnh tự tối ưu dưới 6 MB, PDF giữ nguyên bản gốc. PDF lớn tải từng phần, hạn mức do Supabase quyết định. PDF chính vẫn có ô riêng phía trên. Có thể chọn thêm nhiều lượt và ghi chú từng tệp.'
       :'Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, ảnh lớn tự tối ưu dưới 6 MB (JPG/PNG/WebP/HEIC). Nên chọn 10–20 ảnh/lượt trên iPhone.';
     const chooser=clean.closest('label');
     if(chooser){
@@ -1129,12 +1130,14 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     });
     renderList();showPickerCount();ensureAdminPager(panel);
   }
-  // Dùng tải từng phần cho PDF trên 6 MB, hạn chế lỗi mạng iCloud/Safari.
-  // Cùng cơ chế TUS đã có trong app.js cho video lớn; không thay đổi Storage/RLS.
+  // Tệp PDF/Word không mã hóa lại để giữ 100% bytes gốc và tài liệu scan.
+  // Trên 6 MB dùng TUS tải theo khúc 6 MB, tự thử lại khi kết nối gián đoạn.
+  // Giới hạn tệp do cấu hình Supabase toàn dự án quyết định, không phải biểu mẫu.
   async function uploadDocumentAttachment(supa,path,file,onProgress,contentType){
     const storage=supa.storage.from('dao-su-documents');
     if(file.size<=6*1024*1024){
       const {error}=await storage.upload(path,file,{contentType,cacheControl:'3600',upsert:false});
+      // Phương thức này nhận tệp nguyên byte, không thay đổi chất lượng PDF/Word.
       if(error)throw error;
     }else{
       const {data:{session},error:authError}=await supa.auth.getSession();
@@ -1206,7 +1209,12 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       }
       status('Đã lưu đủ '+done+' tệp đính kèm.');
     }catch(err){
-      const message=`Đã tải thành công ${done} tệp; còn ${pending()} tệp chưa tải. Lỗi: ${err.message||err}`;
+      const raw=String(err?.message||err||'');
+      const tooLarge=/too large|entity too large|payload too large|maximum file size|exceeds.*size|413\b|vượt.*dung lượng/i.test(raw);
+      const reason=tooLarge
+        ?'Tệp vượt giới hạn dung lượng Storage của dự án Supabase; cần nâng giới hạn toàn dự án hoặc chia tài liệu thành nhiều tệp. Chi tiết: '+raw
+        :raw;
+      const message=`Đã tải thành công ${done} tệp; còn ${pending()} tệp chưa tải. Lỗi: ${reason}`;
       status(message);throw err;
     }finally{busy=false;if(input)input.disabled=false;renderList();}
   }
