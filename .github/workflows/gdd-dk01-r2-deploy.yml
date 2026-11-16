@@ -60,7 +60,10 @@ jobs:
           last = None
           for attempt in range(12):
               try:
-                  req = urllib.request.Request(base + "/health", headers={"Cache-Control": "no-cache"})
+                  req = urllib.request.Request(base + "/health", headers={
+                      "Cache-Control": "no-cache",
+                      "User-Agent": "GDD-DK01-CI/1.0 (+https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao)"
+                  })
                   with urllib.request.urlopen(req, timeout=15) as response:
                       data = json.load(response)
                       if (response.status == 200 and data.get("status") == "ok"
@@ -78,7 +81,10 @@ jobs:
               raise SystemExit("LOI: Worker chua dat kiem tra ket noi R2 (%s)." % last)
 
           try:
-              urllib.request.urlopen(base + "/files/private-example.jpg", timeout=10)
+              urllib.request.urlopen(urllib.request.Request(
+                  base + "/files/private-example.jpg",
+                  headers={"User-Agent": "GDD-DK01-CI/1.0 (+https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao)"}
+              ), timeout=10)
           except urllib.error.HTTPError as exc:
               if exc.code != 404:
                   raise SystemExit("LOI: Tuyến tai tep phai bi chan (HTTP %d)." % exc.code)
