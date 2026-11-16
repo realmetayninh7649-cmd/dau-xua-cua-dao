@@ -85,7 +85,7 @@
 
   <script defer src="gdd-person-watermark.js?v=20261113-final-master-08"></script>
   <script defer src="image-viewer.js?v=20261114-browser-back-01"></script>
-  <script defer src="dao-su-albums.js?v=20261114-instant-thumbnails-03"></script>
+  <script defer src="dao-su-albums.js?v=20261117-media-pdf-word-01"></script>
 <script defer src="homepage-previews.js?v=20261114-close-nav-03"></script>  <script defer src="gdd-video-aspect.js?v=20261107-01"></script>
   <script defer src="gdd-document-export.js?v=20261107-02"></script>
   <script defer src="gdd-audio-radio.js?v=20261113-search-01"></script>
@@ -1032,9 +1032,12 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         if(error)throw error;
         for(const [i,row] of (rows||[]).entries()){
           const item=document.createElement('div');item.className='gdd-admin-photo';
-          const img=document.createElement('img');img.src=row.image_url;img.alt=row.caption||'Ảnh tư liệu';img.loading='lazy';
+          const ext=(String(row.image_url||'').split('?')[0].match(/\.(pdf|docx|doc)$/i)?.[1]||'').toLowerCase();
+          const img=ext?document.createElement('div'):document.createElement('img');
+          if(ext){img.className='gdd-admin-pdf-file';img.textContent=ext==='pdf'?'PDF':'WORD';img.title=row.caption||'Tệp đính kèm';}
+          else{img.src=row.image_url;img.alt=row.caption||'Ảnh tư liệu';img.loading='lazy';}
           const content=document.createElement('div'),label=document.createElement('label');label.className='gdd-album-field';
-          label.textContent='Ảnh số '+(offset+i+1)+' — Chú thích';
+          label.textContent=(ext?'Tệp số ':'Ảnh số ')+(offset+i+1)+' — Chú thích';
           const input=document.createElement('input');input.type='text';input.maxLength=400;input.value=row.caption||'';label.appendChild(input);
           const buttons=document.createElement('div');buttons.className='gdd-album-commands';
           const make=(text,run)=>{
@@ -1058,7 +1061,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
               status('Đã đổi thứ tự ảnh. Mở lại bài để làm mới danh sách.');
             });
           }
-          make('Gỡ ảnh',async()=>{
+          make('Gỡ tệp',async()=>{
             if(!confirm('Gỡ ảnh này khỏi bài viết? Tệp gốc vẫn lưu trong Storage.'))return;
             const {error}=await supa.from(TABLE).delete().eq('id',row.id);
             if(error)throw error;item.remove();status('Đã gỡ ảnh khỏi bài.');
@@ -1247,14 +1250,15 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         if(error)throw error;
         for(const [i,record] of (rows||[]).entries()){
           let url;try{url=new URL(record.image_url);if(url.protocol!=='https:')continue;}catch{continue;}
-          const isPdf=kind==='documents' && /\.pdf$/i.test(url.pathname);
+          const ext=['documents','media'].includes(kind)?(url.pathname.match(/\.(pdf|docx|doc)$/i)?.[1]||'').toLowerCase():'';
+          const isPdf=ext==='pdf',isDocument=Boolean(ext),docLabel=isPdf?'PDF':'WORD';
           const figure=document.createElement('figure');figure.className='gdd-album-figure';
           const no=offset+i+1;
-          if(isPdf){
+          if(isDocument){
             const tile=document.createElement('a');tile.href=url.href;tile.target='_blank';tile.rel='noopener noreferrer';
             tile.className='gdd-album-pdf-tile';
-            const pdf=document.createElement('strong');pdf.className='gdd-album-pdf-label';pdf.textContent='PDF';
-            const title=document.createElement('small');title.textContent=record.caption||'Tài liệu PDF '+no;
+            const pdf=document.createElement('strong');pdf.className='gdd-album-pdf-label'+(isPdf?'':' gdd-album-word-label');pdf.textContent=docLabel;
+            const title=document.createElement('small');title.textContent=record.caption||'Tài liệu '+docLabel+' '+no;
             tile.append(pdf,title);figure.appendChild(tile);
           }else{
             const button=document.createElement('button');button.type='button';button.className='gdd-album-tile detail-cover';
@@ -1265,25 +1269,25 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           }
           const caption=document.createElement('figcaption'),idx=document.createElement('span');idx.className='gdd-album-page';
           idx.textContent=String(no).padStart(2,'0')+'.';
-          caption.append(idx,document.createTextNode(record.caption||(isPdf?'Tài liệu PDF':'Ảnh tư liệu')));
+          caption.append(idx,document.createTextNode(record.caption||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu')));
           const original=document.createElement('div'),link=document.createElement('a');
           link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.className='gdd-album-open';
-          link.textContent=isPdf?'Xem PDF ↗':'Mở ảnh gốc ↗';original.appendChild(link);
-          if(isPdf){
+          link.textContent=isDocument?(isPdf?'Xem PDF ↗':'Mở Word ↗'):'Mở ảnh gốc ↗';original.appendChild(link);
+          if(isDocument){
             const down=document.createElement('a'),u=new URL(url.href);
             if(u.hostname.endsWith('.supabase.co')&&u.pathname.includes('/storage/v1/object/public/dao-su-documents/')){
-              u.searchParams.set('download','tai-lieu-'+String(no).padStart(2,'0')+'.pdf');
+              u.searchParams.set('download','tai-lieu-'+String(no).padStart(2,'0')+'.'+ext);
             }
-            down.href=u.href;down.download='tai-lieu-'+String(no).padStart(2,'0')+'.pdf';
+            down.href=u.href;down.download='tai-lieu-'+String(no).padStart(2,'0')+'.'+ext;
             down.target='_blank';down.rel='noopener noreferrer';down.className='gdd-album-open';down.style.marginLeft='12px';
-            down.textContent='↓ Tải PDF';original.appendChild(down);
+            down.textContent='↓ Tải '+docLabel;original.appendChild(down);
           }
           figure.append(caption,original);gallery.appendChild(figure);added++;
         }
         offset+=(rows||[]).length;
         if(!rows||rows.length<200)break;
       }
-      const count=detail.querySelector('.gdd-album-count');if(count&&added)count.textContent=(200+added)+(kind==='documents'?' tệp':' ảnh');
+      const count=detail.querySelector('.gdd-album-count');if(count&&added)count.textContent=(200+added)+(['documents','media'].includes(kind)?' tệp':' ảnh');
     }catch(e){console.warn('Không thể tải toàn bộ ảnh trong bộ tư liệu:',e);}
     finally{extending=false;}
   }
