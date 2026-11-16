@@ -29,36 +29,51 @@ jobs:
           if not re.fullmatch(r"[a-fA-F0-9]{32}", account_id):
               sys.exit("LOI: GitHub Variable CLOUDFLARE_ACCOUNT_ID phai co dung 32 ky tu hex.")
 
-          def cf_read(path):
-              req = urllib.request.Request(
-                  "https://api.cloudflare.com/client/v4" + path,
-                  headers={"Authorization": "Bearer " + token,
-                           "Accept": "application/json"},
-                  method="GET"
-              )
+          # Read the exact Worker settings endpoint. This call both tests the
+          # limited Individual Workers Editor token and inspects the binding.
+          # Unlike a token-verification route, it needs no other account rights.
+          path = "/accounts/" + account_id + "/workers/scripts/gdd-r2-gateway/settings"
+          request = urllib.request.Request(
+              "https://api.cloudflare.com/client/v4" + path,
+              headers={
+                  "Authorization": "Bearer " + token,
+                  "Accept": "application/json",
+              },
+              method="GET",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  result = json.loads(response.read().decode("utf-8"))
+          except urllib.error.HTTPError as exc:
+              # Include only the Cloudflare error code and brief diagnostic.
+              # Do not print the bearer token or complete response body.
               try:
-                  with urllib.request.urlopen(req, timeout=20) as response:
-                      data = json.loads(response.read())
-              except urllib.error.HTTPError as exc:
-                  sys.exit("LOI: Cloudflare tra HTTP %s. Kiem tra Account ID / quyen token." % exc.code)
-              except Exception as exc:
-                  sys.exit("LOI: Khong the ket noi Cloudflare (%s)." % type(exc).__name__)
-              if data.get("success") is not True:
-                  sys.exit("LOI: Cloudflare khong chap nhan yeu cau, hay kiem tra quyen token.")
-              return data.get("result") or {}
+                  body = json.loads(exc.read().decode("utf-8", "replace"))
+                  codes = [str(e.get("code", "?")) for e in body.get("errors", [])]
+                  messages = [str(e.get("message", "")) for e in body.get("errors", [])]
+              except Exception:
+                  codes, messages = [], []
+              safe_message = " | ".join(messages).replace(token, "[REDACTED]").replace("\n", " ")[:250]
+              print("CLOUDFLARE_HTTP_STATUS=%s" % exc.code)
+              print("CLOUDFLARE_ERROR_CODES=%s" % (",".join(codes) or "unknown"))
+              if safe_message:
+                  print("CLOUDFLARE_DIAGNOSTIC=%s" % safe_message)
+              sys.exit("LOI: Khong doc duoc Worker settings. Kiem tra Account ID va pham vi token.")
+          except Exception as exc:
+              sys.exit("LOI: Ket noi Cloudflare that bai (%s)." % type(exc).__name__)
 
-          status = cf_read("/accounts/" + account_id + "/tokens/verify")
-          if status.get("status") != "active":
-              sys.exit("LOI: Token chua active hoac da het han.")
-          print("OK: Account token hoat dong.")
-
-          worker = cf_read("/accounts/" + account_id + "/workers/scripts/gdd-r2-gateway/settings")
+          if result.get("success") is not True:
+              codes = [str(e.get("code", "?")) for e in result.get("errors", [])]
+              print("CLOUDFLARE_ERROR_CODES=%s" % ",".join(codes))
+              sys.exit("LOI: Cloudflare khong tra ve ket qua thanh cong.")
+          worker = result.get("result") or {}
+          print("OK: GitHub Secret va Account ID co the truy cap Worker settings.")
           bindings = worker.get("bindings") or []
           r2 = [b for b in bindings if b.get("type") == "r2_bucket" and b.get("name") == "GDD_BUCKET"]
           if not r2:
               sys.exit("LOI: Worker chua co lien ket R2 ten GDD_BUCKET.")
           if r2[0].get("bucket_name") != "gdd-dau-xua-cua-dao":
-              sys.exit("LOI: GDD_BUCKET dang ket noi sai ten kho R2.")
+              sys.exit("LOI: GDD_BUCKET dang ket noi sai bucket.")
           print("OK: gdd-r2-gateway da lien ket dung bucket.")
           print("HOAN TAT: DK01 preflight chi doc. Khong co Worker hay du lieu nao bi thay doi.")
           PY
