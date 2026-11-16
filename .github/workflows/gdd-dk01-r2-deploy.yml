@@ -1,0 +1,88 @@
+name: "GDD DK01 - Trien khai R2 gateway an toan"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "workers/gdd-r2-gateway/**"
+      - ".github/workflows/gdd-dk01-r2-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gdd-dk01-r2-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: "Thu nghiem bao mat va cu phap"
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Chay kiem tra an toan"
+        run: |
+          node --check workers/gdd-r2-gateway/src/index.mjs
+          node --test workers/gdd-r2-gateway/test/gateway.test.mjs
+          node -e 'const c=JSON.parse(require("fs").readFileSync("workers/gdd-r2-gateway/wrangler.jsonc","utf8")); if(c.name!=="gdd-r2-gateway" || c.r2_buckets?.[0]?.binding!=="GDD_BUCKET" || c.r2_buckets?.[0]?.bucket_name!=="gdd-dau-xua-cua-dao")process.exit(1);'
+
+  deploy:
+    name: "Trien khai Worker va do ket noi R2"
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Trien khai gdd-r2-gateway (chi Worker hien co)"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -eu
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4.150.0 deploy --config workers/gdd-r2-gateway/wrangler.jsonc --keep-vars
+      - name: "Kiem tra Worker doc R2 qua HEAD khong truy cap anh"
+        run: |
+          python3 - <<'PY'
+          import json, time, urllib.error, urllib.request
+          base = "https://gdd-r2-gateway.realmetayninh7649.workers.dev"
+          last = None
+          for attempt in range(12):
+              try:
+                  req = urllib.request.Request(base + "/health", headers={"Cache-Control": "no-cache"})
+                  with urllib.request.urlopen(req, timeout=15) as response:
+                      data = json.load(response)
+                      if (response.status == 200 and data.get("status") == "ok"
+                          and data.get("r2") == "reachable"
+                          and data.get("version") == "GDDĐ v2.0.0-DK01.1"):
+                          print("THANH CONG: Worker online, GDD_BUCKET doc duoc R2, khong co tu lieu duoc phuc vu.")
+                          break
+                      last = "Trang thai / phien ban khong dung"
+              except urllib.error.HTTPError as exc:
+                  last = "HTTP %s" % exc.code
+              except Exception as exc:
+                  last = type(exc).__name__
+              time.sleep(3)
+          else:
+              raise SystemExit("LOI: Worker chua dat kiem tra ket noi R2 (%s)." % last)
+
+          try:
+              urllib.request.urlopen(base + "/files/private-example.jpg", timeout=10)
+          except urllib.error.HTTPError as exc:
+              if exc.code != 404:
+                  raise SystemExit("LOI: Tuyến tai tep phai bi chan (HTTP %d)." % exc.code)
+              print("OK: Khong co tuyen cong khai doc tep tu R2.")
+          else:
+              raise SystemExit("LOI: Duong dan tep dang mo cong khai.")
+          PY
