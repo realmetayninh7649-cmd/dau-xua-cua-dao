@@ -165,6 +165,11 @@ function videoSource(raw){
   const movableKinds=['posts','media','videos','obituaries','documents'];
   const placementOf=(kind,record)=>state.placements.find(p=>p.owner_kind===kind&&p.owner_id===record.id);
   const displayTarget=(kind,record)=>placementOf(kind,record)?.target_kind||kind;
+  const displayGalleryCategory=(kind,record)=>{
+    const placement=placementOf(kind,record);
+    return placement?.target_kind==='media'&&galleryCategories.includes(placement.target_category)
+      ?placement.target_category:galleryCategoryOf(record);
+  };
   const displayedEntries=target=>movableKinds.flatMap(originKind=>
     publicRows(originKind).filter(record=>displayTarget(originKind,record)===target)
       .map(record=>({record,originKind}))
@@ -206,14 +211,14 @@ function videoSource(raw){
       </article>`;
     }).join(''):'<div class="empty-state"><b>Chưa có bài biên khảo.</b>Ban Biên Tập đang sưu tầm tư liệu.</div>';
     const activeGallery=galleryCategories.includes(state.galleryCategory)?state.galleryCategory:'all';
-    const visibleMedia=activeGallery==='all'?media:media.filter(({record})=>galleryCategoryOf(record)===activeGallery);
+    const visibleMedia=activeGallery==='all'?media:media.filter(({record,originKind})=>displayGalleryCategory(originKind,record)===activeGallery);
     $$('#gallery-category-filters [data-gallery-category]').forEach(btn=>{
       const category=btn.dataset.galleryCategory;
       const selected=category===activeGallery;
       btn.classList.toggle('is-selected',selected);
       btn.setAttribute('aria-pressed',String(selected));
       const amount=btn.querySelector('.gdd-gallery-cat-count');
-      if(amount)amount.textContent=String(category==='all'?media.length:media.filter(({record})=>galleryCategoryOf(record)===category).length);
+      if(amount)amount.textContent=String(category==='all'?media.length:media.filter(({record,originKind})=>displayGalleryCategory(originKind,record)===category).length);
     });
     const counter=$('#gallery-category-count');
     if(counter)counter.textContent=activeGallery==='all'
@@ -559,7 +564,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     const list=$('#editor-list');
     list.classList.toggle('gdd-editor-list-scroll',Boolean(term)||(expanded&&matched.length>visibleLimit));
     list.innerHTML=visible.length?visible.map(({record:r,originKind})=>{
-      const moved=originKind!==kind?' · Chuyển từ '+sectionNames[originKind]:'';
+      const moved=originKind!==kind?' · Chuyển từ '+sectionNames[originKind]:kind==='media'?' · '+displayGalleryCategory(originKind,r):'';
       const actions=`<button type="button" data-list-qr="${escape(originKind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(originKind)}" data-id="${escape(r.id)}">Sửa</button>${originKind!=='people'&&r.published?`<button type="button" data-list-transfer="${escape(originKind)}" data-id="${escape(r.id)}" title="Chuyển mục hiển thị" aria-label="Chuyển mục hiển thị">⇄</button>`:''}`;
       return `<div class="editor-item"><div class="gdd-record-label"><b>${escape(recordTitle(originKind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}${escape(moved)}</span></div><div class="gdd-record-actions">${actions}</div></div>`;
     }).join(''):rows.length
@@ -583,8 +588,16 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     if(!record||!record.published)return toast('Chỉ chuyển mục những tư liệu đã công bố.');
     state.transferSelection={originKind,id};
     const target=$('#gdd-transfer-target');
-    target.innerHTML=movableKinds.map(kind=>`<option value="${escape(kind)}">${kind===originKind?'Giữ tại mục gốc – ':''}${escape(sectionNames[kind])}</option>`).join('');
-    target.value=displayTarget(originKind,record);
+    const galleries=galleryCategories.map((category,i)=>`<option value="gallery:${i}">${escape(category)}</option>`).join('');
+    const main=movableKinds.map(kind=>`<option value="${escape(kind)}">${kind===originKind?'Mục gốc – ':''}${escape(sectionNames[kind])}</option>`).join('');
+    target.innerHTML=`<optgroup label="TRONG HÌNH ẢNH">${galleries}</optgroup><optgroup label="CÁC MỤC CHÍNH">${main}</optgroup>`;
+    const placement=placementOf(originKind,record);
+    const currentTarget=displayTarget(originKind,record);
+    target.value=currentTarget==='media'
+      ?(galleryCategories.includes(placement?.target_category)
+        ?'gallery:'+galleryCategories.indexOf(placement.target_category)
+        :originKind==='media'?'gallery:'+galleryCategories.indexOf(galleryCategoryOf(record)):'media')
+      :currentTarget;
     $('#gdd-transfer-record').textContent=recordTitle(originKind,record);
     $('#gdd-transfer-dialog').hidden=false;
     $('#gdd-transfer-status').textContent='';
@@ -597,22 +610,37 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     const {originKind,id}=selection;
     const record=state.data[originKind]?.find(x=>x.id===id);
     if(!record||!record.published)return closeTransfer();
-    const target=$('#gdd-transfer-target').value;
+    const chosen=$('#gdd-transfer-target').value;
+    let category=null;
+    if(chosen.startsWith('gallery:')){
+      const idx=chosen.slice(8);
+      if(!/^(0|[1-9]\d*)$/.test(idx)||!galleryCategories[Number(idx)])return;
+      category=galleryCategories[Number(idx)];
+    }
+    const target=category?'media':chosen;
     const note=$('#gdd-transfer-status');
     if(!movableKinds.includes(target))return;
-    if(displayTarget(originKind,record)===target){closeTransfer();return}
+    const current=placementOf(originKind,record);
+    if(displayTarget(originKind,record)===target&&
+      (category?displayGalleryCategory(originKind,record)===category:!current?.target_category)){
+      closeTransfer();return;
+    }
     const btn=$('#gdd-transfer-confirm');
     btn.disabled=true;note.textContent='Đang chuyển mục hiển thị…';
     try{
       const table=state.supabase.from('gdd_content_placements');
-      const request=target===originKind
+      const request=target===originKind&&!category
         ?table.delete().eq('owner_kind',originKind).eq('owner_id',id)
-        :table.upsert({owner_kind:originKind,owner_id:id,target_kind:target,updated_at:new Date().toISOString()},{onConflict:'owner_kind,owner_id'});
+        :table.upsert({
+          owner_kind:originKind,owner_id:id,target_kind:target,target_category:category,
+          updated_at:new Date().toISOString()
+        },{onConflict:'owner_kind,owner_id'});
       const {error}=await request;
       if(error)throw error;
       closeTransfer();
       await fetchData();
-      toast('Đã chuyển mục hiển thị sang '+sectionNames[target]+'. Bài gốc và mã QR được giữ nguyên.');
+      const label=category?'Hình ảnh / '+category:sectionNames[target];
+      toast('Đã chuyển hiển thị sang '+label+'. Nội dung và mã QR giữ nguyên.');
     }catch(error){
       note.textContent='Chưa chuyển được: '+(error.message||String(error));
     }finally{btn.disabled=false}
@@ -812,7 +840,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       const {data,error}=await state.supabase.from('submissions').select('*').order('created_at',{ascending:false}).limit(200);
       state.data.submissions=error?[]:data||[];
     } else state.data.submissions=[];
-    const {data:placements,error:placementError}=await state.supabase.from('gdd_content_placements').select('owner_kind,owner_id,target_kind,updated_at');
+    const {data:placements,error:placementError}=await state.supabase.from('gdd_content_placements').select('owner_kind,owner_id,target_kind,target_category,updated_at');
     if(placementError)console.warn('Không tải được vị trí hiển thị:',placementError);
     state.placements=placementError?[]:(placements||[]);
     updateSubgroupFilter();render();syncHash();
