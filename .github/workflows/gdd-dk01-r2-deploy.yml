@@ -51,7 +51,7 @@ jobs:
           set -eu
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          npx --yes wrangler@4.150.0 deploy --config workers/gdd-r2-gateway/wrangler.jsonc --keep-vars
+          npx --yes wrangler@4.159.0 deploy --config workers/gdd-r2-gateway/wrangler.jsonc
       - name: "Kiem tra Worker doc R2 qua HEAD khong truy cap anh"
         run: |
           python3 - <<'PY'
