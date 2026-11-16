@@ -25,11 +25,11 @@
     ],
     videos:[], obituaries:[], documents:[], submissions:[]
   };
-  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,detail:null };
+  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',detail:null };
   const schema = {
     people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date','sources','image_url','verified','published'],
     posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
-    media:['title','caption','sources','person_id','image_url','published'],
+    media:['title','category','caption','sources','person_id','image_url','published'],
     videos:['title','summary','body','video_url','cover_url','sources','person_id','published'],
     obituaries:['title','deceased_name','memorial_date','summary','body','cover_url','sources','person_id','published'],
     documents:['title','document_number','document_date','summary','body','file_url','sources','person_id','published']
@@ -39,7 +39,7 @@
 ['gender','Phân loại Chức sắc Nam / Nữ','gender',1],
   ['years','Năm sanh – qui vị','text'],['birthplace','Nguyên quán','text'],['summary','Tóm tắt ngắn','textarea'],['biography','Tiểu sử / công nghiệp (nội dung đầy đủ)','long',1],['date_notes','Ngày tháng Âm – Dương lịch','text'],['death_lunar_day','Ngày qui vị ÂM lịch (1–30)','lunar-day'],['death_lunar_month','Tháng qui vị ÂM lịch (1–12)','lunar-month'],['death_lunar_leap','Ngày qui vị thuộc tháng nhuận','check'],['death_solar_date','Ngày qui vị DƯƠNG lịch (nếu biết)','date'],['sources','Nguồn sử liệu / chú thích','textarea'],['image_url','Địa chỉ ảnh (URL), nếu có','url'],['file','Hoặc tải di ảnh lên','file'],['verified','Đã đối chiếu nguồn sử liệu','check'],['published','Công bố trên website','check']],
     posts:[['title','Tiêu đề bài viết','text',1],['category','Chuyên mục','text'],['summary','Dẫn nhập / tóm tắt','textarea'],['body','Nội dung biên khảo','long',1],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Thư mục và nguồn trích dẫn','textarea'],['cover_url','Địa chỉ ảnh bìa (URL)','url'],['file','Hoặc tải ảnh bìa lên','file'],['verified','Đã đối chiếu nguồn sử liệu','check'],['published','Công bố trên website','check']],
-    media:[['title','Tên ảnh / văn kiện','text',1],['caption','Mô tả, niên đại, xuất xứ','long'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Người cung cấp / nguồn bản gốc','textarea'],['image_url','Địa chỉ ảnh (URL)','url'],['file','Tải hình ảnh lên','file'],['published','Công bố trên website','check']],
+    media:[['title','Tên ảnh / văn kiện','text',1],['category','Chuyên mục Hình ảnh','gallery-category',1],['caption','Mô tả, niên đại, xuất xứ','long'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Người cung cấp / nguồn bản gốc','textarea'],['image_url','Địa chỉ ảnh (URL)','url'],['file','Tải hình ảnh lên','file'],['published','Công bố trên website','check']],
     videos:[['title','Tiêu đề video Đạo Sử','text',1],['summary','Tóm tắt','textarea'],['body','Nội dung / thuyết minh','long'],['video_url','Liên kết Facebook, YouTube hoặc MP4 (nếu có)','url'],['video_file','Hoặc chọn video MP4 từ album / tệp điện thoại','video-file'],['cover_url','Đường dẫn ảnh bìa (nếu có)','url'],['file','Hoặc tải ảnh bìa lên','file'],['person_id','Chức sắc liên quan','person'],['sources','Nguồn video / bản quyền / xuất xứ','textarea'],['published','Công bố trên website','check']],
     obituaries:[['title','Tiêu đề Ai Tín','text',1],['deceased_name','Danh xưng người quy vị','text'],['memorial_date','Ngày quy vị (Âm / Dương lịch)','text'],['summary','Lời dẫn ngắn','textarea'],['body','Nội dung Ai Tín / tưởng niệm','long'],['cover_url','Đường dẫn di ảnh','url'],['file','Hoặc tải di ảnh lên','file'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Nguồn tin / tài liệu xác minh','textarea'],['published','Công bố trên website','check']],
     documents:[['title','Tên tài liệu số hóa','text',1],['document_number','Số hiệu văn kiện','text'],['document_date','Niên đại / ngày tháng văn kiện','text'],['summary','Mô tả ngắn','textarea'],['body','Nội dung giới thiệu / trích yếu','long'],['file_url','Liên kết file PDF hoặc ảnh','url'],['file','Hoặc tải PDF / ảnh tài liệu lên','file'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Xuất xứ bản gốc / nguồn lưu trữ','textarea'],['published','Công bố trên website','check']]
@@ -50,6 +50,8 @@
     'Phước Thiện':[], 'Hành chánh Đạo':[], 'Khác':[]
   };
   const allSubgroups = [...new Set(Object.values(subgroupLabels).flat())];
+  const galleryCategories=["Tòa Thánh Tây Ninh xưa","Tang lễ Chức sắc","Hành đạo và Sinh hoạt Đạo","Dấu tích Đạo sử xưa và nay","Tư liệu hình ảnh khác"];
+  const galleryCategoryOf=record=>galleryCategories.includes(record?.category)?record.category:'Tư liệu hình ảnh khác';
   const sectionNames={people:'Hồ sơ Chức sắc',posts:'Bài biên khảo',media:'Hình ảnh',videos:'Video Đạo Sử',obituaries:'Ai Tín',documents:'Tài liệu số hóa'};
   const prefixNames={people:'nhan-vat',posts:'bai-viet',media:'hinh-anh-tu-lieu',videos:'video-dao-su',obituaries:'ai-tin',documents:'tai-lieu-so-hoa'};
   const kindFromPrefix=Object.fromEntries(Object.entries(prefixNames).map(([kind,prefix])=>[prefix,kind]));
@@ -187,7 +189,26 @@ function videoSource(raw){
         </div>
       </article>`;
     }).join(''):'<div class="empty-state"><b>Chưa có bài biên khảo.</b>Ban Biên Tập đang sưu tầm tư liệu.</div>';
-    $('#gallery-grid').innerHTML=media.length?media.map(m=>{const src=safeUrl(m.image_url);return `<button type="button" class="gallery-card" data-open-kind="media" data-id="${escape(m.id)}"><div class="gallery-visual">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div><h3>${escape(m.title)}</h3><p>${escape(m.caption||'Bấm để xem thông tin ảnh.')}</p></div></button>`}).join(''):'<div class="empty-state"><b>Chưa có ảnh tư liệu.</b>Tải ảnh từ trang quản trị để lập thư viện ảnh.</div>';
+    const activeGallery=galleryCategories.includes(state.galleryCategory)?state.galleryCategory:'all';
+    const visibleMedia=activeGallery==='all'?media:media.filter(m=>galleryCategoryOf(m)===activeGallery);
+    $('#gallery-category-filters [data-gallery-category]').forEach(btn=>{
+      const category=btn.dataset.galleryCategory;
+      const selected=category===activeGallery;
+      btn.classList.toggle('is-selected',selected);
+      btn.setAttribute('aria-pressed',String(selected));
+      const amount=btn.querySelector('.gdd-gallery-cat-count');
+      if(amount)amount.textContent=String(category==='all'?media.length:media.filter(m=>galleryCategoryOf(m)===category).length);
+    });
+    const counter=$('#gallery-category-count');
+    if(counter)counter.textContent=activeGallery==='all'
+      ?'Đang hiển thị '+media.length+' bộ ảnh tư liệu.'
+      :'Đang hiển thị '+visibleMedia.length+' bộ ảnh trong chuyên mục “'+activeGallery+'”.';
+    $('#gallery-grid').innerHTML=visibleMedia.length?visibleMedia.map(m=>{
+      const src=safeUrl(m.image_url);
+      const full=String(m.caption||'Bấm để xem thông tin bộ ảnh.').replace(/\s+/g,' ').trim();
+      const excerpt=full.length>150?full.slice(0,147).replace(/\s+\S*$/,'')+'…':full;
+      return `<button type="button" class="gallery-card" data-open-kind="media" data-id="${escape(m.id)}"><div class="gallery-visual">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div class="gdd-gallery-card-copy"><h3>${escape(m.title)}</h3><p class="gdd-gallery-excerpt">${escape(excerpt)}</p><span class="gdd-gallery-open" aria-hidden="true">Xem bộ ảnh ↗</span></div></button>`;
+    }).join(''):media.length?'<div class="empty-state"><b>Chưa có bộ ảnh trong chuyên mục này.</b>Chọn “Tất cả” để xem những bộ ảnh đã lưu.</div>':'<div class="empty-state"><b>Chưa có ảnh tư liệu.</b>Tải ảnh từ trang quản trị để lập thư viện ảnh.</div>';
     const groupKinds=[['videos','video-grid','Video Đạo Sử'],['obituaries','obituary-grid','Ai Tín'],['documents','document-grid','Tài liệu số hóa']];
     groupKinds.forEach(([kind,target,label])=>{
       const rows=publicRows(kind),el=$('#'+target);
@@ -369,6 +390,7 @@ function videoSource(raw){
 if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<input type="number" name="${name}" min="1" max="${type==='lunar-day'?'30':'12'}" step="1" inputmode="numeric" placeholder="${type==='lunar-day'?'Ngày':'Tháng'}"></label>`;
     if(type==='date')return `<label>${escape(label)}<input type="date" name="${name}"></label>`;
     if(type==='gender')return `<label>${escape(label)}<select name="gender" required><option value="">Chọn Nam hoặc Nữ</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></label>`;
+    if(type==='gallery-category')return `<label>${escape(label)}<select name="${name}" required><option value="">Chọn chuyên mục cho bộ ảnh</option>${galleryCategories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('')}</select></label>`;
   
      if(type==='branch')return `<label>${escape(label)}<select name="${name}"><option value="Cửu Trùng Đài">Cửu Trùng Đài</option><option value="Hiệp Thiên Đài">Hiệp Thiên Đài</option><option value="Phước Thiện">Phước Thiện</option><option value="Hành chánh Đạo">Hành chánh Đạo</option><option value="Khác">Khác</option></select></label>`;
     if(type==='subgroup')return `<label>${escape(label)}<select name="subgroup"><option value="">Chưa phân loại</option>${allSubgroups.map(g=>`<option value="${escape(g)}">${escape(g)}</option>`).join('')}</select></label>`;
@@ -490,7 +512,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         '</section>'
       :'';
     $('#editor-form').innerHTML=fields[kind].map(labelHTML).join('')+peopleExtra+`<div class="form-actions"><button class="btn btn-primary" type="submit">${state.editingId?'Lưu thay đổi':'Đăng tư liệu'}</button>${state.editingId?'<button class="btn-delete" type="button" id="delete-record">Xóa tư liệu</button>':''}</div><p id="form-message" class="small-note" aria-live="polite"></p>`;
-    if(state.editingId){const record=state.data[kind].find(x=>x.id===state.editingId);if(record){const form=$('#editor-form');for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;if(el.type==='checkbox')el.checked=Boolean(record[name]);else el.value=record[name]??''}}}
+    if(state.editingId){const record=state.data[kind].find(x=>x.id===state.editingId);if(record){const form=$('#editor-form');for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;if(el.type==='checkbox')el.checked=Boolean(record[name]);else el.value=(kind==='media'&&name==='category'&&!record.category)?galleryCategoryOf(record):(record[name]??'')}}}
     if(kind==='people')refreshPersonCodePreview();
   }
   // Thu gọn danh sách quản trị: chỉ 4 mục mới nhất, vẫn tìm được mọi mục.
@@ -801,6 +823,13 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     $('#branch-filter').addEventListener('change',()=>{state.peopleExpanded=false;updateSubgroupFilter();render()});
     $('#subgroup-filter').addEventListener('change',()=>{state.peopleExpanded=false;render()});
     $('#people-show-more').addEventListener('click',()=>{state.peopleExpanded=!state.peopleExpanded;render()});
+    $('#gallery-category-filters').addEventListener('click',event=>{
+      const button=event.target.closest('[data-gallery-category]');
+      if(!button||!event.currentTarget.contains(button))return;
+      const selected=button.dataset.galleryCategory;
+      if(selected!=='all'&&!galleryCategories.includes(selected))return;
+      state.galleryCategory=selected;render();
+    });
     $('#menu-toggle').addEventListener('click',()=>{const open=$('#main-nav').classList.toggle('is-open');$('#menu-toggle').setAttribute('aria-expanded',String(open))});
     $$('#main-nav a').forEach(a=>a.addEventListener('click',()=>{
       if(a.hasAttribute('data-branch')){
