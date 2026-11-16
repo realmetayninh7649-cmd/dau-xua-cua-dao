@@ -919,7 +919,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
   }
   function showPickerCount(){
     const el=document.getElementById('gdd-album-picker-count');
-    if(el){const unit=activeKind()==='documents'?'tệp':'ảnh';
+    if(el){const unit=['documents','media'].includes(activeKind())?'tệp':'ảnh';
       el.textContent=queue.length
        ?'Đã nhận '+queue.length+' '+unit+' phía dưới. Có thể chọn thêm nhiều lượt.'
        :'Chưa có '+unit+' được chọn. Chạm nút bên trên để mở Ảnh hoặc Tệp.';}
@@ -929,15 +929,27 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
   function status(s) { const el = $('#gdd-album-status'); if (el) el.textContent=s; }
   const isPdf=f=>/\.pdf$/i.test(String(f?.name||'')) &&
     (!f.type||f.type==='application/pdf'||f.type==='application/octet-stream');
+  const WORD_TYPES={
+    doc:'application/msword',
+    docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  };
+  const wordExt=f=>String(f?.name||'').toLowerCase().match(/\.(docx|doc)$/)?.[1]||'';
+  const isWord=f=>Boolean(wordExt(f))&&
+    (!f.type||f.type===WORD_TYPES[wordExt(f)]||f.type==='application/octet-stream');
+  const isDocumentFile=f=>isPdf(f)||isWord(f);
+  const supportsDocument=()=>['documents','media'].includes(activeKind());
   const activeKind=()=>String($('#gdd-admin-album-panel')?.dataset.context||'').split(':')[0];
   function validFile(f) {
     if(!f?.size)throw Error('Tệp rỗng: '+(f?.name||'Không tên'));
-    if(isPdf(f)){
-      if(activeKind()!=='documents')throw Error('PDF chỉ được đính kèm trong mục Số hóa: '+f.name);
-      if(f.size>15*1024*1024)throw Error('PDF '+f.name+' vượt giới hạn 15 MB.');
+    if(isDocumentFile(f)){
+      if(!supportsDocument())throw Error('PDF hoặc Word chỉ được đính kèm trong mục Hình ảnh hoặc Tài liệu số: '+f.name);
+      if(isWord(f)&&activeKind()!=='media')throw Error('Word hiện chỉ được đính kèm trong mục Hình ảnh: '+f.name);
+      if(f.size>15*1024*1024)throw Error('Tệp '+f.name+' vượt giới hạn 15 MB.');
       return;
     }
-    if(!window.GDDImageOptimizer?.isImage(f))throw Error('Chỉ nhận ảnh JPG/PNG/WebP/HEIC'+(activeKind()==='documents'?' hoặc PDF':'')+': '+f.name);
+    if(!window.GDDImageOptimizer?.isImage(f))throw Error(
+      'Chỉ nhận ảnh JPG/PNG/WebP/HEIC'+(activeKind()==='media'?' hoặc PDF/Word':activeKind()==='documents'?' hoặc PDF':'')+': '+f.name
+    );
   }
   function pending() { return queue.filter(p=>!p.saved).length; }
   function validate() { for (const p of queue) if(!p.saved) validFile(p.file); return true; }
@@ -953,9 +965,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     const list=$('#gdd-album-selection');
     if (!list) return;
     list.replaceChildren();
-    if(!queue.length){list.textContent=activeKind()==='documents'?'Chưa chọn ảnh hoặc PDF đính kèm.':'Chưa chọn ảnh đính kèm.';return;}
+    if(!queue.length){list.textContent=activeKind()==='media'?'Chưa chọn ảnh, PDF hoặc Word đính kèm.':activeKind()==='documents'?'Chưa chọn ảnh hoặc PDF đính kèm.':'Chưa chọn ảnh đính kèm.';return;}
     const summary=document.createElement('p'); summary.className='gdd-album-note';
-    const unit=activeKind()==='documents'?'tệp':'ảnh';
+    const unit=['documents','media'].includes(activeKind())?'tệp':'ảnh';
     summary.textContent=`Đã chọn ${queue.length} ${unit} (${pending()} ${unit} chờ tải). Có thể chọn thêm nhiều lần, giữ thứ tự và đặt chú thích.`;
     list.appendChild(summary);
     const frag=document.createDocumentFragment();
@@ -963,9 +975,10 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       const row=document.createElement('div'); row.className='gdd-admin-photo';
       const thumbnail=document.createElement('div');thumbnail.className='gdd-album-pending-thumb';
       const no=document.createElement('span');no.className='gdd-album-photo-no';no.textContent=String(i+1).padStart(2,'0');
-      if(isPdf(item.file)){
+      if(isDocumentFile(item.file)){
         thumbnail.classList.add('gdd-album-pdf-preview');
-        const pdfLabel=document.createElement('strong');pdfLabel.textContent='PDF';pdfLabel.className='gdd-album-pdf-preview-text';
+        const pdfLabel=document.createElement('strong');
+        pdfLabel.textContent=isPdf(item.file)?'PDF':'WORD';pdfLabel.className='gdd-album-pdf-preview-text';
         thumbnail.appendChild(pdfLabel);
       }else if(item.previewUrl){
         const image=document.createElement('img');image.src=item.previewUrl;
@@ -976,7 +989,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       thumbnail.appendChild(no);
       const body=document.createElement('div');
       const label=document.createElement('p'); label.className='gdd-album-note'; label.textContent=item.file.name+' · '+(item.file.size/1048576).toFixed(2)+' MB'+(item.saved?' · Đã lưu':'');
-      const field=document.createElement('label'); field.className='gdd-album-field'; field.textContent=(isPdf(item.file)?'Chú thích PDF ':'Chú thích ảnh ')+(i+1);
+      const field=document.createElement('label'); field.className='gdd-album-field'; field.textContent=(isPdf(item.file)?'Chú thích PDF ':isWord(item.file)?'Chú thích Word ':'Chú thích ảnh ')+(i+1);
       const input=document.createElement('input');input.type='text';input.maxLength=400;input.value=item.caption||'';
       input.placeholder='Niên đại, số trang hoặc xuất xứ (không bắt buộc)';input.disabled=item.saved||busy;
       input.addEventListener('input',()=>{item.caption=input.value;});field.appendChild(input);
@@ -1069,19 +1082,23 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     if(input.dataset.unlimitedBound==='1'){ensureAdminPager(panel);return;}
     // Bỏ listener chọn 30 ảnh của phiên bản cũ, giữ toàn bộ form và dữ liệu.
     const clean=input.cloneNode(true);clean.dataset.unlimitedBound='1';
-    clean.accept=nextContext.startsWith('documents:')
+    clean.accept=nextContext.startsWith('media:')
+      ?'image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.doc,.docx'
+      :nextContext.startsWith('documents:')
       ?'image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf'
       :'image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif';
     input.replaceWith(clean);
     const desc=panel.querySelector('p.gdd-album-note');
-    if(desc)desc.innerHTML=nextContext.startsWith('documents:')
+    if(desc)desc.innerHTML=nextContext.startsWith('media:')
+      ?'Chọn chung <b>ảnh, PDF và Word (.doc, .docx)</b> trong một Bộ ảnh kèm theo; ảnh tự tối ưu dưới 6 MB, PDF/Word tối đa 15 MB/tệp. Tệp văn bản giữ nguyên định dạng để đọc hoặc tải về. Có thể chọn thêm nhiều lượt.'
+      :nextContext.startsWith('documents:')
       ?'Chọn <b>nhiều ảnh và nhiều PDF</b> trong một bài Số hóa; tối ưu ảnh dưới 6 MB và PDF tối đa 15 MB/tệp. PDF chính vẫn có ô riêng phía trên. Có thể chọn thêm nhiều lượt và ghi chú từng tệp.'
       :'Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, ảnh lớn tự tối ưu dưới 6 MB (JPG/PNG/WebP/HEIC). Nên chọn 10–20 ảnh/lượt trên iPhone.';
     const chooser=clean.closest('label');
     if(chooser){
-      chooser.firstChild.textContent=nextContext.startsWith('documents:')?'Chọn thêm ảnh hoặc PDF từ iPhone hoặc ứng dụng Tệp':'Chọn ảnh tư liệu từ iPhone hoặc ứng dụng Tệp';
+      chooser.firstChild.textContent=nextContext.startsWith('media:')?'Chọn ảnh, PDF hoặc Word từ iPhone / ứng dụng Tệp':nextContext.startsWith('documents:')?'Chọn thêm ảnh hoặc PDF từ iPhone hoặc ứng dụng Tệp':'Chọn ảnh tư liệu từ iPhone hoặc ứng dụng Tệp';
       chooser.classList.add('gdd-album-ios-picker');
-      const action=document.createElement('span');action.className='gdd-album-choose-label';action.textContent=nextContext.startsWith('documents:')?'＋ Chọn ảnh / PDF':'＋ Chọn ảnh';
+      const action=document.createElement('span');action.className='gdd-album-choose-label';action.textContent=nextContext.startsWith('media:')?'＋ Chọn ảnh / PDF / Word':nextContext.startsWith('documents:')?'＋ Chọn ảnh / PDF':'＋ Chọn ảnh';
       chooser.appendChild(action);
       const count=document.createElement('div');count.id='gdd-album-picker-count';count.className='gdd-album-status';
       chooser.after(count);
@@ -1104,7 +1121,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       }
       // Reset file input cho lượt chọn tiếp theo; số tệp đã nhận hiển thị ở dưới.
       clean.value='';renderList();showPickerCount();
-      const unit=activeKind()==='documents'?'tệp':'ảnh';
+      const unit=['documents','media'].includes(activeKind())?'tệp':'ảnh';
       status((added?'Đã nhận thêm '+added+' '+unit+'; tổng cộng '+queue.length+' '+unit+'. ':'')+(problems.length?problems.join('; '):'Có thể ghi chú hoặc nhấn Đăng tư liệu.'));
     });
     renderList();showPickerCount();ensureAdminPager(panel);
