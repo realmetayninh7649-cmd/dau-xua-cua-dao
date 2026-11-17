@@ -1,14 +1,10 @@
 name: "GDD DK01.6 - Sao luu ba PDF goc vao R2 PRIVATE"
 on:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/dk016_preserve_legacy_pdfs.py"
-      - ".github/workflows/gdd-dk016-preserve-legacy-pdfs.yml"
   pull_request:
     paths:
       - "scripts/dk016_preserve_legacy_pdfs.py"
       - ".github/workflows/gdd-dk016-preserve-legacy-pdfs.yml"
+  # Sao lưu R2 CHỈ chạy khi có đủ hai S3 secrets và người quản trị chủ động chọn Run workflow.
   workflow_dispatch:
 
 permissions:
@@ -35,7 +31,7 @@ jobs:
   preserve:
     name: "Luu tung PDF va kiem tra SHA256 cua ban sao R2"
     needs: validate
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -46,9 +42,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: "Cai bo ket noi R2 S3 bucket-scoped"
+        run: python -m pip install boto3==1.40.61
       - name: "Sao luu nguyen byte vao R2 PRIVATE, doc lai va so sanh SHA256"
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CI: "true"
         run: |
