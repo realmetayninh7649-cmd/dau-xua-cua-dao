@@ -17,3 +17,8 @@ footer{margin-top:22px;padding-top:12px;border-top:1px solid #d1d7cf;font-size:.
 a{color:#176a53}
 @media(max-width:520px){.r2-reader{padding:12px 10px 30px}.controls{gap:7px}button,select,.controls a{padding:9px 10px;font-size:.87rem}#r2-counter{min-width:56px}}
 @media print{.controls{display:none!important}.image-scroller{max-height:none!important;overflow:visible}footer{display:none}}
+
+/* DK01.5: same reader shell for crisp on-demand legacy PDF canvas and R2 pages */
+#r2-canvas{display:block;margin:0 auto;background:#fff;width:100%;max-width:none;height:auto;box-shadow:0 0 7px #0002}
+#r2-canvas[hidden],#r2-legacy-open[hidden]{display:none!important}
+#r2-legacy-open{font-weight:700;overflow-wrap:anywhere}
