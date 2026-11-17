@@ -6,8 +6,9 @@ on:
       - "scripts/gdd-seo-build.mjs"
       - ".github/workflows/gdd-seo-publish.yml"
       - "supabase-config.js"
+      - "app.js"
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
