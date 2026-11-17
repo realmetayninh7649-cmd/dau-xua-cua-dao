@@ -2,7 +2,7 @@
    KHÔNG dùng secret/service_role và không cấp đường dẫn tải bản nguyên mẫu. */
 (() => {
   'use strict';
-  const apiModule = './workers/gdd-r2-gateway/client/uploader.mjs?v=20261117-dk014';
+  const apiModule = './workers/gdd-r2-gateway/client/uploader.mjs?v=20261117-dk017';
   const documentModule = './workers/gdd-r2-gateway/client/document-view.mjs?v=20261117-dk014';
   const API = 'https://gdd-r2-gateway.realmetayninh7649.workers.dev';
   const VIEW_PAGE = './r2-xem.html?asset=';
@@ -47,14 +47,14 @@
     if(dbError)throw Error('Bản gốc đã lưu R2 (ID: '+result.id+'), nhưng không ghi được danh mục: '+dbError.message);
     return result;
   }
-  async function archive(file,supabase,{recordKind=null,recordId=null,role='vault',onProgress}={}) {
+  async function archive(file,supabase,{recordKind=null,recordId=null,role='vault',onProgress,skipDerivatives=false}={}) {
     if(!file||!file.name||!Number.isSafeInteger(file.size)||file.size<=0)throw Error('Vui lòng chọn tệp gốc hợp lệ.');
     account(supabase);
     let task=saved.get(file);
     if(!task){
       task=(async()=>{
         const {uploadPreservedAsset}=await getUploader();
-        return uploadPreservedAsset(file,{supabase,onProgress});
+        return uploadPreservedAsset(file,{supabase,onProgress,skipDerivatives});
       })();
       saved.set(file,task);
     }
@@ -286,6 +286,41 @@
             ?'PDF':'đọc chữ DOCX')+'. Chưa công bố. Hãy rà soát trước khi xuất bản.');
           await refresh();
         }catch(error){setStatus('Không tạo được bản đọc: '+(error?.message||error))}
+        finally{button.disabled=false}
+      }));
+    }
+    // Normal gallery photos already have an optimized public Supabase copy.
+    // Their extra R2 derivatives are generated only if the administrator opts in.
+    if(entry.media_kind==='image'&&(!entry.preview_ready||!entry.download_ready)){
+      const label=document.createElement('label');
+      label.textContent='Chỉ khi cần công bố ảnh trực tiếp từ R2: chọn lại đúng tệp ảnh gốc để tạo bản xem R2.';
+      const sourcePicker=document.createElement('input');
+      sourcePicker.type='file';
+      sourcePicker.accept='.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff,.heic,.heif,.avif';
+      label.appendChild(sourcePicker);
+      details.appendChild(label);
+      details.appendChild(controlButton('Tạo bản xem R2 khi cần',async event=>{
+        const button=event.currentTarget;
+        if(!sourcePicker.files?.[0])return setStatus('Hãy chọn lại đúng ảnh nguyên mẫu để tạo bản xem R2.');
+        button.disabled=true;
+        try{
+          const {finishOptimizingExisting}=await getUploader();
+          const outcome=await finishOptimizingExisting(sourcePicker.files[0],entry.asset_id,{
+            supabase:client,
+            onProgress:info=>{
+              if(info.phase==='optimizing')setStatus('Đang tạo bản '+info.variant+' từ đúng ảnh gốc đã chọn…');
+              if(info.phase==='optimized-error')setStatus('Có bản xem cần kiểm tra: '+info.message);
+            }
+          });
+          const {error}=await client.from('gdd_r2_assets').update({
+            preview_ready:outcome.previewReady,download_ready:outcome.downloadReady
+          }).eq('asset_id',entry.asset_id);
+          if(error)throw Error('Bản xem R2 đã lưu nhưng chưa cập nhật danh mục: '+error.message);
+          setStatus(outcome.previewReady&&outcome.downloadReady
+            ?'Đã tạo đủ hai bản R2. Chỉ công bố khi đã kiểm tra và xác nhận.'
+            :'Tệp nguyên mẫu vẫn an toàn. Bản phụ chưa đầy đủ: '+(outcome.optimizationWarnings||[]).join('; '));
+          await refresh();
+        }catch(error){setStatus('Chưa tạo đủ bản xem R2: '+(error?.message||error))}
         finally{button.disabled=false}
       }));
     }

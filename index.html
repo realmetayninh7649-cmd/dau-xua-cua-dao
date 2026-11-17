@@ -78,12 +78,12 @@
 
   <script src="supabase-config.js"></script>
 <link rel="stylesheet" href="gdd-r2-admin.css?v=20261117-dk0141">
-<script defer src="gdd-r2-admin.js?v=20261117-dk015"></script>
+<script defer src="gdd-r2-admin.js?v=20261117-dk017"></script>
   
 <script defer src="gdd-image-optimizer.js?v=20261109-auto6mb-01"></script>
 <script defer src="vendor/qrcode.min.js?v=20261113-local"></script>
 <script defer src="gdd-document-router.js?v=20261117-dk015"></script>
-<script defer src="app.js?v=20261117-dk015"></script>
+<script defer src="app.js?v=20261117-dk017"></script>
 <script defer src="gdd-archive-qr.js?v=20261113-ios-save-04"></script>
 
   <script defer src="gdd-person-watermark.js?v=20261113-final-master-08"></script>
@@ -1200,7 +1200,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       let position=Math.max(0,top?.[0]?.sort_order||0);
       const items=queue.filter(x=>!x.saved);
       for(const item of items){
-        const message=`Đang tải tệp ${done+1}/${items.length}: ${item.file.name}. Xin giữ trang mở.`;
+        const message=`Đang lưu ảnh/tệp ${done+1}/${items.length}: ${item.file.name}. Giữ trang mở để bảo tồn nguyên mẫu.`;
         status(message);onProgress?.(message);
         const pdf=isPdf(item.file),word=kind==='media'&&isWord(item.file);
         const docFile=(pdf&&['media','documents'].includes(kind))||word;
@@ -1208,6 +1208,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         if(!window.GDDR2?.archive)throw Error('Bộ bảo tồn R2 chưa tải xong. Hãy tải lại trang.');
         const archived=await window.GDDR2.archive(item.file,supa,{
           recordKind:kind,recordId:id,role:'album',
+          skipDerivatives:!docFile,
           onProgress:info=>{
             const message=info.phase==='original'
               ?'Đang cất nguyên mẫu R2: '+Math.round(info.bytes/info.total*100)+'%'
@@ -1246,7 +1247,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         const progress=`Đã lưu ${done}/${items.length} tệp; còn ${pending()} tệp chờ tải.`;
         status(progress);onProgress?.(progress);
       }
-      status('Đã lưu đủ '+done+' tệp. Ảnh xem nhẹ đã đăng, ảnh gốc và tài liệu PDF/Word cất riêng ở R2.');
+      status('Đã lưu đủ '+done+' tệp: ảnh gốc ở R2 riêng tư, ảnh xem tối ưu trên website. Không tạo bản phụ R2 dư thừa.');
       window.GDDR2?.refresh?.();
     }catch(err){
       const raw=String(err?.message||err||'');

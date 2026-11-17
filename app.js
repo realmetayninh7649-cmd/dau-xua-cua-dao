@@ -787,6 +787,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         if(!window.GDDR2?.archive)throw Error('Bộ bảo tồn nguyên mẫu R2 chưa tải xong. Hãy tải lại trang.');
         archivedPrimary=await window.GDDR2.archive(file,state.supabase,{
           recordKind:kind,role:'primary',
+          skipDerivatives:!!window.GDDImageOptimizer?.isImage(file),
           onProgress:progress=>{
             if(progress.phase==='original')
               $('#form-message').textContent='Đang bảo tồn bản gốc trong R2: '+Math.round(progress.bytes/progress.total*100)+'%';
