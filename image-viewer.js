@@ -118,7 +118,7 @@
   const $ = id => document.getElementById(id);
   const stage=$('gdd-image-stage'), full=$('gdd-image-full'), loading=$('gdd-image-loading');
   const caption=$('gdd-image-caption'), download=$('gdd-image-download'), orig=$('gdd-image-original');
-  let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false, viewTicket=0;
+  let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false, noImageDownload=false, viewTicket=0;
   let gallery=[], galleryIndex=0, swipeStart=null, hadMultiTouch=false;
   const pointers=new Map();
   let start=null, lastTap=0;
@@ -172,6 +172,7 @@
     galleryIndex=index;
     ++viewTicket;
     title=(item.title||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(item.isPerson);
+    noImageDownload=Boolean(item.noDownload);
     full.style.visibility='';
     full.alt=title;full.removeAttribute('src');full.src=url;
     // Chức Sắc: không cung cấp nút tải hay mở nguồn ảnh trong trình xem.
@@ -179,7 +180,7 @@
     if(personPhoto) orig.removeAttribute('href');
     else orig.href=url;
     orig.hidden=personPhoto;
-    download.hidden=personPhoto;
+    download.hidden=personPhoto||noImageDownload;
     download.textContent='↓ Tải ảnh gốc';
     loading.hidden=false;loading.textContent='Đang mở ảnh…';
     refreshArrows();
@@ -196,12 +197,12 @@
     if(viewer.hidden||gallery.length<2)return;
     showGalleryImage(galleryIndex+delta);
   }
-  function openImage(src, name, isPerson=false, contextImage=null){
+  function openImage(src, name, isPerson=false, contextImage=null, suppressDownload=false){
     const url=safeSource(src);if(!url)return;
     if(viewer.hidden)previousFocus=document.activeElement;
     const images=imageSequence(contextImage);
-    gallery=images.length?images.map(item=>({src:item.src,title:item.title,isPerson:Boolean(isPerson)})):
-      [{src:url,title:name||'Ảnh tư liệu',isPerson:Boolean(isPerson)}];
+    gallery=images.length?images.map(item=>({src:item.src,title:item.title,isPerson:Boolean(isPerson),noDownload:Boolean(suppressDownload)})):
+      [{src:url,title:name||'Ảnh tư liệu',isPerson:Boolean(isPerson),noDownload:Boolean(suppressDownload)}];
     const found=images.findIndex(item=>item.element===contextImage);
     galleryIndex=found>=0?found:Math.max(0,gallery.findIndex(item=>item.src===url));
     showGalleryImage(galleryIndex);
@@ -346,14 +347,26 @@
       noticeDownload(btn,'Nguồn ảnh không cho tải trực tiếp. Nhấn “Mở ảnh gốc”, rồi chạm giữ ảnh để lưu trên iPhone.');
     } finally {btn.disabled=false;btn.textContent=old;}
   }
-  download.addEventListener('click',()=>{if(!personPhoto)downloadImage(source,title,download);});
+  download.addEventListener('click',()=>{if(!personPhoto&&!noImageDownload)downloadImage(source,title,download);});
   
-  // Chỉ ảnh trong khu Hồ sơ Chức sắc, không áp dụng cho Hình ảnh, Video hoặc Biên khảo.
+  // Chính sách nút xem/tải ảnh dựa trên mục hiển thị, không thay đổi nguồn ảnh.
   function isPersonFrame(frame){
     return Boolean(frame.closest('#people-grid, #gdd-people-list, [data-preview-section="chuc-sac"]')||
       frame.closest('#detail-content[data-gdd-kind="people"]'));
   }
   
+  // Một bài có thể được trưng bày trong Hình ảnh dù loại dữ liệu gốc là Biên khảo.
+  const handwritingAlbumSlug='mot-so-thu-but-chu-ky-va-an-moc-cua-chu-vi-tien-boi-dai-dao-l81pg2';
+  function isMediaDetail(){
+    const detail=document.getElementById('detail-content');
+    if(!detail)return false;
+    return detail.dataset.gddKind==='media'||detail.dataset.gddDisplayTarget==='media'||
+      (detail.dataset.gddKind==='posts'&&location.hash==='#bai-viet/'+handwritingAlbumSlug);
+  }
+  function isMediaFrame(frame){
+    return Boolean(frame?.closest('#gallery-grid,[data-preview-section="hinh-anh"],[data-open-kind="media"]')||
+      (frame?.closest('#detail-content')&&isMediaDetail()));
+  }
   // Nhấn vào vùng có kính lúp để xem ảnh; hồ sơ/tựa bài vẫn mở qua nút riêng.
   // #gdd-people-list là danh sách Chức sắc Nam/Nữ mới, không nằm trong #people-grid.
   // Các thẻ xem trước ở Trang Chủ cũng được tạo động sau khi tải dữ liệu.
@@ -372,16 +385,18 @@
     // Bắt click trong capture trước sự kiện mở hồ sơ tại app.js.
     e.preventDefault();
     e.stopImmediatePropagation();
-    openImage(src,imgTitle(img),isPersonFrame(frame),img);
+    openImage(src,imgTitle(img),isPersonFrame(frame),img,isMediaFrame(frame));
   },true);
 
-  // Chức Sắc chỉ có chế độ xem ảnh; các chuyên mục khác vẫn có thể mở hoặc tải.
+  // Chức Sắc và Hình ảnh không có nút tải gốc; giữ nguyên chức năng xem, phóng to, chuyển ảnh.
   const detail=document.getElementById('detail-content');
   if(detail){
     const injectControls=()=>{
       const isPerson=detail.dataset.gddKind==='people';
-      if(isPerson){
-        // Loại các đường dẫn mở/tải ảnh do giao diện cũ thêm vào album Chức Sắc.
+      const isImageCollection=isMediaDetail();
+      const hideImageActions=isPerson||isImageCollection;
+      if(hideImageActions){
+        // Chỉ xóa link dư dưới ảnh; không xóa link đọc PDF/Word.
         detail.querySelectorAll('.gdd-album-figure .gdd-album-open').forEach(link=>{
           // Không loại bỏ liên kết Đọc tài liệu (PDF/Word).
           if(!link.closest('figure')?.querySelector('.gdd-album-pdf-tile')) link.remove();
@@ -402,11 +417,11 @@
         show.type='button';show.className='gdd-image-action';
         show.dataset.gddImageShow='1';show.textContent='⤢ Xem ảnh toàn màn hình';
         show.addEventListener('click',()=>openImage(img.currentSrc||img.src,imgTitle(img),
-          detail.dataset.gddKind==='people',img));
+          detail.dataset.gddKind==='people',img,isMediaDetail()));
         bar.append(show);
       }
       const save=bar.querySelector('[data-gdd-image-save]');
-      if(isPerson){
+      if(hideImageActions){
         if(save)save.remove();
       }else if(!save){
         const button=document.createElement('button');
