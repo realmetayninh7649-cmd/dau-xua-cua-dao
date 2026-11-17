@@ -1,6 +1,6 @@
 // GDDĐ v2.0.0-DK01.2 — Bảo tồn nguyên mẫu & bản xem nhẹ.
 // Bản gốc là R2 PRIVATE; KHÔNG có tuyến GET original hoặc URL tải gốc công khai.
-export const VERSION = 'GDDĐ v2.0.0-DK01.2.2';
+export const VERSION = 'GDDĐ v2.0.0-DK01.4';
 const PROBE = '__gdd_internal__/dk01_read_probe_only';
 const MB = 1024 * 1024;
 const PART_BYTES = 8 * MB;
@@ -187,7 +187,8 @@ async function api(req,env,url,cors,user) {
     if(!ownsMeta(meta,user,id))return failure(404,'Không tìm thấy tư liệu',cors);
     if(!variant&&req.method==='GET')
       return respond({id,originalBytes:meta.originalBytes,originalPreserved:true,previewReady:meta.preview,downloadReady:meta.download,
-        published:meta.published,kind:meta.kind,mime:meta.mime,originalName:meta.originalName},200,cors);
+        published:meta.published,kind:meta.kind,mime:meta.mime,originalName:meta.originalName,
+        viewSource:meta.viewSource||null,pageCount:meta.pageCount||0,allowDownload:meta.allowDownload===true},200,cors);
     if(variant&&req.method==='PUT'){
       if(meta.kind!=='image')return failure(400,'Chỉ ảnh mới có bản xem và bản tải',cors);
       // Safari sometimes omits Content-Length in cross-origin PUT requests.
@@ -220,6 +221,130 @@ async function api(req,env,url,cors,user) {
   }
   return failure(404,'Không có đường dẫn này',cors);
 }
+
+// DK01.4: chỉ phân phối bản xem đã được Quản trị viên CHỦ ĐỘNG xuất bản.
+// Tuyệt đối KHÔNG có GET originals/, GET PDF/Word nguyên mẫu hoặc raw R2 keys.
+const VIEW_MAX_PAGES = 120;
+const VIEW_PAGE_MAX_BYTES = 3 * MB;
+const VIEW_PUBLIC_PATH = /^\/v1\/public\/([a-f0-9-]{36})(?:\/(preview|download|page\/([1-9]\d{0,2})))?$/i;
+const VIEW_ADMIN_PATH = /^\/v1\/assets\/([a-f0-9-]{36})\/(page\/([1-9]\d{0,2})|publication)$/i;
+const viewPageKey=(id,n)=>'derivatives/'+id+'/pages/'+n+'.jpg';
+const viewUrl=id=>'https://realmetayninh7649-cmd.github.io/dau-xua-cua-dao/r2-xem.html?asset='+id;
+function imageResponse(object,originAllowed,asAttachment=false) {
+  const headers=new Headers({
+    'content-type':object.httpMetadata?.contentType||'image/jpeg',
+    'cache-control':'no-store','x-content-type-options':'nosniff',
+    'content-disposition':asAttachment?'attachment; filename="ban-anh-toi-uu.jpg"':'inline',
+    'referrer-policy':'no-referrer',
+    'cross-origin-resource-policy':'cross-origin'
+  });
+  if(originAllowed){headers.set('access-control-allow-origin',ORIGIN);headers.set('vary','Origin')}
+  return new Response(object.body,{status:200,headers});
+}
+async function publicView(req,env,path,originAllowed) {
+  if(req.method!=='GET')return failure(405,'Method not allowed',originAllowed);
+  const match=VIEW_PUBLIC_PATH.exec(path);
+  if(!match||!UUID.test(match[1]))return failure(404,'Không tìm thấy bản xem',originAllowed);
+  const id=match[1],variant=match[2]||'',page=Number(match[3]||0);
+  let meta;
+  try{meta=await getMeta(env,id)}catch{return failure(503,'Chưa đọc được bản xem',originAllowed)}
+  if(!meta?.published)return failure(404,'Bản xem chưa công bố',originAllowed);
+  if(!variant){
+    const data={
+      id,kind:meta.kind,
+      name:String(meta.originalName||'Tư liệu').slice(0,160),
+      pageCount:meta.kind==='document'?meta.pageCount:1,
+      viewSource:meta.kind==='document'?meta.viewSource:'image',
+      allowDownload:meta.kind==='image'&&meta.allowDownload===true&&meta.download===true,
+      version:VERSION
+    };
+    return respond(data,200,originAllowed);
+  }
+  if(variant==='download'&&!(meta.kind==='image'&&meta.download&&meta.allowDownload))
+    return failure(404,'Bản tải chưa cho phép',originAllowed);
+  if(variant==='preview'&&!(meta.kind==='image'&&meta.preview))
+    return failure(404,'Không có ảnh xem',originAllowed);
+  if(variant.startsWith('page/')){
+    if(meta.kind!=='document'||!Number.isInteger(page)||page<1||page>VIEW_MAX_PAGES||page>meta.pageCount)
+      return failure(404,'Không có trang này',originAllowed);
+  }
+  const key=variant==='preview'
+    ?'derivatives/'+id+'/preview'+(meta.previewMime==='image/jpeg'?'.jpg':'.webp')
+    :variant==='download'?'derivatives/'+id+'/download.jpg':viewPageKey(id,page);
+  try{
+    const object=await env.GDD_BUCKET.get(key);
+    if(!object?.body)return failure(404,'Không có ảnh đã xuất bản',originAllowed);
+    return imageResponse(object,originAllowed,variant==='download');
+  }catch{return failure(503,'Không đọc được ảnh xem',originAllowed)}
+}
+async function adminView(req,env,path,cors,user) {
+  const match=VIEW_ADMIN_PATH.exec(path);
+  if(!match||!UUID.test(match[1]))return failure(404,'Đường dẫn không hợp lệ',cors);
+  const id=match[1],operation=match[2],page=Number(match[3]||0);
+  const meta=await getMeta(env,id);
+  if(!ownsMeta(meta,user,id))return failure(404,'Không tìm thấy tư liệu riêng',cors);
+  if(operation.startsWith('page/')&&req.method==='PUT'){
+    if(meta.kind!=='document'||!['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(meta.mime))
+      return failure(400,'Chỉ PDF/DOCX có thể tạo bản xem từng trang',cors);
+    if(!Number.isInteger(page)||page<1||page>VIEW_MAX_PAGES)return failure(400,'Số trang vượt giới hạn',cors);
+    if(req.headers.get('content-type')?.split(';')[0]!=='image/jpeg')
+      return failure(415,'Bản xem từng trang phải là JPEG',cors);
+    const declared=req.headers.get('content-length');
+    if(declared!==null&&(!Number.isSafeInteger(Number(declared))||Number(declared)<1||Number(declared)>VIEW_PAGE_MAX_BYTES))
+      return failure(413,'Trang xem quá 3 MB',cors);
+    if(!req.body)return failure(400,'Trang xem trống',cors);
+    let body;
+    try{body=new Uint8Array(await req.arrayBuffer())}catch{return failure(400,'Không đọc được trang',cors)}
+    if(body.byteLength<32||body.byteLength>VIEW_PAGE_MAX_BYTES
+      ||(declared!==null&&body.byteLength!==Number(declared))
+      ||body[0]!==255||body[1]!==216||body[2]!==255)
+      return failure(415,'Ảnh trang không hợp lệ',cors);
+    try{
+      await env.GDD_BUCKET.put(viewPageKey(id,page),body,{
+        httpMetadata:{contentType:'image/jpeg',contentDisposition:'inline',cacheControl:'no-store'}
+      });
+      // Never modify original meta or the uploaded original object.
+      return respond({id,page,storedBytes:body.byteLength,originalUnchanged:true},201,cors);
+    }catch{return failure(503,'Không ghi được trang xem',cors)}
+  }
+  if(operation==='publication'&&req.method==='POST'){
+    let body;
+    try{body=await jsonBody(req,2048)}catch{return failure(400,'Thông tin công bố không hợp lệ',cors)}
+    if(typeof body?.publish!=='boolean')return failure(400,'Chưa xác nhận trạng thái công bố',cors);
+    if(!body.publish){
+      meta.published=false;meta.allowDownload=false;
+      meta.updatedAt=new Date().toISOString();
+      await saveMeta(env,meta);
+      return respond({id,published:false,originalPrivate:true},200,cors);
+    }
+    if(meta.kind==='document'){
+      const total=body.pageCount,source=body.viewSource;
+      const expected=meta.mime==='application/pdf'?'pdf':'docx_text';
+      if(source!==expected||!Number.isInteger(total)||total<1||total>VIEW_MAX_PAGES)
+        return failure(400,'Thiếu hoặc sai thông tin bản xem tài liệu',cors);
+      try{
+        for(let n=1;n<=total;n++){
+          const head=await env.GDD_BUCKET.head(viewPageKey(id,n));
+          if(!head||head.size<32||head.size>VIEW_PAGE_MAX_BYTES)return failure(409,'Bản xem thiếu trang '+n,cors);
+        }
+      }catch{return failure(503,'Chưa kiểm tra được đủ trang xem',cors)}
+      meta.pageCount=total;meta.viewSource=source;
+      meta.allowDownload=false;
+    } else if(meta.kind==='image'){
+      const mime=meta.previewMime==='image/jpeg'?'jpg':'webp';
+      if(!meta.preview||!(await env.GDD_BUCKET.head('derivatives/'+id+'/preview.'+mime)))
+        return failure(409,'Chưa có ảnh xem tối ưu',cors);
+      meta.allowDownload=body.allowDownload===true&&meta.download===true;
+      meta.pageCount=1;meta.viewSource='image';
+    } else return failure(400,'Tư liệu không hỗ trợ bản xem',cors);
+    meta.published=true;meta.updatedAt=new Date().toISOString();
+    await saveMeta(env,meta);
+    return respond({id,published:true,pageCount:meta.pageCount,viewSource:meta.viewSource,
+      allowDownload:meta.allowDownload===true,viewUrl:viewUrl(id),originalPrivate:true},200,cors);
+  }
+  return failure(404,'Đường dẫn không tồn tại',cors);
+}
+
 export default {
   async fetch(req,env){
     const url=new URL(req.url),path=url.pathname;
@@ -239,10 +364,12 @@ export default {
         'access-control-allow-headers':'Authorization, Content-Type',
         'access-control-max-age':'600','vary':'Origin','cache-control':'no-store'}});
     }
-    // Không có bất kỳ GET public/original nào trong DK01.2.
+    // Public chỉ được đọc bản xem do quản trị viên công bố, không có bản gốc.
+    if(path.startsWith('/v1/public/'))return publicView(req,env,path,cors);
     if(!['GET','POST','PUT'].includes(req.method))return failure(405,'Method not allowed',cors);
     const user=await authenticate(req,env);
     if(!user)return failure(403,'Chỉ Quản trị viên hợp lệ được truy cập',cors);
+    if(VIEW_ADMIN_PATH.test(path))return adminView(req,env,path,cors,user);
     return api(req,env,url,cors,user);
   }
 };

@@ -1,3 +1,37 @@
+# GDDĐ v2.0.0-DK01.4 — Độc giả xem bản được duyệt, nguyên mẫu vẫn riêng tư
+
+**Đã lập trình và kiểm thử trước triển khai:** Trình đọc `r2-xem.html` mở ảnh tối ưu hoặc ảnh JPEG từng trang của PDF/DOCX **chỉ sau khi Quản Trị Viên nhấn Công bố**. Không có `GET originals/`, không phát PDF/Word nguyên mẫu, không lộ khóa R2.
+
+## Phương thức vận hành
+
+1. Khi đăng tài liệu ở Quản Trị Viên, bản nguyên mẫu lưu riêng trong R2 như DK01.3. PDF/Word chính vẫn là bản nháp.
+2. Trong **Kho nguyên mẫu R2 (DK01.4)**, tại đúng tệp PDF/DOCX đã lưu, nhấn **Tạo bản đọc** rồi chọn lại cùng tệp ở iPhone. Bộ xử lý chạy trên điện thoại, lưu ảnh JPEG theo trang vào R2; **chưa công bố**.
+3. Rà soát và nhấn **Công bố bản xem**. Có thể chọn thêm **Đồng thời công bố bài Tài liệu số hóa** hoặc **Gắn đường dẫn bản xem vào bộ ảnh**. Những lựa chọn này mặc định bỏ chọn.
+4. **Ẩn bản xem** sẽ chặn truy cập qua Worker ngay ở lần yêu cầu mới (không xóa ảnh/tệp nguyên mẫu). Những bản đã lưu trên thiết bị của người xem không thể thu hồi.
+5. Ảnh đã lưu R2 có thể được công bố riêng. Nút **tải JPEG tối ưu** mặc định tắt, chỉ hiện khi Quản Trị Viên cho phép. Ảnh nguyên mẫu không thể tải qua Worker.
+
+## Định dạng và giới hạn
+
+- **PDF:** Trình duyệt Quản Trị Viên dùng PDF.js phiên bản 4.10.38 để kết xuất các trang sang JPEG có giới hạn dung lượng, giữ dáng trang giấy. Chỉ tối đa **120 trang và 45 MB** mỗi lần tạo bản xem trên iPhone. Tài liệu lớn cần chia tập hoặc xử lý riêng.
+- **DOCX:** Mammoth 1.9.0 **trích xuất chữ** rồi vẽ bản đọc từng trang. *Không giữ được kiểu chữ, ảnh, bảng, khoảng cách hoặc bố cục Word*. Bản đọc này chỉ để tham khảo; bản gốc lưu riêng không đổi.
+- **DOC cũ:** Chưa chuyển được nguyên vẹn trong trình duyệt; cần chuẩn bị thêm một bản PDF để độc giả đọc. Không giả vờ chuyển đổi tệp .doc.
+- **Ảnh JPEG/PNG/WebP:** Bản xem tối ưu là ảnh riêng trong R2, bản tải chỉ là JPEG tối ưu khi được phép.
+- Thư viện PDF/Word được tải phiên bản ghim từ CDN trong phiên Quản Trị Viên khi cần; không truyền nội dung tài liệu tới CDN. Nếu mạng chặn thư viện, chức năng tạo bản đọc không hoạt động, tệp nguyên mẫu vẫn an toàn.
+- Không có kỹ thuật ngăn hoàn toàn chụp màn hình hoặc lưu ảnh đang hiển thị; đây là kiểm soát *đường dẫn và bản nguyên mẫu*, không phải bảo vệ chống sao chép tuyệt đối.
+
+## API Worker
+
+- `GET /v1/public/{assetId}` — metadata tối thiểu của bản đã công bố.
+- `GET /v1/public/{assetId}/page/{n}` — ảnh JPEG trang PDF/DOCX đã công bố.
+- `GET /v1/public/{assetId}/preview` — ảnh xem nhẹ đã công bố.
+- `GET /v1/public/{assetId}/download` — chỉ bản JPEG tối ưu khi được admin bật.
+- `PUT /v1/assets/{assetId}/page/{n}` — chỉ Quản trị viên có token hợp lệ; ghi ảnh JPEG theo trang, không ghi đè nguyên mẫu.
+- `POST /v1/assets/{assetId}/publication` — chỉ Quản trị viên có token hợp lệ; kiểm tra đủ trang rồi công bố hoặc ẩn.
+
+Nhánh sao lưu: `backup/pre-dk014-private-viewer-20261117`. Bản mới không tự xóa hoặc tái xử lý bất kỳ ảnh, bài viết, tài liệu cũ nào.
+
+---
+
 # Bổ sung DK01.3 — Tích hợp Quản Trị Viên (17/11/2026)
 
 **Trạng thái:** Giao diện và bộ lưu trữ đã được tích hợp để kiểm thử; không tự chuyển dữ liệu cũ.
