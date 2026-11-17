@@ -1363,9 +1363,16 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           const caption=document.createElement('figcaption'),idx=document.createElement('span');idx.className='gdd-album-page';
           idx.textContent=String(no).padStart(2,'0')+'.';
           caption.append(idx,document.createTextNode(record.caption||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu')));
-          const original=document.createElement('div'),link=document.createElement('a');
-          link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.className='gdd-album-open';
-          link.textContent=isDocument?(isPdf?'Xem PDF ↗':'Mở Word ↗'):'Mở ảnh gốc ↗';original.appendChild(link);
+          // Hình ảnh: chạm ảnh là mở ngay; không lặp nút "Mở ảnh gốc" dưới mỗi tấm.
+          const suppressImageLink=kind==='people'||kind==='media'||
+            detail?.dataset.gddDisplayTarget==='media'||
+            (kind==='posts'&&slug==='mot-so-thu-but-chu-ky-va-an-moc-cua-chu-vi-tien-boi-dai-dao-l81pg2');
+          const original=document.createElement('div');
+          if(isDocument||!suppressImageLink){
+            const link=document.createElement('a');
+            link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.className='gdd-album-open';
+            link.textContent=isDocument?(isPdf?'Xem PDF ↗':'Mở Word ↗'):'Mở ảnh gốc ↗';original.appendChild(link);
+          }
           if(isDocument){
             const down=document.createElement('a'),u=new URL(url.href);
             if(u.hostname.endsWith('.supabase.co')&&u.pathname.includes('/storage/v1/object/public/dao-su-documents/')){
@@ -1375,7 +1382,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
             down.target='_blank';down.rel='noopener noreferrer';down.className='gdd-album-open';down.style.marginLeft='12px';
             down.textContent='↓ Tải '+docLabel;original.appendChild(down);
           }
-          figure.append(caption,original);gallery.appendChild(figure);added++;
+          figure.appendChild(caption);
+          if(original.childElementCount)figure.appendChild(original);
+          gallery.appendChild(figure);added++;
         }
         offset+=(rows||[]).length;
         if(!rows||rows.length<200)break;
