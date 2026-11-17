@@ -181,6 +181,19 @@ function videoSource(raw){
     (/\.(png|jpe?g|webp)(\?|$)/i.test(x.file_url||'')?x.file_url:''));
 
 
+  // R2 public viewer: only an explicit approved page reader, never a raw PDF URL.
+  function isR2DocumentViewer(raw){
+    if(!raw)return false;
+    try{
+      const u=new URL(raw,location.href);
+      const id=u.searchParams.get('asset')||'';
+      return u.protocol==='https:' &&
+        u.origin==='https://realmetayninh7649-cmd.github.io' &&
+        u.pathname==='/dau-xua-cua-dao/r2-xem.html' &&
+        /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id);
+    }catch{return false}
+  }
+
   function render(){
     const people=publicRows('people'),posts=displayedEntries('posts'),media=displayedEntries('media');
     $('#count-people').textContent=people.length;$('#count-posts').textContent=posts.length;$('#count-media').textContent=media.length;
@@ -243,7 +256,9 @@ function videoSource(raw){
           ?`<div class="archive-thumb video-preview-slot" data-video-id="${escape(x.id)}">${videoPoster(x)}</div>`
           :`<div class="archive-thumb">${src?`<img src="${escape(src)}" alt="${escape(x.title)}" loading="lazy">`:`<div aria-hidden="true">${kind==='obituaries'?'✧':'▤'}</div>`}</div>`;
         const description=String(x.summary||x.caption||x.body||'Tư liệu đang được bổ sung nội dung.').replace(/\s+/g,' ').slice(0,360);
-        return `<article class="archive-card ${kind==='videos'?'video-archive-card':''}">${preview}<div class="archive-card-copy"><span class="archive-type">${escape(label)} ${meta?' · '+escape(meta):''}</span><h3>${escape(x.title)}</h3><p>${escape(description)}</p><button type="button" class="link-button" data-open-kind="${originKind}" data-id="${escape(x.id)}">Xem chi tiết ↗</button></div></article>`;
+        const readerLink=originKind==='documents'&&isR2DocumentViewer(x.file_url)
+          ?` <a class="link-button" href="${escape(x.file_url)}" target="_blank" rel="noopener noreferrer">Đọc bản xem ↗</a>`:'';
+        return `<article class="archive-card ${kind==='videos'?'video-archive-card':''}">${preview}<div class="archive-card-copy"><span class="archive-type">${escape(label)} ${meta?' · '+escape(meta):''}</span><h3>${escape(x.title)}</h3><p>${escape(description)}</p><button type="button" class="link-button" data-open-kind="${originKind}" data-id="${escape(x.id)}">Xem chi tiết ↗</button>${readerLink}</div></article>`;
       }).join(''):`<div class="empty-state"><b>Chưa có ${escape(label)}.</b>Ban Biên Tập đang tiếp nhận và sưu tầm tư liệu.</div>`;
     });
     if(state.admin){renderEditorList();renderInbox()}
@@ -267,8 +282,10 @@ function videoSource(raw){
     const person=kind!=='people'&&record.person_id?linkedPerson(record.person_id):null;
     const dateNotes=kind==='people'&&record.date_notes?`<p class="detail-meta">Ngày tháng: ${escape(record.date_notes)}</p>`:'';
     const url=safeUrl(kind==='videos'?record.video_url:kind==='documents'?record.file_url:'');
-    const link=url?`<p class="detail-external"><a href="${escape(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${kind==='videos'?(videoSource(record.video_url)?.type==='facebook'?'Xem trên Facebook':'Xem video gốc'):'Mở tài liệu số'} ↗</a></p>`:'';
-    // Riêng mục Tài liệu số hóa: có cả Xem PDF và Tải PDF khi đã đính kèm PDF.
+    const link=url?`<p class="detail-external"><a href="${escape(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${kind==='videos'?(videoSource(record.video_url)?.type==='facebook'?'Xem trên Facebook':'Xem video gốc'):isR2DocumentViewer(url)?'Đọc bản xem từng trang':'Mở tài liệu số'} ↗</a></p>`:'';
+    // Với R2: chỉ dùng trình đọc ảnh từng trang, KHÔNG nút tải PDF gốc.
+    // Liên kết PDF cũ trên Supabase được giữ nguyên để không phá tài liệu lịch sử.
+    // Riêng mục Tài liệu số hóa cũ: có Xem PDF và Tải PDF khi file_url là URL PDF thực.
     // Supabase Storage hỗ trợ ?download=tên-tệp.pdf để trả tệp dưới dạng tải xuống,
     // kể cả khi Safari bỏ qua thuộc tính download trên liên kết khác miền.
     let pdfFileLink=link;

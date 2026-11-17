@@ -26,3 +26,10 @@
 .gdd-r2-view-actions button{font-size:.83rem;max-width:100%;padding:10px 12px}
 .gdd-r2-reader-link{display:inline-block;min-height:42px;margin:10px 0 4px;padding:10px 4px;color:#18664f;text-decoration:underline;font-weight:700}
 .gdd-r2-item-status{white-space:pre-wrap;overflow-wrap:anywhere}
+.gdd-r2-library-form{padding:12px;margin:12px 0;border:1px solid #b6cfc1;border-radius:8px;background:#f3f8f4}
+.gdd-r2-library-form summary{font-size:.88rem;font-weight:750;cursor:pointer}
+.gdd-r2-library-form label{display:block;font-size:.84rem;font-weight:600;margin:13px 0 4px}
+.gdd-r2-library-form input,.gdd-r2-library-form textarea{display:block;box-sizing:border-box;width:100%;padding:10px;margin:5px 0;background:white;color:#253b30;border:1px solid #b7c7ba;border-radius:7px;font:inherit}
+.gdd-r2-library-form textarea{min-height:85px;resize:vertical}
+.gdd-r2-library-form button{max-width:100%;white-space:normal}
+
