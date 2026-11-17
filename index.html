@@ -686,6 +686,14 @@ body #gdd-directory .gdd-preview-more:hover {background:#edf2ec;}
     const about = document.getElementById('gioi-thieu');
     if (about) about.innerHTML = '<div class="wrap about-grid">\n  <div class="gdd-about-heading">\n    <div class="eyebrow">LỜI NGỎ</div>\n    <h2>Giữ một trang xưa,<br><em>nối muôn đời sau.</em></h2>\n  </div>\n  <div class="gdd-about-prose">\n    <p>Người xưa khuất bóng, năm tháng lần qua, song công nghiệp của chư vị Chức sắc tiền bối vẫn còn lưu dấu trong những trang Đạo sử, những tờ Châu tri, Thánh lịnh đã úa màu cùng lời thuật chuyện của người sau.</p>\n    <p>Bởi lòng tưởng nhớ tiền nhân, Tiểu đệ góp nhặt sử liệu, hình ảnh và những chứng tích còn lưu truyền, hầu biên chép lại đôi phần cuộc đời, đạo nghiệp của các bậc tiền bối trong nền Đại Đạo Tam Kỳ Phổ Độ.</p>\n    <p>Tư liệu được tham khảo từ nhiều nguồn, có phần đã được kiểm chứng, có phần còn chờ đối chiếu. Các bài biên khảo được diễn đạt theo lối ký sự quốc ngữ Nam Kỳ xưa, pha hơi văn Cao Đài thuở trước. Những lời dẫn chuyện mang tính văn chương, chẳng phải nguyên văn của nhân vật nếu không có dẫn nguồn.</p>\n    <p>Công việc còn nhiều sơ thất, kính mong chư Quý Hiền Huynh, Hiền Tỷ, Hiền Đệ, Hiền Muội vui lòng chỉ giáo, bổ khuyết, hầu giữ lại chút dấu xưa cho lớp hậu học mai sau.</p>\n    <p class="gdd-mantra">NAM MÔ CAO ĐÀI TIÊN ÔNG ĐẠI BỒ TÁT MA HA TÁT.</p>\n    <p class="gdd-signature">Tiểu đệ TRƯỜNG QUANG kính bút.</p>\n  </div>\n</div>';
 
+    // Lời ngỏ được dựng lại bằng JavaScript, nên phải gắn hai Page sau khi dựng xong.
+    if (about && !about.querySelector('.gdd-about-facebook')) {
+      const social = document.createElement('div');
+      social.className = 'gdd-about-facebook gdd-facebook-pair';
+      social.innerHTML = '<a class="gdd-facebook-link" href="https://www.facebook.com/share/19pnfQd7p1/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Mở Facebook Page CAO DAI – LA MÉMOIRE"><span class="gdd-facebook-mark" aria-hidden="true">f</span><span>CAO DAI – LA MÉMOIRE</span></a><a class="gdd-facebook-link" href="https://www.facebook.com/share/1Ds5YZxDwq/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Mở Facebook Page Tiệm Phục Chế Ảnh"><span class="gdd-facebook-mark" aria-hidden="true">f</span><span>TIỆM PHỤC CHẾ ẢNH</span></a>';
+      about.querySelector('.gdd-about-prose')?.appendChild(social);
+    }
+
     const hero = document.getElementById('trang-chu');
     const heading = hero?.querySelector('.hero-copy h1');
     if (!hero || !heading) return;
