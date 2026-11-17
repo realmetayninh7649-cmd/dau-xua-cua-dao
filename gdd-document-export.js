@@ -2,7 +2,7 @@
   'use strict';
   if(window.__GDDDocumentExport20261107)return;
   window.__GDDDocumentExport20261107=true;
-  // Không tạo khung xuất PDF/Word trong Ai Tín và Tưởng Niệm Chức Sắc.
+  // Không tạo khung xuất PDF/Word trong Ai Tín, Tưởng Niệm và bộ sưu tập Hình ảnh.
   const allowed={ 'nhan-vat':'people','bai-viet':'posts','tai-lieu-so-hoa':'documents' };
   const labels={people:'TIỂU SỬ VÀ CÔNG NGHIỆP HÀNH ĐẠO',posts:'BIÊN KHẢO ĐẠO SỬ',obituaries:'AI TÍN',documents:'TÀI LIỆU SỐ HÓA',memorial:'TƯỞNG NIỆM CHỨC SẮC'};
   const css=document.createElement('style');
@@ -33,11 +33,17 @@
     x.innerHTML='<h3>Lưu trữ và trích dẫn tư liệu</h3><p>Tải toàn văn bài viết, ảnh, chú thích và nguồn tư liệu đã công bố. Tệp được tạo trên thiết bị; website không lưu thêm bản PDF hay Word.</p><div class="gdd-doc-actions"><button type="button" data-gdd-document="pdf">↓ Tải PDF</button><button type="button" data-gdd-document="docx">↓ Tải Word</button></div><div class="gdd-doc-status" role="status" aria-live="polite"></div>';
     return x;
   }
+  // Bộ thủ bút này là bài biên khảo gốc nhưng được người dùng chỉ rõ trong mục Hình ảnh.
+  const imageAlbumPost='mot-so-thu-but-chu-ky-va-an-moc-cua-chu-vi-tien-boi-dai-dao-l81pg2';
+  function belongsToImages(r){
+    return r?.kind==='media'||root?.dataset.gddDisplayTarget==='media'||
+      (r?.kind==='posts'&&r.slug===imageAlbumPost);
+  }
   function addControls(){
     const r=route();
     if(root){
       const old=root.querySelector('.gdd-doc-export');
-      const isArticle=r&&root.querySelector('.detail-title')&&root.querySelector('.detail-body');
+      const isArticle=r&&!belongsToImages(r)&&root.querySelector('.detail-title')&&root.querySelector('.detail-body');
       if(!isArticle)old?.remove();else if(!old)root.appendChild(makeBar());
     }
     if(memorialRoot){
