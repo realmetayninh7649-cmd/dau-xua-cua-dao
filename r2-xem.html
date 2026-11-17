@@ -5,14 +5,14 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="referrer" content="no-referrer">
 <title>DẤU XƯA CỬA ĐẠO – Trình xem tư liệu</title>
-<link rel="stylesheet" href="r2-xem.css?v=20261117-dk014">
+<link rel="stylesheet" href="r2-xem.css?v=20261117-dk015">
 </head>
 <body>
 <main class="r2-reader">
   <header>
     <p class="kicker">GIỮ ĐẠO GIỮA ĐỜI · DẤU XƯA CỬA ĐẠO</p>
     <h1 id="r2-title">Đang mở tư liệu…</h1>
-    <p class="subtitle" id="r2-desc">Bản dành cho độc giả, không phải ảnh hoặc tệp nguyên mẫu.</p>
+    <p class="subtitle" id="r2-desc">Trình đọc tài liệu thống nhất. Trạng thái bảo tồn nguyên mẫu được ghi rõ theo từng nguồn.</p>
   </header>
   <section class="controls" id="r2-controls" hidden aria-label="Điều khiển xem tư liệu">
     <button id="r2-prev" type="button">Trang trước</button>
@@ -23,13 +23,15 @@
   </section>
   <div class="image-scroller" id="r2-scroller" hidden>
     <img id="r2-page" loading="eager" draggable="false" alt="Trang tư liệu được số hoá">
+    <canvas id="r2-canvas" aria-label="Trang PDF cũ đã kết xuất" hidden></canvas>
   </div>
-  <p id="r2-status" class="status" role="status" aria-live="polite">Đang kiểm tra bản xem đã công bố…</p>
+  <p id="r2-status" class="status" role="status" aria-live="polite">Đang kiểm tra tư liệu…</p>
+  <p><a id="r2-legacy-open" hidden target="_blank" rel="noopener noreferrer">Mở tệp công khai cũ (dự phòng)</a></p>
   <footer>
     <p><strong>Ghi chú:</strong> Bản xem được tối ưu cho việc đọc trên điện thoại. Bản Word có thể chỉ là bản trích đọc chữ và không giữ nguyên kiểu trình bày. Khi khảo cứu hoặc trích dẫn, xin đối chiếu tư liệu gốc với đơn vị lưu trữ.</p>
     <a href="./index.html">Trở về Kho Tư Liệu Đạo Sử</a>
   </footer>
 </main>
-<script type="module" src="r2-xem.mjs?v=20261117-dk014"></script>
+<script type="module" src="r2-xem.mjs?v=20261117-dk015"></script>
 </body>
 </html>
