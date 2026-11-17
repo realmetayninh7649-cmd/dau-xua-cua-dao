@@ -230,11 +230,12 @@ const VIEW_PUBLIC_PATH = /^\/v1\/public\/([a-f0-9-]{36})(?:\/(preview|download|p
 const VIEW_ADMIN_PATH = /^\/v1\/assets\/([a-f0-9-]{36})\/(page\/([1-9]\d{0,2})|publication)$/i;
 const viewPageKey=(id,n)=>'derivatives/'+id+'/pages/'+n+'.jpg';
 const viewUrl=id=>'https://realmetayninh7649-cmd.github.io/dau-xua-cua-dao/r2-xem.html?asset='+id;
-function imageResponse(object,originAllowed) {
+function imageResponse(object,originAllowed,asAttachment=false) {
   const headers=new Headers({
     'content-type':object.httpMetadata?.contentType||'image/jpeg',
     'cache-control':'no-store','x-content-type-options':'nosniff',
-    'content-disposition':'inline','referrer-policy':'no-referrer',
+    'content-disposition':asAttachment?'attachment; filename="ban-anh-toi-uu.jpg"':'inline',
+    'referrer-policy':'no-referrer',
     'cross-origin-resource-policy':'cross-origin'
   });
   if(originAllowed){headers.set('access-control-allow-origin',ORIGIN);headers.set('vary','Origin')}
@@ -273,7 +274,7 @@ async function publicView(req,env,path,originAllowed) {
   try{
     const object=await env.GDD_BUCKET.get(key);
     if(!object?.body)return failure(404,'Không có ảnh đã xuất bản',originAllowed);
-    return imageResponse(object,originAllowed);
+    return imageResponse(object,originAllowed,variant==='download');
   }catch{return failure(503,'Không đọc được ảnh xem',originAllowed)}
 }
 async function adminView(req,env,path,cors,user) {
