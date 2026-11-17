@@ -7,7 +7,12 @@ const PART_BYTES = 8 * MB;
 const SMALL_LIMIT = 6 * MB;
 const MAX_PARTS = 10000;
 const MAX_ASSET_BYTES = PART_BYTES * MAX_PARTS;
-const ORIGIN = 'https://realmetayninh7649-cmd.github.io';
+// Only the former GitHub Pages origin and the registered custom domain may access R2 from browsers.
+const ALLOWED_ORIGINS = new Set([
+  'https://realmetayninh7649-cmd.github.io',
+  'https://dauxuacuadao.info.vn',
+  'https://www.dauxuacuadao.info.vn'
+]);
 const MEDIA = Object.freeze({
   jpg:['image/jpeg','image'],jpeg:['image/jpeg','image'],
   png:['image/png','image'],webp:['image/webp','image'],
@@ -26,7 +31,7 @@ function respond(obj, status=200, cors=false) {
     'referrer-policy':'no-referrer','x-frame-options':'DENY'
   };
   if (cors) {
-    headers['access-control-allow-origin']=ORIGIN;
+    headers['access-control-allow-origin']=cors;
     headers['vary']='Origin';
   }
   return new Response(JSON.stringify(obj),{status,headers});
@@ -238,7 +243,7 @@ function imageResponse(object,originAllowed,asAttachment=false) {
     'referrer-policy':'no-referrer',
     'cross-origin-resource-policy':'cross-origin'
   });
-  if(originAllowed){headers.set('access-control-allow-origin',ORIGIN);headers.set('vary','Origin')}
+  if(originAllowed){headers.set('access-control-allow-origin',originAllowed);headers.set('vary','Origin')}
   return new Response(object.body,{status:200,headers});
 }
 async function publicView(req,env,path,originAllowed) {
@@ -355,11 +360,12 @@ export default {
         : respond({status:'not_ready',version:VERSION},503);
     }
     if(!path.startsWith('/v1/'))return failure(404,'Not found',false);
-    const cors=req.headers.get('origin')===ORIGIN;
+    const requestOrigin=req.headers.get('origin');
+    const cors=ALLOWED_ORIGINS.has(requestOrigin)?requestOrigin:null;
     if(req.method==='OPTIONS'){
       if(!cors)return failure(403,'Origin not allowed',false);
       return new Response(null,{status:204,headers:{
-        'access-control-allow-origin':ORIGIN,
+        'access-control-allow-origin':cors,
         'access-control-allow-methods':'GET, POST, PUT, OPTIONS',
         'access-control-allow-headers':'Authorization, Content-Type',
         'access-control-max-age':'600','vary':'Origin','cache-control':'no-store'}});
