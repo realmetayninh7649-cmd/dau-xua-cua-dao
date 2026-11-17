@@ -296,7 +296,8 @@ function videoSource(raw){
     const seoHref=(['people','posts'].includes(kind) && record.published && /^[a-z0-9][a-z0-9_-]{0,180}$/.test(record.slug||''))
       ?'/'+(kind==='people'?'ho-so':'bien-khao')+'/'+encodeURIComponent(record.slug)+'.html'
       :'';
-    const seoLink=seoHref?'<p class="detail-seo-link"><a class="btn btn-outline" href="'+escape(seoHref)+'" target="_blank" rel="noopener noreferrer">Đọc bản công khai trên trang riêng ↗</a></p>':'';
+    // Trang SEO được sinh theo lịch; ẩn nút cho tới khi tệp đã được triển khai thật sự (tránh 404).
+    const seoLink=seoHref?'<p class="detail-seo-link" hidden><a class="btn btn-outline" href="'+escape(seoHref)+'" target="_blank" rel="noopener noreferrer">Đọc bản công khai trên trang riêng ↗</a></p>':'';
     const archiveCode=record.archive_code||'';
     const archivePanel=archiveCode&&record.slug?`<section class="gdd-archive-qr" data-gdd-archive-qr data-archive-code="${escape(archiveCode)}" data-archive-url="${escape(archiveLink(kind,record))}">
       <div class="gdd-archive-qr-heading"><strong>MÃ ĐỊNH DANH TƯ LIỆU</strong><code>${escape(archiveCode)}</code></div>
@@ -308,6 +309,13 @@ function videoSource(raw){
       <small class="gdd-archive-qr-status" data-gdd-qr-status></small></div></div></section>`:'';
     $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${pdfFileLink}${seoLink}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${archivePanel}${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
     // Chỉ tải ảnh có dấu đối với hồ sơ Chức sắc; không đổi dữ liệu hoặc file gốc.
+    if(seoHref){
+      const seoRow=$('.detail-seo-link',$('#detail-content'));
+      // Không đoán kết quả từ trạng thái Supabase: phải xác nhận URL trả về 200.
+      fetch(seoHref,{method:'HEAD',cache:'no-store'})
+        .then(response=>{if(response.ok&&seoRow?.isConnected)seoRow.hidden=false;})
+        .catch(()=>{});
+    }
     $('#detail-content').dataset.gddKind=kind;
     // Thẻ QR Chức sắc: hiển thị ngay dưới tên/phẩm vị, phía trên chơn dung.
     // Tái sử dụng mã QR và hai nút có sẵn, không thay đổi mã hay liên kết hồ sơ.
