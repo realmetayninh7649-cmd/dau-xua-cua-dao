@@ -1,4 +1,4 @@
-/* GDDĐ v2.0.0-DK01.4 - Trang quản trị: bảo tồn bản gốc trước khi công bố ảnh nhẹ.
+/* GDDĐ v2.0.0-DK01.4.1 - Trang quản trị: bảo tồn bản gốc trước khi công bố ảnh nhẹ.
    KHÔNG dùng secret/service_role và không cấp đường dẫn tải bản nguyên mẫu. */
 (() => {
   'use strict';
@@ -140,6 +140,19 @@
     }
     const url=location.origin+location.pathname.replace(/[^/]*$/,'')+'r2-xem.html?asset='+encodeURIComponent(id);
     let note='';
+    // Unpublishing a R2 reader must also hide its linked document card.
+    // Otherwise the public website would retain a broken link.
+    if(!publish&&record.record_kind==='documents'&&record.role==='primary'&&record.record_id){
+      const {data:documentRow,error:readError}=await client.from('documents')
+        .select('id,file_url,published').eq('id',record.record_id).maybeSingle();
+      if(readError)throw Error('R2 đã ẩn, nhưng chưa kiểm tra được bài Tài liệu số hóa: '+readError.message);
+      if(documentRow?.published&&documentRow.file_url===url){
+        const {error:hideError}=await client.from('documents').update({published:false})
+          .eq('id',record.record_id);
+        if(hideError)throw Error('R2 đã ẩn, nhưng chưa ẩn được bài trên danh mục: '+hideError.message);
+        note='Đã ẩn cả bản xem R2 và bài Tài liệu số hóa có liên kết.';
+      }
+    }
     if(publish&&alsoPublishRecord&&record.record_kind==='documents'&&record.role==='primary'&&record.record_id){
       const {error:docError}=await client.from('documents')
         .update({file_url:url,published:true}).eq('id',record.record_id);
@@ -169,6 +182,60 @@
     }
     return {...result,url,notice:note};
   }
+
+  function libraryViewerUrl(id){
+    if(!UUID.test(id))throw Error('Mã tư liệu R2 không hợp lệ.');
+    return 'https://realmetayninh7649-cmd.github.io/dau-xua-cua-dao/r2-xem.html?asset='+id;
+  }
+  // Library publishing is admin-only and opt-in; never infers unverified provenance.
+  async function attachPublishedDocument(id,{title,summary='',date='',sources=''}={}){
+    const record=await getRecord(id);
+    if(record.media_kind!=='document'||record.public_view!==true)
+      throw Error('Chỉ có thể lập hồ sơ từ bản xem tài liệu ĐÃ công bố.');
+    if(record.record_id&&record.record_kind==='documents')
+      throw Error('Tài liệu này đã được liên kết với hồ sơ Tài liệu số hóa.');
+    if(record.record_id||record.role!=='vault')
+      throw Error('Tư liệu đang thuộc một bài khác, không thể tạo hồ sơ trùng.');
+    const safeTitle=String(title||'').trim().slice(0,200);
+    if(safeTitle.length<8)throw Error('Hãy nhập nhan đề tài liệu đầy đủ (ít nhất 8 ký tự).');
+    const view=await requestR2('GET','/v1/public/'+id);
+    if(view.id!==id||view.kind!=='document'||!Number.isInteger(view.pageCount)||view.pageCount<1)
+      throw Error('R2 chưa xác nhận bản xem hợp lệ; không thể đăng bài.');
+    const url=libraryViewerUrl(id);
+    // Check before insert, so retries after a partial failure never create duplicate entries.
+    const {data:previous,error:checkError}=await client.from('documents')
+      .select('id,archive_code').eq('file_url',url).limit(1);
+    if(checkError)throw Error('Chưa kiểm tra được hồ sơ có sẵn: '+checkError.message);
+    let doc=previous?.[0]||null;
+    if(!doc){
+      const suffix=id.slice(0,8)+'-'+Date.now().toString(36);
+      const slug='r2-'+safeTitle.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/đ/gi,'d').toLowerCase().replace(/[^a-z0-9]+/g,'-')
+        .replace(/^-+|-+$/g,'').slice(0,60)+'-'+suffix;
+      const defaultSummary=view.viewSource==='docx_text'
+        ?'Bản đọc chữ DOCX, không giữ bố cục tài liệu gốc.'
+        :'Bản đọc PDF theo từng trang; bản nguyên mẫu lưu riêng trong kho R2.';
+      const fields={
+        title:safeTitle,slug,summary:String(summary||'').trim().slice(0,900)||defaultSummary,
+        document_date:String(date||'').trim().slice(0,140)||null,
+        sources:String(sources||'').trim().slice(0,2000)||null,
+        file_url:url,published:true
+      };
+      const {data:created,error:createError}=await client.from('documents').insert(fields)
+        .select('id,archive_code').single();
+      if(createError||!created?.id)throw Error('Không tạo được hồ sơ Tài liệu số hóa: '+(createError?.message||'không có ID'));
+      doc=created;
+    }
+    const {data:linked,error:linkError}=await client.from('gdd_r2_assets')
+      .update({record_kind:'documents',record_id:doc.id,role:'primary'})
+      .eq('asset_id',id).is('record_id',null).select('asset_id').maybeSingle();
+    if(linkError||!linked)throw Error('Hồ sơ '+(doc.archive_code||doc.id)+
+      ' đã được tạo nhưng chưa gắn xong chỉ mục R2. KHÔNG đăng lại; hãy báo quản trị để kiểm tra: '+
+      (linkError?.message||'thiếu bản ghi được phép cập nhật'));
+    window.dispatchEvent?.(new CustomEvent('gdd-r2-document-added',{detail:{id:doc.id,assetId:id}}));
+    return {id:doc.id,archiveCode:doc.archive_code,url};
+  }
+
   function controlButton(text,click,css=''){
     const button=document.createElement('button');
     button.type='button';button.textContent=text;button.className=css;
@@ -259,6 +326,42 @@
       }catch(error){setStatus('Chưa ẩn được: '+(error?.message||error))}
       finally{button.disabled=false}
     },'gdd-r2-secondary'));
+    if(entry.media_kind==='document'&&entry.public_view===true&&
+       !entry.record_id&&entry.role==='vault'){
+      const form=document.createElement('details');
+      form.className='gdd-r2-library-form';
+      const heading=document.createElement('summary');
+      heading.textContent='Đưa bản xem này vào mục Tài liệu số hóa';
+      form.appendChild(heading);
+      const field=(caption,value='',isLong=false)=>{
+        const label=document.createElement('label');
+        label.textContent=caption;
+        const input=document.createElement(isLong?'textarea':'input');
+        if(!isLong)input.type='text';
+        input.value=value;input.maxLength=isLong?2000:200;
+        label.appendChild(input);form.appendChild(label);return input;
+      };
+      const candidate=String(entry.original_name||'Tư liệu').replace(/\.(pdf|docx)$/i,'')
+        .replace(/^[0-9]+[-_. ]+/,'').replace(/[-_]+/g,' ').trim();
+      const titleInput=field('Nhan đề (kiểm tra lại theo tài liệu gốc)',candidate);
+      const dateInput=field('Ngày hoặc năm văn kiện (không tự suy đoán)','');
+      const summaryInput=field('Lời giới thiệu ngắn','',true);
+      const sourcesInput=field('Nguồn tư liệu / xuất xứ (nếu đã xác minh)','',true);
+      form.appendChild(controlButton('Đăng vào Tài liệu số hóa',async event=>{
+        const button=event.currentTarget;button.disabled=true;
+        try{
+          const outcome=await attachPublishedDocument(entry.asset_id,{
+            title:titleInput.value,date:dateInput.value,
+            summary:summaryInput.value,sources:sourcesInput.value
+          });
+          setStatus('Đã tạo hồ sơ '+(outcome.archiveCode||outcome.id)+
+            ' trong mục Tài liệu số hóa. Độc giả chỉ xem bản đã duyệt: '+outcome.url);
+          await refresh();
+        }catch(error){setStatus('Chưa liên kết được: '+(error?.message||error))}
+        finally{button.disabled=false}
+      }));
+      details.appendChild(form);
+    }
     if(entry.public_view){
       const link=document.createElement('a');link.className='gdd-r2-reader-link';
       link.href=VIEW_PAGE+encodeURIComponent(entry.asset_id);
@@ -328,5 +431,5 @@
     const input=$('gdd-r2-vault-files');
     if(input)input.value='';
   }
-  window.GDDR2 = Object.freeze({archive,link,refresh,open,close,prepareDocument,setPublication});
+  window.GDDR2 = Object.freeze({archive,link,refresh,open,close,prepareDocument,setPublication,attachPublishedDocument});
 })();
