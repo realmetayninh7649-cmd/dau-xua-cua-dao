@@ -211,9 +211,12 @@
         const page=document.createElement('span');page.className='gdd-album-page';page.textContent=String(i+1).padStart(2,'0')+'.';
         caption.append(page,document.createTextNode(item.caption?.trim()||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu')));
         figure.appendChild(caption);
-        // Hồ sơ Chức Sắc: không cung cấp lối mở ảnh gốc ở danh sách ảnh.
-        // Vẫn giữ đường dẫn Đọc tài liệu cho PDF/Word và các chuyên mục khác.
-        if(isDocument||kind!=='people'){
+        // Ảnh trong Chức Sắc và Hình ảnh đã mở trực tiếp khi chạm hình.
+        // Vẫn giữ link mở tài liệu đính kèm PDF/Word, không ảnh hưởng các mục khác.
+        const isImageCollection=kind==='media'||
+          target.closest('#detail-content')?.dataset.gddDisplayTarget==='media'||
+          (kind==='posts'&&slug==='mot-so-thu-but-chu-ky-va-an-moc-cua-chu-vi-tien-boi-dai-dao-l81pg2');
+        if(isDocument||(!isImageCollection&&kind!=='people')){
           const original=document.createElement('div'),open=document.createElement('a');
           open.href=readingUrl;open.target='_blank';open.rel='noopener noreferrer';open.className='gdd-album-open';
           open.textContent=isDocument?'Đọc tài liệu ↗':'Mở ảnh tư liệu ↗';original.appendChild(open);
