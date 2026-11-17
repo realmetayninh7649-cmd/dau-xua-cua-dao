@@ -110,7 +110,10 @@ test('ảnh xem public theo lựa chọn, tải chỉ là JPEG tối ưu khi cho
    assert.equal((await worker.fetch(req('/v1/public/'+id+'/download'),env)).status,404);
    const change=await worker.fetch(req('/v1/assets/'+id+'/publication','POST',{publish:true,allowDownload:true},true,'application/json'),env);
    assert.equal(change.status,200);
-   assert.equal((await worker.fetch(req('/v1/public/'+id+'/download'),env)).status,200);
+   const downloadable=await worker.fetch(req('/v1/public/'+id+'/download'),env);
+   assert.equal(downloadable.status,200);
+   assert.match(downloadable.headers.get('content-disposition'),/attachment/);
+   assert.doesNotMatch(downloadable.headers.get('content-disposition'),/original\.png/);
    assert.equal((await worker.fetch(req('/v1/assets/'+id),env)).status,403);
    assert.ok(!b.readKeys.some(k=>k.startsWith('originals/')));
  }finally{restore()}
