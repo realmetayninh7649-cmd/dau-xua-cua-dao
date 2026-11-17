@@ -35,6 +35,8 @@ jobs:
           node --check tests/dk013-admin-smoke.mjs
           node --check tests/dk014-reader-smoke.mjs
           node --check r2-xem.mjs
+          node --check gdd-document-router.js
+          node --check tests/dk015-unified-reader-smoke.mjs
           node --check dao-su-albums.js
       - name: "Cai Playwright Core"
         run: npm install --no-save playwright-core@1.56.1
