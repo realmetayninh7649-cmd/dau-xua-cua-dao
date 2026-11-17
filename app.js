@@ -317,6 +317,8 @@ function videoSource(raw){
         .catch(()=>{});
     }
     $('#detail-content').dataset.gddKind=kind;
+    // Đánh dấu đúng nơi đang trưng bày: bài chuyển sang Hình ảnh vẫn giữ loại gốc.
+    $('#detail-content').dataset.gddDisplayTarget=displayTarget(kind,record);
     // Thẻ QR Chức sắc: hiển thị ngay dưới tên/phẩm vị, phía trên chơn dung.
     // Tái sử dụng mã QR và hai nút có sẵn, không thay đổi mã hay liên kết hồ sơ.
     if(kind==='people'&&archiveCode){
