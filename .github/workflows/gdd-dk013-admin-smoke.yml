@@ -46,3 +46,4 @@ jobs:
           sleep 2
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/dk013-admin-smoke.mjs
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/dk014-reader-smoke.mjs
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/dk015-unified-reader-smoke.mjs
