@@ -22,7 +22,7 @@
     .gdd-image-action:hover { background:#e5eee8; }
     .gdd-image-download-status { flex-basis:100%; font-size:11px; color:#386454; line-height:1.5; }
     .gdd-image-viewer[hidden] { display:none!important; }
-    #gdd-image-original[hidden] { display:none!important; }
+    #gdd-image-original[hidden], #gdd-image-download[hidden] { display:none!important; }
     .gdd-image-viewer { position:fixed!important; z-index:10000!important; inset:0;
       display:flex; flex-direction:column; width:100vw!important; max-width:100vw!important; box-sizing:border-box; background:#0d1213; color:#f4f5f1;
       font:500 13px/1.5 'Be Vietnam Pro',system-ui,sans-serif;
@@ -174,8 +174,13 @@
     title=(item.title||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(item.isPerson);
     full.style.visibility='';
     full.alt=title;full.removeAttribute('src');full.src=url;
-    orig.href=url;orig.hidden=false;
-    download.textContent=personPhoto?'↓ Tải Ảnh':'↓ Tải ảnh gốc';
+    // Chức Sắc: không cung cấp nút tải hay mở nguồn ảnh trong trình xem.
+    // Các chuyên mục khác giữ nguyên hai lựa chọn này.
+    if(personPhoto) orig.removeAttribute('href');
+    else orig.href=url;
+    orig.hidden=personPhoto;
+    download.hidden=personPhoto;
+    download.textContent='↓ Tải ảnh gốc';
     loading.hidden=false;loading.textContent='Đang mở ảnh…';
     refreshArrows();
     caption.textContent='Vuốt trái/phải để chuyển ảnh; chụm hai ngón để phóng to.';
@@ -210,7 +215,7 @@
     caption.textContent=`Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · ${gallery.length>1?'Vuốt trái/phải để chuyển ảnh. ':''}Chạm hai lần hoặc chụm hai ngón để phóng to.`;
   }
   full.addEventListener('load',imageReady);
-  full.addEventListener('error',()=>{loading.hidden=false;loading.textContent='Không thể hiển thị ảnh. Hãy chọn “Mở ảnh gốc”.';});
+  full.addEventListener('error',()=>{loading.hidden=false;loading.textContent=personPhoto?'Không thể hiển thị ảnh tư liệu. Xin thử lại sau.':'Không thể hiển thị ảnh. Hãy chọn “Mở ảnh gốc”.';});
   function closeImage(navigate=true){
     if(viewer.hidden)return;
     viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
@@ -341,7 +346,7 @@
       noticeDownload(btn,'Nguồn ảnh không cho tải trực tiếp. Nhấn “Mở ảnh gốc”, rồi chạm giữ ảnh để lưu trên iPhone.');
     } finally {btn.disabled=false;btn.textContent=old;}
   }
-  download.addEventListener('click',()=>downloadImage(source,title,download));
+  download.addEventListener('click',()=>{if(!personPhoto)downloadImage(source,title,download);});
   
   // Chỉ ảnh trong khu Hồ sơ Chức sắc, không áp dụng cho Hình ảnh, Video hoặc Biên khảo.
   function isPersonFrame(frame){
@@ -370,37 +375,46 @@
     openImage(src,imgTitle(img),isPersonFrame(frame),img);
   },true);
 
-  // Thẻ chi tiết được tạo động: tải nguyên dữ liệu ảnh từ nguồn, không đóng tem.
+  // Chức Sắc chỉ có chế độ xem ảnh; các chuyên mục khác vẫn có thể mở hoặc tải.
   const detail=document.getElementById('detail-content');
   if(detail){
     const injectControls=()=>{
       const isPerson=detail.dataset.gddKind==='people';
-      // Bộ ảnh liên quan trong hồ sơ Chức sắc: giữ thao tác tải nhưng không đóng tem.
       if(isPerson){
-        detail.querySelectorAll('.gdd-album-open:not([data-gdd-person-download])').forEach(link=>{
-          link.dataset.gddPersonDownload='1';
-          link.textContent='↓ Tải Ảnh';
-          link.removeAttribute('target');
-          link.addEventListener('click',event=>{
-            event.preventDefault();
-            downloadImage(link.href,link.closest('figure')?.querySelector('figcaption')?.textContent||'Chức sắc',link);
-          });
+        // Loại các đường dẫn mở/tải ảnh do giao diện cũ thêm vào album Chức Sắc.
+        detail.querySelectorAll('.gdd-album-figure .gdd-album-open').forEach(link=>{
+          // Không loại bỏ liên kết Đọc tài liệu (PDF/Word).
+          if(!link.closest('figure')?.querySelector('.gdd-album-pdf-tile')) link.remove();
         });
+        // Nếu đã render từ phiên bản trước, loại luôn nút tải ở khu ảnh bìa.
+        detail.querySelectorAll('.gdd-image-actions [data-gdd-image-save]').forEach(button=>button.remove());
       }
       const cover=detail.querySelector('.detail-cover');
       const img=cover?.querySelector('img');
-      if(!img||cover.nextElementSibling?.classList.contains('gdd-image-actions'))return;
-      const bar=document.createElement('div');bar.className='gdd-image-actions';
-      const show=document.createElement('button');
-      show.type='button';show.className='gdd-image-action';show.textContent='⤢ Xem ảnh toàn màn hình';
-      show.addEventListener('click',()=>openImage(img.currentSrc||img.src,imgTitle(img),
-        detail.dataset.gddKind==='people',img));
-      const save=document.createElement('button');
-      save.type='button';save.className='gdd-image-action';
-      save.textContent=isPerson?'↓ Tải Ảnh':'↓ Tải ảnh gốc';
-      save.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),
-        save));
-      bar.append(show,save);cover.after(bar);
+      if(!img)return;
+      let bar=cover.nextElementSibling?.classList.contains('gdd-image-actions')?cover.nextElementSibling:null;
+      if(!bar){
+        bar=document.createElement('div');bar.className='gdd-image-actions';
+        cover.after(bar);
+      }
+      if(!bar.querySelector('[data-gdd-image-show]')){
+        const show=document.createElement('button');
+        show.type='button';show.className='gdd-image-action';
+        show.dataset.gddImageShow='1';show.textContent='⤢ Xem ảnh toàn màn hình';
+        show.addEventListener('click',()=>openImage(img.currentSrc||img.src,imgTitle(img),
+          detail.dataset.gddKind==='people',img));
+        bar.append(show);
+      }
+      const save=bar.querySelector('[data-gdd-image-save]');
+      if(isPerson){
+        if(save)save.remove();
+      }else if(!save){
+        const button=document.createElement('button');
+        button.type='button';button.className='gdd-image-action';
+        button.dataset.gddImageSave='1';button.textContent='↓ Tải ảnh gốc';
+        button.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),button));
+        bar.append(button);
+      }
     };
     const observer=new MutationObserver(injectControls);
     observer.observe(detail,{childList:true,subtree:true});
