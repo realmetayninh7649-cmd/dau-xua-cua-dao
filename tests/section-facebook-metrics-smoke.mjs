@@ -23,9 +23,9 @@ try{
      });
      assert.deepEqual(state.missing,[],label+': missing section banner');
      assert.ok(state.original,label+': original biên khảo feature missing');
-     assert.equal(state.about.length,2,label+': two pages in Giới thiệu');
+     assert.equal(state.about.length,0,label+': Facebook pages must not appear in Lời Ngỏ');
      assert.equal(state.footer.length,2,label+': two pages in footer');
-     assert.ok(state.about.includes(pageURL)&&state.footer.includes(pageURL),label+': restoration page link');
+     assert.ok(state.footer.includes(pageURL),label+': restoration page footer link');
      assert.ok(state.overflow<=20,label+': overflow '+state.overflow);
      console.log('SECTION FACEBOOK PASS',label);
    }finally{await page.close();}
