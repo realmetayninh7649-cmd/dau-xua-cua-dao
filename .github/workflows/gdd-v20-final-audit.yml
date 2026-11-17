@@ -1,0 +1,75 @@
+name: "GDD v2.0 - Kiem thu tong the truoc chot phien ban"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gdd-v20-final-audit.yml"
+      - "scripts/dk016_preserve_legacy_pdfs.py"
+      - "app.js"
+      - "index.html"
+      - "gdd-r2-admin.js"
+      - "gdd-document-router.js"
+      - "r2-xem.mjs"
+      - "dao-su-albums.js"
+      - "tests/**"
+      - "workers/gdd-r2-gateway/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gdd-v20-final-audit.yml"
+      - "scripts/dk016_preserve_legacy_pdfs.py"
+      - "app.js"
+      - "index.html"
+      - "gdd-r2-admin.js"
+      - "gdd-document-router.js"
+      - "r2-xem.mjs"
+      - "dao-su-albums.js"
+      - "tests/**"
+      - "workers/gdd-r2-gateway/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: "Kiem tra luong anh, PDF, QR, lich Dao, am thanh tren desktop/iPhone"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Kiem tra cu phap JavaScript/Python"
+        run: |
+          set -eu
+          for file in app.js dao-su-albums.js gdd-r2-admin.js gdd-document-router.js r2-xem.mjs gdd-v2-layout.js gdd-v2-search.js gdd-audio-radio.js gdd-calendar.js; do
+            if test -f "$file"; then node --check "$file"; fi
+          done
+          node --check workers/gdd-r2-gateway/src/index.mjs
+          node --check workers/gdd-r2-gateway/client/uploader.mjs
+          node --check workers/gdd-r2-gateway/client/document-view.mjs
+          python3 -m py_compile scripts/dk016_preserve_legacy_pdfs.py
+      - name: "Test nghiep vu va an toan R2"
+        run: node --test workers/gdd-r2-gateway/test/*.test.mjs
+      - name: "Cai browser smoke runner"
+        run: npm install --no-save playwright-core@1.56.1
+      - name: "Thu nghiem web tai cho: Desktop va man hinh iPhone"
+        run: |
+          set -eu
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/gdd-v20-http.log 2>&1 &
+          sleep 2
+          export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          node tests/dk013-admin-smoke.mjs
+          node tests/dk014-reader-smoke.mjs
+          node tests/dk015-unified-reader-smoke.mjs
+          node tests/v20-active-site-smoke.mjs
+      - name: "Luu anh chung cu khi smoke test khong dat"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-v20-smoke-failures
+          path: |
+            /tmp/dk*.png
+            /tmp/v20-*.png
+          if-no-files-found: ignore
