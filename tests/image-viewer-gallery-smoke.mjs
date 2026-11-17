@@ -38,6 +38,8 @@ try {
       assert.equal(state.hidden,false,label+': viewer did not open; '+JSON.stringify(state)+' errors='+browserErrors.join(';'));
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
       assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh tư liệu 2 · 2/3',label+': opening image 2');
+      assert.equal(await page.locator('#gdd-image-download').isVisible(),true,label+': gallery download still available');
+      assert.equal(await page.locator('#gdd-image-original').isVisible(),true,label+': gallery original link still available');
       assert.equal(await page.locator('#gdd-image-prev').isVisible(),true);
       assert.equal(await page.locator('#gdd-image-next').isVisible(),true);
       await page.locator('#gdd-image-next').click();
@@ -81,7 +83,7 @@ try {
       assert.equal(await page.locator('#gdd-image-scale').innerText(),'100%');
       await page.keyboard.press('Escape');
       await page.locator('#gdd-image-viewer').waitFor({state:'hidden'});
-      // Chức Sắc: hiển thị và tải nguồn ảnh nguyên trạng, không canvas phủ tem.
+      // Chức Sắc: giữ nguyên ảnh và trình xem nhưng không hiển thị Tải Ảnh/Mở ảnh gốc.
       await page.evaluate(()=>{
         const people=document.createElement('div');people.id='people-grid';
         const person=document.createElement('div');person.className='person-media';
@@ -92,26 +94,30 @@ try {
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
       const person=await page.evaluate(()=>({
         imageUrl:document.getElementById('gdd-image-full').src,
-        originalUrl:document.getElementById('gdd-image-original').href,
-        originalVisible:!document.getElementById('gdd-image-original').hidden,
+        originalHref:document.getElementById('gdd-image-original').getAttribute('href'),
         stampExists:!!document.getElementById('gdd-image-stamp'),
-        watermarkLoaded:!!window.GDDPersonPhotoWatermark,
-        downloadText:document.getElementById('gdd-image-download').textContent,
-        caption:document.getElementById('gdd-image-caption').textContent
+        watermarkLoaded:!!window.GDDPersonPhotoWatermark
       }));
       assert.ok(person.imageUrl.endsWith('/logo.png'),label+': source image preserved');
-      assert.equal(person.originalUrl,person.imageUrl,label+': source link preserved');
-      assert.equal(person.originalVisible,true,label+': original source link visible');
-      assert.equal(person.stampExists,false,label+': must not overlay watermark canvas');
-      assert.equal(person.watermarkLoaded,false,label+': no watermark script requested');
-      assert.ok(!/Tem Guilloché|hologram/i.test(person.caption),label+': no watermark text');
-      const [fileDownload]=await Promise.all([
-        page.waitForEvent('download',{timeout:10000}),
-        page.locator('#gdd-image-download').click()
-      ]);
-      assert.equal(fileDownload.suggestedFilename(),'logo.png',label+': untouched source download');
+      assert.equal(person.originalHref,null,label+': no original link in person view');
+      assert.equal(await page.locator('#gdd-image-original').isVisible(),false,label+': hide original image link');
+      assert.equal(await page.locator('#gdd-image-download').isVisible(),false,label+': hide built-in person download');
+      assert.equal(person.stampExists,false,label+': watermark overlay stays disabled');
+      assert.equal(person.watermarkLoaded,false,label+': watermark script stays disabled');
       await page.locator('#gdd-image-close').click();
-      console.log('PERSON PHOTO NO WATERMARK PASS',label,'display/original/download');
+      // Phần hồ sơ Chức Sắc: chỉ có nút xem ảnh toàn màn hình, không có nút tải.
+      await page.evaluate(()=>{
+        const detail=document.getElementById('detail-content');
+        detail.dataset.gddKind='people';
+        detail.innerHTML='<div class="detail-cover"><img src="/logo.png" alt="Di ảnh tư liệu"></div>';
+      });
+      await page.waitForFunction(()=>{
+        const bar=document.querySelector('#detail-content .gdd-image-actions');
+        return bar?.querySelector('[data-gdd-image-show]');
+      });
+      assert.equal(await page.locator('#detail-content .gdd-image-actions [data-gdd-image-save]').count(),0,label+': no person cover download button');
+      assert.equal(await page.locator('#detail-content .gdd-image-actions [data-gdd-image-show]').count(),1,label+': full screen view kept');
+      console.log('PERSON IMAGE UI PASS',label,'no download/original; gallery controls preserved');
       console.log('IMAGE GALLERY PASS',label,'arrows/swipe/keyboard/zoom/close');
     } catch(error) {
       console.error('IMAGE GALLERY FAIL',label,error.message);
