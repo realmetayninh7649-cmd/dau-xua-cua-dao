@@ -9,7 +9,6 @@ import argparse
 import hashlib
 import os
 import pathlib
-import subprocess
 import sys
 import tempfile
 import urllib.request
@@ -67,15 +66,50 @@ def fetch_original(path: str, expected: int, output: pathlib.Path) -> tuple[str,
     return digest, actual
 
 
-def wrangler(*arguments: str) -> None:
-    command = ["npx", "--yes", "wrangler@4.159.0", "r2", "object", *arguments]
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
-    if result.returncode:
-        detail = (result.stderr or result.stdout or "").strip()[-1100:]
-        raise RuntimeError(f"Wrangler R2 command failed (exit {result.returncode}): {detail}")
+def get_s3_client():
+    """Use bucket-scoped Cloudflare S3 credentials, never a broad REST admin token."""
+    key = os.getenv("GDD_R2_ARCHIVE_ACCESS_KEY_ID")
+    secret = os.getenv("GDD_R2_ARCHIVE_SECRET_ACCESS_KEY")
+    account = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+    if not key or not secret or not account:
+        raise RuntimeError("Missing bucket-scoped R2 S3 credentials in GitHub Actions; NO files copied")
+    import boto3
+    from botocore.config import Config
+    return boto3.client(
+        service_name="s3",
+        endpoint_url=f"https://{account}.r2.cloudflarestorage.com",
+        aws_access_key_id=key,
+        aws_secret_access_key=secret,
+        region_name="auto",
+        config=Config(
+            signature_version="s3v4",
+            s3={"addressing_style": "path"},
+            retries={"max_attempts": 3, "mode": "standard"},
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
+        ),
+    )
 
 
-def preserve(path: str, expected: int, directory: pathlib.Path, source_only: bool) -> None:
+def verify_private_copy(s3, key: str, output: pathlib.Path, source_hash: str, source_len: int):
+    response = s3.get_object(Bucket=BUCKET, Key=key)
+    reader = response["Body"]
+    try:
+        with output.open("wb") as f:
+            for chunk in iter(lambda: reader.read(1024 * 1024), b""):
+                f.write(chunk)
+    finally:
+        reader.close()
+    verified_hash, verified_len = sha256(output)
+    if verified_len != source_len or verified_hash != source_hash:
+        raise RuntimeError(
+            "INTEGRITY FAILURE: R2 copy differs from original; "
+            f"source={source_hash}/{source_len}, R2={verified_hash}/{verified_len}"
+        )
+    return verified_hash, verified_len
+
+
+def preserve(path: str, expected: int, directory: pathlib.Path, source_only: bool, s3=None) -> None:
     source_file = directory / "source.pdf"
     verified_file = directory / "r2-verified.pdf"
     if source_file.exists():
@@ -88,16 +122,24 @@ def preserve(path: str, expected: int, directory: pathlib.Path, source_only: boo
     print(f"SOURCE OK: {path}; bytes={source_len}; SHA256={source_hash}", flush=True)
     if source_only:
         return
-    object_path = BUCKET + "/" + object_key
-    wrangler("put", object_path, "--remote", "--file", str(source_file),
-             "--content-type", "application/pdf", "--force")
-    wrangler("get", object_path, "--remote", "--file", str(verified_file))
-    verified_hash, verified_len = sha256(verified_file)
-    if verified_len != source_len or verified_hash != source_hash:
-        raise RuntimeError(
-            f"INTEGRITY FAILURE: private R2 does not match source: {path}; "
-            f"source={source_hash}/{source_len}; r2={verified_hash}/{verified_len}"
-        )
+    if s3 is None:
+        raise RuntimeError("Private R2 S3 client missing; nothing was uploaded")
+    from botocore.exceptions import ClientError
+    try:
+        s3.head_object(Bucket=BUCKET, Key=object_key)
+        exists = True
+    except ClientError as exc:
+        code = str(exc.response.get("Error", {}).get("Code", ""))
+        if code not in ("404", "NoSuchKey", "NotFound"):
+            raise RuntimeError(f"Cannot verify R2 object existence ({code}); refusing overwrite") from exc
+        exists = False
+    if not exists:
+        with source_file.open("rb") as original:
+            s3.put_object(Bucket=BUCKET, Key=object_key, Body=original,
+                          ContentLength=source_len, ContentType="application/pdf")
+    verified_hash, verified_len = verify_private_copy(
+        s3, object_key, verified_file, source_hash, source_len
+    )
     print(f"R2 PRIVATE BACKUP VERIFIED: {object_key}; bytes={verified_len}; SHA256={verified_hash}", flush=True)
 
 
@@ -105,14 +147,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-only", action="store_true", help="Check public sources without R2 writes")
     args = parser.parse_args()
-    if not args.source_only:
-        if not os.getenv("CLOUDFLARE_API_TOKEN") or not os.getenv("CLOUDFLARE_ACCOUNT_ID"):
-            raise RuntimeError("Missing Cloudflare action secrets; NO files copied")
+    s3 = None if args.source_only else get_s3_client()
     with tempfile.TemporaryDirectory(prefix="gdd-dk016-") as temp:
         folder = pathlib.Path(temp)
         for i, (path, length) in enumerate(PDFS, start=1):
             print(f"Starting PDF {i}/{len(PDFS)}", flush=True)
-            preserve(path, length, folder, args.source_only)
+            preserve(path, length, folder, args.source_only, s3)
     print("DK01.6 source check OK" if args.source_only else "DK01.6 all 3 private backups verified")
     return 0
 
