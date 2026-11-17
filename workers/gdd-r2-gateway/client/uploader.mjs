@@ -87,7 +87,7 @@ export async function createImageVariant(file,variant){
   }
 }
 const json=body=>JSON.stringify(body);
-export async function uploadPreservedAsset(file,{supabase,endpoint=DEFAULT_API,onProgress,onSession,resumeSession}={}){
+export async function uploadPreservedAsset(file,{supabase,endpoint=DEFAULT_API,onProgress,onSession,resumeSession,skipDerivatives=false}={}){
   if(!file||!file.name||!Number.isSafeInteger(file.size)||file.size<1)throw Error('Chưa chọn tệp hợp lệ');
   if(!supabase?.auth?.getSession)throw Error('Cần phiên Quản trị viên Supabase');
   endpoint=endpoint.replace(/\/$/,'');
@@ -124,7 +124,13 @@ export async function uploadPreservedAsset(file,{supabase,endpoint=DEFAULT_API,o
   const images=new Set(['jpeg','jpg','png','webp','gif','tif','tiff','heic','heif','avif']);
   const result={...final,status:'original-preserved',previewReady:false,downloadReady:false,
     originalDownloadPublic:false};
-  if(images.has(ext)){
+  // Album/primary images already receive a public optimized display copy in Supabase.
+  // Keep original R2 bytes private; build extra R2 variants only on explicit demand.
+  if(images.has(ext)&&skipDerivatives){
+    result.status='original-preserved-derivatives-deferred';
+    result.optimizationWarnings=[];
+    emit(onProgress,{phase:'derivatives-deferred'});
+  }else if(images.has(ext)){
     const problems=[];
     for(const variant of ['preview','download']){
       try{
