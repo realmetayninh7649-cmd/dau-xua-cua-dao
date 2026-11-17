@@ -359,6 +359,10 @@ function videoSource(raw){
       // Mỗi lần mở hồ sơ tạo một bước lịch sử, để Back trở về đúng chuyên mục.
       history.pushState({...history.state,__gddLayer:'detail'},'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`);
     }
+    // Ghi nhận khi hồ sơ/bài đã được mở thực sự; không đếm thẻ xem trước.
+    window.dispatchEvent(new CustomEvent('gdd:content-open',{
+      detail:{kind,id:record.id,published:record.published===true,containerId:'detail-content'}
+    }));
   }
   const detailRoute=/^#(nhan-vat|bai-viet|hinh-anh-tu-lieu|video-dao-su|ai-tin|tai-lieu-so-hoa)\//;
   const detailSections={people:'chuc-sac',posts:'bien-khao',media:'hinh-anh',videos:'video-dao-su',obituaries:'ai-tin',documents:'tai-lieu-so-hoa'};
