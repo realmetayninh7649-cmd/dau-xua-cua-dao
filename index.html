@@ -380,7 +380,7 @@
     <div id="admin-editor-area" hidden><div class="editor-logged"><span id="logged-email"></span><button type="button" class="link-button" id="logout-button">Đăng xuất</button></div>
       <section class="gdd-r2-vault" id="gdd-r2-vault-panel" aria-label="Kho tư liệu nguyên mẫu Cloudflare R2" hidden>
         <details>
-          <summary><span aria-hidden="true">☁</span> Kho nguyên mẫu R2 (DK01.4.1) – Bảo tồn, xuất bản và lập hồ sơ Tài liệu số hóa</summary>
+          <summary><span aria-hidden="true">☁</span> Kho nguyên mẫu R2 (DK01.5) – Đọc tài liệu thống nhất, kiểm kê PDF cũ và bảo tồn R2</summary>
           <div class="gdd-r2-vault-body">
             <p>Ảnh và tài liệu gốc được cất riêng trên Cloudflare R2. Ảnh xem/tải được tạo thành phiên bản khác; không có đường dẫn công khai đến bản gốc. Ảnh mới đăng qua biểu mẫu phía dưới sẽ tự được bảo tồn. PDF/Word mới mặc định riêng tư; sau khi đăng nháp, vào đây chọn lại đúng tệp để tạo bản xem từng trang và công bố khi đã rà soát. DOCX là bản đọc chữ, không giữ bố cục Word. Định dạng .doc cũ cần tạo bản đọc PDF riêng.</p>
             <label for="gdd-r2-vault-files">Cất thêm ảnh/PDF/Word riêng (chưa gắn vào bài)</label>
@@ -390,6 +390,9 @@
             <progress id="gdd-r2-vault-progress" max="100" value="0" hidden></progress>
             <p id="gdd-r2-vault-status" role="status" aria-live="polite">Chưa chọn tệp.</p>
             <div id="gdd-r2-vault-list" aria-label="Các tư liệu R2 gần đây"></div>
+            <hr style="border:0;border-top:1px solid #cbd7cc;margin:15px 0">
+            <button type="button" class="gdd-r2-secondary" id="gdd-r2-audit-legacy">Kiểm kê PDF cũ trên toàn Web Đạo</button>
+            <div id="gdd-r2-legacy-results" role="status" aria-live="polite"></div>
           </div>
         </details>
       </section>
