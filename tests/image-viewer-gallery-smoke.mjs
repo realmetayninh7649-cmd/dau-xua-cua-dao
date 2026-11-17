@@ -15,7 +15,7 @@ try {
     await page.route('**/*',route=>route.request().url().startsWith(base)?route.continue():route.abort());
     try {
       await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
-      await page.locator('#gdd-image-viewer').waitFor();
+      await page.locator('#gdd-image-viewer').waitFor({state:'attached'});
       const browserErrors=[];
       page.on('pageerror',error=>browserErrors.push(error.message));
       const state=await page.evaluate(()=>{
