@@ -6,6 +6,9 @@ on:
       - "index.html"
       - "gdd-r2-admin.js"
       - "gdd-r2-admin.css"
+      - "dao-su-albums.js"
+      - "r2-xem.*"
+      - "tests/dk014-reader-smoke.mjs"
       - "tests/dk013-admin-smoke.mjs"
       - ".github/workflows/gdd-dk013-admin-smoke.yml"
   workflow_dispatch:
@@ -28,6 +31,9 @@ jobs:
           node --check app.js
           node --check gdd-r2-admin.js
           node --check tests/dk013-admin-smoke.mjs
+          node --check tests/dk014-reader-smoke.mjs
+          node --check r2-xem.mjs
+          node --check dao-su-albums.js
       - name: "Cai Playwright Core"
         run: npm install --no-save playwright-core@1.56.1
       - name: "Mo giao dien va kiem tra kho R2"
@@ -35,3 +41,4 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/gdd-dk013-server.log 2>&1 &
           sleep 2
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/dk013-admin-smoke.mjs
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/dk014-reader-smoke.mjs
