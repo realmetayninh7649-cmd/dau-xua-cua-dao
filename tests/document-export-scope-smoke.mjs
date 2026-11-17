@@ -30,6 +30,30 @@ try{
       assert.equal(await page.locator('#detail-content [data-gdd-document]').count(),2,
         label+': biên khảo must keep PDF/Word export');
 
+      await page.evaluate(()=>{location.hash='#hinh-anh-tu-lieu/test'});
+      await page.waitForFunction(()=>document.querySelectorAll('#detail-content .gdd-doc-export').length===0);
+      assert.equal(await page.locator('.gdd-doc-export').count(),0,
+        label+': Hình ảnh must not have PDF/Word export');
+
+      await page.evaluate(()=>{location.hash='#bai-viet/mot-so-thu-but-chu-ky-va-an-moc-cua-chu-vi-tien-boi-dai-dao-l81pg2'});
+      await page.waitForFunction(()=>document.querySelectorAll('#detail-content .gdd-doc-export').length===0);
+      assert.equal(await page.locator('.gdd-doc-export').count(),0,
+        label+': pictured thủ bút collection must not have PDF/Word export');
+
+      await page.evaluate(()=>{
+        document.getElementById('detail-content').dataset.gddDisplayTarget='media';
+        location.hash='#bai-viet/moved-to-gallery';
+      });
+      await page.waitForFunction(()=>document.querySelectorAll('#detail-content .gdd-doc-export').length===0);
+      assert.equal(await page.locator('.gdd-doc-export').count(),0,
+        label+': article displayed in Hình ảnh must hide PDF/Word export');
+
+      await page.evaluate(()=>{
+        document.getElementById('detail-content').dataset.gddDisplayTarget='posts';
+        location.hash='#bai-viet/test';
+      });
+      await page.waitForFunction(()=>document.querySelectorAll('#detail-content .gdd-doc-export').length===1);
+
       await page.evaluate(()=>{location.hash='#ai-tin/test'});
       await page.waitForFunction(()=>document.querySelectorAll('#detail-content .gdd-doc-export').length===0);
       assert.equal(await page.locator('.gdd-doc-export').count(),0,
