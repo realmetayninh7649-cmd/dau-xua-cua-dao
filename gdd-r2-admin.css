@@ -15,3 +15,14 @@
 .gdd-r2-item strong{overflow-wrap:anywhere;font-size:.88rem}
 .gdd-r2-item small{color:#53665a}
 .gdd-r2-item code{font-size:.77rem;color:#65736a;overflow-wrap:anywhere}
+
+/* DK01.4 – Nội dung kiểm duyệt bản xem từng trang */
+.gdd-r2-view-actions{margin:8px 0 4px;padding:10px;border:1px solid #c4d2c6;border-radius:9px;background:#fff}
+.gdd-r2-view-actions summary{font-size:.87rem;cursor:pointer;font-weight:750;color:#235e49}
+.gdd-r2-view-actions label{font-size:.83rem;line-height:1.5}
+.gdd-r2-view-actions input[type=file]{max-width:100%;width:100%;box-sizing:border-box;margin-top:5px}
+.gdd-r2-view-actions label.gdd-r2-allow{display:flex;align-items:flex-start;gap:7px;font-weight:500;margin:12px 0}
+.gdd-r2-view-actions label.gdd-r2-allow input{width:18px;height:18px;flex:none}
+.gdd-r2-view-actions button{font-size:.83rem;max-width:100%;padding:10px 12px}
+.gdd-r2-reader-link{display:inline-block;min-height:42px;margin:10px 0 4px;padding:10px 4px;color:#18664f;text-decoration:underline;font-weight:700}
+.gdd-r2-item-status{white-space:pre-wrap;overflow-wrap:anywhere}
