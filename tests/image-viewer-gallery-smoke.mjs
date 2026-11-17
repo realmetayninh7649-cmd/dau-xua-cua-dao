@@ -16,20 +16,26 @@ try {
     try {
       await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
       await page.locator('#gdd-image-viewer').waitFor();
-      await page.evaluate(()=>{
-        const detail=document.querySelector('#detail-content');
-        detail.dataset.gddKind='media';
-        const grid=document.createElement('div');grid.className='gdd-album-grid';
+      const browserErrors=[];
+      page.on('pageerror',error=>browserErrors.push(error.message));
+      const state=await page.evaluate(()=>{
+        // A standalone public gallery: no database activity and no dynamic detail overlay.
+        const grid=document.createElement('div');grid.id='gallery-grid';
+        grid.style.cssText='position:fixed;top:0;left:0;width:5px;height:5px;z-index:1';
         for(let i=1;i<=3;i++){
-          const button=document.createElement('button');
-          button.type='button';button.className='gdd-album-tile detail-cover';
+          const frame=document.createElement('button');
+          frame.type='button';frame.className='gallery-visual';
           const img=document.createElement('img');
           img.src='/logo.png';img.alt='Ảnh tư liệu '+i;
-          button.appendChild(img);grid.appendChild(button);
+          frame.appendChild(img);grid.appendChild(frame);
         }
-        detail.appendChild(grid);
+        document.body.appendChild(grid);
         grid.querySelectorAll('img')[1].click();
+        return {hidden:document.getElementById('gdd-image-viewer')?.hidden,
+          images:grid.querySelectorAll('img').length,
+          title:document.getElementById('gdd-image-title')?.textContent};
       });
+      assert.equal(state.hidden,false,label+': viewer did not open; '+JSON.stringify(state)+' errors='+browserErrors.join(';'));
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
       assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh tư liệu 2 · 2/3',label+': opening image 2');
       assert.equal(await page.locator('#gdd-image-prev').isVisible(),true);
