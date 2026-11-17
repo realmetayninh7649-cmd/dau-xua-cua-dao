@@ -1,0 +1,13 @@
+/* Thống kê tư liệu công khai: hai chỉ số dạng chữ, không tạo biểu đồ/ảnh nặng. */
+.gdd-content-metrics{box-sizing:border-box;margin:26px 0 14px;padding:14px 16px;
+  border:1px solid #d9d3c4;border-left:3px solid #a88c59;border-radius:8px;
+  background:linear-gradient(120deg,#f9f7ef,#f2f4eb);color:#275348}
+.gdd-content-metrics-title{display:block;margin-bottom:9px;font:700 11px/1.5 'Be Vietnam Pro',system-ui,sans-serif;
+  letter-spacing:.09em;color:#866c42;text-transform:uppercase}
+.gdd-content-metrics-pair{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.gdd-content-metric{display:inline-flex;gap:7px;align-items:center;padding:6px 12px;
+  border:1px solid #d9e1d7;background:#fffdf8;border-radius:8px;
+  font:600 12px/1.5 'Be Vietnam Pro',system-ui,sans-serif}
+.gdd-content-metric strong{font-weight:800;font-variant-numeric:tabular-nums;color:#174a40}
+.gdd-content-metrics small{display:block;margin-top:9px;font:400 10px/1.55 'Be Vietnam Pro',system-ui,sans-serif;color:#6c7770}
+@media(max-width:520px){.gdd-content-metrics{padding:12px}.gdd-content-metrics-pair{gap:7px}.gdd-content-metric{padding:6px 9px;font-size:11px}}
