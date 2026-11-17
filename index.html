@@ -77,10 +77,12 @@
   <link rel="stylesheet" href="gdd-phase3-qr.css?v=20261113-03">
 
   <script src="supabase-config.js"></script>
+<link rel="stylesheet" href="gdd-r2-admin.css?v=20261117-dk013">
+<script defer src="gdd-r2-admin.js?v=20261117-dk013"></script>
   
 <script defer src="gdd-image-optimizer.js?v=20261109-auto6mb-01"></script>
 <script defer src="vendor/qrcode.min.js?v=20261113-local"></script>
-<script defer src="app.js?v=20261117-gallery-subcategory-transfer-02"></script>
+<script defer src="app.js?v=20261117-dk013"></script>
 <script defer src="gdd-archive-qr.js?v=20261113-ios-save-04"></script>
 
   <script defer src="gdd-person-watermark.js?v=20261113-final-master-08"></script>
@@ -375,6 +377,21 @@
   <div class="overlay" id="admin-overlay" hidden><div class="backdrop" data-close="admin"></div><section class="admin-panel" role="dialog" aria-modal="true" aria-labelledby="admin-title"><button class="close-button" type="button" data-close="admin" aria-label="Đóng">×</button><div class="admin-header"><span class="eyebrow">TRANG DÀNH CHO NGƯỜI BIÊN TẬP</span><h2 id="admin-title">Quản trị <em>tư liệu</em></h2><p>Chỉ người được cấp quyền mới có thể đăng, sửa hoặc ẩn bài viết, tiểu sử và hình ảnh.</p></div>
     <div id="admin-login-area"><form id="login-form" class="admin-form"><label>Email quản trị<input type="email" name="email" required autocomplete="username" placeholder="email@example.com"></label><label>Mật khẩu<input type="password" name="password" required autocomplete="current-password" placeholder="Mật khẩu"></label><button class="btn btn-primary" type="submit">Đăng nhập</button><p class="small-note" id="login-message"></p></form></div>
     <div id="admin-editor-area" hidden><div class="editor-logged"><span id="logged-email"></span><button type="button" class="link-button" id="logout-button">Đăng xuất</button></div>
+      <section class="gdd-r2-vault" id="gdd-r2-vault-panel" aria-label="Kho tư liệu nguyên mẫu Cloudflare R2" hidden>
+        <details>
+          <summary><span aria-hidden="true">☁</span> Kho nguyên mẫu R2 (DK01.3) – Lưu ảnh, PDF, Word riêng tư</summary>
+          <div class="gdd-r2-vault-body">
+            <p>Ảnh và tài liệu gốc được cất riêng trên Cloudflare R2. Ảnh xem/tải được tạo thành phiên bản khác; không có đường dẫn công khai đến bản gốc. Ảnh mới đăng qua biểu mẫu phía dưới sẽ tự được bảo tồn.</p>
+            <label for="gdd-r2-vault-files">Cất thêm ảnh/PDF/Word riêng (chưa gắn vào bài)</label>
+            <input type="file" id="gdd-r2-vault-files" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.tif,.tiff,.heic,.heif,.pdf,.doc,.docx">
+            <button type="button" id="gdd-r2-vault-upload">Lưu nguyên mẫu vào R2</button>
+            <button type="button" class="gdd-r2-secondary" id="gdd-r2-vault-refresh">Xem tư liệu đã lưu</button>
+            <progress id="gdd-r2-vault-progress" max="100" value="0" hidden></progress>
+            <p id="gdd-r2-vault-status" role="status" aria-live="polite">Chưa chọn tệp.</p>
+            <div id="gdd-r2-vault-list" aria-label="Các tư liệu R2 gần đây"></div>
+          </div>
+        </details>
+      </section>
       <div class="editor-tabs" role="group" aria-label="Loại tư liệu"><button class="is-selected" type="button" data-kind="people">Chức sắc</button><button type="button" data-kind="videos">Video</button><button type="button" data-kind="obituaries">Ai Tín</button><button type="button" data-kind="documents">Tài liệu số</button><button type="button" data-kind="posts">Biên khảo</button><button type="button" data-kind="media">Hình ảnh</button></div>
       <div class="editor-heading"><h3 id="editor-heading">Thêm hồ sơ Chức sắc</h3><button type="button" class="link-button" id="editor-new">+ Soạn mới</button></div>
       <form id="editor-form" class="admin-form"></form>
@@ -1094,9 +1111,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     input.replaceWith(clean);
     const desc=panel.querySelector('p.gdd-album-note');
     if(desc)desc.innerHTML=nextContext.startsWith('media:')
-      ?'Chọn chung <b>ảnh, PDF và Word (.doc, .docx)</b> trong một Bộ ảnh kèm theo. Ảnh tự tối ưu dưới 6 MB; PDF/Word được giữ nguyên 100% tệp gốc, không nén giảm chất lượng. Tệp lớn tự tải từng phần, không giới hạn 15 MB trong biểu mẫu; hạn mức thực tế tùy Supabase. Có thể chọn thêm nhiều lượt.'
+      ?'Chọn chung <b>ảnh, PDF và Word (.doc, .docx)</b> trong một Bộ ảnh kèm theo. Ảnh tự tối ưu dưới 6 MB; PDF/Word nguyên mẫu được cất riêng trong R2, chưa có đường dẫn tải công khai. Ảnh gốc được bảo tồn, bản ảnh xem được tối ưu. Tệp lớn tải theo phần; có thể chọn thêm nhiều lượt.'
       :nextContext.startsWith('documents:')
-      ?'Chọn <b>nhiều ảnh và nhiều PDF</b> trong một bài Số hóa; ảnh tự tối ưu dưới 6 MB, PDF giữ nguyên bản gốc. PDF lớn tải từng phần, hạn mức do Supabase quyết định. PDF chính vẫn có ô riêng phía trên. Có thể chọn thêm nhiều lượt và ghi chú từng tệp.'
+      ?'Chọn <b>nhiều ảnh và nhiều PDF</b> trong một bài Số hóa; ảnh tự tối ưu dưới 6 MB, PDF nguyên mẫu cất riêng trong R2, chưa công khai bản gốc; ảnh được tối ưu để xem. PDF chính có ô riêng phía trên. Có thể chọn thêm nhiều lượt và ghi chú từng tệp.'
       :'Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, ảnh lớn tự tối ưu dưới 6 MB (JPG/PNG/WebP/HEIC). Nên chọn 10–20 ảnh/lượt trên iPhone.';
     const chooser=clean.closest('label');
     if(chooser){
@@ -1183,9 +1200,27 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         status(message);onProgress?.(message);
         const pdf=isPdf(item.file),word=kind==='media'&&isWord(item.file);
         const docFile=(pdf&&['media','documents'].includes(kind))||word;
-        if(!docFile&&!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
-        const prepared=docFile?item.file:await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{status(message);onProgress?.(message)}});
-        item.file=prepared;
+        // Archive the ORIGINAL File before image optimization; never overwrite item.file.
+        if(!window.GDDR2?.archive)throw Error('Bộ bảo tồn R2 chưa tải xong. Hãy tải lại trang.');
+        const archived=await window.GDDR2.archive(item.file,supa,{
+          recordKind:kind,recordId:id,role:'album',
+          onProgress:info=>{
+            const message=info.phase==='original'
+              ?'Đang cất nguyên mẫu R2: '+Math.round(info.bytes/info.total*100)+'%'
+              :info.phase==='optimizing'?'Đã lưu nguyên mẫu, đang tạo bản '+info.variant+'…':'';
+            if(message){status(message);onProgress?.(message)}
+          }
+        });
+        if(docFile){
+          // PDF/Word remain PRIVATE on R2; never publish a direct file URL.
+          item.saved=true;done++;
+          const message='PDF/Word nguyên mẫu đã bảo tồn riêng trong R2 ('+done+'/'+items.length+
+            ', ID '+archived.id+'). Chưa công khai tệp hay tạo bản xem.';
+          status(message);onProgress?.(message);
+          continue;
+        }
+        if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
+        const prepared=await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{status(message);onProgress?.(message)}});
         const extension=pdf?'pdf':word?wordExt(item.file):EXT[prepared.type];
         if(!extension)throw Error('Không xác định được định dạng tệp: '+item.file.name);
         const suffix=(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2));
@@ -1207,7 +1242,8 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         const progress=`Đã lưu ${done}/${items.length} tệp; còn ${pending()} tệp chờ tải.`;
         status(progress);onProgress?.(progress);
       }
-      status('Đã lưu đủ '+done+' tệp đính kèm.');
+      status('Đã lưu đủ '+done+' tệp. Ảnh xem nhẹ đã đăng, ảnh gốc và tài liệu PDF/Word cất riêng ở R2.');
+      window.GDDR2?.refresh?.();
     }catch(err){
       const raw=String(err?.message||err||'');
       const tooLarge=/too large|entity too large|payload too large|maximum file size|exceeds.*size|413\b|vượt.*dung lượng/i.test(raw);

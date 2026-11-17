@@ -1,7 +1,22 @@
+# Bổ sung DK01.3 — Tích hợp Quản Trị Viên (17/11/2026)
+
+**Trạng thái:** Giao diện và bộ lưu trữ đã được tích hợp để kiểm thử; không tự chuyển dữ liệu cũ.
+
+- Biểu mẫu đăng ảnh chính (`app.js`) và album đính kèm (`index.html`) **lưu tệp nguyên mẫu vào R2 trước khi tối ưu** và lưu ảnh xem nhẹ trên Supabase như cách website đang dùng. URL hiển thị cũ không bị đổi.
+- Bảng `public.gdd_r2_assets` lưu ID bản gốc, kích thước, trạng thái ảnh xem và liên kết bài viết. RLS chỉ cấp SELECT/INSERT/UPDATE cho Quản trị viên, không có DELETE hoặc quyền xem ẩn danh.
+- Trong Quản Trị Viên có ô thu gọn **Kho nguyên mẫu R2 (DK01.3)** để lưu riêng ảnh, PDF, Word và xem danh sách ID tài liệu đã bảo tồn. Ô này không nằm trong menu của độc giả.
+- Tệp PDF/Word mới tải bằng biểu mẫu chính hoặc album **không có URL công khai**. Bài PDF/Word chính mặc định để nháp; tài liệu album được cất riêng, chưa có trình đọc công khai. Các đường dẫn PDF/Word cũ đã công bố trên Supabase **không bị thay đổi**.
+- Mã xử lý ảnh/tệp gốc trong R2 không đổi; việc công bố bản xem PDF/Word, biến ảnh xem R2 thành nguồn phân phối công khai và tự động xử lý các tệp cũ là công việc riêng sau này.
+- Các sửa đổi được thử nghiệm bằng `workers/gdd-r2-gateway/test/admin-integration.test.mjs`, `admin-r2-link.test.mjs` và bài thử Chrome `tests/dk013-admin-smoke.mjs` trên kích thước desktop/iPhone.
+- Nhánh sao lưu trước DK01.3: `backup/pre-dk013-admin-integration-20261117`.
+- Bản thay đổi không xóa tệp Supabase, không dọn dẹp tệp R2 đã tạo và không mở public bucket.
+
+---
+
 # GDDĐ v2.0.0-DK01.2 — Lưu trữ tư liệu nguyên mẫu (Bước 2)
 
-## Trạng thái vận hành
-Worker `gdd-r2-gateway` phục vụ API **chỉ dành cho Quản trị viên**. Giao diện đăng bài hiện tại vẫn dùng Supabase; không tự chuyển ảnh cũ, không ghi đè bài đăng hay sửa QR. Giai đoạn tiếp theo mới ghép API này vào biểu mẫu HÌNH ẢNH, kiểm thử bằng vài tư liệu mẫu trước khi bật mặc định.
+## Trạng thái vận hành (lịch sử DK01.2)
+Worker `gdd-r2-gateway` phục vụ API **chỉ dành cho Quản trị viên**. Giai đoạn DK01.2 trước đây thử riêng qua trang tải R2; từ DK01.3, biểu mẫu quản trị đã có bước tự bảo tồn bản gốc. Không tự chuyển ảnh cũ, không ghi đè bài đăng hay sửa QR.
 
 ## Quy tắc bảo tồn
 
