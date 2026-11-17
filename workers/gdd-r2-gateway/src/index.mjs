@@ -1,6 +1,6 @@
 // GDDĐ v2.0.0-DK01.2 — Bảo tồn nguyên mẫu & bản xem nhẹ.
 // Bản gốc là R2 PRIVATE; KHÔNG có tuyến GET original hoặc URL tải gốc công khai.
-export const VERSION = 'GDDĐ v2.0.0-DK01.2.1';
+export const VERSION = 'GDDĐ v2.0.0-DK01.2.2';
 const PROBE = '__gdd_internal__/dk01_read_probe_only';
 const MB = 1024 * 1024;
 const PART_BYTES = 8 * MB;
@@ -187,20 +187,32 @@ async function api(req,env,url,cors,user) {
     if(!ownsMeta(meta,user,id))return failure(404,'Không tìm thấy tư liệu',cors);
     if(!variant&&req.method==='GET')
       return respond({id,originalBytes:meta.originalBytes,originalPreserved:true,previewReady:meta.preview,downloadReady:meta.download,
-        published:meta.published,kind:meta.kind,mime:meta.mime},200,cors);
+        published:meta.published,kind:meta.kind,mime:meta.mime,originalName:meta.originalName},200,cors);
     if(variant&&req.method==='PUT'){
       if(meta.kind!=='image')return failure(400,'Chỉ ảnh mới có bản xem và bản tải',cors);
-      const len=Number(req.headers.get('content-length')||0);
-      if(!len||len>8*MB||!req.body)return failure(413,'Ảnh tối ưu phải dưới 8 MB',cors);
-      const mime=variant==='preview'?'image/webp':'image/jpeg';
-      if(req.headers.get('content-type')?.split(';')[0]!==mime)return failure(415,'Sai định dạng ảnh tối ưu',cors);
+      // Safari sometimes omits Content-Length in cross-origin PUT requests.
+      // Validate actual content and enforce a hard limit even when the header is absent.
+      const declared=req.headers.get('content-length');
+      if(!req.body)return failure(400,'Ảnh tối ưu trống',cors);
+      if(declared!==null&&(!Number.isSafeInteger(Number(declared))||Number(declared)<1||Number(declared)>8*MB))
+        return failure(413,'Ảnh tối ưu phải dưới 8 MB',cors);
+      const mime=req.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase();
+      if(!(variant==='preview'&&['image/webp','image/jpeg'].includes(mime))&&
+         !(variant==='download'&&mime==='image/jpeg'))return failure(415,'Sai định dạng ảnh tối ưu',cors);
       let bytes;
       try{bytes=new Uint8Array(await req.arrayBuffer())}catch{return failure(400,'Không đọc được ảnh',cors)}
-      if(bytes.length!==len||bytes.length<16||!isDerivative(bytes,variant))return failure(415,'Ảnh tối ưu không hợp lệ',cors);
-      const key='derivatives/'+id+'/'+variant+(variant==='preview'?'.webp':'.jpg');
+      if(bytes.byteLength<16||bytes.byteLength>8*MB|| (declared!==null&&bytes.byteLength!==Number(declared)))
+        return failure(413,'Ảnh tối ưu không đúng dung lượng',cors);
+      const isJpeg=bytes[0]===255&&bytes[1]===216&&bytes[2]===255;
+      const isWebp=bytes[0]===82&&bytes[1]===73&&bytes[2]===70&&bytes[3]===70&&
+        bytes[8]===87&&bytes[9]===69&&bytes[10]===66&&bytes[11]===80;
+      if(!(mime==='image/jpeg'&&isJpeg)&&!(mime==='image/webp'&&isWebp))
+        return failure(415,'Ảnh tối ưu không đúng định dạng',cors);
+      const key='derivatives/'+id+'/'+variant+(mime==='image/webp'?'.webp':'.jpg');
       try{
         await env.GDD_BUCKET.put(key,bytes,{httpMetadata:{contentType:mime,cacheControl:'public, max-age=86400'}});
         meta[variant]=true;
+        meta[variant+'Mime']=mime;
         await saveMeta(env,meta);
         return respond({id,variant,storedBytes:bytes.byteLength,originalUnchanged:true,publiclyAccessible:false},201,cors);
       }catch{return failure(503,'Không lưu được ảnh tối ưu',cors)}
