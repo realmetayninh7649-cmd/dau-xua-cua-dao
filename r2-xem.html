@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>DẤU XƯA CỬA ĐẠO – Trình xem tư liệu</title>
+<link rel="stylesheet" href="r2-xem.css?v=20261117-dk014">
+</head>
+<body>
+<main class="r2-reader">
+  <header>
+    <p class="kicker">GIỮ ĐẠO GIỮA ĐỜI · DẤU XƯA CỬA ĐẠO</p>
+    <h1 id="r2-title">Đang mở tư liệu…</h1>
+    <p class="subtitle" id="r2-desc">Bản dành cho độc giả, không phải ảnh hoặc tệp nguyên mẫu.</p>
+  </header>
+  <section class="controls" id="r2-controls" hidden aria-label="Điều khiển xem tư liệu">
+    <button id="r2-prev" type="button">Trang trước</button>
+    <span id="r2-counter" aria-live="polite">1 / 1</span>
+    <button id="r2-next" type="button">Trang sau</button>
+    <label for="r2-zoom">Độ phóng</label><select id="r2-zoom"><option value="100">100%</option><option value="125">125%</option><option value="150">150%</option><option value="200">200%</option></select>
+    <a id="r2-download" hidden rel="noopener noreferrer" target="_blank">Tải ảnh tối ưu</a>
+  </section>
+  <div class="image-scroller" id="r2-scroller" hidden>
+    <img id="r2-page" loading="eager" draggable="false" alt="Trang tư liệu được số hoá">
+  </div>
+  <p id="r2-status" class="status" role="status" aria-live="polite">Đang kiểm tra bản xem đã công bố…</p>
+  <footer>
+    <p><strong>Ghi chú:</strong> Bản xem được tối ưu cho việc đọc trên điện thoại. Bản Word có thể chỉ là bản trích đọc chữ và không giữ nguyên kiểu trình bày. Khi khảo cứu hoặc trích dẫn, xin đối chiếu tư liệu gốc với đơn vị lưu trữ.</p>
+    <a href="./index.html">Trở về Kho Tư Liệu Đạo Sử</a>
+  </footer>
+</main>
+<script type="module" src="r2-xem.mjs?v=20261117-dk014"></script>
+</body>
+</html>
