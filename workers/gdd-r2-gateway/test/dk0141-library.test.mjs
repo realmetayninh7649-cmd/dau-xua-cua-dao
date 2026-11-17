@@ -29,7 +29,8 @@ function rig({published=true, existing=false}={}){
    then(resolve,reject){return Promise.resolve(result).then(resolve,reject)}
  });
  const client={
-   auth:{getSession:async()=>({data:{session:{access_token:'admin-test'}},error:null})},
+   auth:{getSession:async()=>({data:{session:{access_token:'admin-test'}},error:null}),
+     getUser:async()=>({data:{user:{id:'11111111-1111-4111-8111-111111111111'}},error:null})},
    from(table){
      if(table==='gdd_r2_assets'){
        return {
