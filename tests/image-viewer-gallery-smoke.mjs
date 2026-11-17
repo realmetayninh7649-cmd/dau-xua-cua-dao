@@ -38,7 +38,7 @@ try {
       assert.equal(state.hidden,false,label+': viewer did not open; '+JSON.stringify(state)+' errors='+browserErrors.join(';'));
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
       assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh tư liệu 2 · 2/3',label+': opening image 2');
-      assert.equal(await page.locator('#gdd-image-download').isVisible(),true,label+': gallery download still available');
+      assert.equal(await page.locator('#gdd-image-download').isVisible(),false,label+': no download in Hình ảnh gallery viewer');
       assert.equal(await page.locator('#gdd-image-original').isVisible(),true,label+': gallery original link still available');
       assert.equal(await page.locator('#gdd-image-prev').isVisible(),true);
       assert.equal(await page.locator('#gdd-image-next').isVisible(),true);
@@ -117,6 +117,33 @@ try {
       });
       assert.equal(await page.locator('#detail-content .gdd-image-actions [data-gdd-image-save]').count(),0,label+': no person cover download button');
       assert.equal(await page.locator('#detail-content .gdd-image-actions [data-gdd-image-show]').count(),1,label+': full screen view kept');
+      // Trình xem ở mục Hình ảnh: nút phóng to được giữ, nút tải dưới ảnh chính biến mất.
+      await page.evaluate(()=>{
+        const detail=document.getElementById('detail-content');
+        detail.dataset.gddKind='media';
+        detail.dataset.gddDisplayTarget='media';
+        detail.innerHTML='<div class="detail-cover"><img src="/logo.png" alt="Bộ ảnh tư liệu"></div>';
+      });
+      await page.waitForFunction(()=>{
+        const d=document.querySelector('#detail-content');
+        return d?.querySelector('[data-gdd-image-show]') && !d.querySelector('[data-gdd-image-save]');
+      });
+      assert.equal(await page.locator('#detail-content [data-gdd-image-save]').count(),0,label+': media cover has no download');
+      await page.locator('#detail-content [data-gdd-image-show]').click();
+      await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
+      assert.equal(await page.locator('#gdd-image-download').isVisible(),false,label+': media fullscreen has no download');
+      assert.equal(await page.locator('#gdd-image-original').isVisible(),true,label+': existing original viewing not changed');
+      await page.locator('#gdd-image-close').click();
+      // Bài biên khảo thường vẫn giữ nút tải; không đổi ngoài Hình ảnh.
+      await page.evaluate(()=>{
+        const detail=document.getElementById('detail-content');
+        detail.dataset.gddKind='posts';
+        detail.dataset.gddDisplayTarget='posts';
+        detail.innerHTML='<div class="detail-cover"><img src="/logo.png" alt="Bài biên khảo thường"></div>';
+      });
+      await page.waitForFunction(()=>!!document.querySelector('#detail-content [data-gdd-image-save]'));
+      assert.equal(await page.locator('#detail-content [data-gdd-image-save]').count(),1,label+': ordinary biên khảo still has download');
+      console.log('MEDIA IMAGE DOWNLOAD UI PASS',label,'gallery/cover hidden, regular posts intact');
       console.log('PERSON IMAGE UI PASS',label,'no download/original; gallery controls preserved');
       console.log('IMAGE GALLERY PASS',label,'arrows/swipe/keyboard/zoom/close');
     } catch(error) {
