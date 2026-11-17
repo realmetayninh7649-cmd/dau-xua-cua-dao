@@ -5,9 +5,8 @@ on:
       - feature/v2-layout-search-20261112
   pull_request:
     paths:
+      # Chỉ chạy khi chỉnh tính năng V2, tránh báo lỗi giả khi cập nhật R2/Quản trị viên.
       - 'gdd-v2-*'
-      - 'app.js'
-      - 'index.html'
       - 'tests/v2-smoke.mjs'
       - '.github/workflows/v2-smoke.yml'
 jobs:
