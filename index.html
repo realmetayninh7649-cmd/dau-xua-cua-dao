@@ -1111,9 +1111,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     input.replaceWith(clean);
     const desc=panel.querySelector('p.gdd-album-note');
     if(desc)desc.innerHTML=nextContext.startsWith('media:')
-      ?'Chọn chung <b>ảnh, PDF và Word (.doc, .docx)</b> trong một Bộ ảnh kèm theo. Ảnh tự tối ưu dưới 6 MB; PDF/Word được giữ nguyên 100% tệp gốc, không nén giảm chất lượng. Tệp lớn tự tải từng phần, không giới hạn 15 MB trong biểu mẫu; hạn mức thực tế tùy Supabase. Có thể chọn thêm nhiều lượt.'
+      ?'Chọn chung <b>ảnh, PDF và Word (.doc, .docx)</b> trong một Bộ ảnh kèm theo. Ảnh tự tối ưu dưới 6 MB; PDF/Word nguyên mẫu được cất riêng trong R2, chưa có đường dẫn tải công khai. Ảnh gốc được bảo tồn, bản ảnh xem được tối ưu. Tệp lớn tải theo phần; có thể chọn thêm nhiều lượt.'
       :nextContext.startsWith('documents:')
-      ?'Chọn <b>nhiều ảnh và nhiều PDF</b> trong một bài Số hóa; ảnh tự tối ưu dưới 6 MB, PDF giữ nguyên bản gốc. PDF lớn tải từng phần, hạn mức do Supabase quyết định. PDF chính vẫn có ô riêng phía trên. Có thể chọn thêm nhiều lượt và ghi chú từng tệp.'
+      ?'Chọn <b>nhiều ảnh và nhiều PDF</b> trong một bài Số hóa; ảnh tự tối ưu dưới 6 MB, PDF nguyên mẫu cất riêng trong R2, chưa công khai bản gốc; ảnh được tối ưu để xem. PDF chính có ô riêng phía trên. Có thể chọn thêm nhiều lượt và ghi chú từng tệp.'
       :'Không giới hạn <b>tổng số ảnh trong một bài</b>. Chọn ảnh nhiều lượt, ảnh lớn tự tối ưu dưới 6 MB (JPG/PNG/WebP/HEIC). Nên chọn 10–20 ảnh/lượt trên iPhone.';
     const chooser=clean.closest('label');
     if(chooser){
@@ -1200,9 +1200,27 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         status(message);onProgress?.(message);
         const pdf=isPdf(item.file),word=kind==='media'&&isWord(item.file);
         const docFile=(pdf&&['media','documents'].includes(kind))||word;
-        if(!docFile&&!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
-        const prepared=docFile?item.file:await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{status(message);onProgress?.(message)}});
-        item.file=prepared;
+        // Archive the ORIGINAL File before image optimization; never overwrite item.file.
+        if(!window.GDDR2?.archive)throw Error('Bộ bảo tồn R2 chưa tải xong. Hãy tải lại trang.');
+        const archived=await window.GDDR2.archive(item.file,supa,{
+          recordKind:kind,recordId:id,role:'album',
+          onProgress:info=>{
+            const message=info.phase==='original'
+              ?'Đang cất nguyên mẫu R2: '+Math.round(info.bytes/info.total*100)+'%'
+              :info.phase==='optimizing'?'Đã lưu nguyên mẫu, đang tạo bản '+info.variant+'…':'';
+            if(message){status(message);onProgress?.(message)}
+          }
+        });
+        if(docFile){
+          // PDF/Word remain PRIVATE on R2; never publish a direct file URL.
+          item.saved=true;done++;
+          const message='PDF/Word nguyên mẫu đã bảo tồn riêng trong R2 ('+done+'/'+items.length+
+            ', ID '+archived.id+'). Chưa công khai tệp hay tạo bản xem.';
+          status(message);onProgress?.(message);
+          continue;
+        }
+        if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
+        const prepared=await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{status(message);onProgress?.(message)}});
         const extension=pdf?'pdf':word?wordExt(item.file):EXT[prepared.type];
         if(!extension)throw Error('Không xác định được định dạng tệp: '+item.file.name);
         const suffix=(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2));
@@ -1224,7 +1242,8 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         const progress=`Đã lưu ${done}/${items.length} tệp; còn ${pending()} tệp chờ tải.`;
         status(progress);onProgress?.(progress);
       }
-      status('Đã lưu đủ '+done+' tệp đính kèm.');
+      status('Đã lưu đủ '+done+' tệp. Ảnh xem nhẹ đã đăng, ảnh gốc và tài liệu PDF/Word cất riêng ở R2.');
+      window.GDDR2?.refresh?.();
     }catch(err){
       const raw=String(err?.message||err||'');
       const tooLarge=/too large|entity too large|payload too large|maximum file size|exceeds.*size|413\b|vượt.*dung lượng/i.test(raw);
