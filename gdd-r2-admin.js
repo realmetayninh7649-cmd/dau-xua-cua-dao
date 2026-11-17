@@ -79,7 +79,8 @@
     const size=Number(entry.original_bytes||0);
     const unit=size>=1048576?(size/1048576).toFixed(2)+' MB':Math.ceil(size/1024)+' KB';
     line.textContent=unit+' · '+(entry.media_kind==='document'?'Tài liệu':'Ảnh')+
-      ' · '+(entry.record_id?'Đã liên kết '+entry.record_kind:'Lưu riêng, chưa gắn vào bài');
+      ' · '+(entry.record_id?'Đã liên kết '+entry.record_kind:'Lưu riêng, chưa gắn vào bài')+
+      (entry.media_kind==='image'?' · Bản xem R2: '+(entry.preview_ready?'đã có':'chưa đủ'):'');
     box.appendChild(line);
     const id=document.createElement('code');
     id.textContent=entry.asset_id;
