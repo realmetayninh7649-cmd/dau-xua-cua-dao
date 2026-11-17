@@ -1,0 +1,56 @@
+name: "GDD DK01.6 - Sao luu ba PDF goc vao R2 PRIVATE"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/dk016_preserve_legacy_pdfs.py"
+      - ".github/workflows/gdd-dk016-preserve-legacy-pdfs.yml"
+  pull_request:
+    paths:
+      - "scripts/dk016_preserve_legacy_pdfs.py"
+      - ".github/workflows/gdd-dk016-preserve-legacy-pdfs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gdd-dk016-preserve-originals
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: "Kiem tra kich ban sao luu"
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m py_compile scripts/dk016_preserve_legacy_pdfs.py
+          python scripts/dk016_preserve_legacy_pdfs.py --help
+
+  preserve:
+    name: "Luu tung PDF va kiem tra SHA256 cua ban sao R2"
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Sao luu nguyen byte vao R2 PRIVATE, doc lai va so sanh SHA256"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          python scripts/dk016_preserve_legacy_pdfs.py
