@@ -63,7 +63,7 @@ jobs:
           node tests/dk013-admin-smoke.mjs
           node tests/dk014-reader-smoke.mjs
           node tests/dk015-unified-reader-smoke.mjs
-          node tests/v2-smoke.mjs
+          node tests/v20-active-site-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
         if: failure()
         uses: actions/upload-artifact@v4
@@ -71,5 +71,5 @@ jobs:
           name: gdd-v20-smoke-failures
           path: |
             /tmp/dk*.png
-            /tmp/v2-*.png
+            /tmp/v20-*.png
           if-no-files-found: ignore
