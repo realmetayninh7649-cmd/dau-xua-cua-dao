@@ -33,6 +33,9 @@ jobs:
         run: |
           node --check workers/gdd-r2-gateway/src/index.mjs
           node --check workers/gdd-r2-gateway/client/uploader.mjs
+          node --check workers/gdd-r2-gateway/client/document-view.mjs
+          node --check r2-xem.mjs
+          node --check dao-su-albums.js
           node --check gdd-r2-admin.js
           node --check app.js
           node -e 'const fs=require("fs");const h=fs.readFileSync("r2-thu-nghiem.html","utf8");const m=h.match(/<script type="module">([\s\S]*?)<\/script>/);if(!m)process.exit(1);fs.writeFileSync("/tmp/gdd-r2-test-page.mjs",m[1]);'
@@ -77,7 +80,7 @@ jobs:
                       data = json.load(response)
                       if (response.status == 200 and data.get("status") == "ok"
                           and data.get("r2") == "reachable"
-                          and data.get("version") == "GDDĐ v2.0.0-DK01.2.2"):
+                          and data.get("version") == "GDDĐ v2.0.0-DK01.4"):
                           print("THANH CONG: Worker online, GDD_BUCKET doc duoc R2, khong co tu lieu duoc phuc vu.")
                           break
                       last = "Trang thai / phien ban khong dung"
