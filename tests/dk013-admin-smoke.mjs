@@ -14,6 +14,8 @@ try{
     const upload=document.getElementById('gdd-r2-vault-upload');
     const file=document.getElementById('gdd-r2-vault-files');
     const hidden=editor?.hidden&&vault?.hidden;
+    document.getElementById('admin-overlay').hidden=false;
+    document.body.classList.add('modal-open');
     editor.hidden=false;vault.hidden=false;
     const details=vault.querySelector('details');details.open=true;
     const rect=vault.getBoundingClientRect();
