@@ -129,7 +129,8 @@ try {
         return d?.querySelector('[data-gdd-image-show]') && !d.querySelector('[data-gdd-image-save]');
       });
       assert.equal(await page.locator('#detail-content [data-gdd-image-save]').count(),0,label+': media cover has no download');
-      await page.locator('#detail-content [data-gdd-image-show]').click();
+      // Fixture ở trang chủ để ẩn khu chi tiết; kích hoạt click bằng DOM như một hồ sơ đã mở.
+      await page.evaluate(()=>document.querySelector('#detail-content [data-gdd-image-show]').click());
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
       assert.equal(await page.locator('#gdd-image-download').isVisible(),false,label+': media fullscreen has no download');
       assert.equal(await page.locator('#gdd-image-original').isVisible(),true,label+': existing original viewing not changed');
