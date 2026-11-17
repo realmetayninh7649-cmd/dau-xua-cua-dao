@@ -1,0 +1,17 @@
+.gdd-r2-vault{margin:16px 0 22px;padding:13px 15px;border:1px solid #c9d7cb;border-radius:12px;background:#f3f7f2;color:#243b30}
+.gdd-r2-vault[hidden]{display:none!important}
+.gdd-r2-vault summary{cursor:pointer;font-weight:750;font-size:1rem;line-height:1.5}
+.gdd-r2-vault-body{margin-top:13px}
+.gdd-r2-vault p,.gdd-r2-vault small{font-size:.88rem;line-height:1.6}
+.gdd-r2-vault label{display:block;font-weight:600;margin:12px 0 6px}
+.gdd-r2-vault input[type=file]{box-sizing:border-box;max-width:100%;width:100%;padding:11px;border:1px solid #ced4cc;border-radius:8px;background:#fff}
+.gdd-r2-vault button{padding:10px 13px;border:0;border-radius:8px;margin:10px 8px 8px 0;cursor:pointer;font-weight:600;background:#285642;color:#fff;line-height:1.4}
+.gdd-r2-vault button.gdd-r2-secondary{background:#edf0eb;color:#285642;border:1px solid #99afa0}
+.gdd-r2-vault button:disabled{opacity:.55;cursor:not-allowed}
+.gdd-r2-vault progress{width:100%;height:12px;margin:9px 0}
+#gdd-r2-vault-status{white-space:pre-wrap;overflow-wrap:anywhere;min-height:18px}
+#gdd-r2-vault-list{max-height:380px;overflow:auto}
+.gdd-r2-item{display:flex;flex-direction:column;gap:3px;border-top:1px solid #d9e2d9;padding:10px 0}
+.gdd-r2-item strong{overflow-wrap:anywhere;font-size:.88rem}
+.gdd-r2-item small{color:#53665a}
+.gdd-r2-item code{font-size:.77rem;color:#65736a;overflow-wrap:anywhere}
