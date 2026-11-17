@@ -62,8 +62,21 @@ export async function createImageVariant(file,variant){
     ctx.imageSmoothingQuality='high';
     if(variant==='download'){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height)}
     ctx.drawImage(src,0,0,canvas.width,canvas.height);
-    const mime=variant==='preview'?'image/webp':'image/jpeg';
-    let blob=await canvasBlob(canvas,mime,variant==='preview'?.85:.93);
+    let mime=variant==='preview'?'image/webp':'image/jpeg';
+    let blob;
+    try{
+      blob=await canvasBlob(canvas,mime,variant==='preview'?.85:.93);
+    }catch(error){
+      if(variant!=='preview')throw error;
+      // Some versions of iOS Safari cannot encode WebP on canvas.
+      // Gracefully fall back to a lightweight JPEG, without altering original.
+      mime='image/jpeg';
+      ctx.globalCompositeOperation='destination-over';
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.globalCompositeOperation='source-over';
+      blob=await canvasBlob(canvas,mime,.85);
+    }
     if(blob.size>MAX_VARIANT_BYTES){
       blob=await canvasBlob(canvas,mime,variant==='preview'?.75:.82);
     }
@@ -129,5 +142,38 @@ export async function uploadPreservedAsset(file,{supabase,endpoint=DEFAULT_API,o
     // Xem PDF/Word sẽ được nối với trình đọc ở giai đoạn tích hợp.
     result.status='document-original-preserved-viewer-pending';
   }
+  return result;
+}
+
+
+/**
+ * Resume ONLY the view/download derivatives of an existing private original.
+ * No original upload, multipart start, overwrite or deletion occurs.
+ */
+export async function finishOptimizingExisting(file,id,{supabase,endpoint=DEFAULT_API,onProgress}={}){
+  if(!file||!UUID.test(id)||!supabase?.auth?.getSession)throw Error('Thiếu tệp, mã ảnh hoặc phiên Quản trị viên');
+  endpoint=endpoint.replace(/\/$/,'');
+  const meta=await call(supabase,endpoint,'/v1/assets/'+id,'GET');
+  if(meta?.kind!=='image'||meta.originalBytes!==file.size||meta.originalName!==file.name)
+    throw Error('Tệp đã chọn không khớp ảnh nguyên mẫu đã lưu trong R2. Không tạo bản xem.');
+  const result={id,originalPreserved:true,originalBytes:meta.originalBytes,
+    previewReady:meta.previewReady,downloadReady:meta.downloadReady};
+  const warnings=[];
+  for(const variant of ['preview','download']){
+    if(result[variant+'Ready'])continue;
+    try{
+      emit(onProgress,{phase:'optimizing',variant});
+      const output=await createImageVariant(file,variant);
+      await retry(()=>call(supabase,endpoint,'/v1/assets/'+id+'/'+variant,'PUT',output.blob,output.blob.type));
+      result[variant+'Ready']=true;
+      emit(onProgress,{phase:'optimized',variant,bytes:output.blob.size});
+    }catch(e){
+      warnings.push(variant+': '+String(e?.message||e));
+      emit(onProgress,{phase:'optimized-error',variant,message:String(e?.message||e)});
+    }
+  }
+  result.optimizationWarnings=warnings;
+  result.status=result.previewReady&&result.downloadReady
+    ?'original-and-optimized':'original-preserved-preview-pending';
   return result;
 }

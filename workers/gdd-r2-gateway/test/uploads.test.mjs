@@ -226,3 +226,54 @@ test('multipart R2 uploadId chứa dấu chấm là mã hợp lệ và Content-L
     assert.deepEqual([...b.objects.get(session.key).content],[...data]);
   }finally{restore()}
 });
+
+test('Safari PUT ban anh khong co Content-Length: chap nhan WebP/JPEG preview va giu nguyen ban goc',async()=>{
+  const b=mockR2(),restore=grantAdmin();
+  try{
+    const original=new Uint8Array([137,80,78,71,13,10,26,10,2,4,6,8,10,12,14,16,18,20]);
+    const up=await worker.fetch(req('/v1/uploads/small?name=anh-thu.png&size='+original.byteLength,
+      'PUT',original,'admin',{'content-type':'application/octet-stream'}),env(b));
+    assert.equal(up.status,201);
+    const stored=await up.json();
+    const originalKey=[...b.objects.keys()].find(k=>k.startsWith('originals/'));
+    assert.ok(originalKey);
+    const preserved=[...b.objects.get(originalKey).content];
+    const jpeg=new Uint8Array([255,216,255,224,...new Array(30).fill(5)]);
+    const variant=new Request(base+'/v1/assets/'+stored.id+'/preview',{method:'PUT',
+      headers:{origin,authorization:'Bearer admin','content-type':'image/jpeg'},body:jpeg});
+    assert.equal(variant.headers.get('content-length'),null);
+    const saved=await worker.fetch(variant,env(b));
+    assert.equal(saved.status,201,await saved.text());
+    assert.ok(b.objects.has('derivatives/'+stored.id+'/preview.jpg'));
+    const downloaded=await worker.fetch(new Request(base+'/v1/assets/'+stored.id+'/download',{
+      method:'PUT',headers:{origin,authorization:'Bearer admin','content-type':'image/jpeg'},body:jpeg
+    }),env(b));
+    assert.equal(downloaded.status,201);
+    const metaResponse=await worker.fetch(req('/v1/assets/'+stored.id),env(b));
+    const meta=await metaResponse.json();
+    assert.equal(meta.originalName,'anh-thu.png');
+    assert.equal(meta.originalBytes,original.length);
+    assert.equal(meta.previewReady,true);
+    assert.equal(meta.downloadReady,true);
+    assert.deepEqual([...b.objects.get(originalKey).content],preserved);
+  }finally{restore()}
+});
+test('Tu choi sai Content-Length va dinh dang preview khong khop noi dung',async()=>{
+  const b=mockR2(),restore=grantAdmin();
+  try{
+    const png=new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,0,0,0,0,0,0]);
+    const a=await worker.fetch(req('/v1/uploads/small?name=t.png&size='+png.length,'PUT',png),env(b));
+    const id=(await a.json()).id;
+    const fake=new Uint8Array([255,216,255,...new Array(25).fill(7)]);
+    const badLen=await worker.fetch(new Request(base+'/v1/assets/'+id+'/preview',{
+      method:'PUT',headers:{origin,authorization:'Bearer admin','content-type':'image/jpeg','content-length':'50'},body:fake
+    }),env(b));
+    assert.equal(badLen.status,413);
+    const badType=await worker.fetch(new Request(base+'/v1/assets/'+id+'/preview',{
+      method:'PUT',headers:{origin,authorization:'Bearer admin','content-type':'image/webp'},body:fake
+    }),env(b));
+    assert.equal(badType.status,415);
+    const metadata=await worker.fetch(req('/v1/assets/'+id),env(b));
+    assert.equal((await metadata.json()).previewReady,false);
+  }finally{restore()}
+});
