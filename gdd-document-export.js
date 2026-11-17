@@ -2,7 +2,8 @@
   'use strict';
   if(window.__GDDDocumentExport20261107)return;
   window.__GDDDocumentExport20261107=true;
-  const allowed={ 'nhan-vat':'people','bai-viet':'posts','ai-tin':'obituaries','tai-lieu-so-hoa':'documents','tuong-niem':'memorial' };
+  // Không tạo khung xuất PDF/Word trong Ai Tín và Tưởng Niệm Chức Sắc.
+  const allowed={ 'nhan-vat':'people','bai-viet':'posts','tai-lieu-so-hoa':'documents' };
   const labels={people:'TIỂU SỬ VÀ CÔNG NGHIỆP HÀNH ĐẠO',posts:'BIÊN KHẢO ĐẠO SỬ',obituaries:'AI TÍN',documents:'TÀI LIỆU SỐ HÓA',memorial:'TƯỞNG NIỆM CHỨC SẮC'};
   const css=document.createElement('style');
   css.id='gdd-document-export-style';
@@ -36,13 +37,12 @@
     const r=route();
     if(root){
       const old=root.querySelector('.gdd-doc-export');
-      const isArticle=r&&r.kind!=='memorial'&&root.querySelector('.detail-title')&&root.querySelector('.detail-body');
+      const isArticle=r&&root.querySelector('.detail-title')&&root.querySelector('.detail-body');
       if(!isArticle)old?.remove();else if(!old)root.appendChild(makeBar());
     }
     if(memorialRoot){
-      const old=memorialRoot.querySelector('.gdd-doc-export');
-      const active=r?.kind==='memorial'&&memorialRoot.querySelector('#gdd-memorial-text')&&memorialRoot.querySelector('h2');
-      if(!active)old?.remove();else if(!old)memorialRoot.appendChild(makeBar());
+      // Khung tưởng niệm vẫn giữ nội dung, ảnh và nguồn; không kèm tiện ích tải PDF/Word.
+      memorialRoot.querySelectorAll('.gdd-doc-export').forEach(bar=>bar.remove());
     }
   }
   let scheduled=false;
