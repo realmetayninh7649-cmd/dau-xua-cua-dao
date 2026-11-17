@@ -75,7 +75,7 @@ jobs:
                       data = json.load(response)
                       if (response.status == 200 and data.get("status") == "ok"
                           and data.get("r2") == "reachable"
-                          and data.get("version") == "GDDĐ v2.0.0-DK01.2.1"):
+                          and data.get("version") == "GDDĐ v2.0.0-DK01.2.2"):
                           print("THANH CONG: Worker online, GDD_BUCKET doc duoc R2, khong co tu lieu duoc phuc vu.")
                           break
                       last = "Trang thai / phien ban khong dung"
