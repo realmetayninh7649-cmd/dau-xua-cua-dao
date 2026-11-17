@@ -1,0 +1,82 @@
+/* GDD | Chủ đề Mùa Lễ Hạ Ngươn - Bính Ngọ 2026.
+   Lớp trang trí độc lập, không thay màu/bố cục khu quản trị, hình ảnh hoặc trình xem tư liệu. */
+.gdd-festival-2026[hidden], .gdd-festival-restore[hidden]{display:none!important}
+.gdd-festival-2026{--fest-green:#154d46;--fest-ink:#21483e;--fest-gold:#b58c4e;--fest-paper:#faf7ee;
+  --fest-border:#d5c49f;isolation:isolate;position:relative;z-index:0;
+  background:linear-gradient(180deg,#f4f0e5 0%,#faf8f2 100%);border-bottom:1px solid #e4d9c5}
+.gdd-festival-2026,.gdd-festival-2026 *{box-sizing:border-box}
+.gdd-festival-bar{background:#154d46;color:#f7edda;border-bottom:2px solid #b58c4e}
+.gdd-festival-bar-inner{width:min(1180px,calc(100% - 36px));min-height:40px;margin:auto;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0}
+.gdd-festival-bar-title{font:600 clamp(10px,1.1vw,12px)/1.6 'Be Vietnam Pro',system-ui,sans-serif;
+  letter-spacing:.07em}
+.gdd-festival-dismiss{flex:0 0 auto;min-height:32px;min-width:32px;padding:3px 11px;
+  border:1px solid #e3d0a46b;border-radius:7px;background:#ffffff12;color:#fff6e8;
+  font:600 12px/1.4 'Be Vietnam Pro',system-ui,sans-serif;cursor:pointer}
+.gdd-festival-dismiss:hover,.gdd-festival-dismiss:focus-visible{background:#ffffff2b}
+.gdd-festival-dismiss:focus-visible,.gdd-festival-restore:focus-visible,
+.gdd-festival-actions a:focus-visible{outline:3px solid #c8a763;outline-offset:3px}
+.gdd-festival-banner{width:min(1180px,calc(100% - 36px));margin:18px auto 22px;
+  border:1px solid var(--fest-border);border-radius:13px;overflow:hidden;
+  background:radial-gradient(ellipse at 83% 35%,#e9e1ce94,transparent 55%),
+  linear-gradient(140deg,#fffcf6 0%,#f4f0e5 100%);
+  box-shadow:0 8px 26px #53452b0a;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(240px,.75fr);
+  position:relative}
+.gdd-festival-banner:before{content:'';position:absolute;inset:9px;border:1px solid #cbb38b70;
+  border-radius:8px;pointer-events:none;z-index:0}
+.gdd-festival-copy{position:relative;z-index:1;min-width:0;padding:clamp(22px,3vw,38px) clamp(20px,3.6vw,44px)}
+.gdd-festival-eyebrow{margin:0 0 13px;color:#7d6541;font:700 11px/1.6 'Be Vietnam Pro',system-ui,sans-serif;
+  letter-spacing:.13em}
+.gdd-festival-heading{color:var(--fest-ink);font:700 clamp(25px,3.1vw,41px)/1.34 'Noto Serif',Georgia,serif;
+  margin:0 0 12px;letter-spacing:.01em;text-wrap:balance}
+.gdd-festival-heading small{display:block;font:650 clamp(16px,2vw,24px)/1.6 'Noto Serif',Georgia,serif;
+  color:#927447;letter-spacing:.06em;margin-top:4px}
+.gdd-festival-ornament{display:flex;align-items:center;gap:10px;color:#ab8950;margin:13px 0 15px}
+.gdd-festival-ornament:before,.gdd-festival-ornament:after{content:'';height:1px;background:#b69b6d;flex:0 1 92px}
+.gdd-festival-ornament svg{width:39px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5}
+.gdd-festival-desc{max-width:690px;font:400 clamp(13px,1.25vw,15px)/1.85 'Be Vietnam Pro',system-ui,sans-serif;
+  color:#46564c;margin:0 0 10px}
+.gdd-festival-motto{margin:0;color:#806945;font:italic 600 clamp(12px,1.15vw,14px)/1.75 'Noto Serif',Georgia,serif}
+.gdd-festival-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:21px}
+.gdd-festival-actions a{display:inline-flex;justify-content:center;align-items:center;
+  padding:10px 17px;min-height:42px;border:1px solid #b5a17e;border-radius:7px;
+  font:650 12px/1.5 'Be Vietnam Pro',system-ui,sans-serif;color:#214d42;text-decoration:none;background:#fffdf7}
+.gdd-festival-actions a:first-child{background:#1c5147;color:#fffaf0;border-color:#1c5147}
+.gdd-festival-actions a:hover{filter:brightness(.96)}
+.gdd-festival-art{position:relative;align-self:stretch;min-width:0;min-height:280px;
+  display:flex;justify-content:center;align-items:center;padding:23px;color:#a48758}
+.gdd-festival-art:before{content:'';position:absolute;inset:25px 25px 25px 0;border-left:1px solid #ceb99180;pointer-events:none}
+.gdd-festival-art svg{width:min(100%,280px);max-height:260px;height:auto;display:block;fill:none;
+  stroke:currentColor;stroke-width:1.5;opacity:.8}
+.gdd-festival-art-label{position:absolute;bottom:27px;left:16px;right:16px;text-align:center;
+  font:600 11px/1.6 'Noto Serif',Georgia,serif;letter-spacing:.04em;color:#806943}
+.gdd-festival-restore{border:1px solid #b6a37e;background:#f8f1e4;color:#234c43;border-radius:7px;
+  padding:8px 12px;font:600 12px/1.5 'Be Vietnam Pro',system-ui,sans-serif;cursor:pointer}
+.gdd-festival-footer-controls{width:min(1180px,calc(100% - 36px));margin:0 auto;padding:8px 0 17px;
+  display:flex;justify-content:flex-end}
+body.gdd-festival-active .gdd-memorial-shell{outline:1px solid #bda37580;outline-offset:2px}
+body.gdd-festival-active .gdd-memorial-shell .gdd-memorial-heading{color:#245044}
+body.gdd-festival-active .footer{border-top:2px solid #a78b5b}
+@media(max-width:800px){
+ .gdd-festival-banner{grid-template-columns:minmax(0,1fr)}
+ .gdd-festival-art{min-height:110px;max-height:135px;overflow:hidden;padding:5px 18px 19px}
+ .gdd-festival-art svg{width:145px;max-height:126px;opacity:.5}
+ .gdd-festival-art:before{inset:0 20px auto;height:1px;border-left:0;border-top:1px solid #ceb99180}
+ .gdd-festival-art-label{bottom:8px;font-size:9px}
+}
+@media(max-width:520px){
+ .gdd-festival-bar-inner{align-items:flex-start}
+ .gdd-festival-bar-title{max-width:calc(100% - 55px);font-size:10px;letter-spacing:.03em}
+ .gdd-festival-banner{width:calc(100% - 24px);margin:12px auto 16px}
+ .gdd-festival-banner:before{inset:6px}
+ .gdd-festival-copy{padding:22px 19px 12px}
+ .gdd-festival-heading{font-size:clamp(23px,6.1vw,29px)}
+ .gdd-festival-heading small{font-size:16px}
+ .gdd-festival-desc{font-size:13px;line-height:1.75}
+ .gdd-festival-actions a{width:100%}
+ .gdd-festival-art{max-height:96px;min-height:90px}
+ .gdd-festival-art svg{width:113px}
+ .gdd-festival-art-label{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){.gdd-festival-2026 *, .gdd-festival-2026 *:before,
+ .gdd-festival-2026 *:after{animation:none!important;transition:none!important}}
