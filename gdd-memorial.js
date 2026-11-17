@@ -209,6 +209,11 @@
         <a class="gdd-memorial-back" href="#tuong-niem">Xem các bài tưởng niệm khác ↗</a>`;
       $('#gdd-memorial-text').textContent=data.body||data.summary||'';
       if(data.sources)$('#gdd-memorial-sources').textContent='Nguồn tư liệu: '+data.sources;
+      // Thống kê công khai sau khi đã mở đúng một bài tưởng niệm (không đếm danh sách).
+      window.dispatchEvent(new CustomEvent('gdd:content-open',{
+        detail:{kind:'memorial',id:data.id,published:data.published===true,
+          containerId:'gdd-memorial-dialog-body'}
+      }));
     }catch(e){dialogBody.textContent='Không thể tải bài tưởng niệm. '+(e.message||'');}
   }
   function routeMemorial(){
