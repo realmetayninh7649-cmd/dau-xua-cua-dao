@@ -210,10 +210,16 @@
         const caption=document.createElement('figcaption');
         const page=document.createElement('span');page.className='gdd-album-page';page.textContent=String(i+1).padStart(2,'0')+'.';
         caption.append(page,document.createTextNode(item.caption?.trim()||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu')));
-        const original=document.createElement('div'),open=document.createElement('a');
-        open.href=readingUrl;open.target='_blank';open.rel='noopener noreferrer';open.className='gdd-album-open';
-        open.textContent=isDocument?'Đọc tài liệu ↗':'Mở ảnh tư liệu ↗';original.appendChild(open);
-        figure.append(caption,original);grid.appendChild(figure);
+        figure.appendChild(caption);
+        // Hồ sơ Chức Sắc: không cung cấp lối mở ảnh gốc ở danh sách ảnh.
+        // Vẫn giữ đường dẫn Đọc tài liệu cho PDF/Word và các chuyên mục khác.
+        if(isDocument||kind!=='people'){
+          const original=document.createElement('div'),open=document.createElement('a');
+          open.href=readingUrl;open.target='_blank';open.rel='noopener noreferrer';open.className='gdd-album-open';
+          open.textContent=isDocument?'Đọc tài liệu ↗':'Mở ảnh tư liệu ↗';original.appendChild(open);
+          figure.appendChild(original);
+        }
+        grid.appendChild(figure);
       });
       target.appendChild(grid);
     } catch (error) {
