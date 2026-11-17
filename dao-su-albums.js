@@ -186,8 +186,9 @@
       rows.forEach((item,i)=>{
         const url=safeUrl(item.image_url);
         const fileExt=(['documents','media'].includes(kind)?(new URL(url).pathname.match(/\.(pdf|docx|doc)$/i)?.[1]||'').toLowerCase():'');
-        const isDocument=Boolean(fileExt),isPdf=fileExt==='pdf';
-        const docLabel=isPdf?'PDF':'WORD';
+        const isR2Reader=/\/r2-xem\.html$/i.test(new URL(url).pathname)&&new URL(url).origin===location.origin;
+        const isDocument=Boolean(fileExt)||isR2Reader,isPdf=fileExt==='pdf';
+        const docLabel=isR2Reader?'BẢN XEM':isPdf?'PDF':'WORD';
         const figure=document.createElement('figure');figure.className='gdd-album-figure';
         if(isDocument){
           const tile=document.createElement('a');
@@ -210,7 +211,7 @@
         caption.append(page,document.createTextNode(item.caption?.trim()||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu')));
         const original=document.createElement('div'),open=document.createElement('a');
         open.href=url;open.target='_blank';open.rel='noopener noreferrer';open.className='gdd-album-open';
-        open.textContent=isDocument?(isPdf?'Xem PDF ↗':'Mở Word ↗'):'Mở ảnh gốc ↗';original.appendChild(open);
+        open.textContent=isR2Reader?'Đọc bản xem tư liệu ↗':isDocument?(isPdf?'Xem PDF ↗':'Mở Word ↗'):'Mở ảnh gốc ↗';original.appendChild(open);
         if(isDocument){
           const down=document.createElement('a'),u=new URL(url);
           if(u.hostname.endsWith('.supabase.co')&&u.pathname.includes('/storage/v1/object/public/dao-su-documents/'))u.searchParams.set('download','tai-lieu-'+String(i+1).padStart(2,'0')+'.'+fileExt);
