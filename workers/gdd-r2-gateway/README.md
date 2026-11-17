@@ -1,3 +1,31 @@
+# GDDĐ v2.0.0-DK01.5 — Một trình đọc PDF/Word cho toàn Web Đạo
+
+## Phạm vi đã thống nhất
+- Hệ thống dùng chung `gdd-document-router.js` để mở PDF/Word trong mọi danh mục, bao gồm Hình ảnh, Tài liệu số hóa, album và những đường liên kết mới tạo động.
+- `r2-xem.html` là **một giao diện đọc**: `?asset=<id>` để xem các trang R2 đã công bố, `?source=<url>` để đọc tệp PDF công khai cũ từ **đúng** miền Supabase của Web Đạo. PDF cũ được kết xuất bằng PDF.js 4.10.38 từng trang, có nút chuyển trang và phóng to trên điện thoại.
+- Trong phần danh mục và bộ ảnh, không tạo thêm nút **Tải PDF** trực tiếp. Các tài liệu đã công bố từ trước vẫn giữ đường dẫn nguồn trong Supabase, tránh mất dữ liệu.
+- PDF/Word mới bảo tồn nguyên mẫu riêng trong R2 theo DK01.4. Word DOCX mới chỉ xuất bản bản đọc chữ nếu admin chủ động duyệt; .doc cũ cần bản PDF đọc.
+- Quản Trị Viên có nút **Kiểm kê PDF cũ trên toàn Web Đạo** để đọc danh sách những tệp chưa chuyển kho. Tính năng này **chỉ đọc**, không xóa hoặc tự thay link.
+
+## Kiểm kê ngày 17/11/2026
+Có **3 liên kết PDF nguyên mẫu dạng công khai** trong bảng album `archive_gallery_images` (2 thuộc `documents`, 1 thuộc `media`). Các liên kết này **VẪN CÔNG KHAI TRÊN SUPABASE** dù nay độc giả thường mở qua giao diện chung. Không được diễn giải việc đổi giao diện là đổi quyền truy cập nguyên mẫu.
+
+## Điều kiện trước khi chuyển từng PDF cũ sang R2
+1. Bảo tồn toàn bộ tệp gốc vào R2, so sánh kích thước/hash nếu khả dụng; không chỉnh văn bản hoặc màu bản gốc.
+2. Tạo bản đọc đủ trang; người quản trị phải xác nhận số trang, độ rõ chữ, dấu, bố cục bằng mắt.
+3. Chỉ sau đó mới thay URL bài/album bằng đường dẫn `r2-xem.html?asset=...`.
+4. Kiểm tra QR, mã hồ sơ, bài viết, các mục liên quan vẫn mở đúng.
+5. Sau khi chắc chắn không còn tham chiếu cũ và có bản sao đối chiếu, mới xem xét đóng quyền public source. **Không tự xóa bản Supabase hoặc R2**.
+
+## Kiểm thử
+- `workers/gdd-r2-gateway/test/dk015-unified-router.test.mjs`: phân loại link, từ chối hostname đáng ngờ, chặn nút tải nguyên mẫu trong UI.
+- `tests/dk015-unified-reader-smoke.mjs`: kiểm tra trên desktop/iPhone với mô hình 37 trang PDF cũ, chuyển trang/phóng lớn và cảnh báo public source.
+- Các bài kiểm thử DK01.3/DK01.4 trước đó tiếp tục chạy để tránh hồi quy.
+
+Bản sao trước sửa: nhánh `backup/pre-dk015-unified-viewer-20261117`. Bản này không thay đổi schema hoặc dữ liệu Supabase.
+
+---
+
 # GDDĐ v2.0.0-DK01.4.1 — Đưa bản xem R2 đã công bố vào Tài liệu số hóa
 
 **Bổ sung sau DK01.4**: Khi tài liệu PDF/DOCX đã được Quản Trị Viên duyệt và công bố từng trang trong R2 nhưng còn nằm ở `Kho nguyên mẫu`, mục **Bản xem cho độc giả** có thêm nút **Đưa bản xem này vào mục Tài liệu số hóa**.

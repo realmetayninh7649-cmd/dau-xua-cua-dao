@@ -9,6 +9,8 @@ on:
       - "dao-su-albums.js"
       - "r2-xem.*"
       - "tests/dk014-reader-smoke.mjs"
+      - "tests/dk015-unified-reader-smoke.mjs"
+      - "gdd-document-router.js"
       - "tests/dk013-admin-smoke.mjs"
       - ".github/workflows/gdd-dk013-admin-smoke.yml"
   workflow_dispatch:
@@ -33,6 +35,8 @@ jobs:
           node --check tests/dk013-admin-smoke.mjs
           node --check tests/dk014-reader-smoke.mjs
           node --check r2-xem.mjs
+          node --check gdd-document-router.js
+          node --check tests/dk015-unified-reader-smoke.mjs
           node --check dao-su-albums.js
       - name: "Cai Playwright Core"
         run: npm install --no-save playwright-core@1.56.1
@@ -42,3 +46,4 @@ jobs:
           sleep 2
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/dk013-admin-smoke.mjs
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/dk014-reader-smoke.mjs
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/dk015-unified-reader-smoke.mjs

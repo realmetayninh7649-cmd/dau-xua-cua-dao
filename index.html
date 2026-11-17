@@ -78,16 +78,17 @@
 
   <script src="supabase-config.js"></script>
 <link rel="stylesheet" href="gdd-r2-admin.css?v=20261117-dk0141">
-<script defer src="gdd-r2-admin.js?v=20261117-dk0141"></script>
+<script defer src="gdd-r2-admin.js?v=20261117-dk015"></script>
   
 <script defer src="gdd-image-optimizer.js?v=20261109-auto6mb-01"></script>
 <script defer src="vendor/qrcode.min.js?v=20261113-local"></script>
-<script defer src="app.js?v=20261117-dk0141"></script>
+<script defer src="gdd-document-router.js?v=20261117-dk015"></script>
+<script defer src="app.js?v=20261117-dk015"></script>
 <script defer src="gdd-archive-qr.js?v=20261113-ios-save-04"></script>
 
   <script defer src="gdd-person-watermark.js?v=20261113-final-master-08"></script>
   <script defer src="image-viewer.js?v=20261114-browser-back-01"></script>
-  <script defer src="dao-su-albums.js?v=20261117-media-pdf-word-01"></script>
+  <script defer src="dao-su-albums.js?v=20261117-dk015"></script>
 <script defer src="homepage-previews.js?v=20261114-close-nav-03"></script>  <script defer src="gdd-video-aspect.js?v=20261107-01"></script>
   <script defer src="gdd-document-export.js?v=20261107-02"></script>
   <script defer src="gdd-audio-radio.js?v=20261113-search-01"></script>
@@ -379,7 +380,7 @@
     <div id="admin-editor-area" hidden><div class="editor-logged"><span id="logged-email"></span><button type="button" class="link-button" id="logout-button">Đăng xuất</button></div>
       <section class="gdd-r2-vault" id="gdd-r2-vault-panel" aria-label="Kho tư liệu nguyên mẫu Cloudflare R2" hidden>
         <details>
-          <summary><span aria-hidden="true">☁</span> Kho nguyên mẫu R2 (DK01.4.1) – Bảo tồn, xuất bản và lập hồ sơ Tài liệu số hóa</summary>
+          <summary><span aria-hidden="true">☁</span> Kho nguyên mẫu R2 (DK01.5) – Đọc tài liệu thống nhất, kiểm kê PDF cũ và bảo tồn R2</summary>
           <div class="gdd-r2-vault-body">
             <p>Ảnh và tài liệu gốc được cất riêng trên Cloudflare R2. Ảnh xem/tải được tạo thành phiên bản khác; không có đường dẫn công khai đến bản gốc. Ảnh mới đăng qua biểu mẫu phía dưới sẽ tự được bảo tồn. PDF/Word mới mặc định riêng tư; sau khi đăng nháp, vào đây chọn lại đúng tệp để tạo bản xem từng trang và công bố khi đã rà soát. DOCX là bản đọc chữ, không giữ bố cục Word. Định dạng .doc cũ cần tạo bản đọc PDF riêng.</p>
             <label for="gdd-r2-vault-files">Cất thêm ảnh/PDF/Word riêng (chưa gắn vào bài)</label>
@@ -389,6 +390,9 @@
             <progress id="gdd-r2-vault-progress" max="100" value="0" hidden></progress>
             <p id="gdd-r2-vault-status" role="status" aria-live="polite">Chưa chọn tệp.</p>
             <div id="gdd-r2-vault-list" aria-label="Các tư liệu R2 gần đây"></div>
+            <hr style="border:0;border-top:1px solid #cbd7cc;margin:15px 0">
+            <button type="button" class="gdd-r2-secondary" id="gdd-r2-audit-legacy">Kiểm kê PDF cũ trên toàn Web Đạo</button>
+            <div id="gdd-r2-legacy-results" role="status" aria-live="polite"></div>
           </div>
         </details>
       </section>

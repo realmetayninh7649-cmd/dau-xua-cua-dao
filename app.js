@@ -256,8 +256,10 @@ function videoSource(raw){
           ?`<div class="archive-thumb video-preview-slot" data-video-id="${escape(x.id)}">${videoPoster(x)}</div>`
           :`<div class="archive-thumb">${src?`<img src="${escape(src)}" alt="${escape(x.title)}" loading="lazy">`:`<div aria-hidden="true">${kind==='obituaries'?'✧':'▤'}</div>`}</div>`;
         const description=String(x.summary||x.caption||x.body||'Tư liệu đang được bổ sung nội dung.').replace(/\s+/g,' ').slice(0,360);
-        const readerLink=originKind==='documents'&&isR2DocumentViewer(x.file_url)
-          ?` <a class="link-button" href="${escape(x.file_url)}" target="_blank" rel="noopener noreferrer">Đọc bản xem ↗</a>`:'';
+        const readUrl=window.GDDDocumentReader?.readerUrl(x.file_url)||x.file_url;
+        const readerLink=originKind==='documents'&&
+          ['r2','legacy-pdf','legacy-word'].includes(window.GDDDocumentReader?.kind(x.file_url))
+          ?` <a class="link-button" href="${escape(readUrl)}" target="_blank" rel="noopener noreferrer">Đọc tài liệu ↗</a>`:'';
         return `<article class="archive-card ${kind==='videos'?'video-archive-card':''}">${preview}<div class="archive-card-copy"><span class="archive-type">${escape(label)} ${meta?' · '+escape(meta):''}</span><h3>${escape(x.title)}</h3><p>${escape(description)}</p><button type="button" class="link-button" data-open-kind="${originKind}" data-id="${escape(x.id)}">Xem chi tiết ↗</button>${readerLink}</div></article>`;
       }).join(''):`<div class="empty-state"><b>Chưa có ${escape(label)}.</b>Ban Biên Tập đang tiếp nhận và sưu tầm tư liệu.</div>`;
     });
@@ -282,29 +284,14 @@ function videoSource(raw){
     const person=kind!=='people'&&record.person_id?linkedPerson(record.person_id):null;
     const dateNotes=kind==='people'&&record.date_notes?`<p class="detail-meta">Ngày tháng: ${escape(record.date_notes)}</p>`:'';
     const url=safeUrl(kind==='videos'?record.video_url:kind==='documents'?record.file_url:'');
-    const link=url?`<p class="detail-external"><a href="${escape(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${kind==='videos'?(videoSource(record.video_url)?.type==='facebook'?'Xem trên Facebook':'Xem video gốc'):isR2DocumentViewer(url)?'Đọc bản xem từng trang':'Mở tài liệu số'} ↗</a></p>`:'';
-    // Với R2: chỉ dùng trình đọc ảnh từng trang, KHÔNG nút tải PDF gốc.
-    // Liên kết PDF cũ trên Supabase được giữ nguyên để không phá tài liệu lịch sử.
-    // Riêng mục Tài liệu số hóa cũ: có Xem PDF và Tải PDF khi file_url là URL PDF thực.
-    // Supabase Storage hỗ trợ ?download=tên-tệp.pdf để trả tệp dưới dạng tải xuống,
-    // kể cả khi Safari bỏ qua thuộc tính download trên liên kết khác miền.
-    let pdfFileLink=link;
-    if(kind==='documents'&&url){
-      try{
-        const pdfSource=new URL(url);
-        if(/\.pdf$/i.test(pdfSource.pathname)){
-          const pdfName=slugify(record.title||'tai-lieu')+'.pdf';
-          if(pdfSource.protocol==='https:' &&
-              /^[a-z0-9-]+\.supabase\.co$/i.test(pdfSource.hostname) &&
-              /^\/storage\/v1\/object\/(?:public|sign)\/dao-su-documents\//.test(pdfSource.pathname)){
-            pdfSource.searchParams.set('download',pdfName);
-          }
-          pdfFileLink='<p class="detail-external" style="display:flex;flex-wrap:wrap;gap:10px">'+
-            '<a href="'+escape(url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Xem PDF ↗</a>'+
-            '<a href="'+escape(pdfSource.href)+'" download="'+escape(pdfName)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline" title="Tải PDF về thiết bị">↓ Tải PDF</a></p>';
-        }
-      }catch{}
-    }
+    const destination=kind==='documents'
+      ?(window.GDDDocumentReader?.readerUrl(url)||url):url;
+    const isReader=kind==='documents'&&
+      ['r2','legacy-pdf','legacy-word'].includes(window.GDDDocumentReader?.kind(url));
+    // All known PDF/Word links in every section use a common reader.
+    // Old public Supabase originals remain public until they are safely migrated.
+    const link=url?`<p class="detail-external"><a href="${escape(destination)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${kind==='videos'?(videoSource(record.video_url)?.type==='facebook'?'Xem trên Facebook':'Xem video gốc'):isReader?'Đọc tài liệu':'Mở tài liệu số'} ↗</a></p>`:'';
+    const pdfFileLink=link;
     const visual=kind==='videos'?`<div class="detail-video-preview" data-video-id="${escape(record.id)}">${videoPoster(record)}</div>`:`<div class="detail-cover">${src?`<img src="${escape(src)}" alt="${escape(title)}">`:`<div class="portrait-placeholder">${escape(sectionNames[kind])}</div>`}</div>`;
     const archiveCode=record.archive_code||'';
     const archivePanel=archiveCode&&record.slug?`<section class="gdd-archive-qr" data-gdd-archive-qr data-archive-code="${escape(archiveCode)}" data-archive-url="${escape(archiveLink(kind,record))}">
