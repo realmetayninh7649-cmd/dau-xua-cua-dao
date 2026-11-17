@@ -10,6 +10,7 @@ on:
       - "gdd-document-router.js"
       - "r2-xem.mjs"
       - "dao-su-albums.js"
+      - "image-viewer.js"
       - "tests/**"
       - "workers/gdd-r2-gateway/**"
   push:
@@ -23,6 +24,7 @@ on:
       - "gdd-document-router.js"
       - "r2-xem.mjs"
       - "dao-su-albums.js"
+      - "image-viewer.js"
       - "tests/**"
       - "workers/gdd-r2-gateway/**"
   workflow_dispatch:
@@ -43,7 +45,7 @@ jobs:
       - name: "Kiem tra cu phap JavaScript/Python"
         run: |
           set -eu
-          for file in app.js dao-su-albums.js gdd-r2-admin.js gdd-document-router.js r2-xem.mjs gdd-v2-layout.js gdd-v2-search.js gdd-audio-radio.js gdd-calendar.js; do
+          for file in app.js image-viewer.js dao-su-albums.js gdd-r2-admin.js gdd-document-router.js r2-xem.mjs gdd-v2-layout.js gdd-v2-search.js gdd-audio-radio.js gdd-calendar.js; do
             if test -f "$file"; then node --check "$file"; fi
           done
           node --check workers/gdd-r2-gateway/src/index.mjs
@@ -64,6 +66,7 @@ jobs:
           node tests/dk014-reader-smoke.mjs
           node tests/dk015-unified-reader-smoke.mjs
           node tests/v20-active-site-smoke.mjs
+          node tests/image-viewer-gallery-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
         if: failure()
         uses: actions/upload-artifact@v4
@@ -72,4 +75,5 @@ jobs:
           path: |
             /tmp/dk*.png
             /tmp/v20-*.png
+            /tmp/gdd-gallery-*.png
           if-no-files-found: ignore
