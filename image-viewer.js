@@ -39,6 +39,22 @@
       overflow:hidden; position:relative; flex:1 1 auto; min-height:0;
       display:flex; justify-content:center; align-items:center; cursor:grab; }
     .gdd-image-stage:active { cursor:grabbing; }
+    .gdd-image-nav { position:absolute; top:50%; transform:translateY(-50%); z-index:4;
+      display:grid; place-items:center; width:46px; height:56px; padding:0;
+      color:#fff; background:rgba(15,37,35,.78); border:1px solid #ffffff76;
+      border-radius:12px; box-shadow:0 3px 14px #0007;
+      font:700 35px/1 system-ui,sans-serif; cursor:pointer; touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent; }
+    .gdd-image-nav--prev { left:12px; }
+    .gdd-image-nav--next { right:12px; }
+    .gdd-image-nav[hidden] { display:none!important; }
+    .gdd-image-nav:disabled { opacity:.32; cursor:not-allowed; }
+    .gdd-image-nav:focus-visible { outline:3px solid #dfbd76; outline-offset:3px; }
+    @media(max-width:600px) {
+      .gdd-image-nav { width:40px; height:52px; font-size:31px; background:#122b29d9; }
+      .gdd-image-nav--prev { left:6px; }
+      .gdd-image-nav--next { right:6px; }
+    }
     .gdd-image-stamp { position:absolute; z-index:2; pointer-events:none; transform-origin:center center; display:block; }
     .gdd-image-stamp[hidden] { display:none!important; }
     .gdd-image-stage img { display:block; max-width:calc(100% - 24px); max-height:calc(100% - 18px);
@@ -85,6 +101,8 @@
     <div class="gdd-image-stage" id="gdd-image-stage">
       <img id="gdd-image-full" alt="Ảnh tư liệu">
       <canvas id="gdd-image-stamp" class="gdd-image-stamp" aria-hidden="true" hidden></canvas>
+      <button class="gdd-image-nav gdd-image-nav--prev" type="button" id="gdd-image-prev" aria-label="Ảnh trước" title="Ảnh trước" hidden>‹</button>
+      <button class="gdd-image-nav gdd-image-nav--next" type="button" id="gdd-image-next" aria-label="Ảnh tiếp theo" title="Ảnh tiếp theo" hidden>›</button>
       <div class="gdd-image-loading" id="gdd-image-loading">Đang mở ảnh…</div>
     </div>
     <div class="gdd-image-bottom">
@@ -105,6 +123,7 @@
     stamp=$('gdd-image-stamp');
   const caption=$('gdd-image-caption'), download=$('gdd-image-download'), orig=$('gdd-image-original');
   let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false, viewTicket=0;
+  let gallery=[], galleryIndex=0, swipeStart=null, hadMultiTouch=false;
   const pointers=new Map();
   let start=null, lastTap=0;
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -158,32 +177,64 @@
   };
   const reset=()=>{scale=1;x=0;y=0;updateTransform();};
   const imgTitle=img=>img.alt||img.closest('.person-card,.gallery-card')?.querySelector('h3')?.textContent||'Ảnh tư liệu';
-  function openImage(src, name, isPerson=false){
-    const url=safeSource(src);if(!url)return;
-    previousFocus=document.activeElement;
+  // Chỉ duyệt các ảnh thuộc cùng một album; không chuyển sang hồ sơ của người khác.
+  function imageSequence(img) {
+    if(!(img instanceof HTMLImageElement))return [];
+    const album=img.closest('.gdd-album-grid');
+    const grid=album||img.closest('#gallery-grid');
+    if(!grid)return [];
+    const selector=album?'.gdd-album-tile img':'.gallery-visual img';
+    return [...grid.querySelectorAll(selector)]
+      .filter(item=>item instanceof HTMLImageElement)
+      .map(item=>({element:item,src:safeSource(item.currentSrc||item.src),title:imgTitle(item)}))
+      .filter(item=>item.src);
+  }
+  function refreshArrows(){
+    const multi=gallery.length>1;
+    const prev=$('gdd-image-prev'), next=$('gdd-image-next');
+    prev.hidden=!multi;next.hidden=!multi;
+    prev.disabled=galleryIndex<=0;next.disabled=galleryIndex>=gallery.length-1;
+    $('gdd-image-title').textContent=title+(multi?' · '+(galleryIndex+1)+'/'+gallery.length:'');
+  }
+  function showGalleryImage(index){
+    if(index<0||index>=gallery.length)return;
+    const item=gallery[index],url=safeSource(item.src);if(!url)return;
+    galleryIndex=index;
     ++viewTicket;
-    title=(name||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(isPerson);
-    if(personPhoto&&!window.GDDPersonPhotoWatermark?.drawSeal){
-      alert('Tem bảo vệ ảnh chưa sẵn sàng. Xin tải lại website rồi thử lại.');
-      return;
-    }
-    stamp.hidden=true;
-    $('gdd-image-title').textContent=title;
+    title=(item.title||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(item.isPerson);
+    stamp.hidden=true;full.style.visibility='';
     full.alt=title;full.removeAttribute('src');full.src=url;
     orig.href=url;orig.hidden=personPhoto;
     download.textContent=personPhoto?'↓ Tải Ảnh':'↓ Tải ảnh gốc';
     loading.hidden=false;loading.textContent='Đang mở ảnh…';
-    caption.textContent=personPhoto?
-      'Ảnh hiển thị với dấu hologram ánh kim mờ ở góc dưới.':
-      'Chụm hai ngón tay để phóng to; kéo để xem chi tiết.';
+    refreshArrows();
+    caption.textContent='Vuốt trái/phải để chuyển ảnh; chụm hai ngón để phóng to.';
     if(viewer.hidden){
-      // Một bước history riêng: Back đóng ảnh, vẫn giữ hồ sơ đang xem phía dưới.
+      // Chỉ tạo một bước History cho toàn bộ buổi xem album.
       history.pushState({...history.state,__gddLayer:'photo'},'',location.href);
     }
-    viewer.hidden=false;document.body.classList.add('gdd-photo-open');reset();
-    $('gdd-image-close').focus({preventScroll:true});
-    // Ảnh có thể đã ở bộ đệm trước khi onload được gọi.
+    viewer.hidden=false;document.body.classList.add('gdd-photo-open');
+    pointers.clear();start=null;swipeStart=null;hadMultiTouch=false;lastTap=0;reset();
     if(full.complete&&full.naturalWidth)imageReady();
+  }
+  function stepImage(delta){
+    if(viewer.hidden||gallery.length<2)return;
+    showGalleryImage(galleryIndex+delta);
+  }
+  function openImage(src, name, isPerson=false, contextImage=null){
+    const url=safeSource(src);if(!url)return;
+    if(Boolean(isPerson)&&!window.GDDPersonPhotoWatermark?.drawSeal){
+      alert('Tem bảo vệ ảnh chưa sẵn sàng. Xin tải lại website rồi thử lại.');
+      return;
+    }
+    if(viewer.hidden)previousFocus=document.activeElement;
+    const images=imageSequence(contextImage);
+    gallery=images.length?images.map(item=>({src:item.src,title:item.title,isPerson:Boolean(isPerson)})):
+      [{src:url,title:name||'Ảnh tư liệu',isPerson:Boolean(isPerson)}];
+    const found=images.findIndex(item=>item.element===contextImage);
+    galleryIndex=found>=0?found:Math.max(0,gallery.findIndex(item=>item.src===url));
+    showGalleryImage(galleryIndex);
+    $('gdd-image-close').focus({preventScroll:true});
   }
   async function imageReady(){
     const ticket=viewTicket;
@@ -201,8 +252,8 @@
       full.style.visibility='';
       loading.hidden=true;reset();
       caption.textContent=personPhoto?
-        `Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · Tem Guilloché 7 màu hiển thị cả khi xem và khi tải.`:
-        `Ảnh gốc: ${full.naturalWidth} × ${full.naturalHeight} px · Chạm hai lần hoặc chụm hai ngón để phóng to.`;
+        `Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · Tem Guilloché 7 màu. ${gallery.length>1?'Vuốt trái/phải để đổi ảnh.':''}`:
+        `Ảnh gốc: ${full.naturalWidth} × ${full.naturalHeight} px · ${gallery.length>1?'Vuốt trái/phải để chuyển ảnh. ':''}Chạm hai lần hoặc chụm hai ngón để phóng to.`;
     }catch(error){
       if(ticket!==viewTicket||viewer.hidden)return;
       console.warn('[GDD Guilloche Viewer]',error);
@@ -219,12 +270,14 @@
     if(viewer.hidden)return;
     viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
     ++viewTicket;
-    pointers.clear();start=null;source='';personPhoto=false;full.removeAttribute('src');
+    pointers.clear();start=null;swipeStart=null;hadMultiTouch=false;gallery=[];galleryIndex=0;source='';personPhoto=false;full.removeAttribute('src');
     full.style.visibility='';stamp.hidden=true;stamp.width=0;stamp.height=0;
     if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
     if(navigate&&history.state?.__gddLayer==='photo')history.back();
   }
-  $('gdd-image-close').addEventListener('click',()=>closeImage()); 
+  $('gdd-image-close').addEventListener('click',()=>closeImage());
+  $('gdd-image-prev').addEventListener('click',()=>stepImage(-1));
+  $('gdd-image-next').addEventListener('click',()=>stepImage(1));
   window.addEventListener('popstate',()=>{
     if(!viewer.hidden&&history.state?.__gddLayer!=='photo')closeImage(false);
   });
@@ -244,8 +297,12 @@
     else start=null;
   };
   stage.addEventListener('pointerdown',e=>{
+    if(e.target instanceof Element&&e.target.closest('.gdd-image-nav'))return;
     if(e.pointerType==='mouse'&&e.button!==0)return;
-    e.preventDefault();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    e.preventDefault();
+    if(pointers.size===0){swipeStart={x:e.clientX,y:e.clientY,time:Date.now(),startScale:scale};hadMultiTouch=false;}
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pointers.size>1){hadMultiTouch=true;swipeStart=null;}
     try{stage.setPointerCapture(e.pointerId)}catch{}
     snapshot();
   });
@@ -265,10 +322,23 @@
   const pointerEnd=e=>{
     if(!pointers.has(e.pointerId))return;
     const wasSingle=pointers.size===1;
+    const gesture=swipeStart;
     pointers.delete(e.pointerId);snapshot();
-    if(e.type==='pointerup'&&wasSingle&&e.pointerType==='touch'){
-      const now=Date.now();if(now-lastTap<340){reset();zoomTo(2.5);lastTap=0;} else lastTap=now;
+    if(e.type==='pointerup'&&wasSingle&&e.pointerType==='touch'&&!hadMultiTouch&&gesture){
+      const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;
+      const elapsed=Date.now()-gesture.time;
+      const threshold=Math.max(45,Math.min(85,stage.clientWidth*.12));
+      const swiped=gallery.length>1&&gesture.startScale<=1.01&&scale<=1.01&&
+        elapsed<1200&&Math.abs(dx)>=threshold&&Math.abs(dx)>Math.abs(dy)*1.25;
+      if(swiped){
+        lastTap=0;
+        stepImage(dx<0?1:-1);
+      }else if(Math.hypot(dx,dy)<22){
+        const now=Date.now();
+        if(now-lastTap<340){reset();zoomTo(2.5);lastTap=0;}else lastTap=now;
+      }else lastTap=0;
     }
+    if(pointers.size===0){swipeStart=null;hadMultiTouch=false;}
   };
   stage.addEventListener('pointerup',pointerEnd);
   stage.addEventListener('pointercancel',pointerEnd);
@@ -277,6 +347,8 @@
   document.addEventListener('keydown',e=>{
     if(viewer.hidden)return;
     if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeImage();}
+    else if(e.key==='ArrowLeft'){e.preventDefault();stepImage(-1);}
+    else if(e.key==='ArrowRight'){e.preventDefault();stepImage(1);}
     else if(e.key==='+'||e.key==='='){e.preventDefault();zoomTo(scale*1.5);}
     else if(e.key==='-'){e.preventDefault();zoomTo(scale/1.5);}
     else if(e.key==='0'){e.preventDefault();reset();}
@@ -362,7 +434,7 @@
     // Bắt click trong capture trước sự kiện mở hồ sơ tại app.js.
     e.preventDefault();
     e.stopImmediatePropagation();
-    openImage(src,imgTitle(img),isPersonFrame(frame));
+    openImage(src,imgTitle(img),isPersonFrame(frame),img);
   },true);
 
   // Thẻ chi tiết được tạo động: chỉ Chức sắc có nút lưu ảnh kèm dấu mờ.
@@ -390,7 +462,7 @@
       const show=document.createElement('button');
       show.type='button';show.className='gdd-image-action';show.textContent='⤢ Xem ảnh toàn màn hình';
       show.addEventListener('click',()=>openImage(img.currentSrc||img.src,imgTitle(img),
-        detail.dataset.gddKind==='people'));
+        detail.dataset.gddKind==='people',img));
       const save=document.createElement('button');
       save.type='button';save.className='gdd-image-action';
       save.textContent=isPerson?'↓ Tải Ảnh':'↓ Tải ảnh gốc';
