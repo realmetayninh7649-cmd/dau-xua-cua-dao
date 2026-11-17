@@ -8,6 +8,7 @@ on:
       - "index.html"
       - "gdd-r2-admin.js"
       - "gdd-document-router.js"
+      - "gdd-document-export.js"
       - "r2-xem.mjs"
       - "dao-su-albums.js"
       - "image-viewer.js"
@@ -24,6 +25,7 @@ on:
       - "index.html"
       - "gdd-r2-admin.js"
       - "gdd-document-router.js"
+      - "gdd-document-export.js"
       - "r2-xem.mjs"
       - "dao-su-albums.js"
       - "image-viewer.js"
@@ -52,6 +54,7 @@ jobs:
           for file in app.js image-viewer.js dao-su-albums.js gdd-r2-admin.js gdd-document-router.js r2-xem.mjs gdd-v2-layout.js gdd-v2-search.js gdd-audio-radio.js gdd-calendar.js; do
             if test -f "$file"; then node --check "$file"; fi
           done
+          node --check gdd-document-export.js
           node --check gdd-festival-binh-ngo-2026.js
           node --check workers/gdd-r2-gateway/src/index.mjs
           node --check workers/gdd-r2-gateway/client/uploader.mjs
@@ -73,6 +76,7 @@ jobs:
           node tests/v20-active-site-smoke.mjs
           node tests/image-viewer-gallery-smoke.mjs
           node tests/gdd-festival-2026-smoke.mjs
+          node tests/document-export-scope-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
         if: failure()
         uses: actions/upload-artifact@v4
@@ -83,4 +87,5 @@ jobs:
             /tmp/v20-*.png
             /tmp/gdd-gallery-*.png
             /tmp/gdd-festival-*.png
+            /tmp/gdd-document-scope-*.png
           if-no-files-found: ignore
