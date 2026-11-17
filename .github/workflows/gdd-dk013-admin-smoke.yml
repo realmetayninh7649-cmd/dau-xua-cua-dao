@@ -9,6 +9,8 @@ on:
       - "dao-su-albums.js"
       - "r2-xem.*"
       - "tests/dk014-reader-smoke.mjs"
+      - "tests/dk015-unified-reader-smoke.mjs"
+      - "gdd-document-router.js"
       - "tests/dk013-admin-smoke.mjs"
       - ".github/workflows/gdd-dk013-admin-smoke.yml"
   workflow_dispatch:
