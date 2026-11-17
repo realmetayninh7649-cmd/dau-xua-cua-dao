@@ -1,0 +1,59 @@
+name: "GDD SEO - Tai lieu cong khai va sitemap"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/gdd-seo-build.mjs"
+      - ".github/workflows/gdd-seo-publish.yml"
+      - "supabase-config.js"
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: gdd-seo-publishing
+  cancel-in-progress: false
+
+jobs:
+  generate-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: https://dauxuacuadao.info.vn/
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Tao trang cong khai va sitemap tu Supabase RLS"
+        run: node scripts/gdd-seo-build.mjs
+      - name: "Kiem tra dau ra SEO"
+        run: |
+          test -f sitemap.xml
+          test -f ho-so/index.html
+          test -f bien-khao/index.html
+          grep -q "dauxuacuadao.info.vn/ho-so/" sitemap.xml
+          grep -q "dauxuacuadao.info.vn/bien-khao/" sitemap.xml
+      - name: "Cap nhat trang SEO trong kho GitHub"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- sitemap.xml ho-so bien-khao
+          if ! git diff --cached --quiet; then
+            git commit -m "SEO: dong bo trang da cong bo va sitemap tu Supabase"
+            git push origin HEAD:main
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+      - name: "Dang ban GitHub Pages khong can thay doi DNS"
+        id: deployment
+        uses: actions/deploy-pages@v4
