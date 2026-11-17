@@ -407,8 +407,8 @@ function videoSource(raw){
     const {data,error}=await state.supabase.from('admin_users').select('user_id').eq('user_id',state.user.id).maybeSingle();
     state.admin=Boolean(data&&!error);
     $('#admin-login-area').hidden=state.admin;$('#admin-editor-area').hidden=!state.admin;
-    if(state.admin){$('#logged-email').textContent=state.user.email||'Người quản trị';buildEditor();renderEditorList()}
-    else{$('#login-message').textContent='Tài khoản chưa được cấp quyền biên tập. Xin kiểm tra bảng admin_users.'}
+    if(state.admin){$('#logged-email').textContent=state.user.email||'Người quản trị';buildEditor();renderEditorList();window.GDDR2?.open(state.supabase)}
+    else{window.GDDR2?.close();$('#login-message').textContent='Tài khoản chưa được cấp quyền biên tập. Xin kiểm tra bảng admin_users.'}
   }
   function labelHTML(field){
     const [name,label,type,required]=field,req=required?' required':'';
@@ -423,7 +423,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     if(type==='subgroup')return `<label>${escape(label)}<select name="subgroup"><option value="">Chưa phân loại</option>${allSubgroups.map(g=>`<option value="${escape(g)}">${escape(g)}</option>`).join('')}</select></label>`;
     if(type==='person')return `<label>${escape(label)}<select name="person_id"><option value="">Không liên kết</option>${state.data.people.map(p=>`<option value="${escape(p.id)}">${escape(p.full_name)}</option>`).join('')}</select></label>`;
     if(type==='video-file')return `<label>${escape(label)}<input type="file" name="video_file" accept="video/*,.mp4,.webm"></label><p class="help">Chọn tệp MP4 (H.264 khuyên dùng) hoặc WebM, tối đa 45 MB. Tệp MOV từ iPhone cần xuất thành MP4 trước để xem tốt trên Android và máy tính. Với video lớn đã đăng trên Page, hãy dán đường dẫn Facebook vào ô phía trên. Video tải lên sẽ ở kho công khai khi có đường dẫn.</p>`;
-    if(type==='file'){const docs=state.editorKind==='documents';return `<label>${escape(label)}<input type="file" name="file" accept="${docs?'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif':'image/jpeg,image/png,image/webp,image/heic,image/heif'}"></label><p class="help">${docs?'PDF tối đa 15 MB; ảnh gốc lớn tự tối ưu dưới 6 MB.':'JPG/PNG/WebP và HEIC (nếu hỗ trợ) tự tối ưu trước khi lưu dưới 6 MB.'} Giữ bản gốc ở nơi lưu trữ riêng.</p>`;}
+    if(type==='file'){const docs=state.editorKind==='documents';return `<label>${escape(label)}<input type="file" name="file" accept="${docs?'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.doc,.docx':'image/jpeg,image/png,image/webp,image/heic,image/heif'}"></label><p class="help">${docs?'PDF/Word được lưu nguyên mẫu riêng trong R2 (chưa công khai bản gốc); bài mới có tệp PDF/Word sẽ lưu nháp chờ trình xem an toàn. Ảnh sẽ được tối ưu để hiển thị.':'Ảnh gốc lưu riêng ở R2, ảnh nhẹ được dùng để hiển thị; JPG/PNG/WebP và HEIC (nếu hỗ trợ).'} Không tải bản gốc công khai.</p>`;}
     if(type==='long'||type==='textarea')return `<label>${escape(label)}<textarea name="${name}" class="${type==='long'?'tall':''}"${req}></textarea></label>`;
     return `<label>${escape(label)}<input type="${type==='url'?'url':'text'}" name="${name}"${req}></label>`;
   }
@@ -778,9 +778,31 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         });
       }
       const file=form.elements.file?.files?.[0];
+      let archivedPrimary=null,privateDocument=false;
       if(file){
-        const url=await uploadImage(file,kind);
-        data[kind==='documents'?'file_url':(['posts','videos','obituaries'].includes(kind)?'cover_url':'image_url')]=url;
+        if(!window.GDDR2?.archive)throw Error('Bộ bảo tồn nguyên mẫu R2 chưa tải xong. Hãy tải lại trang.');
+        archivedPrimary=await window.GDDR2.archive(file,state.supabase,{
+          recordKind:kind,role:'primary',
+          onProgress:progress=>{
+            if(progress.phase==='original')
+              $('#form-message').textContent='Đang bảo tồn bản gốc trong R2: '+Math.round(progress.bytes/progress.total*100)+'%';
+            if(progress.phase==='optimizing')
+              $('#form-message').textContent='Ảnh gốc đã được lưu R2; đang tạo bản xem '+progress.variant+'…';
+            if(progress.phase==='optimized-error')
+              $('#form-message').textContent='Bản gốc đã lưu; bản ảnh xem cần kiểm tra: '+progress.message;
+          }
+        });
+        const ext=String(file.name||'').split('.').pop().toLowerCase();
+        privateDocument=kind==='documents'&&['pdf','doc','docx'].includes(ext);
+        if(privateDocument){
+          // No public PDF/Word original: only a draft record until view-only conversion exists.
+          data.file_url=null;
+          data.published=false;
+          $('#form-message').textContent='PDF/Word nguyên mẫu đã lưu riêng tại R2. Bài này sẽ là bản nháp cho tới khi có bản xem an toàn.';
+        }else{
+          const url=await uploadImage(file,kind);
+          data[kind==='documents'?'file_url':(['posts','videos','obituaries'].includes(kind)?'cover_url':'image_url')]=url;
+        }
       }
       if(!record)data.slug=slugify(data.full_name||data.title)+'-'+Date.now().toString(36).slice(-6);
       // Lấy đúng ID từ câu lệnh insert/update để gắn toàn bộ ảnh vào bài, không cần người dùng bấm Sửa.
@@ -791,6 +813,11 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       if(!savedId)throw new Error('Đã lưu dữ liệu nhưng không lấy được mã bài viết.');
       // Nếu việc tải ảnh thất bại, lần bấm sau cập nhật bài này, KHÔNG tạo thêm bài mới.
       state.editingId=savedId;
+      let r2LinkProblem='';
+      if(archivedPrimary){
+        try{await window.GDDR2.link(archivedPrimary,kind,savedId,'primary',state.supabase)}
+        catch(linkError){r2LinkProblem=String(linkError?.message||linkError)}
+      }
       // Giữ lại URL đã tải nếu người dùng phải thử tải album thêm lần nữa.
       for(const name of ['video_url','cover_url','file_url','image_url']){
         if(data[name]&&form.elements[name])form.elements[name].value=data[name];
@@ -816,7 +843,15 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       state.editingId=null;
       albums?.resetAfterSuccess?.();
       buildEditor();
-      toast('Đã lưu tư liệu '+(saved?.archive_code||'(bản nháp chưa cấp mã)')+' và bộ ảnh.');
+      window.GDDR2?.refresh?.();
+      if(r2LinkProblem){
+        $('#form-message').textContent='Bài đã được lưu và ảnh gốc vẫn ở R2, nhưng liên kết danh mục cần kiểm tra: '+r2LinkProblem;
+        toast('Bài đã lưu; cần kiểm tra liên kết R2.');
+      }else if(privateDocument){
+        toast('Đã lưu PDF/Word nguyên mẫu vào R2 và lưu bài ở chế độ NHÁP, không công khai tệp gốc.');
+      }else{
+        toast('Đã lưu tư liệu '+(saved?.archive_code||'(bản nháp chưa cấp mã)')+'; ảnh gốc bảo tồn R2, ảnh xem đã đăng.');
+      }
     }catch(err){
       $('#form-message').textContent='Không thể lưu: '+(err.message||'Lỗi không xác định');
       toast('Lỗi lưu tư liệu. Vui lòng xem thông báo dưới nút đăng.');
@@ -872,7 +907,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       stage='tải dữ liệu';
       await fetchData();
       if(state.admin)buildEditor();
-      state.supabase.auth.onAuthStateChange((_event,session)=>{state.user=session?.user||null;if(!state.user){state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;fetchData()}});
+      state.supabase.auth.onAuthStateChange((_event,session)=>{state.user=session?.user||null;if(!state.user){window.GDDR2?.close();state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;fetchData()}});
       $('#mode-banner').hidden=true;
     }catch(err){
       console.error('Không thể khởi tạo website tại bước '+stage,err);
@@ -978,7 +1013,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       if(error){$('#login-message').textContent=error.message}else{state.user=data.user;await verifyAdmin();if(state.admin){$('#login-message').textContent='';form.reset();await fetchData()}else await state.supabase.auth.signOut()}
       btn.disabled=false;
     });
-    $('#logout-button').addEventListener('click',async()=>{if(state.supabase)await state.supabase.auth.signOut();state.user=null;state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;closeAdmin();await fetchData();toast('Đã đăng xuất')});
+    $('#logout-button').addEventListener('click',async()=>{window.GDDR2?.close();if(state.supabase)await state.supabase.auth.signOut();state.user=null;state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;closeAdmin();await fetchData();toast('Đã đăng xuất')});
     $$('.editor-tabs button').forEach(b=>b.addEventListener('click',()=>{state.editorKind=b.dataset.kind;state.editingId=null;state.editorListExpanded=false;$('#editor-record-search').value='';buildEditor();renderEditorList()}));
     $('#editor-record-search').addEventListener('input',()=>{
       $('#editor-list').scrollTop=0;renderEditorList();
