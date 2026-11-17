@@ -411,6 +411,35 @@
       note(results.join('\n')+(results.length?'\n':'')+'Lỗi: '+String(error?.message||error));
     }finally{busy=false;button.disabled=false;input.disabled=false}
   }
+  async function auditLegacyPdf(){
+    if(!client)return;
+    const out=$('gdd-r2-legacy-results');
+    if(!out)return;
+    out.textContent='Đang kiểm kê các PDF đang có liên kết công khai cũ…';
+    try{
+      const {data,error}=await client.from('archive_gallery_images')
+        .select('id,owner_kind,owner_id,caption,image_url')
+        .ilike('image_url','%.pdf%').order('owner_kind').limit(500);
+      if(error)throw Error(error.message);
+      out.replaceChildren();
+      const intro=document.createElement('p');
+      intro.textContent='Có '+(data?.length||0)+' PDF cũ đang mở trực tiếp từ Supabase. Đường đọc đã thống nhất; bản gốc chỉ thật sự riêng tư khi nhập vào R2, đối chiếu đủ trang và ngừng đường public cũ.';
+      out.appendChild(intro);
+      for(const row of data||[]){
+        const p=document.createElement('p');
+        p.className='gdd-r2-item';
+        const label=document.createElement('strong');
+        label.textContent=(row.owner_kind||'')+' · '+(row.caption||'Tư liệu PDF');
+        const link=document.createElement('a');
+        link.href=window.GDDDocumentReader?.readerUrl(row.image_url)||row.image_url;
+        link.rel='noopener noreferrer';link.target='_blank';
+        link.textContent='Đọc trong trình xem chung';
+        const meta=document.createElement('small');
+        meta.textContent='Mã ảnh đính kèm: '+row.id;
+        p.append(label,meta,link);out.appendChild(p);
+      }
+    }catch(error){out.textContent='Chưa kiểm kê được PDF: '+(error?.message||error)}
+  }
   function open(supabase){
     client=account(supabase);
     const panel=$('gdd-r2-vault-panel');
@@ -419,6 +448,7 @@
       bound=true;
       $('gdd-r2-vault-upload')?.addEventListener('click',saveInVault);
       $('gdd-r2-vault-refresh')?.addEventListener('click',refresh);
+      $('gdd-r2-audit-legacy')?.addEventListener('click',auditLegacyPdf);
     }
     refresh().catch(error=>note('Không thể tải danh mục: '+String(error?.message||error)));
   }
@@ -431,5 +461,5 @@
     const input=$('gdd-r2-vault-files');
     if(input)input.value='';
   }
-  window.GDDR2 = Object.freeze({archive,link,refresh,open,close,prepareDocument,setPublication,attachPublishedDocument});
+  window.GDDR2 = Object.freeze({archive,link,refresh,open,close,prepareDocument,setPublication,attachPublishedDocument,auditLegacyPdf});
 })();
