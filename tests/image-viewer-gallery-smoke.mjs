@@ -81,6 +81,37 @@ try {
       assert.equal(await page.locator('#gdd-image-scale').innerText(),'100%');
       await page.keyboard.press('Escape');
       await page.locator('#gdd-image-viewer').waitFor({state:'hidden'});
+      // Chức Sắc: hiển thị và tải nguồn ảnh nguyên trạng, không canvas phủ tem.
+      await page.evaluate(()=>{
+        const people=document.createElement('div');people.id='people-grid';
+        const person=document.createElement('div');person.className='person-media';
+        const img=document.createElement('img');img.alt='Đầu Sư Thái Bộ Thanh';img.src='/logo.png';
+        person.appendChild(img);people.appendChild(person);document.body.appendChild(people);
+        img.click();
+      });
+      await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
+      const person=await page.evaluate(()=>({
+        imageUrl:document.getElementById('gdd-image-full').src,
+        originalUrl:document.getElementById('gdd-image-original').href,
+        originalVisible:!document.getElementById('gdd-image-original').hidden,
+        stampExists:!!document.getElementById('gdd-image-stamp'),
+        watermarkLoaded:!!window.GDDPersonPhotoWatermark,
+        downloadText:document.getElementById('gdd-image-download').textContent,
+        caption:document.getElementById('gdd-image-caption').textContent
+      }));
+      assert.ok(person.imageUrl.endsWith('/logo.png'),label+': source image preserved');
+      assert.equal(person.originalUrl,person.imageUrl,label+': source link preserved');
+      assert.equal(person.originalVisible,true,label+': original source link visible');
+      assert.equal(person.stampExists,false,label+': must not overlay watermark canvas');
+      assert.equal(person.watermarkLoaded,false,label+': no watermark script requested');
+      assert.ok(!/Tem Guilloché|hologram/i.test(person.caption),label+': no watermark text');
+      const [fileDownload]=await Promise.all([
+        page.waitForEvent('download',{timeout:10000}),
+        page.locator('#gdd-image-download').click()
+      ]);
+      assert.equal(fileDownload.suggestedFilename(),'logo.png',label+': untouched source download');
+      await page.locator('#gdd-image-close').click();
+      console.log('PERSON PHOTO NO WATERMARK PASS',label,'display/original/download');
       console.log('IMAGE GALLERY PASS',label,'arrows/swipe/keyboard/zoom/close');
     } catch(error) {
       console.error('IMAGE GALLERY FAIL',label,error.message);
