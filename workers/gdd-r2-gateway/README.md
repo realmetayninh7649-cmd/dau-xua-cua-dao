@@ -1,3 +1,19 @@
+# GDDĐ v2.0.0-DK01.4.1 — Đưa bản xem R2 đã công bố vào Tài liệu số hóa
+
+**Bổ sung sau DK01.4**: Khi tài liệu PDF/DOCX đã được Quản Trị Viên duyệt và công bố từng trang trong R2 nhưng còn nằm ở `Kho nguyên mẫu`, mục **Bản xem cho độc giả** có thêm nút **Đưa bản xem này vào mục Tài liệu số hóa**.
+
+- Bản xem đang riêng tư **không thể** đăng bài công khai. Chỉ tài khoản Quản Trị Viên có quyền Supabase mới thực hiện.
+- Người quản trị điền nhan đề, năm văn kiện, lời giới thiệu, nguồn tư liệu; **không tự suy đoán năm xuất bản hoặc nguồn từ tên tệp**.
+- Trước khi thêm bài, ứng dụng kiểm tra endpoint `GET /v1/public/{id}` và tra danh sách bài hiện có để tránh trùng.
+- Bài mới trong `documents` chỉ lưu **URL trình đọc `r2-xem.html?asset=...`**, không chép PDF nguyên mẫu vào bucket công khai; mã hồ sơ DXCD-TL được trigger Supabase cấp tự động.
+- Chỉ mục `gdd_r2_assets` được gắn sang bài mới (record_kind=documents, role=primary); bản nguyên mẫu, bản xem từng trang và các bài cũ được giữ nguyên.
+- Nếu **Ẩn bản xem** và bài gắn trực tiếp URL này, ứng dụng đồng thời đưa bài về trạng thái nháp (`published=false`) để độc giả không thấy đường dẫn hỏng.
+- Giao diện Tài liệu số hóa hiển thị nút **Đọc bản xem** cho URL R2; không tạo nút tải PDF nguyên mẫu. Các liên kết PDF lịch sử trên Supabase được giữ nguyên, không tự chuyển đổi hoặc xóa bỏ.
+- Kiểm thử: `workers/gdd-r2-gateway/test/dk0141-library.test.mjs`, gồm kiểm tra công bố an toàn, nguồn chưa xác minh, tránh đăng trùng và ẩn bài đồng bộ.
+- Nhánh sao lưu trước cập nhật: `backup/pre-dk0141-document-link-20261117`.
+
+---
+
 # GDDĐ v2.0.0-DK01.4 — Độc giả xem bản được duyệt, nguyên mẫu vẫn riêng tư
 
 **Đã lập trình và kiểm thử trước triển khai:** Trình đọc `r2-xem.html` mở ảnh tối ưu hoặc ảnh JPEG từng trang của PDF/DOCX **chỉ sau khi Quản Trị Viên nhấn Công bố**. Không có `GET originals/`, không phát PDF/Word nguyên mẫu, không lộ khóa R2.
