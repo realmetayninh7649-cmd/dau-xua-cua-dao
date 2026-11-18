@@ -120,6 +120,7 @@
   const caption=$('gdd-image-caption'), download=$('gdd-image-download'), orig=$('gdd-image-original');
   let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false, noImageDownload=false, viewTicket=0;
   let gallery=[], galleryIndex=0, swipeStart=null, hadMultiTouch=false;
+  let tracedPreviewURL='';
   const pointers=new Map();
   let start=null, lastTap=0;
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -156,7 +157,7 @@
     const selector=album?'.gdd-album-tile img':'.gallery-visual img';
     return [...grid.querySelectorAll(selector)]
       .filter(item=>item instanceof HTMLImageElement)
-      .map(item=>({element:item,src:safeSource(item.currentSrc||item.src),title:imgTitle(item)}))
+      .map(item=>({element:item,src:safeSource(item.currentSrc||item.src),title:imgTitle(item),photoCode:item.dataset.photoCode||''}))
       .filter(item=>item.src);
   }
   function refreshArrows(){
@@ -171,7 +172,9 @@
     const item=gallery[index],url=safeSource(item.src);if(!url)return;
     galleryIndex=index;
     ++viewTicket;
+    const currentTicket=viewTicket;
     title=(item.title||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(item.isPerson);
+    if(tracedPreviewURL){URL.revokeObjectURL(tracedPreviewURL);tracedPreviewURL='';}
     noImageDownload=Boolean(item.noDownload);
     full.style.visibility='';
     full.alt=title;full.removeAttribute('src');full.src=url;
@@ -192,6 +195,16 @@
     viewer.hidden=false;document.body.classList.add('gdd-photo-open');
     pointers.clear();start=null;swipeStart=null;hadMultiTouch=false;lastTap=0;reset();
     if(full.complete&&full.naturalWidth)imageReady();
+    const photoCode=item.photoCode;
+    // Tạo bản xem có dòng nguồn cho ảnh cũ khi mở, chỉ xử lý một ảnh/lượt.
+    if(photoCode&&window.GDDTrace?.validCode(photoCode)&&!window.GDDTrace.isStampedURL(url)){
+      window.GDDTrace.stampedBlob(url,photoCode).then(blob=>{
+        if(viewer.hidden||viewTicket!==currentTicket)return;
+        const stampedURL=URL.createObjectURL(blob);
+        tracedPreviewURL=stampedURL;
+        full.src=stampedURL;
+      }).catch(err=>console.info('[GDD Trace] Nguồn ảnh chưa cho phép tạo bản lưu dấu:',err?.message||err));
+    }
   }
   function stepImage(delta){
     if(viewer.hidden||gallery.length<2)return;
@@ -201,8 +214,12 @@
     const url=safeSource(src);if(!url)return;
     if(viewer.hidden)previousFocus=document.activeElement;
     const images=imageSequence(contextImage);
-    gallery=images.length?images.map(item=>({src:item.src,title:item.title,isPerson:Boolean(isPerson),noDownload:Boolean(suppressDownload)})):
-      [{src:url,title:name||'Ảnh tư liệu',isPerson:Boolean(isPerson),noDownload:Boolean(suppressDownload)}];
+    const ownerCode=contextImage?.closest('#detail-content')?.dataset.gddArchiveCode||'';
+    const singleCode=contextImage?.dataset.photoCode||ownerCode;
+    gallery=images.length?images.map(item=>({src:item.src,title:item.title,isPerson:Boolean(isPerson),
+      noDownload:Boolean(suppressDownload),photoCode:item.photoCode||ownerCode})):
+      [{src:url,title:name||'Ảnh tư liệu',isPerson:Boolean(isPerson),
+        noDownload:Boolean(suppressDownload),photoCode:singleCode}];
     const found=images.findIndex(item=>item.element===contextImage);
     galleryIndex=found>=0?found:Math.max(0,gallery.findIndex(item=>item.src===url));
     showGalleryImage(galleryIndex);
@@ -221,6 +238,7 @@
     if(viewer.hidden)return;
     viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
     ++viewTicket;
+    if(tracedPreviewURL){URL.revokeObjectURL(tracedPreviewURL);tracedPreviewURL='';}
     pointers.clear();start=null;swipeStart=null;hadMultiTouch=false;gallery=[];galleryIndex=0;source='';personPhoto=false;full.removeAttribute('src');
     full.style.visibility='';
     if(previousFocus&&previousFocus.isConnected)previousFocus.focus({preventScroll:true});
@@ -325,7 +343,7 @@
     }
     caption.textContent=message;
   }
-  async function downloadImage(url,label,btn){
+  async function downloadImage(url,label,btn,photoCode=''){
     if(!url)return;
     const old=btn.textContent;
     btn.disabled=true;
@@ -335,19 +353,22 @@
       if(!response.ok)throw Error('Nguồn ảnh không cho phép tải');
       const original=await response.blob();
       if(!original.type.startsWith('image/'))throw Error('Tệp này không phải hình ảnh');
-      const blobUrl=URL.createObjectURL(original),a=document.createElement('a');
+      const output=photoCode&&window.GDDTrace?.validCode(photoCode)
+        ?(window.GDDTrace.isStampedURL(url)?original:await window.GDDTrace.stampedBlob(original,photoCode))
+        :original;
+      const blobUrl=URL.createObjectURL(output),a=document.createElement('a');
       a.href=blobUrl;
       a.download=filename(url,label);
       document.body.appendChild(a);
       a.click();a.remove();
       setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
-      noticeDownload(btn,'Đã yêu cầu lưu ảnh không đóng tem. Trên iPhone, hãy kiểm tra Tệp / Tải về.');
+      noticeDownload(btn,'Đã yêu cầu lưu bản ảnh có dòng nguồn và mã tư liệu (nếu đã cấp).');
     } catch(err) {
       console.warn('[GDD Photo Download]',err);
       noticeDownload(btn,'Nguồn ảnh không cho tải trực tiếp. Nhấn “Mở ảnh gốc”, rồi chạm giữ ảnh để lưu trên iPhone.');
     } finally {btn.disabled=false;btn.textContent=old;}
   }
-  download.addEventListener('click',()=>{if(!personPhoto&&!noImageDownload)downloadImage(source,title,download);});
+  download.addEventListener('click',()=>{if(!personPhoto&&!noImageDownload)downloadImage(source,title,download,gallery[galleryIndex]?.photoCode);});
   
   // Chính sách nút xem/tải ảnh dựa trên mục hiển thị, không thay đổi nguồn ảnh.
   function isPersonFrame(frame){
@@ -427,7 +448,7 @@
         const button=document.createElement('button');
         button.type='button';button.className='gdd-image-action';
         button.dataset.gddImageSave='1';button.textContent='↓ Tải ảnh gốc';
-        button.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),button));
+        button.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),button,img.dataset.photoCode||detail.dataset.gddArchiveCode));
         bar.append(button);
       }
     };
