@@ -1,0 +1,38 @@
+/* Dấu Xưa Cửa Đạo · Năm thư mục Số hóa, mã DXCD-SH.<nhóm>-00001. */
+.gdd-document-folder-panel{margin:20px 0 24px;padding:20px;border:1px solid #d8d4c8;border-radius:14px;
+ background:linear-gradient(145deg,#faf8f2,#f2f0e8);box-shadow:0 5px 20px #243b2f08}
+.gdd-document-folder-panel *{box-sizing:border-box}
+.gdd-document-folder-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+.gdd-document-folder-eyebrow{font:650 10px/1.6 'Be Vietnam Pro',system-ui,sans-serif;color:#94784c;letter-spacing:.13em}
+.gdd-document-folder-intro h3{font:650 clamp(21px,2.5vw,29px)/1.35 'Noto Serif',Georgia,serif;color:#1d4e43;margin:5px 0}
+.gdd-document-folder-all{border:1px solid #af9c77;background:#fffdf8;color:#285648;border-radius:8px;
+  font:650 12px/1.5 'Be Vietnam Pro',system-ui,sans-serif;min-height:41px;padding:8px 12px;cursor:pointer}
+.gdd-document-folder-all span{font-variant-numeric:tabular-nums;margin-left:4px}
+.gdd-document-folder-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.gdd-document-folder{position:relative;min-width:0;min-height:152px;padding:17px 16px 16px;
+ text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+ border:1px solid #d3d6cb;border-radius:11px;background:#fffefa;color:#285348;
+ cursor:pointer;box-shadow:0 3px 8px #0b301706}
+.gdd-document-folder:hover,.gdd-document-folder-all:hover{border-color:#ac8c54;background:#f8f4e9}
+.gdd-document-folder.is-selected,.gdd-document-folder-all.is-selected{
+ border-color:#1a5146;background:#e7f0e9;box-shadow:inset 0 0 0 1px #1a51465c}
+.gdd-document-folder-icon{position:absolute;top:11px;right:13px;color:#ac9058;font-size:23px;font-weight:400}
+.gdd-document-folder-title{font:650 14px/1.55 'Noto Serif',Georgia,serif;max-width:calc(100% - 24px);min-height:46px}
+.gdd-document-folder small{font:550 11px/1.6 'Be Vietnam Pro',system-ui,sans-serif;color:#8b7048;overflow-wrap:anywhere}
+.gdd-document-folder-amount{margin-top:auto;border-top:1px solid #e7e4dc;padding-top:7px;width:100%;
+ font:450 12px/1.5 'Be Vietnam Pro',system-ui,sans-serif;color:#586e63}
+.gdd-document-folder-amount b{color:#1a5146;font-variant-numeric:tabular-nums}
+.gdd-document-folder:focus-visible,.gdd-document-folder-all:focus-visible{outline:3px solid #b69a61;outline-offset:2px}
+.gdd-document-folder-result{font:500 12px/1.6 'Be Vietnam Pro',system-ui,sans-serif;color:#607067;margin:16px 1px 0}
+#document-grid .gdd-document-card-code{color:#2d5c4c;font:550 11px/1.6 'Be Vietnam Pro',system-ui,sans-serif}
+#document-grid .gdd-document-card-code code{font-size:11px;color:#176252;overflow-wrap:anywhere}
+@media(max-width:900px){.gdd-document-folder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){
+ .gdd-document-folder-panel{margin:13px 0 20px;padding:14px 12px}
+ .gdd-document-folder-grid{grid-template-columns:1fr;gap:8px}
+ .gdd-document-folder{min-height:110px;padding:12px 14px;gap:2px}
+ .gdd-document-folder-title{font-size:14px;min-height:0;max-width:calc(100% - 26px)}
+ .gdd-document-folder-amount{margin-top:5px}
+ .gdd-document-folder-intro h3{font-size:23px}
+ .gdd-document-folder-all{font-size:11px}
+}
