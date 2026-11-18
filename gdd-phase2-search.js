@@ -197,6 +197,34 @@
    more.hidden=results.length<=data.limit;
    if(!more.hidden)more.textContent='Xem thêm '+Math.min(12,results.length-data.limit)+' kết quả';
  }
+ // Truy nguyên ảnh theo mã duy nhất, chỉ trên album công khai.
+ async function lookupPhotoCode(raw){
+   const code=String(raw||'').trim().toUpperCase();
+   if(!/^[\p{L}A-Z0-9._-]{5,120}\/\d{3,}$/u.test(code))return null;
+   const cfg=window.SITE_CONFIG||{};
+   if(!cfg.supabaseUrl||!cfg.supabasePublishableKey)return null;
+   const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+   const client=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,
+     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+   const {data:photo,error}=await client.from('archive_gallery_images')
+     .select('id,owner_kind,owner_id,image_url,caption,photo_no,photo_code')
+     .eq('photo_code',code).maybeSingle();
+   if(error)throw error;
+   if(!photo)return null;
+   const type=types.find(t=>t.key===photo.owner_kind);
+   if(!type)return null;
+   const {data:parent,error:parentError}=await client.from(type.key)
+     .select('*').eq('id',photo.owner_id).eq('published',true).maybeSingle();
+   if(parentError)throw parentError;
+   if(!parent?.slug)return null;
+   const title=formatName(type.key,parent)||parent.title||'Bộ tư liệu Đạo sử';
+   const href=location.origin+location.pathname+'?anh='+encodeURIComponent(code)
+     +'#'+type.prefix+'/'+encodeURIComponent(parent.slug);
+   return {kind:type.key,label:type.label+' · Ảnh lưu trữ',row:parent,
+     name:title+' · Ảnh '+String(photo.photo_no).padStart(3,'0'),
+     rank:'',branch:'',code:photo.photo_code,image:safeUrl(photo.image_url),
+     href,searchable:norm(code)};
+ }
  async function apply(){
    const q=$('#gdd-p2-q').value.trim(),branch=$('#gdd-p2-branch').value,rank=$('#gdd-p2-rank').value,kind=$('#gdd-p2-kind').value;
    const active=Boolean(q||branch!=='all'||rank!=='all'||kind!=='all');
@@ -205,8 +233,11 @@
    if(!active)return;
    const status=$('#gdd-p2-result-status');
    status.textContent='Đang tra cứu kho tư liệu…';
-   try{await load();}
-   catch(error){status.textContent='Không tải được dữ liệu: '+(error.message||'Xin thử lại');$('#gdd-p2-result-grid').replaceChildren();return;}
+   try{
+     const exact=await lookupPhotoCode(q);
+     if(exact){data.last=[exact];data.limit=12;renderResults();return;}
+     await load();
+   }catch(error){status.textContent='Không tải được dữ liệu: '+(error.message||'Xin thử lại');$('#gdd-p2-result-grid').replaceChildren();return;}
    data.last=computeResults();data.limit=12;renderResults();
  }
  function schedule(immediate=false){
