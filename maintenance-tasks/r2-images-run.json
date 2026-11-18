@@ -1,0 +1,7 @@
+{
+  "approved": true,
+  "mode": "private-backup-only",
+  "offset": 0,
+  "limit": 10,
+  "description": "Pilot transfer of first 10 published referenced archive images; private originals and previews only"
+}
