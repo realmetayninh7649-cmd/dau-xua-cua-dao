@@ -210,7 +210,7 @@ function videoSource(raw){
     const q=norm($('#people-search').value.trim()),branch=$('#branch-filter').value,subgroup=$('#subgroup-filter').value;
     const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.archive_code,p.archive_legacy_code,...(p.archive_code_aliases||[]),p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
     const shown=state.peopleExpanded?matching:matching.slice(0,6);
-    $('#people-grid').innerHTML=shown.length?shown.map(p=>`<article class="person-card"><div class="person-media">${portrait(p)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span>${p.archive_code?'<span class="gdd-person-archive-code">Mã định danh: <code>'+escape(p.archive_code)+'</code></span>':''}<p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
+    $('#people-grid').innerHTML=shown.length?shown.map(p=>`<article class="person-card"><div class="person-media" data-gdd-trace-code="${escape(p.archive_code||'')}">${portrait(p)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span>${p.archive_code?'<span class="gdd-person-archive-code">Mã định danh: <code>'+escape(p.archive_code)+'</code></span>':''}<p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
     $('#people-result-count').textContent=`Đang hiển thị ${shown.length} / ${matching.length} hồ sơ`;
     const more=$('#people-show-more');more.hidden=matching.length<=6;more.textContent=state.peopleExpanded?'Thu gọn hồ sơ ↑':'Xem thêm hồ sơ ↗';
     $('#article-list').innerHTML=posts.length?posts.slice(0,8).map(({record:p,originKind})=>{
@@ -218,7 +218,7 @@ function videoSource(raw){
       const image=imageFromRecord(p)||safeUrl(linked?.published?linked.image_url:'');
       const emptyArtwork='<div class="editorial-placeholder" aria-hidden="true"><span>✦</span><strong>TƯ LIỆU ĐẠO SỬ</strong><small>BIÊN KHẢO</small></div>';
       const artwork=image
-        ?emptyArtwork+`<img src="${escape(image)}" alt="Ảnh bìa: ${escape(p.title)}" loading="lazy" decoding="async">`
+        ?emptyArtwork+`<img src="${escape(image)}" data-photo-code="${escape(imageFromRecord(p)?p.archive_code:linked?.archive_code||'')}" alt="Ảnh bìa: ${escape(p.title)}" loading="lazy" decoding="async">`
         :emptyArtwork;
       const summary=p.summary||p.caption||p.body||'Bài khảo cứu trong kho tư liệu Đạo sử.';
       const excerpt=String(summary).replace(/\s+/g,' ').slice(0,350);
@@ -251,7 +251,7 @@ function videoSource(raw){
       const src=imageFromRecord(m);
       const full=String(m.caption||m.summary||m.body||'Bấm để xem thông tin bộ ảnh.').replace(/\s+/g,' ').trim();
       const excerpt=full.length>150?full.slice(0,147).replace(/\s+\S*$/,'')+'…':full;
-      return `<button type="button" class="gallery-card" data-open-kind="${originKind}" data-id="${escape(m.id)}"><div class="gallery-visual">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" data-photo-code="${escape(m.archive_code||'')}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div class="gdd-gallery-card-copy"><h3>${escape(m.title)}</h3><p class="gdd-gallery-excerpt">${escape(excerpt)}</p><span class="gdd-gallery-open" aria-hidden="true">Xem bộ ảnh ↗</span></div></button>`;
+      return `<button type="button" class="gallery-card" data-open-kind="${originKind}" data-id="${escape(m.id)}"><div class="gallery-visual" data-gdd-trace-code="${escape(m.archive_code||'')}">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" data-photo-code="${escape(m.archive_code||'')}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div class="gdd-gallery-card-copy"><h3>${escape(m.title)}</h3><p class="gdd-gallery-excerpt">${escape(excerpt)}</p><span class="gdd-gallery-open" aria-hidden="true">Xem bộ ảnh ↗</span></div></button>`;
     }).join(''):media.length?'<div class="empty-state"><b>Chưa có bộ ảnh trong chuyên mục này.</b>Chọn “Tất cả” để xem những bộ ảnh đã lưu.</div>':'<div class="empty-state"><b>Chưa có ảnh tư liệu.</b>Tải ảnh từ trang quản trị để lập thư viện ảnh.</div>';
     const docEntries=displayedEntries('documents');
     const folderPanel=$('#document-subfolder-filters');
@@ -281,7 +281,7 @@ function videoSource(raw){
           sectionNames[originKind]||'';
         const preview=originKind==='videos'&&kind==='videos'
           ?`<div class="archive-thumb video-preview-slot" data-video-id="${escape(x.id)}">${videoPoster(x)}</div>`
-          :`<div class="archive-thumb">${src?`<img src="${escape(src)}" alt="${escape(x.title)}" loading="lazy">`:`<div aria-hidden="true">${kind==='obituaries'?'✧':'▤'}</div>`}</div>`;
+          :`<div class="archive-thumb" data-gdd-trace-code="${escape(x.archive_code||'')}">${src?`<img src="${escape(src)}" alt="${escape(x.title)}" loading="lazy">`:`<div aria-hidden="true">${kind==='obituaries'?'✧':'▤'}</div>`}</div>`;
         const description=String(x.summary||x.caption||x.body||'Tư liệu đang được bổ sung nội dung.').replace(/\s+/g,' ').slice(0,360);
         const readUrl=window.GDDDocumentReader?.readerUrl(x.file_url)||x.file_url;
         const readerLink=originKind==='documents'&&
