@@ -60,7 +60,7 @@ try{
   try{
     await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
     try{
-      await page.waitForFunction(()=>document.querySelector('#document-subfolder-count')?.textContent.includes('5 tài liệu'),null,{timeout:8000});
+      await page.waitForFunction(()=>document.querySelector('#document-subfolder-count')?.textContent.includes('Chọn một thư mục'),null,{timeout:8000});
     }catch(err){
       const diag=await page.evaluate(()=>({
         folder:document.querySelector('#document-subfolder-count')?.textContent,
@@ -73,7 +73,9 @@ try{
       throw err;
     }
     assert.equal(await page.locator('#document-subfolder-filters [data-document-subfolder]').count(),6,label+' 5 folders + all');
-    assert.equal(await page.locator('#document-grid .archive-card').count(),5,label+' total documents');
+    assert.equal(await page.locator('#document-grid .archive-card').count(),5,label+' total document dataset');
+    assert.equal(await page.locator('#document-grid').isVisible(),false,label+' no long document list beneath folder menu initially');
+    assert.equal(await page.locator('#document-folder-active').isVisible(),false,label+' selected folder panel is hidden before choosing');
     // QR appears immediately beneath detail title/meta, not after content; keep both actions and exact code.
     for(const [kind,selector,expected,size] of [
       ['documents','#document-grid [data-open-kind="documents"]','DXCD-SH.HCĐ-00001',160],
@@ -113,9 +115,39 @@ try{
       assert.equal(await page.locator(selector).getAttribute('aria-pressed'),'true',label+' selected '+group);
       assert.equal(await page.locator('#document-grid .archive-card').count(),total,label+' category '+group);
       assert.equal(await page.locator(selector+' [data-document-folder-count]').innerText(),String(total),label+' badge '+group);
+      assert.equal(await page.locator('#document-folder-active').isVisible(),true,label+' compact folder heading '+group);
+      assert.equal(await page.locator('.gdd-document-folder-grid').isVisible(),false,label+' five large cards collapse '+group);
+      assert.equal(await page.locator('#document-grid').isVisible(),true,label+' result visible '+group);
+      const metrics=await page.evaluate(()=>{
+        const panel=document.querySelector('#document-subfolder-filters').getBoundingClientRect();
+        const grid=document.querySelector('#document-grid').getBoundingClientRect();
+        const root=document.querySelector('#tai-lieu-so-hoa');
+        const firstCard=document.querySelector('#document-grid .archive-card');
+        return {
+          gap:Math.round(grid.top-panel.bottom),
+          panelHeight:Math.round(panel.height),
+          documentColumns:firstCard?getComputedStyle(firstCard).gridTemplateColumns:'',
+          touch:getComputedStyle(document.querySelector('#document-folder-active .gdd-document-folder-back')).touchAction,
+          scrollWidth:document.documentElement.scrollWidth,
+          viewport:window.innerWidth,scale:window.visualViewport?.scale||1,
+          sectionOverflow:getComputedStyle(root).overflowX,
+          scrollX:window.scrollX
+        };
+      });
+      assert.ok(metrics.gap>=0&&metrics.gap<=35,label+' documents must immediately follow selected folder '+group+' '+JSON.stringify(metrics));
+      assert.ok(metrics.panelHeight<=235,label+' selected folder remains compact '+group+' '+JSON.stringify(metrics));
+      assert.equal(metrics.touch,'manipulation',label+' prevent double-tap zoom on folder controls');
+      assert.equal(metrics.scale,1,label+' must not zoom automatically');
+      assert.equal(metrics.scrollX,0,label+' must not wobble horizontally');
+      assert.ok(metrics.scrollWidth-metrics.viewport<=20,label+' no horizontal overflow');
+      await page.evaluate(()=>document.querySelector('[data-document-folder-back]').click());
+      assert.equal(await page.locator('.gdd-document-folder-grid').isVisible(),true,label+' back displays folders '+group);
+      assert.equal(await page.locator('#document-grid').isVisible(),false,label+' back hides long document list '+group);
     }
     await page.evaluate(()=>document.querySelector('[data-document-subfolder="all"]').click());
-    assert.equal(await page.locator('#document-grid .archive-card').count(),5,label+' restore all');
+    assert.equal(await page.locator('#document-grid .archive-card').count(),5,label+' view all');
+    assert.equal(await page.locator('#document-grid').isVisible(),true,label+' view all results visible');
+    assert.equal(await page.locator('.gdd-document-folder-grid').isVisible(),false,label+' all results without five cards');
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
     assert.ok(overflow<=20,label+' horizontal overflow '+overflow);
 
