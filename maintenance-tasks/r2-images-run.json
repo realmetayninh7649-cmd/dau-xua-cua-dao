@@ -1,7 +1,7 @@
 {
   "approved": true,
   "mode": "private-backup-only",
-  "offset": 0,
-  "limit": 10,
-  "description": "Pilot transfer of first 10 published referenced archive images; private originals and previews only"
+  "offset": 10,
+  "limit": 690,
+  "description": "Copy remaining 690 already-public archive originals to PRIVATE R2 and create unapproved WebP previews, 10 parallel SHA256-verified shards"
 }
