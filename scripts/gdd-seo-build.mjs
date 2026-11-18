@@ -12,7 +12,7 @@ const BASE = 'https://dauxuacuadao.info.vn';
 // from every SEO HTML route without fetching Supabase or touching database records.
 if (fs.existsSync(path.join(ROOT, 'maintenance-mode.flag'))) {
   const notice = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  if (!notice.includes('Website đang tạm bảo trì') || /<script\\b/i.test(notice)) {
+  if (!notice.includes('Website đang tạm bảo trì') || /<script\b/i.test(notice)) {
     throw new Error('Maintenance notice missing or not static; refuse to replace public SEO pages');
   }
   let updated = 0;
@@ -20,7 +20,7 @@ if (fs.existsSync(path.join(ROOT, 'maintenance-mode.flag'))) {
     const dir = path.join(ROOT, section);
     if (!fs.existsSync(dir)) continue;
     for (const name of fs.readdirSync(dir)) {
-      if (!/\\.html$/i.test(name)) continue;
+      if (!/\.html$/i.test(name)) continue;
       const target = path.join(dir, name);
       if (!fs.statSync(target).isFile()) continue;
       if (fs.readFileSync(target,'utf8') !== notice) {
