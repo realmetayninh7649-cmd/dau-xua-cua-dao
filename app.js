@@ -256,7 +256,7 @@ function videoSource(raw){
     const docEntries=displayedEntries('documents');
     const folderPanel=$('#document-subfolder-filters');
     if(folderPanel){
-      $('#document-subfolder-filters [data-document-subfolder]').forEach(button=>{
+      $$('#document-subfolder-filters [data-document-subfolder]').forEach(button=>{
         const group=button.dataset.documentSubfolder,selected=state.documentSubfolder===group;
         button.classList.toggle('is-selected',selected);
         button.setAttribute('aria-pressed',String(selected));
