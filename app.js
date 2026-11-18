@@ -25,7 +25,7 @@
     ],
     videos:[], obituaries:[], documents:[], submissions:[]
   };
-  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',documentSubfolder:'all',placements:[],transferSelection:null,detail:null };
+  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',documentSubfolder:'browse',placements:[],transferSelection:null,detail:null };
   const schema = {
     people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date','sources','image_url','verified','published'],
     posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
@@ -256,6 +256,23 @@ function videoSource(raw){
     const docEntries=displayedEntries('documents');
     const folderPanel=$('#document-subfolder-filters');
     if(folderPanel){
+      const browsing=state.documentSubfolder==='browse';
+      folderPanel.dataset.mode=browsing?'browse':'detail';
+      const folderChoices=folderPanel.querySelector('.gdd-document-folder-grid');
+      const activeCard=$('#document-folder-active');
+      if(folderChoices)folderChoices.hidden=!browsing;
+      if(activeCard)activeCard.hidden=browsing;
+      const activeAll=state.documentSubfolder==='all';
+      const activeCount=activeAll?docEntries.length:
+        docEntries.filter(({record,originKind})=>
+          documentSubfolderOf(originKind,record)===state.documentSubfolder).length;
+      const activeTitle=$('#document-folder-active-title');
+      if(activeTitle)activeTitle.textContent=activeAll?'Tất cả tài liệu Số hóa':
+        documentSubfolderTitle(state.documentSubfolder);
+      const activeCode=$('#document-folder-active-code');
+      if(activeCode)activeCode.textContent=activeAll?'5 thư mục con':'DXCD-SH.'+state.documentSubfolder;
+      const activeTotal=$('#document-folder-active-total');
+      if(activeTotal)activeTotal.textContent=activeCount+' tư liệu';
       $$('#document-subfolder-filters [data-document-subfolder]').forEach(button=>{
         const group=button.dataset.documentSubfolder,selected=state.documentSubfolder===group;
         button.classList.toggle('is-selected',selected);
@@ -265,15 +282,18 @@ function videoSource(raw){
           docEntries.filter(({record,originKind})=>documentSubfolderOf(originKind,record)===group).length);
       });
       const info=$('#document-subfolder-count');
-      if(info)info.textContent=state.documentSubfolder==='all'
-        ?'Đang hiển thị '+docEntries.length+' tài liệu trong 5 thư mục con.'
-        :'Đang hiển thị '+docEntries.filter(({record,originKind})=>documentSubfolderOf(originKind,record)===state.documentSubfolder).length+
-          ' tài liệu thuộc '+documentSubfolderTitle(state.documentSubfolder)+'.';
+      if(info)info.textContent=browsing
+        ?'Chọn một thư mục để mở tư liệu ngay bên dưới, hoặc nhấn “Xem tất cả”.'
+        :activeAll?'Đang xem '+docEntries.length+' tài liệu trong cả 5 thư mục con.'
+        :'Đang xem '+activeCount+' tài liệu thuộc '+documentSubfolderTitle(state.documentSubfolder)+'.';
     }
     const groupKinds=[['videos','video-grid','Video Đạo Sử'],['obituaries','obituary-grid','Ai Tín'],['documents','document-grid','Tài liệu số hóa']];
     groupKinds.forEach(([kind,target,label])=>{
-      const rows=kind==='documents'?docEntries.filter(({record,originKind})=>state.documentSubfolder==='all'||documentSubfolderOf(originKind,record)===state.documentSubfolder):displayedEntries(kind),el=$('#'+target);
+      const rows=kind==='documents'?docEntries.filter(({record,originKind})=>
+        ['all','browse'].includes(state.documentSubfolder)||
+        documentSubfolderOf(originKind,record)===state.documentSubfolder):displayedEntries(kind),el=$('#'+target);
       if(!el)return;
+      if(kind==='documents')el.hidden=state.documentSubfolder==='browse';
       el.innerHTML=rows.length?rows.map(({record:x,originKind})=>{
         const src=imageFromRecord(x);
         const meta=originKind==='obituaries'?x.memorial_date:
@@ -1090,12 +1110,24 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     $('#subgroup-filter').addEventListener('change',()=>{state.peopleExpanded=false;render()});
     $('#people-show-more').addEventListener('click',()=>{state.peopleExpanded=!state.peopleExpanded;render()});
     $('#document-subfolder-filters')?.addEventListener('click',event=>{
+      const back=event.target.closest('[data-document-folder-back]');
       const button=event.target.closest('[data-document-subfolder]');
-      if(!button||!event.currentTarget.contains(button))return;
-      const group=button.dataset.documentSubfolder;
-      if(group!=='all'&&!documentSubfolders.some(f=>f.code===group))return;
+      if(!event.currentTarget.contains(back||button))return;
+      const group=back?'browse':button?.dataset.documentSubfolder;
+      if(group!=='browse'&&group!=='all'&&!documentSubfolders.some(f=>f.code===group))return;
+      // Sau khi mở thư mục, các thư mục khác thu gọn và tài liệu hiện trực tiếp ngay dưới.
+      // Không sửa URL hay khởi động lại trang nên giữ nguyên phóng to/thu nhỏ của iPhone.
       state.documentSubfolder=group;
       render();
+      requestAnimationFrame(()=>{
+        const folder=$('#document-subfolder-filters');
+        if(!folder?.isConnected)return;
+        const header=$('.site-header');
+        const position=header?getComputedStyle(header).position:'static';
+        const headerGap=['fixed','sticky'].includes(position)?Math.min(160,header.getBoundingClientRect().height):0;
+        const y=window.scrollY+folder.getBoundingClientRect().top-headerGap-14;
+        window.scrollTo({top:Math.max(0,Math.round(y)),left:0,behavior:'instant'});
+      });
     });
     $('#gallery-category-filters').addEventListener('click',event=>{
       const button=event.target.closest('[data-gallery-category]');
