@@ -106,16 +106,32 @@ export async function uploadPreservedAsset(file,{supabase,endpoint=DEFAULT_API,o
   const parts=new Map((session.uploadedParts||[]).map(p=>[p.partNumber,p]));
   emit(onSession,{...session,uploadedParts:[...parts.values()]});
   const partBytes=session.partBytes,partCount=Math.ceil(file.size/partBytes);
-  for(let n=1;n<=partCount;n++){
-    if(parts.has(n))continue;
-    const begin=(n-1)*partBytes,end=Math.min(file.size,n*partBytes);
-    const blob=file.slice(begin,end);
-    const qs=new URLSearchParams({key:session.key,uploadId:session.uploadId,part:String(n)});
-    const part=await retry(()=>call(supabase,endpoint,'/v1/uploads/part?'+qs,'PUT',blob,'application/octet-stream'));
-    parts.set(n,part);
-    emit(onSession,{...session,uploadedParts:[...parts.values()]});
-    emit(onProgress,{phase:'original',finishedParts:parts.size,totalParts:partCount,bytes:Math.min(file.size,parts.size*partBytes),total:file.size});
-  }
+  // Hai/ba phần truyền song song giảm độ trễ cho ảnh/PDF lớn; R2 vẫn nhận
+  // đúng từng byte và hoàn tất multipart theo thứ tự partNumber.
+  const mobile=typeof navigator!=='undefined'&&/iPhone|iPad|Android|Mobile/i.test(navigator.userAgent||'');
+  const parallel=Math.min(mobile?2:3,partCount);
+  let cursor=1,partError=null;
+  const transferPart=async()=>{
+    while(cursor<=partCount&&!partError){
+      const n=cursor++;
+      if(parts.has(n))continue;
+      const begin=(n-1)*partBytes,end=Math.min(file.size,n*partBytes);
+      const blob=file.slice(begin,end);
+      const qs=new URLSearchParams({key:session.key,uploadId:session.uploadId,part:String(n)});
+      try{
+        const part=await retry(()=>call(supabase,endpoint,'/v1/uploads/part?'+qs,'PUT',blob,'application/octet-stream'));
+        parts.set(n,part);
+        const finished=[...parts.values()].sort((a,b)=>a.partNumber-b.partNumber);
+        emit(onSession,{...session,uploadedParts:finished});
+        const bytes=finished.reduce((sum,p)=>sum+Math.min(partBytes,file.size-(p.partNumber-1)*partBytes),0);
+        emit(onProgress,{phase:'original',finishedParts:parts.size,totalParts:partCount,bytes,total:file.size});
+      }catch(error){
+        if(!partError)partError=error;
+      }
+    }
+  };
+  await Promise.all(Array.from({length:parallel},()=>transferPart()));
+  if(partError)throw partError;
   final=await call(supabase,endpoint,'/v1/uploads/complete','POST',
     json({key:session.key,uploadId:session.uploadId,size:file.size,parts:[...parts.values()].sort((a,b)=>a.partNumber-b.partNumber)}),'application/json');
   }
