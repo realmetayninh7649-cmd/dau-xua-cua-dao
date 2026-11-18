@@ -109,12 +109,13 @@ try{
       await page.evaluate(()=>document.querySelector('#detail-overlay [data-close="detail"]').click());
     }
     console.log('QR COMPACT PASS',label,'Số hóa + Chức sắc: top placement, sizes, preserved controls');
-    // Bản kiểm thử chạy dữ liệu mô phỏng không tải luồng điều hướng của website thật:
-    // mở section Số hóa trước khi đo box/scroll và tương tác bằng các nút.
-    await page.evaluate(()=>{
+    // Mở đúng chuyên mục qua router công khai. Không trực tiếp gỡ thuộc tính
+    // hidden vì bộ điều hướng có thể chạy lại và ẩn section giữa lúc thử.
+    await page.evaluate(()=>{ location.hash='#tai-lieu-so-hoa'; });
+    await page.waitForFunction(()=>{
       const section=document.getElementById('tai-lieu-so-hoa');
-      if(section)section.hidden=false;
-    });
+      return Boolean(section&&!section.hidden&&getComputedStyle(section).display!=='none');
+    },null,{timeout:8000});
     for(const [group,total] of Object.entries({HCĐ:1,HTĐ:2,CTĐ:0,PT:1,CQK:1})){
       const selector='#document-subfolder-filters [data-document-subfolder="'+group+'"]';
       await page.evaluate(selector=>document.querySelector(selector).click(),selector);
