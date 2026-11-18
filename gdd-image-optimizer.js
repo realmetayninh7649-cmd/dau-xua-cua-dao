@@ -59,7 +59,7 @@
   let width=Math.max(1,Math.round(decoded.width*ratio));
   let height=Math.max(1,Math.round(decoded.height*ratio));
   const canvas=document.createElement('canvas');
-  let best=null,outputType=inputType==='image/png'?'image/webp':(EXT[inputType]?inputType:'image/jpeg');
+  let outputType=inputType==='image/png'?'image/webp':(EXT[inputType]?inputType:'image/jpeg');
   try{
    const context=canvas.getContext('2d',{alpha:true});
    if(!context)throw Error('Trình duyệt không hỗ trợ xử lý ảnh.');
@@ -72,7 +72,10 @@
     context.drawImage(decoded.image,0,0,width,height);
     report(progress,'Đang tối ưu ảnh '+file.name+' – giữ '+width+' × '+height+' px...');
     let previousSize=Infinity;
-    for(const q of [0.94,0.88,0.81]){
+    // Với ảnh rất lớn, bỏ bước encode 0.94 thường vượt giới hạn.
+    // Giữ nguyên số điểm ảnh lâu nhất có thể; bản gốc không bị ghi đè.
+    const qualities=file.size>10*1048576?[0.88,0.81]:[0.94,0.88,0.81];
+    for(const q of qualities){
      let blob=await encode(canvas,outputType,q);
      // Browsers that cannot encode WebP may silently return a PNG. Keep transparency in that case.
      if(blob.type!==outputType){
@@ -89,7 +92,8 @@
       report(progress,'Đã tối ưu '+file.name+': '+mb(file.size)+' → '+mb(optimized.size)+' · '+width+' × '+height+' px.');
       return optimized;
      }
-     best=blob;
+     // PNG không dùng quality; tránh lặp lại phép nén không đổi.
+     if(outputType==='image/png')break;
     }
     // Prefer a moderate-quality image with more pixels over an overly compressed image.
     const fit=Math.sqrt(TARGET/Math.max(previousSize,1))*.94;
@@ -98,13 +102,13 @@
     const nextHeight=Math.max(1,Math.floor(height*factor));
     if(width<=480||height<=480||nextWidth===width||nextHeight===height)break;
     width=nextWidth;height=nextHeight;
-    await Promise.resolve();
+    // Nhường một nhịp cho Safari hiển thị tiến độ, tránh giao diện bị đơ.
+    await new Promise(resolve=>setTimeout(resolve,0));
    }
    throw Error('Ảnh quá phức tạp để đạt dưới 6 MB mà vẫn giữ độ nét phù hợp.');
   }finally{
    canvas.width=0;canvas.height=0;
    decoded.cleanup();
-   best=null;
   }
  }
  window.GDDImageOptimizer=Object.freeze({prepare,isImage,mimeFor,MAX_UPLOAD_BYTES:LIMIT,describeSize:mb});
