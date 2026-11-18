@@ -422,6 +422,12 @@
       setStatus('Đã đổi thứ tự ảnh.');await loadAdminRows(owner,ticket);
     }catch(e){setStatus('Không đổi được thứ tự: '+e.message);await loadAdminRows(owner,ticket);}
   }
+
+  // Giới hạn mạng: 2 ảnh đồng thời trên điện thoại, 3 trên máy tính.
+  // Các thao tác canvas luôn nối hàng để tránh cạn RAM trên Safari/iPhone.
+  function albumUploadLimit(){
+    return window.matchMedia?.('(max-width: 900px)').matches ? 2 : 3;
+  }
   async function uploadPending(kind,id,onProgress){
     if(uploading)throw Error('Hệ thống đang tải một bộ ảnh khác.');
     validatePending();
@@ -431,7 +437,27 @@
     const filePicker=$('#gdd-album-files');
     if(filePicker)filePicker.disabled=true;
     renderQueue();
-    let done=0;
+    const files=pendingFiles.filter(item=>!item.saved);
+    let done=0,firstError=null,position=0;
+    const warnings=[];
+    const notify=message=>{
+      setStatus(message);
+      try{onProgress?.(message)}catch{}
+    };
+    let cpuTail=Promise.resolve();
+    const imageStep=fn=>{
+      const task=cpuTail.then(fn);
+      cpuTail=task.then(()=>{},()=>{});
+      return task;
+    };
+    // Một lượt lưu theo thứ tự ảnh, dù hai/ba lượt truyền tệp đang chạy song song.
+    // Mã ảnh và số thứ tự do CSDL cấp phải không bị đảo theo tốc độ mạng.
+    const turns=files.map(()=>{
+      let release;
+      const ready=new Promise(resolve=>{release=resolve});
+      return {ready,release};
+    });
+    turns[0].release();
     try{
       const supa=await getClient();
       const {data:{user},error:authError}=await supa.auth.getUser();
@@ -439,52 +465,114 @@
       const {data:maxRows,error:maxError}=await supa.from(ALBUM_TABLE).select('sort_order')
         .eq('owner_kind',kind).eq('owner_id',id).order('sort_order',{ascending:false}).limit(1);
       if(maxError)throw maxError;
-      let position=Math.max(0,maxRows?.[0]?.sort_order??0);
-      const files=pendingFiles.filter(item=>!item.saved);
-      for(const item of files){
-        const n=done+1;
-        const msg=`Đang tải ảnh ${n}/${files.length}: ${item.file.name}. Đừng đóng trang.`;
-        setStatus(msg);onProgress?.(msg);
-        const optimized=await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{setStatus(message);onProgress?.(message)}});
-        item.file=optimized;
-        const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
-        const path=`${kind}/${Date.now()}-${suffix}.${FILE_EXT[optimized.type]}`;
-        const {error:upError}=await supa.storage.from('dao-su-images').upload(path,optimized,
-          {contentType:optimized.type,cacheControl:'3600',upsert:false});
-        if(upError)throw upError;
-        const url=supa.storage.from('dao-su-images').getPublicUrl(path).data.publicUrl;
-        const next=++position;
-        const defaultCaption=kind==='documents'?`Trang ${String(next).padStart(2,'0')}`:
-          `Ảnh tư liệu ${String(next).padStart(2,'0')}`;
-        const {data:linked,error:dbError}=await supa.from(ALBUM_TABLE).insert({
-          owner_kind:kind,owner_id:id,image_url:url,
-          caption:item.caption.trim()||defaultCaption,sort_order:next
-        }).select('id,photo_code').single();
-        if(dbError)throw dbError;
-        if(linked?.photo_code&&window.GDDTrace){
+      position=Math.max(0,maxRows?.[0]?.sort_order??0);
+      const store=supa.storage.from('dao-su-images');
+      let cursor=0;
+      const worker=async()=>{
+        while(!firstError&&cursor<files.length){
+          const index=cursor++;
+          const item=files[index];
+          let transferError=null;
           try{
-            const copy=await window.GDDTrace.stampedBlob(optimized,linked.photo_code);
-            const tracePath=`${kind}/${Date.now()}-${suffix}-trace.jpg`;
-            const {error:traceError}=await supa.storage.from('dao-su-images')
-              .upload(tracePath,copy,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
-            if(traceError)throw traceError;
-            const stampURL=supa.storage.from('dao-su-images').getPublicUrl(tracePath).data.publicUrl;
-            const {error:linkError}=await supa.from(ALBUM_TABLE).update({image_url:stampURL}).eq('id',linked.id);
-            if(linkError)throw linkError;
+            if(!item.uploadedUrl){
+              const optimized=item.optimizedFile||await imageStep(()=>
+                window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>notify(message)}));
+              item.optimizedFile=optimized;
+              const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
+              const key=kind+'/'+Date.now()+'-'+suffix+'.'+FILE_EXT[optimized.type];
+              notify('Đang tải ảnh '+(index+1)+'/'+files.length+': '+item.file.name+'…');
+              const {error:upError}=await store.upload(key,optimized,{
+                contentType:optimized.type,cacheControl:'3600',upsert:false
+              });
+              if(upError)throw upError;
+              item.uploadedUrl=store.getPublicUrl(key).data.publicUrl;
+            }
+          }catch(error){transferError=error;}
+          // Chỉ khoá bước tạo bản ghi, không khoá công đoạn tải qua mạng.
+          await turns[index].ready;
+          let linked=null;
+          try{
+            if(firstError)continue;
+            if(transferError)throw transferError;
+            // Nếu mất mạng ngay sau khi CSDL đã ghi thành công, dò lại URL
+            // trên lần thử kế tiếp để KHÔNG thêm hai dòng cho cùng một ảnh.
+            if(item.insertAttempted){
+              const {data:existing,error:lookupError}=await supa.from(ALBUM_TABLE)
+                .select('id,photo_code,sort_order')
+                .eq('owner_kind',kind).eq('owner_id',id)
+                .eq('image_url',item.uploadedUrl).maybeSingle();
+              if(lookupError)throw lookupError;
+              if(existing){
+                linked=existing;
+                position=Math.max(position,existing.sort_order??position);
+              }
+            }
+            if(!linked){
+              const next=position+1;
+              const defaultCaption=kind==='documents'
+                ?'Trang '+String(next).padStart(2,'0')
+                :'Ảnh tư liệu '+String(next).padStart(2,'0');
+              item.insertAttempted=true;
+              const {data:row,error:dbError}=await supa.from(ALBUM_TABLE).insert({
+                owner_kind:kind,owner_id:id,image_url:item.uploadedUrl,
+                caption:item.caption.trim()||defaultCaption,sort_order:next
+              }).select('id,photo_code').single();
+              if(dbError)throw dbError;
+              linked=row;
+              position=next;
+            }
+            item.saved=true;
+            done++;
           }catch(error){
-            console.warn('[GDD Trace] Chưa tạo được bản hiển thị lưu dấu:',error);
-            setStatus('Mã '+linked.photo_code+' đã được cấp; bản xem chưa có dòng lưu dấu: '+error.message);
+            firstError=error;
+          }finally{
+            turns[index+1]?.release();
           }
+          if(!linked)continue;
+          // Bản ảnh có dòng lưu dấu vẫn được tạo như trước.
+          // Chỉ giữ tối đa một canvas đang hoạt động; truyền mạng không bị chặn.
+          if(linked.photo_code&&window.GDDTrace){
+            try{
+              const stamped=await imageStep(()=>
+                window.GDDTrace.stampedBlob(item.optimizedFile||item.file,linked.photo_code));
+              const traceKey=kind+'/'+Date.now()+'-'
+                +(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'-trace.jpg';
+              const {error:traceError}=await store.upload(traceKey,stamped,{
+                contentType:'image/jpeg',cacheControl:'3600',upsert:false
+              });
+              if(traceError)throw traceError;
+              const stampedUrl=store.getPublicUrl(traceKey).data.publicUrl;
+              const {error:linkError}=await supa.from(ALBUM_TABLE)
+                .update({image_url:stampedUrl}).eq('id',linked.id);
+              if(linkError)throw linkError;
+            }catch(error){
+              console.warn('[GDD Trace] Chưa tạo được bản hiển thị lưu dấu:',error);
+              warnings.push('Mã '+linked.photo_code+': '+(error?.message||error));
+            }
+          }
+          // Giải phóng bản đã nén sau khi tải và lưu dấu xong.
+          item.optimizedFile=null;
+          item.uploadedUrl='';
+          notify('Đã lưu '+done+'/'+files.length+' ảnh vào bài…');
         }
-        item.saved=true;done++;
-        setStatus(`Đã tải ${done}/${files.length} ảnh…`);
-      }
-      const msg=`Đã lưu thành công ${done} ảnh vào bài. Giữ nguyên tệp ảnh gốc.`;
-      setStatus(msg);onProgress?.(msg);
-    }catch(err){
-      setStatus(`Đã lưu ${done} ảnh; còn ${pendingFiles.filter(x=>!x.saved).length} ảnh chưa tải. Lỗi: ${err.message||err}`);
-      throw err;
-    }finally {uploading=false;if(filePicker)filePicker.disabled=false;renderQueue();}
+      };
+      await Promise.all(Array.from({length:Math.min(albumUploadLimit(),files.length)},()=>worker()));
+      if(firstError)throw firstError;
+      const msg='Đã lưu thành công '+done+' ảnh vào bài. '
+        +'Ảnh đã có mã và giữ nguyên thứ tự.'
+        +(warnings.length?' Có '+warnings.length+' ảnh cần kiểm tra bản lưu dấu.':'');
+      notify(msg);
+    }catch(error){
+      const remain=pendingFiles.filter(x=>!x.saved).length;
+      notify('Đã lưu '+done+' ảnh; còn '+remain
+        +' ảnh chưa hoàn tất. Chọn Lưu/Đăng lại để thử tiếp, ảnh đã lưu không tải trùng. Lỗi: '
+        +(error?.message||error));
+      throw error;
+    }finally{
+      uploading=false;
+      if(filePicker)filePicker.disabled=false;
+      renderQueue();
+    }
   }
   // Cho app.js gọi sau khi tạo bài; hỗ trợ thử lại ảnh lỗi mà KHÔNG tạo bản ghi mới.
   window.GDDAlbums={
