@@ -72,6 +72,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="gdd-festival-binh-ngo-2026.css?v=20261118-01">
+  <link rel="stylesheet" href="gdd-document-folders.css?v=20261118-01">
   <link rel="stylesheet" href="brand.css">
   <link rel="stylesheet" href="portal.css">
   <link rel="stylesheet" href="professional-2026.css?v=tham-my-20261104">
@@ -87,7 +88,7 @@
 <script defer src="gdd-image-optimizer.js?v=20261109-auto6mb-01"></script>
 <script defer src="vendor/qrcode.min.js?v=20261113-local"></script>
 <script defer src="gdd-document-router.js?v=20261117-dk015"></script>
-<script defer src="app.js?v=20261118-metrics-01"></script>
+<script defer src="app.js?v=20261118-document-folders-01"></script>
 <script defer src="gdd-section-mastheads.js?v=20261118-01"></script>
 <script defer src="gdd-content-metrics.js?v=20261118-01"></script>
 <script defer src="gdd-archive-qr.js?v=20261113-ios-save-04"></script>
@@ -340,6 +341,21 @@
     </div></section>
     <section class="section section-anchor" id="tai-lieu-so-hoa"><div class="wrap">
       <div class="section-top"><div><div class="eyebrow">THÁNH LỊNH · VĂN KIỆN · BẢN CHỤP</div><h2>Tài liệu <em>được số hoá</em></h2><p>Tra cứu văn bản, hình chụp và tài liệu số có ghi xuất xứ, niên đại và nguồn đối chiếu.</p></div></div>
+
+      <div id="document-subfolder-filters" class="gdd-document-folder-panel" role="group" aria-label="Chọn thư mục con Tài liệu được số hóa">
+        <div class="gdd-document-folder-intro">
+          <div><span class="gdd-document-folder-eyebrow">KHO TƯ LIỆU ĐƯỢC SỐ HÓA</span><h3>5 thư mục con</h3></div>
+          <button type="button" data-document-subfolder="all" aria-pressed="true" class="gdd-document-folder-all is-selected">Xem tất cả <span data-document-folder-count>0</span></button>
+        </div>
+        <div class="gdd-document-folder-grid">
+          <button type="button" class="gdd-document-folder" data-document-subfolder="HCĐ" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Tài Liệu Hành Chánh Đạo</span><small>DXCD-SH.HCĐ</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
+          <button type="button" class="gdd-document-folder" data-document-subfolder="HTĐ" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Tài Liệu Chức Sắc Hiệp Thiên Đài</span><small>DXCD-SH.HTĐ</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
+          <button type="button" class="gdd-document-folder" data-document-subfolder="CTĐ" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Tài Liệu Chức Sắc Cửu Trùng Đài</span><small>DXCD-SH.CTĐ</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
+          <button type="button" class="gdd-document-folder" data-document-subfolder="PT" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Tài Liệu Chức Sắc Phước Thiện</span><small>DXCD-SH.PT</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
+          <button type="button" class="gdd-document-folder" data-document-subfolder="CQK" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Tài Liệu Các Cơ Quan Khác</span><small>DXCD-SH.CQK</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
+        </div>
+        <p id="document-subfolder-count" class="gdd-document-folder-result" role="status" aria-live="polite">Đang tải danh mục tư liệu…</p>
+      </div>
       <div class="archive-grid" id="document-grid" aria-live="polite"></div>
     </div></section>
 
