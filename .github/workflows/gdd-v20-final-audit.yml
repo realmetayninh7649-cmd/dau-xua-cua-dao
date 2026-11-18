@@ -73,6 +73,10 @@ jobs:
           node --check gdd-content-metrics.js
           node --check gdd-trace.js
           node --check gdd-phase2-search.js
+          node --check dao-su-albums.js
+          node --check gdd-image-optimizer.js
+          node --check gdd-r2-admin.js
+          node --check workers/gdd-r2-gateway/client/uploader.mjs
           node --check gdd-memorial.js
           node --check gdd-festival-binh-ngo-2026.js
           node --check workers/gdd-r2-gateway/src/index.mjs
@@ -98,6 +102,7 @@ jobs:
           node tests/document-export-scope-smoke.mjs
           node tests/section-facebook-metrics-smoke.mjs
           node tests/document-subfolders-smoke.mjs
+          node tests/album-upload-batch-smoke.mjs
           node tests/photo-trace-smoke.mjs
           node tests/photo-code-lookup-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
