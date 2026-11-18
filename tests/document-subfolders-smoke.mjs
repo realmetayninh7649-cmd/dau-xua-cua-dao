@@ -18,7 +18,8 @@ const documents=[
  archive_code_aliases:[archive_legacy_code],published:true,
  created_at:'2026-11-10T00:00:00Z',summary:'Bản thử nghiệm không ghi dữ liệu thật.'
 }));
-const moduleSource='const documents='+JSON.stringify(documents)+';\n'+[
+const people=[{id:'00000000-0000-4000-8000-000000000050',slug:'qa-phoi-su',full_name:'PHỐI SƯ THƯỢNG HÓA THANH',rank:'Phối Sư',branch:'Cửu Trùng Đài',archive_code:'CS-CTD.PS-00025',published:true,created_at:'2026-11-10T00:00:00Z'}];
+const moduleSource='const documents='+JSON.stringify(documents)+';\nconst people='+JSON.stringify(people)+';\n'+[
  'export function createClient(){',
  ' const user={id:"qa-admin",email:"qa@example.invalid"};',
  ' return {',
@@ -26,7 +27,7 @@ const moduleSource='const documents='+JSON.stringify(documents)+';\n'+[
  '    signInWithPassword:async()=>({data:{user},error:null}),',
  '    onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},',
  '  from(table){',
- '    const rows=table==="documents"?documents:[];',
+ '    const rows=table==="documents"?documents:table==="people"?people:[];',
  '    return {select(){return {',
  '      order(){return {limit(){return Promise.resolve({data:rows,error:null});}};},',
  '      eq(){return {maybeSingle(){return Promise.resolve({data:table==="admin_users"?{user_id:user.id}:null,error:null});}};},',
@@ -73,6 +74,39 @@ try{
     }
     assert.equal(await page.locator('#document-subfolder-filters [data-document-subfolder]').count(),6,label+' 5 folders + all');
     assert.equal(await page.locator('#document-grid .archive-card').count(),5,label+' total documents');
+    // QR appears immediately beneath detail title/meta, not after content; keep both actions and exact code.
+    for(const [kind,selector,expected,size] of [
+      ['documents','#document-grid [data-open-kind="documents"]','DXCD-SH.HCĐ-00001',160],
+      ['people','#people-grid [data-open-kind="people"]','CS-CTD.PS-00025',148]
+    ]){
+      await page.evaluate(q=>document.querySelector(q).click(),selector);
+      await page.waitForFunction(()=>document.querySelector('#detail-content [data-gdd-archive-qr] canvas'),null,{timeout:7000});
+      const qr=await page.evaluate(()=>{
+        const root=document.querySelector('#detail-content');
+        const children=[...root.children];
+        const at=s=>children.indexOf(root.querySelector(s));
+        const p=root.querySelector('[data-gdd-archive-qr]');
+        const g=p.querySelector('[data-gdd-qr-graphic]');
+        return {title:at('.detail-title'),meta:at('.detail-meta'),qr:at('[data-gdd-archive-qr]'),
+          photo:at('.detail-cover'),body:at('.detail-body'),code:p.dataset.archiveCode,
+          href:p.dataset.archiveUrl,hasCode:p.textContent.includes(p.dataset.archiveCode),
+          cardWidth:p.getBoundingClientRect().width,detailWidth:root.getBoundingClientRect().width,
+          qrWidth:Math.round(g.getBoundingClientRect().width),
+          canvasWidth:g.querySelector('canvas')?.width,
+          download:!!p.querySelector('[data-gdd-qr-download]'),
+          copy:!!p.querySelector('[data-gdd-qr-copy]')};
+      });
+      assert.equal(qr.code,expected,label+' QR code '+kind);
+      assert.ok(qr.title<qr.meta&&qr.meta<qr.qr&&qr.qr<qr.photo&&qr.photo<qr.body,
+        label+' QR top layout '+kind+' '+JSON.stringify(qr));
+      assert.ok(qr.hasCode&&qr.download&&qr.copy&&qr.href.includes('#'),
+        label+' QR content retained '+kind);
+      assert.equal(qr.qrWidth,size,label+' QR CSS size '+kind);
+      assert.equal(qr.canvasWidth,size,label+' QR pixels '+kind);
+      assert.ok(qr.cardWidth<=qr.detailWidth+2,label+' QR card width '+kind);
+      await page.evaluate(()=>document.querySelector('#detail-overlay [data-close="detail"]').click());
+    }
+    console.log('QR COMPACT PASS',label,'Số hóa + Chức sắc: top placement, sizes, preserved controls');
     for(const [group,total] of Object.entries({HCĐ:1,HTĐ:2,CTĐ:0,PT:1,CQK:1})){
       const selector='#document-subfolder-filters [data-document-subfolder="'+group+'"]';
       await page.evaluate(selector=>document.querySelector(selector).click(),selector);
