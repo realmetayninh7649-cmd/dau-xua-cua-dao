@@ -122,7 +122,8 @@ try{
         return {mode:panel?.dataset.mode,activeHidden:active?.hidden,activeDisplay:active&&getComputedStyle(active).display,
           activeText:active?.textContent.slice(0,180),activeHeight:active?.getBoundingClientRect().height,
           choicesHidden:choices?.hidden,gridHidden:grid?.hidden,gridDisplay:grid&&getComputedStyle(grid).display,
-          panelHeight:panel?.getBoundingClientRect().height};
+          panelHeight:panel?.getBoundingClientRect().height,
+          hiddenAncestors:(()=>{let a=active,out=[];while(a&&a!==document.documentElement){const st=getComputedStyle(a);if(a.hidden||st.display==='none'||st.visibility==='hidden'||a.getBoundingClientRect().height===0)out.push({tag:a.tagName,id:a.id,cls:String(a.className).slice(0,95),hidden:a.hidden,display:st.display,height:a.getBoundingClientRect().height});a=a.parentElement;}return out.slice(0,12)})()};
       });
       assert.equal(await page.locator('#document-folder-active').isVisible(),true,label+' compact folder heading '+group+' '+JSON.stringify(folderDiagnostics));
       assert.equal(await page.locator('.gdd-document-folder-grid').isVisible(),false,label+' five large cards collapse '+group);
