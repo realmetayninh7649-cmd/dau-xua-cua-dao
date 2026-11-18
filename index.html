@@ -1303,14 +1303,37 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     }
     return storage.getPublicUrl(path).data.publicUrl;
   }
+  // Luồng SỐ HÓA và Hình ảnh: tải 2 tệp song song trên iPhone, 3 trên máy tính.
+  // Canvas chỉ xử lý một ảnh mỗi lần để tránh Safari iOS hết bộ nhớ.
+  const uploadLimit=()=>window.matchMedia?.('(max-width: 900px)').matches?2:3;
   async function uploadPending(kind,id,onProgress){
     if(busy)throw Error('Bộ ảnh đang được tải lên.');
     validate();
     if(!pending())return;
     if(!KINDS.has(kind)||!id)throw Error('Không xác định được bài viết cần tải ảnh.');
+    if(!window.GDDR2?.archive)throw Error('Bộ bảo tồn R2 chưa tải xong. Hãy tải lại trang.');
     busy=true;
     const input=$('#gdd-album-files');if(input)input.disabled=true;
-    renderList();let done=0;
+    renderList();
+    const items=queue.filter(x=>!x.saved);
+    const total=items.length;
+    let done=0,firstError=null,nextIndex=0,position=0;
+    const warnings=[];
+    const inform=message=>{status(message);try{onProgress?.(message)}catch{}};
+    let imageTail=Promise.resolve();
+    const imageTask=fn=>{
+      const task=imageTail.then(fn);
+      imageTail=task.then(()=>{},()=>{});
+      return task;
+    };
+    // R2 + Supabase truyền đồng thời, nhưng ghi số thứ tự/mã ảnh vào CSDL
+    // lần lượt đúng thứ tự đã chọn, dù mạng trả kết quả đảo thứ tự.
+    const turns=items.map(()=>{
+      let release;
+      const ready=new Promise(resolve=>{release=resolve});
+      return {ready,release};
+    });
+    turns[0].release();
     try{
       const supa=await getClient();
       const {data:{user},error:authError}=await supa.auth.getUser();
@@ -1318,85 +1341,142 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       const {data:top,error:topError}=await supa.from(TABLE).select('sort_order')
         .eq('owner_kind',kind).eq('owner_id',id).order('sort_order',{ascending:false}).limit(1);
       if(topError)throw topError;
-      let position=Math.max(0,top?.[0]?.sort_order||0);
-      const items=queue.filter(x=>!x.saved);
-      for(const item of items){
-        const message=`Đang lưu ảnh/tệp ${done+1}/${items.length}: ${item.file.name}. Giữ trang mở để bảo tồn nguyên mẫu.`;
-        status(message);onProgress?.(message);
-        const pdf=isPdf(item.file),word=kind==='media'&&isWord(item.file);
-        const docFile=(pdf&&['media','documents'].includes(kind))||word;
-        // Archive the ORIGINAL File before image optimization; never overwrite item.file.
-        if(!window.GDDR2?.archive)throw Error('Bộ bảo tồn R2 chưa tải xong. Hãy tải lại trang.');
-        const archived=await window.GDDR2.archive(item.file,supa,{
-          recordKind:kind,recordId:id,role:'album',
-          skipDerivatives:!docFile,
-          onProgress:info=>{
-            const message=info.phase==='original'
-              ?'Đang cất nguyên mẫu R2: '+Math.round(info.bytes/info.total*100)+'%'
-              :info.phase==='optimizing'?'Đã lưu nguyên mẫu, đang tạo bản '+info.variant+'…':'';
-            if(message){status(message);onProgress?.(message)}
-          }
-        });
-        if(docFile){
-          // PDF/Word remain PRIVATE on R2; never publish a direct file URL.
-          item.saved=true;done++;
-          const message='PDF/Word nguyên mẫu đã bảo tồn riêng trong R2 ('+done+'/'+items.length+
-            ', ID '+archived.id+'). Chưa công khai tệp hay tạo bản xem.';
-          status(message);onProgress?.(message);
-          continue;
-        }
-        if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
-        const prepared=await window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>{status(message);onProgress?.(message)}});
-        const extension=pdf?'pdf':word?wordExt(item.file):EXT[prepared.type];
-        if(!extension)throw Error('Không xác định được định dạng tệp: '+item.file.name);
-        const suffix=(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2));
-        const path=`${kind}/${Date.now()}-${suffix}.${extension}`;
-        const destination=docFile?'dao-su-documents':BUCKET;
-        const contentType=pdf?'application/pdf':word?WORD_TYPES[extension]:prepared.type;
-        let url;
-        if(docFile)url=await uploadDocumentAttachment(supa,path,prepared,message=>{status(message);onProgress?.(message)},contentType);
-        else{
-          const {error:upError}=await supa.storage.from(destination).upload(path,prepared,{contentType,cacheControl:'3600',upsert:false});
-          if(upError)throw upError;
-          url=supa.storage.from(destination).getPublicUrl(path).data.publicUrl;
-        }
-        const order=position+1;
-        const {data:attached,error:rowError}=await supa.from(TABLE).insert({owner_kind:kind,owner_id:id,image_url:url,
-          caption:item.caption.trim()||(docFile?item.file.name:'Ảnh tư liệu '+String(order).padStart(2,'0')),sort_order:order})
-          .select('id,photo_code').single();
-        if(rowError)throw rowError;
-        // Lưu riêng bản ảnh hiển thị có dòng truy nguyên, KHÔNG sửa nguyên mẫu đã cất trong R2.
-        if(attached?.photo_code&&window.GDDTrace&&!docFile){
+      position=Math.max(0,top?.[0]?.sort_order||0);
+      const storage=supa.storage.from(BUCKET);
+      const worker=async()=>{
+        while(!firstError&&nextIndex<total){
+          const index=nextIndex++,item=items[index];
+          const pdf=isPdf(item.file),word=kind==='media'&&isWord(item.file);
+          const docFile=(pdf&&['media','documents'].includes(kind))||word;
+          let preparationError=null,attached=item.attachedRow||null;
           try{
-            const traced=await window.GDDTrace.stampedBlob(prepared,attached.photo_code);
-            const tracedPath=`${kind}/${Date.now()}-${suffix}-trace.jpg`;
-            const {error:uploadError}=await supa.storage.from(BUCKET).upload(tracedPath,traced,
-              {contentType:'image/jpeg',cacheControl:'3600',upsert:false});
-            if(uploadError)throw uploadError;
-            const tracedURL=supa.storage.from(BUCKET).getPublicUrl(tracedPath).data.publicUrl;
-            const {error:replaceError}=await supa.from(TABLE).update({image_url:tracedURL}).eq('id',attached.id);
-            if(replaceError)throw replaceError;
-          }catch(traceError){
-            console.warn('[GDD Trace] Đã cấp mã ảnh, chưa thể tạo bản có dòng lưu dấu:',traceError);
-            const warning='Đã cấp '+attached.photo_code+', nhưng bản xem chưa gắn dòng nguồn: '+(traceError.message||traceError);
-            status(warning);onProgress?.(warning);
+            inform('Đang xử lý song song '+Math.min(uploadLimit(),total)
+              +' tệp · Hoàn tất '+done+'/'+total+' · '+item.file.name);
+            // Chỉ bảo tồn File GỐC, không nén, không làm thay đổi bytes trong R2.
+            if(!item.archivedResult){
+              item.archivedResult=await window.GDDR2.archive(item.file,supa,{
+                recordKind:kind,recordId:id,role:'album',skipDerivatives:!docFile,
+                onProgress:info=>{
+                  if(info.phase==='original'&&info.total){
+                    inform('Lưu R2 · '+(index+1)+'/'+total+' · '
+                      +Math.round(info.bytes/info.total*100)+'% · '+item.file.name);
+                  }else if(info.phase==='optimizing'){
+                    inform('Đã cất nguyên mẫu; tạo bản '+info.variant+' · '+item.file.name);
+                  }
+                }
+              });
+            }
+            if(!docFile&&!attached){
+              if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
+              if(!item.preparedFile){
+                item.preparedFile=await imageTask(()=>window.GDDImageOptimizer.prepare(item.file,{
+                  onStatus:message=>inform(message)
+                }));
+              }
+              if(!item.uploadedUrl){
+                const extension=EXT[item.preparedFile.type];
+                if(!extension)throw Error('Không xác định được định dạng ảnh: '+item.file.name);
+                const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
+                const path=kind+'/'+Date.now()+'-'+suffix+'.'+extension;
+                inform('Đang lưu ảnh xem · '+(index+1)+'/'+total+' · '+item.file.name);
+                const {error:upError}=await storage.upload(path,item.preparedFile,{
+                  contentType:item.preparedFile.type,cacheControl:'3600',upsert:false
+                });
+                if(upError)throw upError;
+                item.uploadedUrl=storage.getPublicUrl(path).data.publicUrl;
+              }
+            }
+          }catch(error){preparationError=error;}
+          // Với ảnh lỗi, luôn chờ tới lượt rồi nhả khóa để không kẹt toàn bộ hàng đợi.
+          await turns[index].ready;
+          let committed=false;
+          try{
+            if(firstError)continue;
+            if(preparationError)throw preparationError;
+            if(docFile){
+              // PDF/Word vẫn RIÊNG TƯ trong R2, giữ nguyên cơ chế chưa công bố.
+              item.saved=true;done++;committed=true;
+            }else{
+              if(!attached&&item.insertAttempted){
+                // Trường hợp server ghi DB thành công nhưng phản hồi mạng bị mất:
+                // tìm lại bản ghi cũ theo URL đã tải trước khi INSERT lần nữa.
+                const {data:previous,error:lookupError}=await supa.from(TABLE)
+                  .select('id,photo_code,sort_order').eq('owner_kind',kind)
+                  .eq('owner_id',id).eq('image_url',item.uploadedUrl).maybeSingle();
+                if(lookupError)throw lookupError;
+                if(previous){attached=previous;position=Math.max(position,previous.sort_order||position);}
+              }
+              if(!attached){
+                const order=position+1;
+                item.insertAttempted=true;
+                const {data:row,error:rowError}=await supa.from(TABLE).insert({
+                  owner_kind:kind,owner_id:id,image_url:item.uploadedUrl,
+                  caption:item.caption.trim()||'Ảnh tư liệu '+String(order).padStart(2,'0'),
+                  sort_order:order
+                }).select('id,photo_code').single();
+                if(rowError)throw rowError;
+                attached=row;
+                position=order;
+              }
+              item.attachedRow=attached;
+              committed=true;
+            }
+          }catch(error){
+            if(!firstError)firstError=error;
+          }finally{
+            turns[index+1]?.release();
           }
+          if(!committed)continue;
+          if(!docFile){
+            // Bản lưu dấu chỉ áp dụng cho ảnh xem; R2 gốc vẫn nguyên vẹn.
+            if(attached?.photo_code&&window.GDDTrace&&!item.stamped){
+              try{
+                const traced=await imageTask(()=>window.GDDTrace.stampedBlob(
+                  item.preparedFile||item.file,attached.photo_code
+                ));
+                const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
+                const tracePath=kind+'/'+Date.now()+'-'+suffix+'-trace.jpg';
+                const {error:traceError}=await storage.upload(tracePath,traced,{
+                  contentType:'image/jpeg',cacheControl:'3600',upsert:false
+                });
+                if(traceError)throw traceError;
+                const traceURL=storage.getPublicUrl(tracePath).data.publicUrl;
+                const {error:linkError}=await supa.from(TABLE).update({
+                  image_url:traceURL
+                }).eq('id',attached.id);
+                if(linkError)throw linkError;
+                item.stamped=true;
+              }catch(error){
+                console.warn('[GDD Trace] Chưa tạo được bản ảnh có dòng lưu dấu:',error);
+                warnings.push('Mã '+attached.photo_code+': '+(error?.message||error));
+              }
+            }
+            item.saved=true;done++;
+          }
+          item.preparedFile=null;
+          item.uploadedUrl='';
+          inform('Đã hoàn tất '+done+'/'+total+' tệp. Ảnh gốc giữ riêng tại R2.');
         }
-        position=order;item.saved=true;done++;
-        const progress=`Đã lưu ${done}/${items.length} tệp; còn ${pending()} tệp chờ tải.`;
-        status(progress);onProgress?.(progress);
-      }
-      status('Đã lưu đủ '+done+' tệp: ảnh gốc ở R2 riêng tư, ảnh xem tối ưu trên website. Không tạo bản phụ R2 dư thừa.');
+      };
+      await Promise.all(Array.from({length:Math.min(uploadLimit(),total)},()=>worker()));
+      if(firstError)throw firstError;
+      inform('Đã lưu đủ '+done+' tệp. Bản gốc ở R2 riêng tư; bản ảnh xem tối ưu trên website.'
+        +(warnings.length?' Có '+warnings.length+' bản lưu dấu cần kiểm tra.':''));
       window.GDDR2?.refresh?.();
     }catch(err){
       const raw=String(err?.message||err||'');
       const tooLarge=/too large|entity too large|payload too large|maximum file size|exceeds.*size|413\b|vượt.*dung lượng/i.test(raw);
       const reason=tooLarge
-        ?'Tệp vượt giới hạn dung lượng Storage của dự án Supabase; cần nâng giới hạn toàn dự án hoặc chia tài liệu thành nhiều tệp. Chi tiết: '+raw
+        ?'Tệp vượt giới hạn dung lượng Storage của dự án Supabase; cần nâng giới hạn hoặc chia tệp. '+raw
         :raw;
-      const message=`Đã tải thành công ${done} tệp; còn ${pending()} tệp chưa tải. Lỗi: ${reason}`;
-      status(message);throw err;
-    }finally{busy=false;if(input)input.disabled=false;renderList();}
+      inform('Đã hoàn tất '+done+'/'+total+' tệp; còn '+pending()
+        +' tệp chưa xong. Có thể bấm Lưu lần nữa để tiếp tục, không tải lại ảnh đã lưu. Lỗi: '+reason);
+      throw err;
+    }finally{
+      busy=false;
+      if(input)input.disabled=false;
+      renderList();
+    }
   }
   function install(){
     if(installed||!window.GDDAlbums)return;
