@@ -81,7 +81,8 @@
       caption:tidy(figure.querySelector('figcaption')?.textContent)||'Ảnh tư liệu '+(i+1)
     })).filter(i=>i.url);
     const sourceLink=safeURL(area.querySelector('.detail-external a[href]')?.href);
-    return {...r,title,content,sources,
+    const archiveCode=tidy(area.querySelector('[data-gdd-archive-qr]')?.getAttribute('data-archive-code'))||'';
+    return {...r,title,content,sources,archiveCode,
       subtitle:tidy(area.querySelector(mem?'.gdd-memorial-detail-meta':'.detail-meta')?.textContent),
       summary:tidy(area.querySelector(mem?'.gdd-memorial-summary':'.detail-summary')?.textContent),
       cover:safeURL(image?.currentSrc||image?.src),gallery,sourceLink,
@@ -104,11 +105,12 @@
     const result=[];
     for(let offset=0;offset<2000;offset+=200){
       const {data,error}=await client.from('archive_gallery_images')
-        .select('image_url,caption,sort_order').eq('owner_kind',record.kind).eq('owner_id',owner.id)
+        .select('image_url,caption,sort_order,photo_code').eq('owner_kind',record.kind).eq('owner_id',owner.id)
         .order('sort_order',{ascending:true}).order('created_at',{ascending:true}).range(offset,offset+199);
       if(error)throw Error('Không đọc được bộ ảnh đính kèm: '+error.message);
       for(const img of data||[]){
-        const url=safeURL(img.image_url);if(url)result.push({url,caption:tidy(img.caption)||'Ảnh tư liệu '+(result.length+1)});
+        const url=safeURL(img.image_url);if(url)result.push({url,caption:(tidy(img.caption)||'Ảnh tư liệu '+(result.length+1))+
+          (img.photo_code?' · dauxuacuadao.info.vn | '+img.photo_code:'')});
       }
       if(!data||data.length<200)return result.length?result:record.gallery;
       progress('Đã tìm thấy '+result.length+' ảnh đính kèm…');
@@ -219,7 +221,7 @@
         link:{fontSize:9,color:brand}
       },
       footer:(p,total)=>({columns:[
-        {text:'GIỮ ĐẠO GIỮA ĐỜI · DẤU XƯA CỬA ĐẠO',fontSize:8,color:gold},
+        {text:'dauxuacuadao.info.vn | '+(record.archiveCode||'DẤU XƯA CỬA ĐẠO'),fontSize:8,color:muted},
         {text:'Trang '+p+'/'+total,fontSize:8,alignment:'right',color:muted}
       ],margin:[56,16,56,0]})
     };
@@ -298,7 +300,7 @@
  const ns='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
  body.push(`<w:sectPr><w:footerReference w:type="default" r:id="${footerId}"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1050" w:right="1050" w:bottom="1050" w:left="1050" w:header="450" w:footer="490"/></w:sectPr>`);
  const documentXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${ns}><w:body>${body.join('')}</w:body></w:document>`;
- const footerXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="center"/></w:pPr>${run('GIỮ ĐẠO GIỮA ĐỜI · DẤU XƯA CỬA ĐẠO  |  Trang ',{size:16,color:'947A4B'})}<w:fldSimple w:instr="PAGE"/></w:p></w:ftr>`;
+ const footerXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="center"/></w:pPr>${run('dauxuacuadao.info.vn | '+(record.archiveCode||'DẤU XƯA CỬA ĐẠO')+'  ·  Trang ',{size:16,color:'68766E'})}<w:fldSimple w:instr="PAGE"/></w:p></w:ftr>`;
  const contentTypes='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>';
  const packageRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>';
  const docRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`;
