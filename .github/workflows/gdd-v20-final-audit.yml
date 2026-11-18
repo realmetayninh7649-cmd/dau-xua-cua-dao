@@ -17,6 +17,7 @@ on:
       - "gdd-section-mastheads.css"
       - "gdd-section-mastheads.js"
       - "gdd-content-metrics.css"
+      - "gdd-document-folders.css"
       - "gdd-content-metrics.js"
       - "gdd-memorial.js"
       - "tests/**"
@@ -39,6 +40,7 @@ on:
       - "gdd-section-mastheads.css"
       - "gdd-section-mastheads.js"
       - "gdd-content-metrics.css"
+      - "gdd-document-folders.css"
       - "gdd-content-metrics.js"
       - "gdd-memorial.js"
       - "tests/**"
@@ -91,6 +93,7 @@ jobs:
           node tests/gdd-festival-2026-smoke.mjs
           node tests/document-export-scope-smoke.mjs
           node tests/section-facebook-metrics-smoke.mjs
+          node tests/document-subfolders-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
         if: failure()
         uses: actions/upload-artifact@v4
@@ -102,4 +105,5 @@ jobs:
             /tmp/gdd-gallery-*.png
             /tmp/gdd-festival-*.png
             /tmp/gdd-document-scope-*.png
+            /tmp/gdd-document-folders-*.png
           if-no-files-found: ignore
