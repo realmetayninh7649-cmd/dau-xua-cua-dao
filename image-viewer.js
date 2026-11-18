@@ -35,7 +35,7 @@
       padding:0; border-radius:8px; height:42px; min-width:42px; cursor:pointer;
       font:600 22px/1 system-ui,sans-serif; display:inline-flex; align-items:center; justify-content:center; }
     .gdd-image-icon:focus-visible, .gdd-image-download:focus-visible { outline:3px solid #dfbd76; outline-offset:2px; }
-    .gdd-image-stage { touch-action:none; user-select:none; -webkit-user-select:none;
+    .gdd-image-stage { touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:default;
       overflow:hidden; position:relative; flex:1 1 auto; min-height:0;
       display:flex; justify-content:center; align-items:center; cursor:grab; }
     .gdd-image-stage:active { cursor:grabbing; }
@@ -57,8 +57,8 @@
     }
     .gdd-image-stage img { display:block; max-width:calc(100% - 24px); max-height:calc(100% - 18px);
       width:auto; height:auto; object-fit:contain; transform-origin:center center;
-      will-change:transform; -webkit-user-drag:none; user-drag:none;
-      pointer-events:none; }
+      will-change:transform; -webkit-user-drag:auto; user-drag:auto;
+      pointer-events:auto; user-select:auto; -webkit-user-select:auto; -webkit-touch-callout:default; }
     .gdd-image-stage .gdd-image-loading { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       color:#e3e7e2; background:#000a; padding:8px 13px; border-radius:6px; pointer-events:none; }
     .gdd-image-bottom { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
@@ -290,7 +290,9 @@
   stage.addEventListener('pointerdown',e=>{
     if(e.target instanceof Element&&e.target.closest('.gdd-image-nav'))return;
     if(e.pointerType==='mouse'&&e.button!==0)return;
-    e.preventDefault();
+    // Đừng chặn hành vi mặc định của chạm-giữ trên iOS: khách có thể Lưu ảnh.
+    // Touch-action:none trên stage vẫn giữ vuốt/chụm hai ngón do trình xem xử lý.
+    if(e.pointerType!=='touch')e.preventDefault();
     if(pointers.size===0){swipeStart={x:e.clientX,y:e.clientY,time:Date.now(),startScale:scale};hadMultiTouch=false;}
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pointers.size>1){hadMultiTouch=true;swipeStart=null;}
