@@ -165,3 +165,88 @@ body.gdd-p1-ready .footer .footer-brand small{color:#d6dfd5!important}
  .gdd-p1-switch button{font-size:9px;gap:4px;min-height:44px;padding:7px 5px}
  .gdd-p1-switch button>span{font-size:9px}
 }
+
+
+/* 2026-11-18 — CỘT PHỤ: đồng bộ bốn khung tra cứu, dễ chạm và dễ đọc trên iPhone.
+   Chỉ giới hạn trong #gdd-p1-aside, không ảnh hưởng trang chuyên mục và quản trị. */
+body.gdd-p1-ready #gdd-p1-aside {gap:12px}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-side-intro {padding:18px 17px 16px}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-side-intro h2 {
+  font-size:clamp(20px,2vw,23px);line-height:1.4;margin:5px 0
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-side-intro p {
+  font-size:12px;line-height:1.6;display:block
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-navigation {
+  display:block;min-width:0;max-width:100%;padding:0;margin:0;
+  border:1px solid var(--p1-line);border-radius:11px;
+  background:var(--p1-cream);overflow:hidden
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-details {margin:0;padding:0}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-summary {
+  display:flex;flex-direction:column;gap:4px;position:relative;
+  list-style:none;padding:15px 42px 15px 15px;min-height:68px;
+  box-sizing:border-box;cursor:pointer;color:var(--p1-green);
+  background:#faf8f1
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-summary::-webkit-details-marker {display:none}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-summary::after {
+  content:'+';position:absolute;right:16px;top:16px;
+  font-size:23px;font-weight:400;color:var(--p1-gold);line-height:1.4
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-details[open]>.gdd-p1-sidebar-summary {
+  border-bottom:1px solid var(--p1-line)
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-details[open]>.gdd-p1-sidebar-summary::after {content:'−'}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-links {display:grid;padding:0 14px 9px}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-links a {
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  min-width:0;min-height:44px;padding:9px 2px;
+  border-bottom:1px solid var(--p1-line);
+  font:500 13px/1.55 'Be Vietnam Pro',sans-serif;
+  text-decoration:none;color:var(--p1-green)
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-links a:last-child {border-bottom:0}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-links a:hover {
+  background:rgba(164,135,88,.08)
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-link-arrow {
+  flex:none;font-size:22px;line-height:1;color:var(--p1-gold)
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-panel>summary {
+  display:flex;flex-direction:column;justify-content:center;gap:4px;
+  min-height:68px;box-sizing:border-box;padding:15px 42px 15px 15px
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-panel>summary::after {top:16px}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-utility-name {
+  display:block;font:700 14px/1.5 'Noto Serif',Georgia,serif;color:var(--p1-green)
+}
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-utility-desc {
+  display:block;font:400 12px/1.5 'Be Vietnam Pro',sans-serif;
+  color:#66796d;letter-spacing:0
+}
+body.gdd-p1-ready #gdd-p1-aside :is(.gdd-p1-panel>summary,.gdd-p1-sidebar-summary):focus-visible,
+body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-links a:focus-visible {
+  outline:3px solid var(--p1-gold);outline-offset:-3px
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-lead,
+body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard .gdd-dash-heading>p {
+  font-size:12px;line-height:1.65
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-tabs button {
+  font-size:11px;min-height:40px
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-item-copy :is(strong,em) {
+  font-size:12px
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-item-copy small {
+  font-size:10px
+}
+body.gdd-p1-ready #gdd-p1-aside #gdd-tuan-cuu-utility .gdd-cuu-lead {
+  font-size:12px!important;line-height:1.65
+}
+@media(max-width:900px) {
+ body.gdd-p1-ready #gdd-p1-aside .gdd-p1-side-intro {padding:15px 16px}
+ body.gdd-p1-ready #gdd-p1-aside .gdd-p1-side-intro p {display:block;font-size:12px}
+ body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-links a {min-height:46px}
+}
