@@ -879,9 +879,9 @@ body #gdd-directory .gdd-preview-more:hover {background:#edf2ec;}
       if (slides.length < 2 || loading) return;
       show(slideIndex + offset);
     };
-    window.setInterval(() => {
-      if (!document.hidden && !hero.hidden && !blocked.matches && slides.length > 1 && !loading && Date.now() - lastSwitch >= 7900) move(1);
-    }, 8000);
+    // Emergency egress mitigation (2026-11-19): do not automatically fetch full-size
+    // Supabase Storage images every 8 seconds. Keep manual slideshow navigation enabled.
+    // Restore timed rotation only after lightweight display versions are served off Supabase.
     frame.addEventListener('keydown', event => {
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault(); move(event.key === 'ArrowRight' ? 1 : -1);
