@@ -344,6 +344,9 @@ function videoSource(raw){
         .catch(()=>{});
     }
     $('#detail-content').dataset.gddKind=kind;
+    $('#detail-content').dataset.gddArchiveCode=archiveCode;
+    const coverImage=$('#detail-content .detail-cover img');
+    if(coverImage&&archiveCode)coverImage.dataset.photoCode=archiveCode;
     // Đánh dấu đúng nơi đang trưng bày: bài chuyển sang Hình ảnh vẫn giữ loại gốc.
     $('#detail-content').dataset.gddDisplayTarget=displayTarget(kind,record);
     // Thẻ QR Chức sắc: hiển thị ngay dưới tên/phẩm vị, phía trên chơn dung.
