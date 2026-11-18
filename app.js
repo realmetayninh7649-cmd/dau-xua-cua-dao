@@ -25,14 +25,14 @@
     ],
     videos:[], obituaries:[], documents:[], submissions:[]
   };
-  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',placements:[],transferSelection:null,detail:null };
+  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',documentSubfolder:'all',placements:[],transferSelection:null,detail:null };
   const schema = {
     people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date','sources','image_url','verified','published'],
     posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
     media:['title','category','caption','sources','person_id','image_url','published'],
     videos:['title','summary','body','video_url','cover_url','sources','person_id','published'],
     obituaries:['title','deceased_name','memorial_date','summary','body','cover_url','sources','person_id','published'],
-    documents:['title','document_number','document_date','summary','body','file_url','sources','person_id','published']
+    documents:['title','subfolder_code','document_number','document_date','summary','body','file_url','sources','person_id','published']
   };
   const fields = {
     people:[['full_name','Danh xưng / tên Chức sắc','text',1],['secular_name','Thế danh','text'],['rank','Phẩm vị','text'],['branch','Cơ quan / hệ thống','branch'],['subgroup','Phân nhóm Chức sắc','subgroup'],
@@ -42,7 +42,7 @@
     media:[['title','Tên ảnh / văn kiện','text',1],['category','Chuyên mục Hình ảnh','gallery-category',1],['caption','Mô tả, niên đại, xuất xứ','long'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Người cung cấp / nguồn bản gốc','textarea'],['image_url','Địa chỉ ảnh (URL)','url'],['file','Tải hình ảnh lên','file'],['published','Công bố trên website','check']],
     videos:[['title','Tiêu đề video Đạo Sử','text',1],['summary','Tóm tắt','textarea'],['body','Nội dung / thuyết minh','long'],['video_url','Liên kết Facebook, YouTube hoặc MP4 (nếu có)','url'],['video_file','Hoặc chọn video MP4 từ album / tệp điện thoại','video-file'],['cover_url','Đường dẫn ảnh bìa (nếu có)','url'],['file','Hoặc tải ảnh bìa lên','file'],['person_id','Chức sắc liên quan','person'],['sources','Nguồn video / bản quyền / xuất xứ','textarea'],['published','Công bố trên website','check']],
     obituaries:[['title','Tiêu đề Ai Tín','text',1],['deceased_name','Danh xưng người quy vị','text'],['memorial_date','Ngày quy vị (Âm / Dương lịch)','text'],['summary','Lời dẫn ngắn','textarea'],['body','Nội dung Ai Tín / tưởng niệm','long'],['cover_url','Đường dẫn di ảnh','url'],['file','Hoặc tải di ảnh lên','file'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Nguồn tin / tài liệu xác minh','textarea'],['published','Công bố trên website','check']],
-    documents:[['title','Tên tài liệu số hóa','text',1],['document_number','Số hiệu văn kiện','text'],['document_date','Niên đại / ngày tháng văn kiện','text'],['summary','Mô tả ngắn','textarea'],['body','Nội dung giới thiệu / trích yếu','long'],['file_url','Liên kết file PDF hoặc ảnh','url'],['file','Hoặc tải PDF / ảnh tài liệu lên','file'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Xuất xứ bản gốc / nguồn lưu trữ','textarea'],['published','Công bố trên website','check']]
+    documents:[['title','Tên tài liệu số hóa','text',1],['subfolder_code','Thư mục con Số hóa (bắt buộc)','document-subfolder',1],['document_number','Số hiệu văn kiện','text'],['document_date','Niên đại / ngày tháng văn kiện','text'],['summary','Mô tả ngắn','textarea'],['body','Nội dung giới thiệu / trích yếu','long'],['file_url','Liên kết file PDF hoặc ảnh','url'],['file','Hoặc tải PDF / ảnh tài liệu lên','file'],['person_id','Hồ sơ Chức sắc liên quan','person'],['sources','Xuất xứ bản gốc / nguồn lưu trữ','textarea'],['published','Công bố trên website','check']]
   };
   const subgroupLabels = {
     'Cửu Trùng Đài':['Chức Sắc Đại Thiên Phong Nam/Nữ','Chức Sắc Thiên Phong Nam/Nữ','Chức Việc và Đạo Hữu','Ban Kiến Trúc','Các Cơ Quan Hành Chánh Đạo khác'],
@@ -51,6 +51,16 @@
   };
   const allSubgroups = [...new Set(Object.values(subgroupLabels).flat())];
   const galleryCategories=["Tòa Thánh Tây Ninh xưa","Tang lễ Chức sắc","Hành đạo và Sinh hoạt Đạo","Dấu tích Đạo sử xưa và nay","Tư liệu hình ảnh khác"];
+
+  const documentSubfolders=[
+    {code:'HCĐ',title:'Tài Liệu Hành Chánh Đạo'},
+    {code:'HTĐ',title:'Tài Liệu Chức Sắc Hiệp Thiên Đài'},
+    {code:'CTĐ',title:'Tài Liệu Chức Sắc Cửu Trùng Đài'},
+    {code:'PT',title:'Tài Liệu Chức Sắc Phước Thiện'},
+    {code:'CQK',title:'Tài Liệu Các Cơ Quan Khác'}
+  ];
+  const documentSubfolderTitle=code=>documentSubfolders.find(f=>f.code===code)?.title||'Tài Liệu Các Cơ Quan Khác';
+  const documentSubfolderOf=(kind,record)=>kind==='documents'&&documentSubfolders.some(f=>f.code===record.subfolder_code)?record.subfolder_code:'CQK';
   const galleryCategoryOf=record=>galleryCategories.includes(record?.category)?record.category:'Tư liệu hình ảnh khác';
   const sectionNames={people:'Hồ sơ Chức sắc',posts:'Bài biên khảo',media:'Hình ảnh',videos:'Video Đạo Sử',obituaries:'Ai Tín',documents:'Tài liệu số hóa'};
   const prefixNames={people:'nhan-vat',posts:'bai-viet',media:'hinh-anh-tu-lieu',videos:'video-dao-su',obituaries:'ai-tin',documents:'tai-lieu-so-hoa'};
@@ -243,14 +253,31 @@ function videoSource(raw){
       const excerpt=full.length>150?full.slice(0,147).replace(/\s+\S*$/,'')+'…':full;
       return `<button type="button" class="gallery-card" data-open-kind="${originKind}" data-id="${escape(m.id)}"><div class="gallery-visual">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div class="gdd-gallery-card-copy"><h3>${escape(m.title)}</h3><p class="gdd-gallery-excerpt">${escape(excerpt)}</p><span class="gdd-gallery-open" aria-hidden="true">Xem bộ ảnh ↗</span></div></button>`;
     }).join(''):media.length?'<div class="empty-state"><b>Chưa có bộ ảnh trong chuyên mục này.</b>Chọn “Tất cả” để xem những bộ ảnh đã lưu.</div>':'<div class="empty-state"><b>Chưa có ảnh tư liệu.</b>Tải ảnh từ trang quản trị để lập thư viện ảnh.</div>';
+    const docEntries=displayedEntries('documents');
+    const folderPanel=$('#document-subfolder-filters');
+    if(folderPanel){
+      $('#document-subfolder-filters [data-document-subfolder]').forEach(button=>{
+        const group=button.dataset.documentSubfolder,selected=state.documentSubfolder===group;
+        button.classList.toggle('is-selected',selected);
+        button.setAttribute('aria-pressed',String(selected));
+        const amount=button.querySelector('[data-document-folder-count]');
+        if(amount)amount.textContent=String(group==='all'?docEntries.length:
+          docEntries.filter(({record,originKind})=>documentSubfolderOf(originKind,record)===group).length);
+      });
+      const info=$('#document-subfolder-count');
+      if(info)info.textContent=state.documentSubfolder==='all'
+        ?'Đang hiển thị '+docEntries.length+' tài liệu trong 5 thư mục con.'
+        :'Đang hiển thị '+docEntries.filter(({record,originKind})=>documentSubfolderOf(originKind,record)===state.documentSubfolder).length+
+          ' tài liệu thuộc '+documentSubfolderTitle(state.documentSubfolder)+'.';
+    }
     const groupKinds=[['videos','video-grid','Video Đạo Sử'],['obituaries','obituary-grid','Ai Tín'],['documents','document-grid','Tài liệu số hóa']];
     groupKinds.forEach(([kind,target,label])=>{
-      const rows=displayedEntries(kind),el=$('#'+target);
+      const rows=kind==='documents'?docEntries.filter(({record,originKind})=>state.documentSubfolder==='all'||documentSubfolderOf(originKind,record)===state.documentSubfolder):displayedEntries(kind),el=$('#'+target);
       if(!el)return;
       el.innerHTML=rows.length?rows.map(({record:x,originKind})=>{
         const src=imageFromRecord(x);
         const meta=originKind==='obituaries'?x.memorial_date:
-          originKind==='documents'?[x.document_number,x.document_date].filter(Boolean).join(' · '):
+          originKind==='documents'?[documentSubfolderTitle(x.subfolder_code),x.document_number,x.document_date].filter(Boolean).join(' · '):
           sectionNames[originKind]||'';
         const preview=originKind==='videos'&&kind==='videos'
           ?`<div class="archive-thumb video-preview-slot" data-video-id="${escape(x.id)}">${videoPoster(x)}</div>`
@@ -277,7 +304,7 @@ function videoSource(raw){
     const src=safeUrl(record.cover_url||record.image_url||(kind==='documents'&&/\.(png|jpe?g|webp)(\?|$)/i.test(record.file_url||'')?record.file_url:''));
     const subtitle=kind==='people'?[record.rank,record.branch,record.subgroup,record.years].filter(Boolean).join(' · '):
       kind==='obituaries'?[record.deceased_name,record.memorial_date].filter(Boolean).join(' · '):
-      kind==='documents'?[record.document_number,record.document_date].filter(Boolean).join(' · '):
+      kind==='documents'?[documentSubfolderTitle(record.subfolder_code),record.document_number,record.document_date].filter(Boolean).join(' · '):
       kind==='posts'?[record.category,date(record.created_at)].filter(Boolean).join(' · '):sectionNames[kind]||'';
     const body=kind==='people'?record.biography:kind==='media'?record.caption:record.body;
     const summary=record.summary||'';
@@ -1009,6 +1036,14 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     $('#branch-filter').addEventListener('change',()=>{state.peopleExpanded=false;updateSubgroupFilter();render()});
     $('#subgroup-filter').addEventListener('change',()=>{state.peopleExpanded=false;render()});
     $('#people-show-more').addEventListener('click',()=>{state.peopleExpanded=!state.peopleExpanded;render()});
+    $('#document-subfolder-filters')?.addEventListener('click',event=>{
+      const button=event.target.closest('[data-document-subfolder]');
+      if(!button||!event.currentTarget.contains(button))return;
+      const group=button.dataset.documentSubfolder;
+      if(group!=='all'&&!documentSubfolders.some(f=>f.code===group))return;
+      state.documentSubfolder=group;
+      render();
+    });
     $('#gallery-category-filters').addEventListener('click',event=>{
       const button=event.target.closest('[data-gallery-category]');
       if(!button||!event.currentTarget.contains(button))return;
