@@ -11,6 +11,7 @@
   const roles = new Set(['primary','album','vault']);
   const $ = id => document.getElementById(id);
   const saved = new WeakMap();
+  const vaultFinished = new WeakSet(); // Không tải lại tệp đã lưu khi thử lại cùng lượt chọn.
   let modulePromise, client, bound=false, busy=false;
   const rendering=new Set();
 
@@ -419,6 +420,7 @@
     if(!data?.length){const p=document.createElement('p');p.textContent='Chưa có tư liệu R2 trong danh mục quản trị.';list.appendChild(p);return}
     for(const entry of data)list.appendChild(makeRow(entry));
   }
+
   async function saveInVault(){
     if(busy||!client)return;
     const input=$('gdd-r2-vault-files'),button=$('gdd-r2-vault-upload');
@@ -427,23 +429,58 @@
     busy=true;button.disabled=true;input.disabled=true;
     const p=$('gdd-r2-vault-progress');
     if(p){p.hidden=false;p.value=0}
-    const results=[];
+    const results=new Array(files.length);
+    const uploadedBytes=files.map((file)=>vaultFinished.has(file)?file.size:0);
+    const totalBytes=files.reduce((sum,file)=>sum+file.size,0);
+    const updateProgress=()=>{
+      if(p)p.value=Math.min(100,Math.round(uploadedBytes.reduce((a,b)=>a+b,0)/totalBytes*100));
+    };
+    const errors=[];
+    let cursor=0,done=0;
     try{
-      for(const [i,file] of files.entries()){
-        note('Đang lưu tệp '+(i+1)+'/'+files.length+': '+labelOf(file));
-        const result=await archive(file,client,{role:'vault',onProgress:status=>{
-          if(status.phase==='original'&&p) p.value=Math.floor(100*status.bytes/status.total);
-          if(status.phase==='optimizing')note('Đã giữ bản gốc '+labelOf(file)+'; đang tạo bản '+status.variant);
-        }});
-        results.push(labelOf(file)+' – bản gốc đã lưu (ID '+result.id+')'+
-          (result.status==='original-and-optimized'?', ảnh xem/tải đã sẵn sàng':', bản xem/tải chưa đầy đủ'));
-        if(p)p.value=Math.round((i+1)/files.length*100);
-      }
-      input.value='';
-      note(results.join('\n')+'\nTệp vẫn riêng tư; chưa tự công bố trên website.');
+      // Giới hạn 2/3 tệp để giảm thời gian chờ nhưng không làm đầy RAM iPhone.
+      const mobile=window.matchMedia?.('(max-width: 900px)').matches;
+      const limit=Math.min(mobile?2:3,files.length);
+      const worker=async()=>{
+        while(cursor<files.length){
+          const i=cursor++,file=files[i];
+          if(vaultFinished.has(file)){
+            done++;
+            results[i]=labelOf(file)+' – đã lưu trong lượt trước.';
+            updateProgress();
+            continue;
+          }
+          try{
+            note('Đang cất R2: '+(done)+'/'+files.length+' tệp hoàn tất; '+labelOf(file));
+            const result=await archive(file,client,{role:'vault',onProgress:status=>{
+              if(status.phase==='original'||status.phase==='original-preserved'){
+                uploadedBytes[i]=Math.max(uploadedBytes[i],Math.min(file.size,status.bytes||0));
+                updateProgress();
+              }
+              if(status.phase==='optimizing'){
+                note('Đã giữ bản gốc '+labelOf(file)+'; đang tạo bản '+status.variant);
+              }
+            }});
+            vaultFinished.add(file);
+            uploadedBytes[i]=file.size;
+            done++;
+            results[i]=labelOf(file)+' – bản gốc đã lưu (ID '+result.id+')'+
+              (result.status==='original-and-optimized'?', ảnh xem/tải đã sẵn sàng':', bản xem/tải chưa đầy đủ');
+            updateProgress();
+          }catch(error){
+            errors.push(labelOf(file)+': '+String(error?.message||error));
+          }
+        }
+      };
+      await Promise.all(Array.from({length:limit},()=>worker()));
+      if(!errors.length)input.value='';
+      note('Đã lưu '+done+'/'+files.length+' tệp lên R2. '
+        +'Tệp vẫn riêng tư; không tự công bố.'
+        +(errors.length?' Còn '+errors.length+' tệp lỗi, giữ danh sách để thử lại:\n'+errors.join('\n')
+          :'\n'+results.filter(Boolean).join('\n')));
       await refresh();
     }catch(error){
-      note(results.join('\n')+(results.length?'\n':'')+'Lỗi: '+String(error?.message||error));
+      note('Đã lưu '+done+'/'+files.length+' tệp. Lỗi: '+String(error?.message||error));
     }finally{busy=false;button.disabled=false;input.disabled=false}
   }
   async function auditLegacyPdf(){
