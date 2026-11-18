@@ -6,7 +6,7 @@
   if(window.GDDTraceDisplay)return;
   const trace=window.GDDTrace;
   if(!trace)return;
-  const originals=new WeakMap(), cache=new Map(), jobs=[];
+  const originals=new WeakMap(), cache=new Map(), inFlight=new Map(), jobs=[];
   const MAX_CACHE=42,MAX_PARALLEL=2;
   let busy=0;
   const managed=new Set();
@@ -73,12 +73,18 @@
       if(!img.isConnected||originals.get(img)!==state||state.stage!=='queued')continue;
       state.stage='working';busy++;
       const entry=cache.get(state.key);
-      const promise=entry?Promise.resolve(entry):(async()=>{
-        const blob=await trace.stampedBlob(state.source,state.code,{maxDimension:3200});
-        const url=URL.createObjectURL(blob),record={url,refs:new Set()};
-        managed.add(url);cache.set(state.key,record);
-        return record;
-      })();
+      let promise=entry?Promise.resolve(entry):inFlight.get(state.key);
+      if(!promise){
+        promise=(async()=>{
+          const blob=await trace.stampedBlob(state.source,state.code,{maxDimension:3200});
+          const url=URL.createObjectURL(blob),record={url,refs:new Set()};
+          managed.add(url);cache.set(state.key,record);
+          return record;
+        })();
+        const key=state.key;
+        inFlight.set(key,promise);
+        promise.finally(()=>{if(inFlight.get(key)===promise)inFlight.delete(key)}).catch(()=>{});
+      }
       promise.then(rec=>apply(img,state,rec)).catch(err=>failed(img,state,err))
         .finally(()=>{busy--;prune();pump();});
     }
@@ -112,10 +118,19 @@
     if(existing){apply(img,state,existing);return}
     observer.observe(img);
   }
+  function decorate(img){
+    if(!(img instanceof HTMLImageElement))return;
+    if(!img.dataset.photoCode){
+      const wrapper=img.closest('[data-gdd-trace-code]');
+      const code=wrapper?.dataset.gddTraceCode;
+      if(trace.validCode(code))img.dataset.photoCode=code;
+    }
+    watch(img);
+  }
   function scan(root){
     if(!root||root.nodeType!==1)return;
-    if(root.matches?.('img[data-photo-code]'))watch(root);
-    root.querySelectorAll?.('img[data-photo-code]').forEach(watch);
+    if(root instanceof HTMLImageElement)decorate(root);
+    root.querySelectorAll?.('img[data-photo-code], [data-gdd-trace-code] img').forEach(decorate);
   }
   const mutation=new MutationObserver(records=>{
     for(const r of records){
@@ -125,7 +140,7 @@
     prune();
   });
   mutation.observe(document.body,{subtree:true,childList:true,
-    attributes:true,attributeFilter:['data-photo-code']});
+    attributes:true,attributeFilter:['data-photo-code','data-gdd-trace-code']});
   scan(document.body);
   window.GDDTraceDisplay=Object.freeze({
     isStampedBlob:url=>managed.has(String(url)),
