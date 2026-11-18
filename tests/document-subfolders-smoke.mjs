@@ -115,7 +115,16 @@ try{
       assert.equal(await page.locator(selector).getAttribute('aria-pressed'),'true',label+' selected '+group);
       assert.equal(await page.locator('#document-grid .archive-card').count(),total,label+' category '+group);
       assert.equal(await page.locator(selector+' [data-document-folder-count]').innerText(),String(total),label+' badge '+group);
-      assert.equal(await page.locator('#document-folder-active').isVisible(),true,label+' compact folder heading '+group);
+      const folderDiagnostics=await page.evaluate(()=>{
+        const panel=document.getElementById('document-subfolder-filters'),active=document.getElementById('document-folder-active');
+        const choices=panel?.querySelector('.gdd-document-folder-grid');
+        const grid=document.getElementById('document-grid');
+        return {mode:panel?.dataset.mode,activeHidden:active?.hidden,activeDisplay:active&&getComputedStyle(active).display,
+          activeText:active?.textContent.slice(0,180),activeHeight:active?.getBoundingClientRect().height,
+          choicesHidden:choices?.hidden,gridHidden:grid?.hidden,gridDisplay:grid&&getComputedStyle(grid).display,
+          panelHeight:panel?.getBoundingClientRect().height};
+      });
+      assert.equal(await page.locator('#document-folder-active').isVisible(),true,label+' compact folder heading '+group+' '+JSON.stringify(folderDiagnostics));
       assert.equal(await page.locator('.gdd-document-folder-grid').isVisible(),false,label+' five large cards collapse '+group);
       assert.equal(await page.locator('#document-grid').isVisible(),true,label+' result visible '+group);
       const metrics=await page.evaluate(()=>{
