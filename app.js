@@ -251,7 +251,7 @@ function videoSource(raw){
       const src=imageFromRecord(m);
       const full=String(m.caption||m.summary||m.body||'Bấm để xem thông tin bộ ảnh.').replace(/\s+/g,' ').trim();
       const excerpt=full.length>150?full.slice(0,147).replace(/\s+\S*$/,'')+'…':full;
-      return `<button type="button" class="gallery-card" data-open-kind="${originKind}" data-id="${escape(m.id)}"><div class="gallery-visual">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div class="gdd-gallery-card-copy"><h3>${escape(m.title)}</h3><p class="gdd-gallery-excerpt">${escape(excerpt)}</p><span class="gdd-gallery-open" aria-hidden="true">Xem bộ ảnh ↗</span></div></button>`;
+      return `<button type="button" class="gallery-card" data-open-kind="${originKind}" data-id="${escape(m.id)}"><div class="gallery-visual">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" data-photo-code="${escape(m.archive_code||'')}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div class="gdd-gallery-card-copy"><h3>${escape(m.title)}</h3><p class="gdd-gallery-excerpt">${escape(excerpt)}</p><span class="gdd-gallery-open" aria-hidden="true">Xem bộ ảnh ↗</span></div></button>`;
     }).join(''):media.length?'<div class="empty-state"><b>Chưa có bộ ảnh trong chuyên mục này.</b>Chọn “Tất cả” để xem những bộ ảnh đã lưu.</div>':'<div class="empty-state"><b>Chưa có ảnh tư liệu.</b>Tải ảnh từ trang quản trị để lập thư viện ảnh.</div>';
     const docEntries=displayedEntries('documents');
     const folderPanel=$('#document-subfolder-filters');
