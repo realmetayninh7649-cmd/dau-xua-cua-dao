@@ -1,0 +1,132 @@
+/* DẤU XƯA CỬA ĐẠO · QR gọn đồng bộ trong trang chi tiết.
+ * Đặt sau tên / thông tin và trước hình ảnh, nội dung. Không xóa bất kỳ dữ liệu QR nào.
+ */
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person){
+  width:min(100%,590px);
+  max-width:590px;
+  box-sizing:border-box;
+  margin:16px auto 24px;
+  padding:16px 18px;
+  border-radius:12px;
+}
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-heading{
+  gap:8px 12px;
+  margin-bottom:12px;
+  font-size:12px;
+}
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-heading code{
+  padding:5px 8px;
+  font-size:12px;
+}
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-layout{
+  gap:16px;
+}
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-frame{
+  padding:10px;
+  border-radius:9px;
+}
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) [data-gdd-qr-graphic]{
+  width:160px;
+  height:160px;
+  min-width:160px;
+  min-height:160px;
+}
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) [data-gdd-qr-graphic] :is(canvas,img){
+  width:160px!important;
+  height:160px!important;
+  max-width:160px!important;
+  max-height:160px!important;
+  object-fit:contain;
+}
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-actions p{
+  font-size:12px;
+  line-height:1.6;
+  margin-bottom:10px;
+}
+#detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-actions .btn{
+  font-size:11px;
+  min-height:37px;
+  padding:9px 11px;
+  margin:0 6px 7px 0;
+}
+#detail-content .gdd-archive-qr--person{
+  width:min(100%,316px)!important;
+  max-width:316px!important;
+  margin:13px auto 21px!important;
+}
+#detail-content .gdd-archive-qr--person .gdd-archive-qr-card{
+  width:min(100%,286px)!important;
+  min-height:280px;
+  height:auto;
+  aspect-ratio:auto;
+  padding:12px 11px 11px;
+  gap:5px;
+}
+#detail-content .gdd-archive-qr--person .gdd-archive-qr-frame{
+  padding:9px!important;
+}
+#detail-content .gdd-archive-qr--person [data-gdd-qr-graphic]{
+  width:148px!important;
+  height:148px!important;
+  min-width:148px!important;
+  min-height:148px!important;
+}
+#detail-content .gdd-archive-qr--person [data-gdd-qr-graphic] :is(canvas,img){
+  width:148px!important;
+  height:148px!important;
+  max-width:148px!important;
+  max-height:148px!important;
+}
+#detail-content .gdd-archive-qr--person .gdd-archive-qr-actions{
+  max-width:286px;
+  margin-top:9px;
+}
+@media(max-width:600px){
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person){
+    width:min(100%,370px);
+    padding:14px 13px;
+    margin:13px auto 20px;
+  }
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-layout{
+    align-items:center;
+    gap:11px;
+  }
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-heading{
+    justify-content:center;
+    text-align:center;
+  }
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-frame{
+    align-self:center;
+  }
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-actions{
+    display:grid;
+    width:100%;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+    align-items:start;
+  }
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-actions>p,
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-actions>small{
+    grid-column:1/-1;
+    width:100%;
+    margin:0;
+  }
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-actions .btn{
+    width:100%;
+    min-width:0;
+    margin:0;
+    padding:8px 6px;
+    font-size:10px;
+    text-align:center;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+}
+@media(max-width:340px){
+  #detail-content .gdd-archive-qr--person .gdd-archive-qr-card{
+    width:min(100%,272px)!important;
+  }
+  #detail-content .gdd-archive-qr:not(.gdd-archive-qr--person) .gdd-archive-qr-actions{
+    grid-template-columns:1fr;
+  }
+}
