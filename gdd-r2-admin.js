@@ -2,7 +2,7 @@
    KHÔNG dùng secret/service_role và không cấp đường dẫn tải bản nguyên mẫu. */
 (() => {
   'use strict';
-  const apiModule = './workers/gdd-r2-gateway/client/uploader.mjs?v=20261117-dk017';
+  const apiModule = './workers/gdd-r2-gateway/client/uploader.mjs?v=20261118-batch-01';
   const documentModule = './workers/gdd-r2-gateway/client/document-view.mjs?v=20261117-dk014';
   const API = 'https://gdd-r2-gateway.realmetayninh7649.workers.dev';
   const VIEW_PAGE = './r2-xem.html?asset=';
