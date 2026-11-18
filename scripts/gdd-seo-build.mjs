@@ -7,6 +7,31 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const BASE = 'https://dauxuacuadao.info.vn';
+// Site owner requested a temporary full-public-site maintenance mode.
+// Keep existing file names/routes, but serve the static home maintenance notice
+// from every SEO HTML route without fetching Supabase or touching database records.
+if (fs.existsSync(path.join(ROOT, 'maintenance-mode.flag'))) {
+  const notice = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  if (!notice.includes('Website đang tạm bảo trì') || /<script\\b/i.test(notice)) {
+    throw new Error('Maintenance notice missing or not static; refuse to replace public SEO pages');
+  }
+  let updated = 0;
+  for (const section of ['ho-so','bien-khao']) {
+    const dir = path.join(ROOT, section);
+    if (!fs.existsSync(dir)) continue;
+    for (const name of fs.readdirSync(dir)) {
+      if (!/\\.html$/i.test(name)) continue;
+      const target = path.join(dir, name);
+      if (!fs.statSync(target).isFile()) continue;
+      if (fs.readFileSync(target,'utf8') !== notice) {
+        fs.writeFileSync(target, notice,'utf8');
+        updated += 1;
+      }
+    }
+  }
+  console.log('MAINTENANCE ACTIVE: public SEO routes display notice; changed '+updated+' pages.');
+  process.exit(0);
+}
 const config = fs.readFileSync(path.join(ROOT, 'supabase-config.js'), 'utf8');
 const api = config.match(/supabaseUrl:\s*["'](https:\/\/[^"']+)["']/)?.[1];
 const key = config.match(/supabasePublishableKey:\s*["']([^"']+)["']/)?.[1];
