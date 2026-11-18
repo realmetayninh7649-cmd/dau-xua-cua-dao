@@ -35,16 +35,22 @@
     });
   }
 
-  function createPanel(name, label, node, openOnDesktop) {
+  function createPanel(name, label, node, description) {
     if (!node) return null;
     let panel = id(name);
     if (!panel) {
       panel = document.createElement('details');
       panel.id = name;
       panel.className = 'gdd-p1-panel';
-      panel.open = Boolean(openOnDesktop && !window.matchMedia('(max-width: 900px)').matches);
+      panel.open = false; // Gọn trang chủ, chỉ mở khi khách chọn hoặc theo đường dẫn.
       const heading = document.createElement('summary');
-      heading.textContent = label;
+      const title = document.createElement('span');
+      title.className = 'gdd-p1-utility-name';
+      title.textContent = label;
+      const subtitle = document.createElement('small');
+      subtitle.className = 'gdd-p1-utility-desc';
+      subtitle.textContent = description || '';
+      heading.append(title, subtitle);
       panel.append(heading);
       id('gdd-p1-aside').append(panel);
     }
@@ -68,14 +74,14 @@
     if (directory && directory.parentElement !== mainColumn) mainColumn.append(directory);
 
     const audio = id('am-thanh-dai-dao');
-    createPanel('gdd-p1-audio-panel', 'Âm Thanh Đại Đạo', audio, true);
+    createPanel('gdd-p1-audio-panel', 'Âm Thanh Đại Đạo', audio, 'Radio Đạo Sử · Thánh âm');
     const dashboard = id('gdd-archive-dashboard');
     if (dashboard) {
       const title = $('.gdd-dash-heading h2', dashboard);
       const introduction = $('.gdd-dash-heading > p', dashboard);
       if (title) title.textContent = 'Lịch Âm – Dương';
       if (introduction) introduction.textContent = 'Tra cứu ngày tháng, lễ Đạo và những ngày kỷ niệm qui vị.';
-      createPanel('gdd-p1-calendar-panel', 'Lịch Âm – Dương và Ngày kỷ niệm', dashboard, true);
+      createPanel('gdd-p1-calendar-panel', 'Lịch Âm – Dương', dashboard, 'Đổi ngày · Lễ Đạo · Kỷ niệm qui vị');
     }
     const statCard = $('.gdd-statistics');
     const target = id('gdd-p1-stat-content');
@@ -132,8 +138,48 @@
     layout.className = 'gdd-p1-layout';
     layout.innerHTML = '<div id="gdd-p1-main" class="gdd-p1-main" aria-label="Tư liệu Đạo sử mới cập nhật"></div>' +
       '<aside id="gdd-p1-aside" class="gdd-p1-aside" aria-label="Âm Thanh Đại Đạo và Lịch Âm – Dương">' +
-      '<div class="gdd-p1-side-intro"><span>TIỆN ÍCH ĐẠO SỬ</span><h2>Âm thanh &amp; Lịch</h2>' +
-      '<p>Nghe thánh âm, xem lịch và những ngày tưởng niệm.</p></div></aside>';
+      '<div class="gdd-p1-side-intro"><span>KHO TƯ LIỆU ĐẠO SỬ</span><h2>TIỆN ÍCH ĐẠO SỬ</h2>' +
+      '<p>Tra cứu lịch, thánh âm và các nghi lễ.</p></div></aside>';
+
+    // Mục tra cứu gói trong một khung đóng/mở để tiết kiệm chiều cao cột phụ.
+    const nav = document.createElement('nav');
+    nav.id = 'gdd-p1-sidebar-navigation';
+    nav.className = 'gdd-p1-sidebar-navigation';
+    nav.setAttribute('aria-label', 'Chuyên mục tra cứu Đạo sử');
+    const navDetails = document.createElement('details');
+    navDetails.className = 'gdd-p1-sidebar-details';
+    const navSummary = document.createElement('summary');
+    navSummary.className = 'gdd-p1-sidebar-summary';
+    const navTitle = document.createElement('span');
+    navTitle.className = 'gdd-p1-utility-name';
+    navTitle.textContent = 'CHUYÊN MỤC TRA CỨU';
+    const navDesc = document.createElement('small');
+    navDesc.className = 'gdd-p1-utility-desc';
+    navDesc.textContent = 'Hồ sơ · Biên khảo · Hình ảnh · Số hóa';
+    navSummary.append(navTitle, navDesc);
+    const navLinks = document.createElement('div');
+    navLinks.className = 'gdd-p1-sidebar-links';
+    for (const [route, title] of [
+      ['chuc-sac', 'Hồ sơ Chức sắc'],
+      ['video-dao-su', 'Video Đạo Sử'],
+      ['ai-tin', 'Ai Tín'],
+      ['tai-lieu-so-hoa', 'Tài liệu số hóa'],
+      ['bien-khao', 'Biên khảo'],
+      ['hinh-anh', 'Hình ảnh']
+    ]) {
+      const link = document.createElement('a');
+      link.href = '#' + route;
+      link.textContent = title;
+      const arrow = document.createElement('span');
+      arrow.className = 'gdd-p1-link-arrow';
+      arrow.setAttribute('aria-hidden', 'true');
+      arrow.textContent = '›';
+      link.append(arrow);
+      navLinks.append(link);
+    }
+    navDetails.append(navSummary, navLinks);
+    nav.append(navDetails);
+    layout.querySelector('#gdd-p1-aside').append(nav);
     switcher = document.createElement('div');
     switcher.id = 'gdd-p1-switch';
     switcher.className = 'gdd-p1-switch';
@@ -194,8 +240,9 @@
       setView('main');
       for (const name of ['gdd-p1-audio-panel', 'gdd-p1-calendar-panel']) {
         const panel = id(name);
-        if (panel) panel.open = !event.matches;
+        if (panel) panel.open = false;
       }
+      syncRoute();
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once: true});
