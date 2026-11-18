@@ -99,6 +99,7 @@ jobs:
           node tests/section-facebook-metrics-smoke.mjs
           node tests/document-subfolders-smoke.mjs
           node tests/photo-trace-smoke.mjs
+          node tests/photo-code-lookup-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
         if: failure()
         uses: actions/upload-artifact@v4
@@ -112,4 +113,5 @@ jobs:
             /tmp/gdd-document-scope-*.png
             /tmp/gdd-document-folders-*.png
             /tmp/gdd-photo-trace-*.png
+            /tmp/gdd-photo-lookup-*.png
           if-no-files-found: ignore
