@@ -77,7 +77,9 @@
     const sources=tidy(area.querySelector(mem?'#gdd-memorial-sources':'.detail-source')?.textContent).replace(/^NGUỒN TƯ LIỆU\s*(?:&|VÀ)\s*GHI CHÚ\s*/i,'');
     const image=area.querySelector(mem?'.gdd-memorial-detail-image':'.detail-cover img');
     const gallery=[...area.querySelectorAll('.gdd-album-figure')].map((figure,i)=>({
-      url:safeURL(figure.querySelector('img')?.currentSrc||figure.querySelector('img')?.src),
+      // Đọc URL ổn định để xuất PDF/Word: bản xem đã có lưu dấu có thể dùng blob: tạm thời.
+      url:safeURL(window.GDDTraceDisplay?.originalFor(figure.querySelector('img'))||
+        figure.querySelector('img')?.currentSrc||figure.querySelector('img')?.src),
       caption:tidy(figure.querySelector('figcaption')?.textContent)||'Ảnh tư liệu '+(i+1)
     })).filter(i=>i.url);
     const sourceLink=safeURL(area.querySelector('.detail-external a[href]')?.href);
@@ -85,7 +87,7 @@
     return {...r,title,content,sources,archiveCode,
       subtitle:tidy(area.querySelector(mem?'.gdd-memorial-detail-meta':'.detail-meta')?.textContent),
       summary:tidy(area.querySelector(mem?'.gdd-memorial-summary':'.detail-summary')?.textContent),
-      cover:safeURL(image?.currentSrc||image?.src),gallery,sourceLink,
+      cover:safeURL(window.GDDTraceDisplay?.originalFor(image)||image?.currentSrc||image?.src),gallery,sourceLink,
       permalink:location.origin+location.pathname+'#'+r.prefix+'/'+encodeURIComponent(r.slug)};
   }
   let supaPromise;
