@@ -22,12 +22,16 @@ test('Album giu file goc truoc nen, PDF/Word khong public',()=>{
  const html=read('index.html');
  const idx=html.indexOf('async function uploadPending(kind,id,onProgress)');
  assert.ok(idx>=0);
- const block=html.slice(idx,idx+7000);
+ const block=html.slice(idx,idx+11000);
  const archive=block.indexOf('window.GDDR2.archive(item.file,supa');
  const optimize=block.indexOf('window.GDDImageOptimizer.prepare(item.file');
+ const imageGate=block.indexOf('if(!docFile&&!attached){');
+ const publicUpload=block.indexOf('storage.upload(path,item.preparedFile');
  const privateGate=block.indexOf('if(docFile){');
- const publicUpload=block.indexOf('supa.storage.from(destination).upload(');
- assert.ok(archive>=0&&archive<optimize&&archive<privateGate&&privateGate<publicUpload);
+ assert.ok(imageGate>=0&&archive>imageGate&&archive<optimize&&optimize<publicUpload);
+ assert.ok(privateGate>publicUpload,'private PDF/Word branch cannot use public image upload');
+ assert.ok(block.includes('skipDerivatives:!docFile'));
+ assert.ok(block.includes('item.saved=true;done++;committed=true;'));
  assert.ok(!block.includes('item.file=prepared'));
 });
 test('R2 manifest chỉ Admin, RLS, khong co quyen delete',()=>{
