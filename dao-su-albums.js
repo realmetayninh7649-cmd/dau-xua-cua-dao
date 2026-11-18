@@ -117,6 +117,7 @@
     }
     .gdd-album-figure figcaption {font:400 12px/1.7 'Be Vietnam Pro',sans-serif;color:#5b685f;margin:7px 2px 0;overflow-wrap:anywhere;}
     .gdd-album-page {display:inline-block;font-weight:700;color:#a17e44;margin-right:5px;}
+    .gdd-album-trace {display:block;font:500 10px/1.5 'Be Vietnam Pro',sans-serif;color:#68776D;overflow-wrap:anywhere;margin-top:4px;}
     .gdd-album-open {font-size:11px;color:#20594e;text-decoration:underline;text-underline-offset:3px;}
     #gdd-admin-album-panel {padding:22px;margin:24px 0 30px;background:#f8faf5;border:1px solid #c9d5c7;border-radius:7px;}
     #gdd-admin-album-panel h3 {font:600 20px/1.45 'Noto Serif',Georgia,serif;margin:0 0 7px;color:#1b5047;}
@@ -172,7 +173,7 @@
       if (lookupError) throw lookupError;
       if (!parent || ticket!==detailSeq || !target.isConnected) return;
       const {data, error}=await supa.from(ALBUM_TABLE)
-        .select('id,image_url,caption,sort_order').eq('owner_kind',kind).eq('owner_id',parent.id)
+        .select('id,image_url,caption,sort_order,photo_no,photo_code').eq('owner_kind',kind).eq('owner_id',parent.id)
         .order('sort_order',{ascending:true}).order('created_at',{ascending:true}).limit(200);
       if (error) throw error;
       if (!data?.length || ticket!==detailSeq || !target.isConnected) return;
@@ -191,6 +192,7 @@
         const readingUrl=isDocument?(window.GDDDocumentReader?.readerUrl(url)||url):url;
         const docLabel=isR2Reader?'BẢN XEM':isPdf?'PDF':'WORD';
         const figure=document.createElement('figure');figure.className='gdd-album-figure';
+        if(item.photo_code)figure.dataset.photoCode=item.photo_code;
         if(isDocument){
           const tile=document.createElement('a');
           tile.href=readingUrl;tile.target='_blank';tile.rel='noopener noreferrer';tile.className='gdd-album-pdf-tile';
@@ -202,6 +204,7 @@
           const button=document.createElement('button');button.type='button';button.className='gdd-album-tile detail-cover';
           button.setAttribute('aria-label','Xem ảnh tư liệu số '+(i+1));
           const img=document.createElement('img');img.loading='lazy';img.src=url;
+          if(item.photo_code)img.dataset.photoCode=item.photo_code;
           img.alt=item.caption?.trim()||'Ảnh tư liệu số '+(i+1);
           button.appendChild(img);
           button.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();img.click();}});
@@ -210,6 +213,12 @@
         const caption=document.createElement('figcaption');
         const page=document.createElement('span');page.className='gdd-album-page';page.textContent=String(i+1).padStart(2,'0')+'.';
         caption.append(page,document.createTextNode(item.caption?.trim()||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu')));
+        if(item.photo_code){
+          const trace=document.createElement('span');
+          trace.className='gdd-album-trace';
+          trace.textContent='dauxuacuadao.info.vn | '+item.photo_code;
+          caption.appendChild(trace);
+        }
         figure.appendChild(caption);
         // Ảnh trong Chức Sắc và Hình ảnh đã mở trực tiếp khi chạm hình.
         // Vẫn giữ link mở tài liệu đính kèm PDF/Word, không ảnh hưởng các mục khác.
@@ -340,7 +349,7 @@
   async function loadAdminRows(owner,ticket) {
     try {
       const supa=await getClient();
-      const {data,error}=await supa.from(ALBUM_TABLE).select('id,image_url,caption,sort_order')
+      const {data,error}=await supa.from(ALBUM_TABLE).select('id,image_url,caption,sort_order,photo_no,photo_code')
         .eq('owner_kind',owner.kind).eq('owner_id',owner.id)
         .order('sort_order',{ascending:true}).order('created_at',{ascending:true}).limit(250);
       if(error)throw error;
@@ -359,6 +368,7 @@
     const wrap=document.createElement('div');wrap.className='gdd-admin-photos';
     adminRows.forEach((row,i)=>{
       const part=document.createElement('div');part.className='gdd-admin-photo';
+      if(row.photo_code)part.dataset.photoCode=row.photo_code;
       const fileExt=['documents','media'].includes(owner.kind)?(safeUrl(row.image_url).split('?')[0].match(/\.(pdf|docx|doc)$/i)?.[1]||'').toLowerCase():'';
       const r2Reader=window.GDDDocumentReader?.kind(row.image_url)==='r2';
       const savedDocument=Boolean(fileExt)||r2Reader,fileLabel=r2Reader?'BẢN XEM':fileExt==='pdf'?'PDF':'WORD';
@@ -366,7 +376,7 @@
       if(savedDocument){img.className='gdd-admin-pdf-file';img.textContent=fileLabel;img.title=row.caption||'Tệp '+fileLabel+' đính kèm';}
       else{img.src=safeUrl(row.image_url);img.alt=row.caption||'Ảnh tư liệu';img.loading='lazy';}
       const content=document.createElement('div');
-      const label=document.createElement('label');label.className='gdd-album-field';label.textContent=`${savedDocument?'Tệp':'Ảnh'} số ${i+1} — Chú thích`;
+      const label=document.createElement('label');label.className='gdd-album-field';label.textContent=`${savedDocument?'Tệp':'Ảnh'} số ${i+1}${row.photo_code?' · '+row.photo_code:''} — Chú thích`;
       const input=document.createElement('input');input.type='text';input.maxLength=400;input.value=row.caption||'';input.placeholder='Ví dụ: Trang 01 — Thánh Lịnh số…';label.appendChild(input);
       const cmds=document.createElement('div');cmds.className='gdd-album-commands';
       if(savedDocument){const link=document.createElement('a');link.className='gdd-album-btn';link.href=window.GDDDocumentReader?.readerUrl(safeUrl(row.image_url))||safeUrl(row.image_url);link.target='_blank';link.rel='noopener noreferrer';link.textContent='Mở '+fileLabel;cmds.appendChild(link)}
@@ -431,11 +441,26 @@
         const next=++position;
         const defaultCaption=kind==='documents'?`Trang ${String(next).padStart(2,'0')}`:
           `Ảnh tư liệu ${String(next).padStart(2,'0')}`;
-        const {error:dbError}=await supa.from(ALBUM_TABLE).insert({
+        const {data:linked,error:dbError}=await supa.from(ALBUM_TABLE).insert({
           owner_kind:kind,owner_id:id,image_url:url,
           caption:item.caption.trim()||defaultCaption,sort_order:next
-        });
+        }).select('id,photo_code').single();
         if(dbError)throw dbError;
+        if(linked?.photo_code&&window.GDDTrace){
+          try{
+            const copy=await window.GDDTrace.stampedBlob(optimized,linked.photo_code);
+            const tracePath=`${kind}/${Date.now()}-${suffix}-trace.jpg`;
+            const {error:traceError}=await supa.storage.from('dao-su-images')
+              .upload(tracePath,copy,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
+            if(traceError)throw traceError;
+            const stampURL=supa.storage.from('dao-su-images').getPublicUrl(tracePath).data.publicUrl;
+            const {error:linkError}=await supa.from(ALBUM_TABLE).update({image_url:stampURL}).eq('id',linked.id);
+            if(linkError)throw linkError;
+          }catch(error){
+            console.warn('[GDD Trace] Chưa tạo được bản hiển thị lưu dấu:',error);
+            setStatus('Mã '+linked.photo_code+' đã được cấp; bản xem chưa có dòng lưu dấu: '+error.message);
+          }
+        }
         item.saved=true;done++;
         setStatus(`Đã tải ${done}/${files.length} ảnh…`);
       }
