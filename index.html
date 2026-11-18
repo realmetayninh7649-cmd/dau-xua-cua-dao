@@ -1309,9 +1309,27 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           url=supa.storage.from(destination).getPublicUrl(path).data.publicUrl;
         }
         const order=position+1;
-        const {error:rowError}=await supa.from(TABLE).insert({owner_kind:kind,owner_id:id,image_url:url,
-          caption:item.caption.trim()||(docFile?item.file.name:'Ảnh tư liệu '+String(order).padStart(2,'0')),sort_order:order});
+        const {data:attached,error:rowError}=await supa.from(TABLE).insert({owner_kind:kind,owner_id:id,image_url:url,
+          caption:item.caption.trim()||(docFile?item.file.name:'Ảnh tư liệu '+String(order).padStart(2,'0')),sort_order:order})
+          .select('id,photo_code').single();
         if(rowError)throw rowError;
+        // Lưu riêng bản ảnh hiển thị có dòng truy nguyên, KHÔNG sửa nguyên mẫu đã cất trong R2.
+        if(attached?.photo_code&&window.GDDTrace&&!docFile){
+          try{
+            const traced=await window.GDDTrace.stampedBlob(prepared,attached.photo_code);
+            const tracedPath=`${kind}/${Date.now()}-${suffix}-trace.jpg`;
+            const {error:uploadError}=await supa.storage.from(BUCKET).upload(tracedPath,traced,
+              {contentType:'image/jpeg',cacheControl:'3600',upsert:false});
+            if(uploadError)throw uploadError;
+            const tracedURL=supa.storage.from(BUCKET).getPublicUrl(tracedPath).data.publicUrl;
+            const {error:replaceError}=await supa.from(TABLE).update({image_url:tracedURL}).eq('id',attached.id);
+            if(replaceError)throw replaceError;
+          }catch(traceError){
+            console.warn('[GDD Trace] Đã cấp mã ảnh, chưa thể tạo bản có dòng lưu dấu:',traceError);
+            const warning='Đã cấp '+attached.photo_code+', nhưng bản xem chưa gắn dòng nguồn: '+(traceError.message||traceError);
+            status(warning);onProgress?.(warning);
+          }
+        }
         position=order;item.saved=true;done++;
         const progress=`Đã lưu ${done}/${items.length} tệp; còn ${pending()} tệp chờ tải.`;
         status(progress);onProgress?.(progress);
