@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
   pages: write
   id-token: write
 
@@ -21,11 +22,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  generate-and-deploy:
+  generate:
+    name: "Tao va dong bo trang SEO; chi dong goi khi co thay doi"
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: https://dauxuacuadao.info.vn/
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,19 +43,57 @@ jobs:
           test -f bien-khao/index.html
           grep -q "dauxuacuadao.info.vn/ho-so/" sitemap.xml
           grep -q "dauxuacuadao.info.vn/bien-khao/" sitemap.xml
-      - name: "Cap nhat trang SEO trong kho GitHub"
+      - name: "Cap nhat trang SEO trong kho GitHub khi du lieu thay doi"
+        id: sync
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- sitemap.xml ho-so bien-khao
-          if ! git diff --cached --quiet; then
+          if git diff --cached --quiet; then
+            echo "Khong co thay doi SEO: bo qua dong goi va trien khai."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
             git commit -m "SEO: dong bo trang da cong bo va sitemap tu Supabase"
             git push origin HEAD:main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      # GITHUB_TOKEN push khong kich hoat Pages branch build; khi SEO thay doi
+      # van can mot ban deploy rieng, nhung khong deploy thua moi gio.
+      - name: "Dong goi website chi khi SEO thay doi"
+        if: steps.sync.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: "."
-      - name: "Dang ban GitHub Pages khong can thay doi DNS"
+
+  deploy:
+    name: "Xuat ban Pages tu goi SEO da san sang"
+    needs: generate
+    if: needs.generate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: https://dauxuacuadao.info.vn/
+    steps:
+      - name: "Doi GitHub xac nhan goi github-pages da duoc lap chi muc"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GH_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          for attempt in {1..12}; do
+            if gh api "repos/$GH_REPO/actions/runs/$GH_RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "github-pages" and .expired == false) | .id' | grep -Eq '^[0-9]+$'; then
+              echo "Da tim thay goi github-pages trong run $GH_RUN_ID."
+              exit 0
+            fi
+            echo "Goi chua san sang (lan $attempt/12), thu lai..."
+            sleep 5
+          done
+          echo "Khong tim thay goi github-pages sau 12 lan kiem tra." >&2
+          exit 1
+      - name: "Dang ban GitHub Pages khong thay doi DNS"
         id: deployment
         uses: actions/deploy-pages@v4
