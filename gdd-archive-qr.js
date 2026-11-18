@@ -26,7 +26,7 @@
     }
     try{
       new window.QRCode(target,{
-        text:url,width:panel.classList.contains('gdd-archive-qr--person')?160:196,height:panel.classList.contains('gdd-archive-qr--person')?160:196,
+        text:url,width:panel.classList.contains('gdd-archive-qr--person')?148:160,height:panel.classList.contains('gdd-archive-qr--person')?148:160,
         colorDark:'#10201b',colorLight:'#ffffff',
         correctLevel:window.QRCode.CorrectLevel.M
       });
