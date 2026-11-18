@@ -25,7 +25,7 @@
     ],
     videos:[], obituaries:[], documents:[], submissions:[]
   };
-  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',documentSubfolder:'browse',placements:[],transferSelection:null,detail:null };
+  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',documentSubfolder:'browse',placements:[],transferSelection:null,detail:null,usingFallback:false };
   const schema = {
     people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date','sources','image_url','verified','published'],
     posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
@@ -996,6 +996,30 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     const results=await Promise.all(kinds.map(async k=>({kind:k,...(await state.supabase.from(k).select('*').order('created_at',{ascending:false}).limit(500))})));
     const errors=[];
     results.forEach(r=>{if(r.error){errors.push(r.kind);state.data[r.kind]=[]} else state.data[r.kind]=r.data||[]});
+    // Read-only emergency fallback: only use published records when all public API lists fail.
+    // This keeps public archive texts available if the free-tier service is temporarily restricted.
+    // Never use the fallback for authenticated administration or editorial writes.
+    if(errors.length===kinds.length&&!state.admin){
+      try{
+        const response=await fetch('./public-fallback.json?v=20261119-01',{cache:'no-store'});
+        if(!response.ok)throw Error('Không tải được bản sao công khai');
+        const backup=await response.json();
+        if(backup.source!=='public-published-read-only-backup'||
+           !kinds.every(k=>Array.isArray(backup[k])&&backup[k].every(row=>row.published===true)))throw Error('Bản sao không hợp lệ');
+        kinds.forEach(k=>{state.data[k]=backup[k]});
+        state.data.submissions=[];
+        state.placements=Array.isArray(backup.placements)?backup.placements:[];
+        state.usingFallback=true;
+        const banner=$('#mode-banner');
+        if(banner){
+          banner.textContent='CHẾ ĐỘ DỰ PHÒNG · Đang đọc bản sao tư liệu công khai. Dữ liệu mới và ảnh lưu trên Supabase có thể tạm thời chưa hiển thị.';
+          banner.hidden=false;
+        }
+        updateSubgroupFilter();render();syncHash();
+        return;
+      }catch(fallbackError){console.warn('Không thể đọc bản sao công khai:',fallbackError)}
+    }
+    state.usingFallback=false;
     if(errors.length){toast('Một số chuyên mục chưa được khởi tạo trên Supabase: '+errors.join(', ')+'. Hãy chạy file SQL nâng cấp.');}
     if(state.admin){
       const {data,error}=await state.supabase.from('submissions').select('*').order('created_at',{ascending:false}).limit(200);
@@ -1034,7 +1058,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       await fetchData();
       if(state.admin)buildEditor();
       state.supabase.auth.onAuthStateChange((_event,session)=>{state.user=session?.user||null;if(!state.user){window.GDDR2?.close();state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;fetchData()}});
-      $('#mode-banner').hidden=true;
+      $('#mode-banner').hidden=!state.usingFallback;
     }catch(err){
       console.error('Không thể khởi tạo website tại bước '+stage,err);
       const reason=String(err?.message||err||'Lỗi chưa xác định').slice(0,180);
