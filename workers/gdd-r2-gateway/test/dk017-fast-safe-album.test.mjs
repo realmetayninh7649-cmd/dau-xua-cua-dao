@@ -45,6 +45,6 @@ test('DK01.7: both normal gallery and primary image use safe fast mode; R2 fallb
   assert.match(app,/skipDerivatives:!!window\.GDDImageOptimizer\?\.isImage\(file\)/);
   assert.match(admin,/finishOptimizingExisting\(sourcePicker\.files\[0\],entry\.asset_id/);
   assert.match(module,/export async function finishOptimizingExisting/);
-  assert.match(album,/gdd-r2-admin\.js\?v=20261117-dk017/);
-  assert.match(admin,/uploader\.mjs\?v=20261117-dk017/);
+  assert.match(album,/gdd-r2-admin\.js\?v=20261118-batch-01/);
+  assert.match(admin,/uploader\.mjs\?v=20261118-batch-01/);
 });
