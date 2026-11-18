@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {finishOptimizingExisting} from '../client/uploader.mjs';
+import {finishOptimizingExisting,uploadPreservedAsset} from '../client/uploader.mjs';
 
 const id='68b9257e-283f-41b8-a844-d63975ffd558';
 const origin='https://gdd-r2-gateway.example.workers.dev';
@@ -63,4 +63,76 @@ test('Không xử lý lại nếu chọn sai tệp nguồn, dù ID ảnh đúng'
     );
     assert.deepEqual(mock.requests.map(x=>x.method),['GET']);
   }finally{mock.restore()}
+});
+
+
+test('Nhiều phần ảnh gốc lớn lên R2 song song, hoàn tất đúng thứ tự/byte',async()=>{
+  const previous=globalThis.fetch;
+  const bytes=16*1024*1024,partBytes=5*1024*1024;
+  const file=new Blob([new Uint8Array(bytes)],{type:'image/png'});
+  Object.defineProperty(file,'name',{value:'anh-goc-16mb.png'});
+  const parts=[],progress=[];
+  let inFlight=0,peak=0;
+  try{
+    globalThis.fetch=async(url,args={})=>{
+      const address=new URL(url),p=address.pathname;
+      if(p==='/v1/uploads/start'){
+        return Response.json({id,key:'originals/test',uploadId:'cloudflare.upload.123',
+          partBytes,partCount:4,originalSize:bytes,uploadedParts:[]},{status:201});
+      }
+      if(p==='/v1/uploads/part'){
+        inFlight++;peak=Math.max(peak,inFlight);
+        const number=Number(address.searchParams.get('part'));
+        assert.equal(args.body.size,Math.min(partBytes,bytes-(number-1)*partBytes));
+        await new Promise(resolve=>setTimeout(resolve,20));
+        inFlight--;
+        parts.push(number);
+        return Response.json({partNumber:number,etag:'a'.repeat(32)});
+      }
+      if(p==='/v1/uploads/complete'){
+        const body=JSON.parse(args.body);
+        assert.equal(body.parts.length,4);
+        assert.deepEqual(body.parts.map(x=>x.partNumber),[1,2,3,4]);
+        assert.equal(body.size,bytes);
+        return Response.json({id,originalBytes:bytes});
+      }
+      throw Error('Unexpected '+p);
+    };
+    const out=await uploadPreservedAsset(file,{supabase,endpoint:origin,
+      skipDerivatives:true,onProgress:event=>progress.push(event)});
+    assert.ok(peak>=2,'multipart must overlap network parts');
+    assert.equal(out.id,id);
+    assert.equal(out.status,'original-preserved-derivatives-deferred');
+    assert.equal(parts.length,4);
+    assert.equal(progress.findLast(e=>e.phase==='original')?.bytes,bytes);
+  }finally{globalThis.fetch=previous}
+});
+test('Phiên multipart tiếp tục không tải lại phần đã có, vẫn hoàn tất an toàn',async()=>{
+  const previous=globalThis.fetch;
+  const partBytes=5*1024*1024,bytes=12*1024*1024;
+  const file=new Blob([new Uint8Array(bytes)],{type:'application/pdf'});
+  Object.defineProperty(file,'name',{value:'tai-lieu.pdf'});
+  const sent=[];
+  const session={id,key:'originals/resume',uploadId:'resumed.123',partBytes,
+    originalSize:bytes,uploadedParts:[{partNumber:1,etag:'a'.repeat(32)}]};
+  try{
+    globalThis.fetch=async(url,args={})=>{
+      const p=new URL(url).pathname;
+      if(p==='/v1/uploads/part'){
+        const part=Number(new URL(url).searchParams.get('part'));
+        sent.push(part);
+        return Response.json({partNumber:part,etag:'b'.repeat(32)});
+      }
+      if(p==='/v1/uploads/complete'){
+        const body=JSON.parse(args.body);
+        assert.deepEqual(body.parts.map(x=>x.partNumber),[1,2,3]);
+        return Response.json({id,originalBytes:bytes});
+      }
+      throw Error('Unexpected '+p);
+    };
+    const out=await uploadPreservedAsset(file,{supabase,endpoint:origin,
+      skipDerivatives:true,resumeSession:session});
+    assert.deepEqual(sent.sort(),[2,3]);
+    assert.equal(out.status,'document-original-preserved-viewer-pending');
+  }finally{globalThis.fetch=previous}
 });
