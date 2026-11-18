@@ -125,6 +125,8 @@
   let start=null, lastTap=0;
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
   const safeSource=src=>{
+    // Generated local display bytes are valid archive images for the viewer.
+    if(window.GDDTraceDisplay?.isStampedBlob(src))return String(src);
     try { const u=new URL(src,location.href);return ['https:','http:'].includes(u.protocol)?u.href:''; }
     catch { return ''; }
   };
@@ -176,16 +178,23 @@
     title=(item.title||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(item.isPerson);
     if(tracedPreviewURL){URL.revokeObjectURL(tracedPreviewURL);tracedPreviewURL='';}
     noImageDownload=Boolean(item.noDownload);
-    full.style.visibility='';
-    full.alt=title;full.removeAttribute('src');full.src=url;
-    // Chức Sắc: không cung cấp nút tải hay mở nguồn ảnh trong trình xem.
-    // Các chuyên mục khác giữ nguyên hai lựa chọn này.
-    if(personPhoto) orig.removeAttribute('href');
-    else orig.href=url;
-    orig.hidden=personPhoto;
+    const photoCode=item.photoCode;
+    const alreadyTraced=Boolean(window.GDDTrace?.isStampedURL(url)||
+      window.GDDTraceDisplay?.isStampedBlob(url));
+    const mustTrace=Boolean(photoCode&&window.GDDTrace?.validCode(photoCode)&&!alreadyTraced);
+    delete full.dataset.gddTraceFailed;
+    full.alt=title;full.removeAttribute('src');
+    // Không đưa ảnh CHƯA có mã vào màn hình xem lớn khi đang xử lý bản lưu dấu.
+    full.style.visibility=mustTrace?'hidden':'';
+    if(!mustTrace)full.src=url;
+    if(personPhoto)orig.removeAttribute('href');
+    else if(!mustTrace)orig.href=url;
+    else orig.removeAttribute('href');
+    orig.hidden=personPhoto||mustTrace;
+    orig.textContent=alreadyTraced?'Mở bản ảnh có lưu dấu ↗':'Mở ảnh gốc ↗';
     download.hidden=personPhoto||noImageDownload;
-    download.textContent='↓ Tải ảnh gốc';
-    loading.hidden=false;loading.textContent='Đang mở ảnh…';
+    download.textContent='↓ Tải ảnh có lưu dấu';
+    loading.hidden=false;loading.textContent=mustTrace?'Đang chuẩn bị bản ảnh có lưu dấu…':'Đang mở ảnh…';
     refreshArrows();
     caption.textContent='Vuốt trái/phải để chuyển ảnh; chụm hai ngón để phóng to.';
     if(viewer.hidden){
@@ -195,15 +204,26 @@
     viewer.hidden=false;document.body.classList.add('gdd-photo-open');
     pointers.clear();start=null;swipeStart=null;hadMultiTouch=false;lastTap=0;reset();
     if(full.complete&&full.naturalWidth)imageReady();
-    const photoCode=item.photoCode;
-    // Tạo bản xem có dòng nguồn cho ảnh cũ khi mở, chỉ xử lý một ảnh/lượt.
-    if(photoCode&&window.GDDTrace?.validCode(photoCode)&&!window.GDDTrace.isStampedURL(url)){
+    if(mustTrace){
       window.GDDTrace.stampedBlob(url,photoCode).then(blob=>{
         if(viewer.hidden||viewTicket!==currentTicket)return;
         const stampedURL=URL.createObjectURL(blob);
         tracedPreviewURL=stampedURL;
-        full.src=stampedURL;
-      }).catch(err=>console.info('[GDD Trace] Nguồn ảnh chưa cho phép tạo bản lưu dấu:',err?.message||err));
+        full.src=stampedURL;full.style.visibility='';
+        if(!personPhoto){
+          orig.href=stampedURL;
+          orig.hidden=false;
+          orig.textContent='Mở bản ảnh có lưu dấu ↗';
+        }
+      }).catch(err=>{
+        if(viewer.hidden||viewTicket!==currentTicket)return;
+        // Không giấu lỗi: nguồn ngoài thiếu CORS thì bản xem còn chưa có dòng lưu dấu.
+        full.dataset.gddTraceFailed='1';
+        full.style.visibility='';
+        full.src=url;
+        caption.textContent='Nguồn ảnh chưa cho phép thêm dòng lưu dấu tự động; đang xem bản nguồn.';
+        console.info('[GDD Trace] Nguồn ảnh không cho phép tạo bản lưu dấu:',err?.message||err);
+      });
     }
   }
   function stepImage(delta){
@@ -230,7 +250,8 @@
     full.style.visibility='';
     loading.hidden=true;
     reset();
-    caption.textContent=`Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · ${gallery.length>1?'Vuốt trái/phải để chuyển ảnh. ':''}Chạm hai lần hoặc chụm hai ngón để phóng to.`;
+    caption.textContent=`Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · ${gallery.length>1?'Vuốt trái/phải để chuyển ảnh. ':''}Chạm hai lần hoặc chụm hai ngón để phóng to.`+
+      (full.dataset.gddTraceFailed==='1'?' · Nguồn ảnh chưa hỗ trợ lưu dấu tự động.':'');
   }
   full.addEventListener('load',imageReady);
   full.addEventListener('error',()=>{loading.hidden=false;loading.textContent=personPhoto?'Không thể hiển thị ảnh tư liệu. Xin thử lại sau.':'Không thể hiển thị ảnh. Hãy chọn “Mở ảnh gốc”.';});
@@ -354,7 +375,7 @@
       const original=await response.blob();
       if(!original.type.startsWith('image/'))throw Error('Tệp này không phải hình ảnh');
       const output=photoCode&&window.GDDTrace?.validCode(photoCode)
-        ?(window.GDDTrace.isStampedURL(url)?original:await window.GDDTrace.stampedBlob(original,photoCode))
+        ?(window.GDDTrace.isStampedURL(url)||window.GDDTraceDisplay?.isStampedBlob(url)?original:await window.GDDTrace.stampedBlob(original,photoCode))
         :original;
       const blobUrl=URL.createObjectURL(output),a=document.createElement('a');
       a.href=blobUrl;
