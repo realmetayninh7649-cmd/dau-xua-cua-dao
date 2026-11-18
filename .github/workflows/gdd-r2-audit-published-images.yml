@@ -1,0 +1,29 @@
+name: "GDD R2 - Audit 700 private archive images"
+on:
+  workflow_run:
+    workflows:
+      - "GDD R2 - Bao ton anh cong khai va ban xem rieng tu"
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Read-only dependency and syntax checks"
+        run: |
+          python -m py_compile scripts/r2_audit_published_images.py
+          python -m pip install boto3==1.40.61
+      - name: "Count R2 originals and optimized private previews"
+        env:
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: python scripts/r2_audit_published_images.py
