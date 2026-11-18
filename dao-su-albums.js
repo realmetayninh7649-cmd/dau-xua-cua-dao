@@ -118,6 +118,7 @@
     .gdd-album-figure figcaption {font:400 12px/1.7 'Be Vietnam Pro',sans-serif;color:#5b685f;margin:7px 2px 0;overflow-wrap:anywhere;}
     .gdd-album-page {display:inline-block;font-weight:700;color:#a17e44;margin-right:5px;}
     .gdd-album-trace {display:block;font:500 10px/1.5 'Be Vietnam Pro',sans-serif;color:#68776D;overflow-wrap:anywhere;margin-top:4px;}
+    .gdd-album-figure.gdd-trace-match {outline:3px solid #A18A56;outline-offset:3px;border-radius:5px;}
     .gdd-album-open {font-size:11px;color:#20594e;text-decoration:underline;text-underline-offset:3px;}
     #gdd-admin-album-panel {padding:22px;margin:24px 0 30px;background:#f8faf5;border:1px solid #c9d5c7;border-radius:7px;}
     #gdd-admin-album-panel h3 {font:600 20px/1.45 'Noto Serif',Georgia,serif;margin:0 0 7px;color:#1b5047;}
@@ -234,6 +235,20 @@
         grid.appendChild(figure);
       });
       target.appendChild(grid);
+      // Deep-link tra cứu mã ảnh: quay về đúng album và mở đúng tấm, không đổi slug/QR.
+      const wanted=new URLSearchParams(location.search).get('anh');
+      if(wanted){
+        const match=[...grid.querySelectorAll('figure[data-photo-code]')]
+          .find(el=>el.dataset.photoCode===wanted);
+        if(match){
+          match.classList.add('gdd-trace-match');
+          requestAnimationFrame(()=>{
+            if(!match.isConnected||ticket!==detailSeq)return;
+            match.scrollIntoView({behavior:'auto',block:'center'});
+            match.querySelector('.gdd-album-tile img')?.click();
+          });
+        }
+      }
     } catch (error) {
       // Trang chi tiết vẫn dùng được kể cả khi chưa chạy migration hoặc mất mạng.
       console.warn('[GDD albums] Không thể đọc album:',error);
