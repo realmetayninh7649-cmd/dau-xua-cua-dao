@@ -287,7 +287,7 @@ function videoSource(raw){
         const readerLink=originKind==='documents'&&
           ['r2','legacy-pdf','legacy-word'].includes(window.GDDDocumentReader?.kind(x.file_url))
           ?` <a class="link-button" href="${escape(readUrl)}" target="_blank" rel="noopener noreferrer">Đọc tài liệu ↗</a>`:'';
-        return `<article class="archive-card ${kind==='videos'?'video-archive-card':''}">${preview}<div class="archive-card-copy"><span class="archive-type">${escape(label)} ${meta?' · '+escape(meta):''}</span><h3>${escape(x.title)}</h3><p>${escape(description)}</p><button type="button" class="link-button" data-open-kind="${originKind}" data-id="${escape(x.id)}">Xem chi tiết ↗</button>${readerLink}</div></article>`;
+        return `<article class="archive-card ${kind==='videos'?'video-archive-card':''}">${preview}<div class="archive-card-copy"><span class="archive-type">${escape(label)} ${meta?' · '+escape(meta):''}</span><h3>${escape(x.title)}</h3>${kind==='documents'&&x.archive_code?'<p class="gdd-document-card-code">Mã định danh: <code>'+escape(x.archive_code)+'</code></p>':''}<p>${escape(description)}</p><button type="button" class="link-button" data-open-kind="${originKind}" data-id="${escape(x.id)}">Xem chi tiết ↗</button>${readerLink}</div></article>`;
       }).join(''):`<div class="empty-state"><b>Chưa có ${escape(label)}.</b>Ban Biên Tập đang tiếp nhận và sưu tầm tư liệu.</div>`;
     });
     if(state.admin){renderEditorList();renderInbox()}
