@@ -1379,7 +1379,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       let offset=200,added=0;
       for(;;){
         if(detailsKey!==key||!gallery.isConnected)break;
-        const {data:rows,error}=await supa.from(TABLE).select('image_url,caption')
+        const {data:rows,error}=await supa.from(TABLE).select('image_url,caption,photo_no,photo_code')
           .eq('owner_kind',kind).eq('owner_id',parent.id)
           .order('sort_order',{ascending:true}).order('created_at',{ascending:true})
           .range(offset,offset+199);
@@ -1389,6 +1389,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           const ext=['documents','media'].includes(kind)?(url.pathname.match(/\.(pdf|docx|doc)$/i)?.[1]||'').toLowerCase():'';
           const isPdf=ext==='pdf',isDocument=Boolean(ext),docLabel=isPdf?'PDF':'WORD';
           const figure=document.createElement('figure');figure.className='gdd-album-figure';
+          if(record.photo_code)figure.dataset.photoCode=record.photo_code;
           const no=offset+i+1;
           if(isDocument){
             const tile=document.createElement('a');tile.href=url.href;tile.target='_blank';tile.rel='noopener noreferrer';
@@ -1399,6 +1400,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           }else{
             const button=document.createElement('button');button.type='button';button.className='gdd-album-tile detail-cover';
             const img=document.createElement('img');img.loading='lazy';img.src=url.href;
+            if(record.photo_code)img.dataset.photoCode=record.photo_code;
             img.alt=record.caption||'Ảnh tư liệu '+no;button.setAttribute('aria-label','Xem ảnh tư liệu số '+no);
             button.appendChild(img);button.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();img.click();}});
             figure.appendChild(button);
@@ -1406,6 +1408,11 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           const caption=document.createElement('figcaption'),idx=document.createElement('span');idx.className='gdd-album-page';
           idx.textContent=String(no).padStart(2,'0')+'.';
           caption.append(idx,document.createTextNode(record.caption||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu')));
+          if(record.photo_code){
+            const trace=document.createElement('span');trace.className='gdd-album-trace';
+            trace.textContent='dauxuacuadao.info.vn | '+record.photo_code;
+            caption.appendChild(trace);
+          }
           // Hình ảnh: chạm ảnh là mở ngay; không lặp nút "Mở ảnh gốc" dưới mỗi tấm.
           const suppressImageLink=kind==='people'||kind==='media'||
             detail?.dataset.gddDisplayTarget==='media'||
