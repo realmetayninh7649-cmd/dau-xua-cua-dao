@@ -18,6 +18,7 @@ on:
       - "gdd-section-mastheads.js"
       - "gdd-content-metrics.css"
       - "gdd-document-folders.css"
+      - "gdd-trace.js"
       - "gdd-content-metrics.js"
       - "gdd-memorial.js"
       - "tests/**"
@@ -41,6 +42,7 @@ on:
       - "gdd-section-mastheads.js"
       - "gdd-content-metrics.css"
       - "gdd-document-folders.css"
+      - "gdd-trace.js"
       - "gdd-content-metrics.js"
       - "gdd-memorial.js"
       - "tests/**"
@@ -69,6 +71,8 @@ jobs:
           node --check gdd-document-export.js
           node --check gdd-section-mastheads.js
           node --check gdd-content-metrics.js
+          node --check gdd-trace.js
+          node --check gdd-phase2-search.js
           node --check gdd-memorial.js
           node --check gdd-festival-binh-ngo-2026.js
           node --check workers/gdd-r2-gateway/src/index.mjs
@@ -94,6 +98,7 @@ jobs:
           node tests/document-export-scope-smoke.mjs
           node tests/section-facebook-metrics-smoke.mjs
           node tests/document-subfolders-smoke.mjs
+          node tests/photo-trace-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
         if: failure()
         uses: actions/upload-artifact@v4
@@ -106,4 +111,5 @@ jobs:
             /tmp/gdd-festival-*.png
             /tmp/gdd-document-scope-*.png
             /tmp/gdd-document-folders-*.png
+            /tmp/gdd-photo-trace-*.png
           if-no-files-found: ignore
