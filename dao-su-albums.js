@@ -221,15 +221,12 @@
           caption.appendChild(trace);
         }
         figure.appendChild(caption);
-        // Ảnh trong Chức Sắc và Hình ảnh đã mở trực tiếp khi chạm hình.
-        // Vẫn giữ link mở tài liệu đính kèm PDF/Word, không ảnh hưởng các mục khác.
-        const isImageCollection=kind==='media'||
-          target.closest('#detail-content')?.dataset.gddDisplayTarget==='media'||
-          (kind==='posts'&&slug==='mot-so-thu-but-chu-ky-va-an-moc-cua-chu-vi-tien-boi-dai-dao-l81pg2');
-        if(isDocument||(!isImageCollection&&kind!=='people')){
+        // Ảnh đã mở bằng cách chạm trực tiếp vào hình; không thêm link dư thừa.
+        // Chỉ giữ đường dẫn đọc PDF/Word và tài liệu R2 dạng bản xem.
+        if(isDocument){
           const original=document.createElement('div'),open=document.createElement('a');
           open.href=readingUrl;open.target='_blank';open.rel='noopener noreferrer';open.className='gdd-album-open';
-          open.textContent=isDocument?'Đọc tài liệu ↗':'Mở ảnh tư liệu ↗';original.appendChild(open);
+          open.textContent='Đọc tài liệu ↗';original.appendChild(open);
           figure.appendChild(original);
         }
         grid.appendChild(figure);
