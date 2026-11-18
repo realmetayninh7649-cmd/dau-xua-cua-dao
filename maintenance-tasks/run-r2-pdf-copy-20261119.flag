@@ -1,0 +1,2 @@
+Requested by repository owner on 2026-11-19: run the existing safety-checked DK01.6 workflow once to copy three previously public Supabase PDFs to private R2 and verify source vs destination SHA256.
+Do not delete source files, change public URLs, or end website maintenance.
