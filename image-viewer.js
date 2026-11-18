@@ -249,7 +249,8 @@
     if(viewer.hidden)return;
     full.style.visibility='';
     loading.hidden=true;
-    reset();
+    // Giữ mức phóng đã chọn khi bản ảnh có dòng nguồn được tạo xong.
+    if(scale<=1)reset();else updateTransform();
     caption.textContent=`Ảnh: ${full.naturalWidth} × ${full.naturalHeight} px · ${gallery.length>1?'Vuốt trái/phải để chuyển ảnh. ':''}Chạm hai lần hoặc chụm hai ngón để phóng to.`+
       (full.dataset.gddTraceFailed==='1'?' · Nguồn ảnh chưa hỗ trợ lưu dấu tự động.':'');
   }
