@@ -1,5 +1,9 @@
 name: "GDD DK01.6 - Sao luu ba PDF goc vao R2 PRIVATE"
 on:
+  push:
+    branches: [main]
+    paths:
+      - "maintenance-tasks/run-r2-pdf-copy-20261119-retry.flag"
   pull_request:
     paths:
       - "scripts/dk016_preserve_legacy_pdfs.py"
@@ -31,7 +35,7 @@ jobs:
   preserve:
     name: "Luu tung PDF va kiem tra SHA256 cua ban sao R2"
     needs: validate
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
