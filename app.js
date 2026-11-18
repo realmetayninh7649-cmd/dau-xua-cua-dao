@@ -166,7 +166,9 @@ function videoSource(raw){
     cover.classList.toggle('is-portrait',ratio>1.12);
     cover.classList.toggle('is-landscape',ratio<.88);
   },true);
-  const portrait = p => {const src=safeUrl(p.image_url);return src?`<img src="${escape(src)}" alt="Di ảnh ${escape(p.full_name)}" loading="lazy">`:`<div class="portrait-placeholder"><span class="symbol">${escape((p.secular_name||p.full_name||'Đ').trim().split(/\s+/).slice(-1)[0].charAt(0).toUpperCase())}</span></div>`};
+  // Free-tier bandwidth emergency mode: limit full-resolution images loaded in public lists.
+  // The source URL remains intact in Supabase and full detail pages continue showing it.
+  const portrait = (p,showPreview=true) => {const src=showPreview?safeUrl(p.image_url):'';return src?`<img src="${escape(src)}" alt="Di ảnh ${escape(p.full_name)}" loading="lazy">`:`<div class="portrait-placeholder"><span class="symbol">${escape((p.secular_name||p.full_name||'Đ').trim().split(/\s+/).slice(-1)[0].charAt(0).toUpperCase())}</span></div>`};
   const toast = message => {const el=$('#toast');el.textContent=message;el.classList.add('is-visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('is-visible'),4500)};
   const publicRows = kind => state.admin?state.data[kind]:state.data[kind].filter(x=>x.published);
   const recordTitle = (kind,x) => kind==='people'?x.full_name:x.title;
@@ -210,12 +212,12 @@ function videoSource(raw){
     const q=norm($('#people-search').value.trim()),branch=$('#branch-filter').value,subgroup=$('#subgroup-filter').value;
     const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.archive_code,p.archive_legacy_code,...(p.archive_code_aliases||[]),p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
     const shown=state.peopleExpanded?matching:matching.slice(0,6);
-    $('#people-grid').innerHTML=shown.length?shown.map(p=>`<article class="person-card"><div class="person-media" data-gdd-trace-code="${escape(p.archive_code||'')}">${portrait(p)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span>${p.archive_code?'<span class="gdd-person-archive-code">Mã định danh: <code>'+escape(p.archive_code)+'</code></span>':''}<p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
+    $('#people-grid').innerHTML=shown.length?shown.map((p,i)=>`<article class="person-card"><div class="person-media" data-gdd-trace-code="${escape(p.archive_code||'')}">${portrait(p,state.admin||i===0)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span>${p.archive_code?'<span class="gdd-person-archive-code">Mã định danh: <code>'+escape(p.archive_code)+'</code></span>':''}<p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
     $('#people-result-count').textContent=`Đang hiển thị ${shown.length} / ${matching.length} hồ sơ`;
     const more=$('#people-show-more');more.hidden=matching.length<=6;more.textContent=state.peopleExpanded?'Thu gọn hồ sơ ↑':'Xem thêm hồ sơ ↗';
-    $('#article-list').innerHTML=posts.length?posts.slice(0,8).map(({record:p,originKind})=>{
+    $('#article-list').innerHTML=posts.length?posts.slice(0,8).map(({record:p,originKind},i)=>{
       const linked=p.person_id?linkedPerson(p.person_id):null;
-      const image=imageFromRecord(p)||safeUrl(linked?.published?linked.image_url:'');
+      const image=(state.admin||i===0)?(imageFromRecord(p)||safeUrl(linked?.published?linked.image_url:'')):'';
       const emptyArtwork='<div class="editorial-placeholder" aria-hidden="true"><span>✦</span><strong>TƯ LIỆU ĐẠO SỬ</strong><small>BIÊN KHẢO</small></div>';
       const artwork=image
         ?emptyArtwork+`<img src="${escape(image)}" data-photo-code="${escape(imageFromRecord(p)?p.archive_code:linked?.archive_code||'')}" alt="Ảnh bìa: ${escape(p.title)}" loading="lazy" decoding="async">`
@@ -248,7 +250,8 @@ function videoSource(raw){
       ?'Đang hiển thị '+media.length+' bộ ảnh tư liệu.'
       :'Đang hiển thị '+visibleMedia.length+' bộ ảnh trong chuyên mục “'+activeGallery+'”.';
     $('#gallery-grid').innerHTML=visibleMedia.length?visibleMedia.map(({record:m,originKind})=>{
-      const src=imageFromRecord(m);
+      // Public list: thumbnails appear on individual detail pages, not automatically on every visit.
+      const src=state.admin?imageFromRecord(m):'';
       const full=String(m.caption||m.summary||m.body||'Bấm để xem thông tin bộ ảnh.').replace(/\s+/g,' ').trim();
       const excerpt=full.length>150?full.slice(0,147).replace(/\s+\S*$/,'')+'…':full;
       return `<button type="button" class="gallery-card" data-open-kind="${originKind}" data-id="${escape(m.id)}"><div class="gallery-visual" data-gdd-trace-code="${escape(m.archive_code||'')}">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" data-photo-code="${escape(m.archive_code||'')}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div class="gdd-gallery-card-copy"><h3>${escape(m.title)}</h3><p class="gdd-gallery-excerpt">${escape(excerpt)}</p><span class="gdd-gallery-open" aria-hidden="true">Xem bộ ảnh ↗</span></div></button>`;
@@ -295,11 +298,11 @@ function videoSource(raw){
       if(!el)return;
       if(kind==='documents')el.hidden=state.documentSubfolder==='browse';
       el.innerHTML=rows.length?rows.map(({record:x,originKind})=>{
-        const src=imageFromRecord(x);
+        const src=state.admin?imageFromRecord(x):'';
         const meta=originKind==='obituaries'?x.memorial_date:
           originKind==='documents'?[documentSubfolderTitle(x.subfolder_code),x.document_number,x.document_date].filter(Boolean).join(' · '):
           sectionNames[originKind]||'';
-        const preview=originKind==='videos'&&kind==='videos'
+        const preview=state.admin&&originKind==='videos'&&kind==='videos'
           ?`<div class="archive-thumb video-preview-slot" data-video-id="${escape(x.id)}">${videoPoster(x)}</div>`
           :`<div class="archive-thumb" data-gdd-trace-code="${escape(x.archive_code||'')}">${src?`<img src="${escape(src)}" alt="${escape(x.title)}" loading="lazy">`:`<div aria-hidden="true">${kind==='obituaries'?'✧':'▤'}</div>`}</div>`;
         const description=String(x.summary||x.caption||x.body||'Tư liệu đang được bổ sung nội dung.').replace(/\s+/g,' ').slice(0,360);
