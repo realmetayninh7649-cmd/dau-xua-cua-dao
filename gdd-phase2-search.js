@@ -124,7 +124,8 @@
        const branch=person?.branch||'';
        const code=row.archive_code||'';
        const image=safeUrl(row.image_url||row.cover_url||row.portrait_url||(person?.published?person.image_url:'')||(type.key==='documents'&&/\.(png|jpe?g|webp)(\?|$)/i.test(row.file_url||'')?row.file_url:''));
-       const meta=[row.category,row.document_number,row.document_date,row.memorial_date,person?.full_name,person?.archive_code].filter(Boolean).join(' ');
+       const docFolder=type.key==='documents'?({HCĐ:'Tài Liệu Hành Chánh Đạo',HTĐ:'Tài Liệu Chức Sắc Hiệp Thiên Đài',CTĐ:'Tài Liệu Chức Sắc Cửu Trùng Đài',PT:'Tài Liệu Chức Sắc Phước Thiện',CQK:'Tài Liệu Các Cơ Quan Khác'}[row.subfolder_code]||''):'';
+       const meta=[docFolder,row.subfolder_code,row.category,row.document_number,row.document_date,row.memorial_date,person?.full_name,person?.archive_code].filter(Boolean).join(' ');
        const searchable=norm([name,code,row.archive_legacy_code||'',...(row.archive_code_aliases||[]),rank,branch,person?.subgroup,person?.secular_name,person?.full_name,person?.archive_legacy_code,row.deceased_name,row.person_name,row.document_number,row.death_date,row.anniversary_date,row.birthplace,row.years,meta,row.summary,row.caption,row.body,row.biography,row.sources,row.description].filter(Boolean).join(' '));
        const href=type.key==='gdd_audio_programs'?'#am-thanh-dai-dao':'#'+type.prefix+'/'+encodeURIComponent(row.slug||'');
        return {kind:type.key,label:type.label,row,person,name,rank,branch,code,image,href,searchable};
