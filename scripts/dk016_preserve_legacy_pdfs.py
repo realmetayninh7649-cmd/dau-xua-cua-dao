@@ -124,15 +124,20 @@ def preserve(path: str, expected: int, directory: pathlib.Path, source_only: boo
         return
     if s3 is None:
         raise RuntimeError("Private R2 S3 client missing; nothing was uploaded")
+    # With bucket-scoped R2 credentials, use authenticated ListObjectsV2 to
+    # distinguish a missing key from a HEAD error with ambiguous HTTP 400/403.
+    # Never treat an API error as proof of absence; never overwrite existing data.
     from botocore.exceptions import ClientError
     try:
-        s3.head_object(Bucket=BUCKET, Key=object_key)
-        exists = True
+        listing = s3.list_objects_v2(Bucket=BUCKET, Prefix=object_key, MaxKeys=10)
+        if listing.get("IsTruncated"):
+            raise RuntimeError("R2 object listing unexpectedly truncated; refusing write")
+        exists = any(item.get("Key") == object_key for item in listing.get("Contents", []))
+        print("R2 authenticated list OK; archive target " + ("already exists" if exists else "not present"), flush=True)
     except ClientError as exc:
-        code = str(exc.response.get("Error", {}).get("Code", ""))
-        if code not in ("404", "NoSuchKey", "NotFound"):
-            raise RuntimeError(f"Cannot verify R2 object existence ({code}); refusing overwrite") from exc
-        exists = False
+        code = str(exc.response.get("Error", {}).get("Code", "unknown"))
+        status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "unknown")
+        raise RuntimeError(f"Cannot securely list objects in target R2 bucket (code={code}, HTTP={status}); refusing write") from exc
     if not exists:
         with source_file.open("rb") as original:
             s3.put_object(Bucket=BUCKET, Key=object_key, Body=original,
