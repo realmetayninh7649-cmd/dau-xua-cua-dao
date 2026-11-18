@@ -36,6 +36,11 @@
           img.classList.remove('gdd-trace-ready');
           img.classList.add('gdd-trace-pending');
           img.src=state.source;
+          const oldLink=img.closest('.gdd-album-figure')?.querySelector('a.gdd-album-open[href]');
+          if(oldLink&&oldLink.dataset.gddTraceOldHref){
+            oldLink.href=oldLink.dataset.gddTraceOldHref;
+            oldLink.textContent='Mở ảnh tư liệu ↗';
+          }
           state.stage='observing';
           observer.observe(img);
         }
@@ -52,6 +57,12 @@
     state.stage='ready';
     entry.refs.add(img);
     img.src=entry.url;
+    const open=img.closest('.gdd-album-figure')?.querySelector('a.gdd-album-open[href]');
+    if(open&&!img.closest('.gdd-album-figure')?.querySelector('.gdd-album-pdf-tile')){
+      if(!open.dataset.gddTraceOldHref)open.dataset.gddTraceOldHref=open.href;
+      open.href=entry.url;
+      open.textContent='Mở bản ảnh có lưu dấu ↗';
+    }
     img.classList.remove('gdd-trace-pending','gdd-trace-unavailable');
     img.classList.add('gdd-trace-ready');
     img.dataset.gddTraceState='ready';
