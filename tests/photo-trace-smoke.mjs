@@ -43,6 +43,32 @@ try{
       assert.equal(output.outputType,'image/jpeg');
       assert.equal(output.codeValid,true);
       assert.equal(output.footer,'dauxuacuadao.info.vn | '+photoCode);
+      // Phép thử tình huống khách chạm-giữ: <img> đang hiển thị phải nhận blob đã đóng dòng nguồn.
+      await page.evaluate(code=>{
+        const test=document.createElement('div');
+        test.id='gdd-trace-selfsave-fixture';
+        test.style.cssText='position:fixed;z-index:99999;top:20px;left:20px;width:160px;height:140px;background:white';
+        const picture=document.createElement('img');
+        picture.src='/logo.png';picture.dataset.photoCode=code;
+        picture.alt='Ảnh lưu dấu minh họa';
+        picture.style.cssText='display:block;width:150px;height:120px;object-fit:contain';
+        test.appendChild(picture);document.body.appendChild(test);
+      },photoCode);
+      await page.waitForFunction(()=>{
+        const image=document.querySelector('#gdd-trace-selfsave-fixture img');
+        return image?.dataset.gddTraceState==='ready'&&image.src.startsWith('blob:')&&
+          window.GDDTraceDisplay?.isStampedBlob(image.src);
+      },null,{timeout:12000});
+      const selfSave=await page.evaluate(async()=>{
+        const img=document.querySelector('#gdd-trace-selfsave-fixture img');
+        const pixels=await createImageBitmap(await fetch(img.src).then(r=>r.blob()));
+        return {src:img.src,stamped:pixels.height>pixels.width*0.65,
+          ownCode:img.dataset.photoCode,displayStatus:img.dataset.gddTraceState};
+      });
+      assert.equal(selfSave.ownCode,photoCode,label+': code travels with native save source');
+      assert.equal(selfSave.displayStatus,'ready');
+      assert.equal(selfSave.stamped,true);
+      await page.locator('#gdd-trace-selfsave-fixture').evaluate(el=>el.remove());
 
       const clickState=await page.evaluate(code=>{
         const detail=document.getElementById('detail-content');
@@ -58,7 +84,7 @@ try{
       assert.equal(await page.locator('#gdd-image-download').isVisible(),false,label+': do not restore removed image download button');
       await page.locator('#gdd-image-close').click();
       await page.locator('#gdd-image-viewer').waitFor({state:'hidden'});
-      console.log('PHOTO TRACE PASS',label,'outside-bottom margin, traced viewer, previous controls preserved');
+      console.log('PHOTO TRACE PASS',label,'native save reads stamped image bytes; viewer controls preserved');
     }catch(e){
       console.error('PHOTO TRACE FAIL',label,e.message);
       await page.screenshot({path:'/tmp/gdd-photo-trace-'+label+'.png',fullPage:true}).catch(()=>{});
