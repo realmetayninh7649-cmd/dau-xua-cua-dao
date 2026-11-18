@@ -30,10 +30,11 @@
     }
   }
 
-  async function stampedBlob(source,code,{maxDimension=4800}={}){
+  async function stampedBlob(source,code,{maxDimension=3200}={}){
     if(!validCode(code))throw Error('Chưa có mã định danh hợp lệ để lưu dấu');
     const im=await loadPhoto(source);
-    const limit=Math.min(4800,Math.max(320,maxDimension));
+    // Tối ưu bộ nhớ iPhone, bản gốc đủ độ phân giải luôn giữ nguyên ở R2.
+    const limit=Math.min(4000,Math.max(320,maxDimension));
     const factor=Math.min(1,limit/Math.max(im.naturalWidth,im.naturalHeight));
     const w=Math.max(1,Math.round(im.naturalWidth*factor));
     const h=Math.max(1,Math.round(im.naturalHeight*factor));
