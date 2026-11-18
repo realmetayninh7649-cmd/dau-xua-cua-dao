@@ -44,6 +44,10 @@ const base='http://127.0.0.1:8765/';
 try{
  for(const [label,width,height] of [['iphone',390,844],['desktop',1280,900]]){
   const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
+  const errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error'||m.type()==='warning')errors.push(m.text().slice(0,300));});
+  page.on('requestfailed',r=>{if(/jsdelivr|esm\.sh|app\.js/.test(r.url()))errors.push('failed '+r.url().slice(0,160));});
   await page.route('**/*',route=>{
     const url=route.request().url();
     if(url.startsWith(base))return route.continue();
@@ -54,7 +58,19 @@ try{
   });
   try{
     await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
-    await page.waitForFunction(()=>document.querySelector('#document-subfolder-count')?.textContent.includes('5 tài liệu'),null,{timeout:15000});
+    try{
+      await page.waitForFunction(()=>document.querySelector('#document-subfolder-count')?.textContent.includes('5 tài liệu'),null,{timeout:8000});
+    }catch(err){
+      const diag=await page.evaluate(()=>({
+        folder:document.querySelector('#document-subfolder-count')?.textContent,
+        mode:document.getElementById('mode-banner')?.textContent,
+        total:document.querySelector('#count-documents')?.textContent,
+        raw:document.querySelector('#document-grid')?.textContent.slice(0,450),
+        config:!!window.SITE_CONFIG?.supabaseUrl
+      }));
+      console.error('DOCUMENT DIAGNOSTICS',label,JSON.stringify(diag),errors.slice(-12));
+      throw err;
+    }
     assert.equal(await page.locator('#document-subfolder-filters [data-document-subfolder]').count(),6,label+' 5 folders + all');
     assert.equal(await page.locator('#document-grid .archive-card').count(),5,label+' total documents');
     for(const [group,total] of Object.entries({HCĐ:1,HTĐ:2,CTĐ:0,PT:1,CQK:1})){
