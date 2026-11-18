@@ -210,10 +210,18 @@ def preserve_one(s3, row, index, total, scratch:Path):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--validate-only",action="store_true")
+    parser.add_argument("--shard-index",type=int,default=0)
+    parser.add_argument("--shard-count",type=int,default=1)
     args=parser.parse_args()
     selection,offset,total=validate()
-    print(f"MANIFEST OK: {total} public images; selected {len(selection)} "
-          f"at offset {offset}; private originals + unapproved previews",flush=True)
+    if not 1 <= args.shard_count <= 12 or not 0 <= args.shard_index < args.shard_count:
+        raise RuntimeError("Invalid shard configuration")
+    planned=[(offset+i,row) for i,row in enumerate(selection)
+             if i % args.shard_count == args.shard_index]
+    print(f"MANIFEST OK: {total} public images; selected {len(planned)} "
+          f"in shard {args.shard_index+1}/{args.shard_count} "
+          f"of the requested range {offset}..{offset+len(selection)-1}; "
+          f"private originals + unapproved previews",flush=True)
     if args.validate_only: return
     s3=make_s3()
     images=0
@@ -221,15 +229,15 @@ def main():
     preview_bytes=0
     with tempfile.TemporaryDirectory(prefix="gdd-r2-images-") as temp:
         folder=Path(temp)
-        for row in selection:
+        for absolute_index,row in planned:
             original_file=folder/"source-original"
             preview_file=folder/"source-preview.webp"
             original_file.unlink(missing_ok=True)
             preview_file.unlink(missing_ok=True)
-            n,m=preserve_one(s3,row,offset+images,total,folder)
+            n,m=preserve_one(s3,row,absolute_index,total,folder)
             original_bytes+=n;preview_bytes+=m;images+=1
-    print(f"BATCH VERIFIED {images}/{len(selection)}: originals={original_bytes} "
-          f"preview_bytes={preview_bytes} offsets={offset}..{offset+images-1}",flush=True)
+    print(f"BATCH VERIFIED {images}/{len(planned)}: originals={original_bytes} "
+          f"preview_bytes={preview_bytes} shard={args.shard_index+1}/{args.shard_count}",flush=True)
 
 
 if __name__=="__main__":
