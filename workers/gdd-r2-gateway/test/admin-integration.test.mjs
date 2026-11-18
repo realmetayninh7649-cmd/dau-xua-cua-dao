@@ -28,7 +28,7 @@ test('Album giu file goc truoc nen, PDF/Word khong public',()=>{
  const imageGate=block.indexOf('if(!docFile&&!attached){');
  const publicUpload=block.indexOf('storage.upload(path,item.preparedFile');
  const privateGate=block.indexOf('if(docFile){');
- assert.ok(imageGate>=0&&archive>imageGate&&archive<optimize&&optimize<publicUpload);
+ assert.ok(archive>=0&&imageGate>archive&&optimize>imageGate&&publicUpload>optimize);
  assert.ok(privateGate>publicUpload,'private PDF/Word branch cannot use public image upload');
  assert.ok(block.includes('skipDerivatives:!docFile'));
  assert.ok(block.includes('item.saved=true;done++;committed=true;'));
