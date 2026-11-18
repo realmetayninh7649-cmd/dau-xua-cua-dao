@@ -109,6 +109,12 @@ try{
       await page.evaluate(()=>document.querySelector('#detail-overlay [data-close="detail"]').click());
     }
     console.log('QR COMPACT PASS',label,'Số hóa + Chức sắc: top placement, sizes, preserved controls');
+    // Bản kiểm thử chạy dữ liệu mô phỏng không tải luồng điều hướng của website thật:
+    // mở section Số hóa trước khi đo box/scroll và tương tác bằng các nút.
+    await page.evaluate(()=>{
+      const section=document.getElementById('tai-lieu-so-hoa');
+      if(section)section.hidden=false;
+    });
     for(const [group,total] of Object.entries({HCĐ:1,HTĐ:2,CTĐ:0,PT:1,CQK:1})){
       const selector='#document-subfolder-filters [data-document-subfolder="'+group+'"]';
       await page.evaluate(selector=>document.querySelector(selector).click(),selector);
