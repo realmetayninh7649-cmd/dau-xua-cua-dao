@@ -103,6 +103,7 @@ jobs:
           node tests/section-facebook-metrics-smoke.mjs
           node tests/document-subfolders-smoke.mjs
           node tests/album-upload-batch-smoke.mjs
+          node tests/unlimited-document-upload-smoke.mjs
           node tests/photo-trace-smoke.mjs
           node tests/photo-code-lookup-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
