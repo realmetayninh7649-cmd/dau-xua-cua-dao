@@ -466,6 +466,8 @@ function videoSource(raw){
 if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<input type="number" name="${name}" min="1" max="${type==='lunar-day'?'30':'12'}" step="1" inputmode="numeric" placeholder="${type==='lunar-day'?'Ngày':'Tháng'}"></label>`;
     if(type==='date')return `<label>${escape(label)}<input type="date" name="${name}"></label>`;
     if(type==='gender')return `<label>${escape(label)}<select name="gender" required><option value="">Chọn Nam hoặc Nữ</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></label>`;
+    if(type==='document-subfolder')return '<label>'+escape(label)+'<select name="subfolder_code" required><option value="">— Chọn một trong 5 thư mục con —</option>'+
+      documentSubfolders.map(f=>'<option value="'+escape(f.code)+'">'+escape(f.title)+' ('+escape(f.code)+')</option>').join('')+'</select></label>';
     if(type==='gallery-category')return `<label>${escape(label)}<select name="${name}" required><option value="">Chọn chuyên mục cho bộ ảnh</option>${galleryCategories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('')}</select></label>`;
   
      if(type==='branch')return `<label>${escape(label)}<select name="${name}"><option value="Cửu Trùng Đài">Cửu Trùng Đài</option><option value="Hiệp Thiên Đài">Hiệp Thiên Đài</option><option value="Phước Thiện">Phước Thiện</option><option value="Hành chánh Đạo">Hành chánh Đạo</option><option value="Khác">Khác</option></select></label>`;
@@ -573,6 +575,24 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       '<small>Số thứ tự được Supabase tự cấp khi CÔNG BỐ. Cửu Trùng Đài và Hiệp Thiên Đài mỗi Đài có một dãy liên tục, không bắt đầu lại theo phẩm vị.'+
       (unknown?' Nhóm đặc biệt: xin đối chiếu kỹ trước khi xác nhận.':'')+'</small>';
   }
+  function refreshDocumentCodePreview(){
+    const box=$('#document-code-preview');
+    if(!box||state.editorKind!=='documents')return;
+    const form=$('#editor-form'),code=form.elements.subfolder_code?.value||'';
+    const prior=state.editingId?state.data.documents.find(row=>row.id===state.editingId):null;
+    if(!code||!documentSubfolders.some(f=>f.code===code)){
+      box.textContent='Xin chọn thư mục con để xác định nhóm mã trước khi đăng.';
+      return;
+    }
+    if(prior?.archive_code&&prior.subfolder_code===code){
+      box.innerHTML='<b>Mã định danh đã cấp:</b> <code>'+escape(prior.archive_code)+'</code>'+
+        '<small>Giữ nguyên mã khi chỉnh sửa nội dung trong cùng thư mục.</small>';
+    }else{
+      box.innerHTML='<b>Nhóm mã sẽ được cấp:</b> <code>DXCD-SH.'+escape(code)+'-xxxxx</code>'+
+        '<small>Số thứ tự được Supabase tự cấp từ 00001 riêng mỗi thư mục.'+
+        (prior?.archive_code?' Nếu chuyển thư mục, sẽ có mã mới; mã cũ được giữ trong hồ sơ để tra cứu.':'')+'</small>';
+    }
+  }
   function buildEditor(){
     const kind=state.editorKind;$('#editor-heading').textContent=state.editingId?'Sửa tư liệu':'Thêm '+(sectionNames[kind]||'tư liệu');
     $$('.editor-tabs button').forEach(b=>b.classList.toggle('is-selected',b.dataset.kind===kind));
@@ -587,9 +607,11 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         '<span>Tôi đã kiểm tra đúng Cơ quan Đạo, Phẩm vị và nhóm mã dự kiến của hồ sơ này.</span></label>'+
         '</section>'
       :'';
-    $('#editor-form').innerHTML=fields[kind].map(labelHTML).join('')+peopleExtra+`<div class="form-actions"><button class="btn btn-primary" type="submit">${state.editingId?'Lưu thay đổi':'Đăng tư liệu'}</button>${state.editingId?'<button class="btn-delete" type="button" id="delete-record">Xóa tư liệu</button>':''}</div><p id="form-message" class="small-note" aria-live="polite"></p>`;
+    const docExtra=kind==='documents'?'<div class="gdd-person-code-preview" id="document-code-preview" aria-live="polite"></div>':'';
+    $('#editor-form').innerHTML=fields[kind].map(labelHTML).join('')+peopleExtra+docExtra+`<div class="form-actions"><button class="btn btn-primary" type="submit">${state.editingId?'Lưu thay đổi':'Đăng tư liệu'}</button>${state.editingId?'<button class="btn-delete" type="button" id="delete-record">Xóa tư liệu</button>':''}</div><p id="form-message" class="small-note" aria-live="polite"></p>`;
     if(state.editingId){const record=state.data[kind].find(x=>x.id===state.editingId);if(record){const form=$('#editor-form');for(const name of schema[kind]){const el=form.elements[name];if(!el)continue;if(el.type==='checkbox')el.checked=Boolean(record[name]);else el.value=(kind==='media'&&name==='category'&&!record.category)?galleryCategoryOf(record):(record[name]??'')}}}
     if(kind==='people')refreshPersonCodePreview();
+    if(kind==='documents')refreshDocumentCodePreview();
   }
   // Thu gọn danh sách quản trị: chỉ 4 mục mới nhất, vẫn tìm được mọi mục.
   function renderEditorList(){
@@ -600,7 +622,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       :displayedEntries(kind);
     const term=norm($('#editor-record-search')?.value.trim()||'');
     const matched=term?rows.filter(({record:r,originKind})=>norm([
-      recordTitle(originKind,r),r.archive_code,r.slug,r.secular_name,r.rank,r.category,r.deceased_name
+      recordTitle(originKind,r),r.archive_code,r.archive_legacy_code,...(r.archive_code_aliases||[]),r.subfolder_code,r.slug,r.secular_name,r.rank,r.category,r.deceased_name
     ].filter(Boolean).join(' ')).includes(term)):rows;
     const visibleLimit=4,expanded=!term&&state.editorListExpanded;
     const visible=term||expanded?matched:matched.slice(0,visibleLimit);
@@ -613,7 +635,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     const list=$('#editor-list');
     list.classList.toggle('gdd-editor-list-scroll',Boolean(term)||(expanded&&matched.length>visibleLimit));
     list.innerHTML=visible.length?visible.map(({record:r,originKind})=>{
-      const moved=originKind!==kind?' · Chuyển từ '+sectionNames[originKind]:kind==='media'?' · '+displayGalleryCategory(originKind,r):'';
+      const moved=originKind!==kind?' · Chuyển từ '+sectionNames[originKind]:kind==='media'?' · '+displayGalleryCategory(originKind,r):kind==='documents'?' · '+documentSubfolderTitle(r.subfolder_code):'';
       const actions=`<button type="button" data-list-qr="${escape(originKind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(originKind)}" data-id="${escape(r.id)}">Sửa</button>${originKind!=='people'&&r.published?`<button type="button" data-list-transfer="${escape(originKind)}" data-id="${escape(r.id)}" title="Chuyển mục hiển thị" aria-label="Chuyển mục hiển thị">⇄</button>`:''}`;
       return `<div class="editor-item"><div class="gdd-record-label"><b>${escape(recordTitle(originKind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}${escape(moved)}</span></div><div class="gdd-record-actions">${actions}</div></div>`;
     }).join(''):rows.length
@@ -791,6 +813,8 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         if(!el)continue;
         data[name]=el.type==='checkbox'?el.checked:el.value.trim()||null;
       }
+      if(kind==='documents'&&!documentSubfolders.some(f=>f.code===data.subfolder_code))
+        throw new Error('Xin chọn đúng một trong 5 thư mục con Số hóa trước khi lưu.');
       if(kind==='people'){
         // Không cho cấp mã lần đầu khi phân loại chưa được biên tập viên đối chiếu.
         // Mã đã cấp trước đây không bị đổi và không yêu cầu xác nhận lại.
@@ -1086,8 +1110,8 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     $('#gdd-transfer-cancel').addEventListener('click',closeTransfer);
     $('#gdd-transfer-dialog').addEventListener('click',e=>{if(e.target.id==='gdd-transfer-dialog')closeTransfer()});
     $('#editor-form').addEventListener('submit',saveRecord);
-    $('#editor-form').addEventListener('input',refreshPersonCodePreview);
-    $('#editor-form').addEventListener('change',refreshPersonCodePreview);
+    $('#editor-form').addEventListener('input',()=>{refreshPersonCodePreview();refreshDocumentCodePreview();});
+    $('#editor-form').addEventListener('change',()=>{refreshPersonCodePreview();refreshDocumentCodePreview();});
     document.addEventListener('click',e=>{
       const playback=e.target.closest('[data-video-play]');if(playback){playVideo(playback.dataset.videoPlay,playback);return}
       const close=e.target.closest('[data-close]');if(close){if(close.dataset.close==='detail')closeDetail();else closeAdmin();return}
