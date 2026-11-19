@@ -33,7 +33,7 @@ test('relay cannot rewrite non-archive sources, PDF, private paths or query-tran
     assert.equal(relay.displayUrl(url),url);
   }
 });
-test('staged public image bridge leaves administration and source data untouched',()=>{
+test('private R2 cutover preserves original DB URLs while rendering only approved public derivatives',()=>{
   const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
   const album=fs.readFileSync(new URL('../dao-su-albums.js',import.meta.url),'utf8');
   assert.match(app,/if\(!source\|\|state\.admin\)return source;/);
