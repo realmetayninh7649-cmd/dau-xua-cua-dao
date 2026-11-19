@@ -1,0 +1,28 @@
+name: "GDD - Purge encrypted temporary GitHub transfer artifact"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "maintenance-tasks/gdrive-cleanup-artifact.json"
+permissions:
+  contents: read
+  actions: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Remove short-lived encrypted artifact only after separate Drive verification"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ID=$(python3 -c 'import json; p=json.load(open("maintenance-tasks/gdrive-cleanup-artifact.json")); n=p.get("artifact_id"); assert type(n) is int and n>100000; print(n)')
+          NAME=$(gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ID" --jq '.name')
+          case "$NAME" in
+            gdd-drive-backup-*) ;;
+            *) echo "Refused cleanup: unexpected artifact category"; exit 1;;
+          esac
+          gh api -X DELETE "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ID"
+          echo "Encrypted temporary artifact safely purged after Drive verification"
