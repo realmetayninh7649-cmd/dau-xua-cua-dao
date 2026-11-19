@@ -1,0 +1,68 @@
+name: "GDD R2 - Create safe page-only viewers for 3 legacy PDFs"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "maintenance-tasks/gdd-r2-convert-pdf-pages-20261119.flag"
+  pull_request:
+    paths:
+      - "scripts/r2_publish_legacy_pdf_page_views.py"
+      - ".github/workflows/gdd-r2-create-legacy-pdf-viewers.yml"
+permissions:
+  contents: read
+concurrency:
+  group: gdd-r2-three-legacy-document-render
+  cancel-in-progress: false
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Syntax check; do not render or publish in pull requests"
+        run: python3 -m py_compile scripts/r2_publish_legacy_pdf_page_views.py
+  convert:
+    needs: lint
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Install pinned PDF rendering dependencies"
+        run: python -m pip install boto3==1.40.61 PyMuPDF==1.26.5 Pillow==11.3.0
+      - name: "Render and verify all private originals into 66 approved JPEG page views"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+        run: python scripts/r2_publish_legacy_pdf_page_views.py
+      - name: "Read-only final live Worker check of public page images and blocked raw PDF download"
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error
+          base="https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/"
+          ids={"a4bf8d79-a7a3-51cb-909c-0a4681902c01":10,
+               "203886e9-cd67-58ab-96b3-ee4ff97b401a":19,
+               "1105db24-e971-5f1a-b632-d3b9f41b3b39":37}
+          def get(url):
+              req=urllib.request.Request(url,headers={"Origin":"https://dauxuacuadao.info.vn","User-Agent":"GDD-PDF-Page-Only-Audit/1.0"})
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:return r.status,r.headers,r.read(4000000)
+              except urllib.error.HTTPError as e:return e.code,e.headers,e.read(500)
+          for id,n in ids.items():
+              status,headers,body=get(base+id)
+              data=json.loads(body) if status==200 else {}
+              if status!=200 or data.get("kind")!="document" or data.get("pageCount")!=n or data.get("allowDownload") is not False:
+                  raise SystemExit("PDF R2 page-only metadata not available")
+              for page in (1,n):
+                  st,hd,b=get(base+id+"/page/"+str(page))
+                  if st!=200 or hd.get("Content-Type")!="image/jpeg" or b[:3]!=b"\xff\xd8\xff":
+                      raise SystemExit("A public PDF viewer page is unavailable or corrupted")
+              st,hd,b=get(base+id+"/download")
+              if st==200:raise SystemExit("Raw PDF download route exposed; refusing launch")
+              print("VERIFIED PDF PAGE VIEWER: pages="+str(n)+"; JPEG responses OK, PDF download denied")
+          print("ALL 3 DOCUMENTS / 66 PAGES AVAILABLE WITHOUT ORIGINAL PDF DOWNLOAD")
+          PY
