@@ -1,0 +1,59 @@
+name: "GDD R2 - Read-only legacy PDF page count and viewer feasibility"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "maintenance-tasks/gdd-pdf-pagecount-20261119.flag"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install boto3==1.40.61 pymupdf==1.26.5
+      - name: "Inspect private R2 PDF backups only, no uploads or publication"
+        env:
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python3 - <<'PY'
+          import hashlib,os,re
+          import fitz,boto3
+          from botocore.config import Config
+          account=os.environ.get("CLOUDFLARE_ACCOUNT_ID","")
+          access=os.environ.get("GDD_R2_ARCHIVE_ACCESS_KEY_ID","")
+          secret=os.environ.get("GDD_R2_ARCHIVE_SECRET_ACCESS_KEY","")
+          if not re.fullmatch(r"[0-9a-fA-F]{32}",account) or not re.fullmatch(r"[0-9a-fA-F]{32}",access) or not secret:
+              raise SystemExit("Private R2 credential shape invalid")
+          s3=boto3.client("s3",endpoint_url=f"https://{account}.r2.cloudflarestorage.com",
+            aws_access_key_id=access,aws_secret_access_key=secret,region_name="auto",
+            config=Config(signature_version="s3v4",s3={"addressing_style":"path"},
+              request_checksum_calculation="when_required",response_checksum_validation="when_required"))
+          results=[]
+          listing=s3.list_objects_v2(Bucket="gdd-dau-xua-cua-dao",Prefix="legacy-private-dk016/",MaxKeys=20)
+          if listing.get("IsTruncated") or len(listing.get("Contents",[]))!=3:raise SystemExit("Private R2 PDF backup inventory is not exactly three")
+          for index,item in enumerate(sorted(listing["Contents"],key=lambda x:x["Size"])):
+              if not 1000000<=item["Size"]<=45000000:raise SystemExit("Unexpected private PDF backup size")
+              obj=s3.get_object(Bucket="gdd-dau-xua-cua-dao",Key=item["Key"])
+              try:raw=obj["Body"].read(46000000)
+              finally:obj["Body"].close()
+              if len(raw)!=item["Size"] or not raw.startswith(b"%PDF"):raise SystemExit("Private PDF source invalid")
+              digest=hashlib.sha256(raw).hexdigest()
+              if f"/{digest}/" not in item["Key"]:raise SystemExit("Immutable backup SHA256 mismatch")
+              doc=fitz.open(stream=raw,filetype="pdf")
+              count=len(doc)
+              maxw=max(round(page.rect.width) for page in doc)
+              maxh=max(round(page.rect.height) for page in doc)
+              if doc.is_encrypted:raise SystemExit("PDF requires password, cannot produce viewer")
+              print(f"PDF SAMPLE {index+1}: pages={count}, bytes={len(raw)}, maxpoints={maxw}x{maxh}, supported_by_120page_viewer={count<=120}",flush=True)
+              results.append(count)
+              doc.close()
+          print(f"PRIVATE PDF PREFLIGHT PASS: 3 originals SHA256 verified; page counts={results}; totalPages={sum(results)}; no public endpoints changed.")
+          PY
