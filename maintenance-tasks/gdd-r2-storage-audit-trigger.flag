@@ -1,1 +1,3 @@
 Read-only R2 storage listing for current capacity. Prints only aggregate counts and sizes by storage prefix, no filenames or secret keys.
+
+Run scoped inventory without account-wide ListBuckets access.
