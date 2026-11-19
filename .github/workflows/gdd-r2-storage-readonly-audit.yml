@@ -37,10 +37,7 @@ jobs:
             aws_access_key_id=access,aws_secret_access_key=secret,region_name="auto",
             config=Config(signature_version="s3v4",s3={"addressing_style":"path"},
               request_checksum_calculation="when_required",response_checksum_validation="when_required"))
-          buckets=s3.list_buckets()
-          candidates={x["Name"] for x in buckets.get("Buckets",[])}
-          if "gdd-dau-xua-cua-dao" not in candidates:
-              raise SystemExit("R2 archive bucket missing")
+          # Bucket-scoped S3 key intentionally cannot enumerate all account buckets.
           bucket="gdd-dau-xua-cua-dao"
           totals=collections.defaultdict(lambda:{"count":0,"bytes":0})
           all_count=all_bytes=0
@@ -61,7 +58,7 @@ jobs:
               if not token:raise SystemExit("Invalid R2 continuation token")
           if all_count<1500 or all_bytes<1500000000:raise SystemExit("Unexpectedly low R2 inventory; check credentials")
           summary={"audited_at_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "bucket_count_visible":len(candidates),"bucket":bucket,
+            "bucket_scope":"single approved archive bucket","bucket":bucket,
             "object_count":all_count,"bytes":all_bytes,"GB_decimal":round(all_bytes/1e9,4),
             "GiB_binary":round(all_bytes/2**30,4),
             "percent_of_10GB_free_storage":round(all_bytes/1e10*100,2),
