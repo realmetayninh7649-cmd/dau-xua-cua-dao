@@ -178,7 +178,7 @@
     title=(item.title||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(item.isPerson);
     if(tracedPreviewURL){URL.revokeObjectURL(tracedPreviewURL);tracedPreviewURL='';}
     noImageDownload=Boolean(item.noDownload);
-    const photoCode=window.GDDTrace?.validCode(item.photoCode)?item.photoCode:'TU-LIEU-CO-LUU-DAU';
+    const photoCode=personPhoto?'':(window.GDDTrace?.validCode(item.photoCode)?item.photoCode:'TU-LIEU-CO-LUU-DAU');
     const alreadyTraced=Boolean(window.GDDTrace?.isStampedURL(url)||
       window.GDDTraceDisplay?.isStampedBlob(url));
     const mustTrace=Boolean(photoCode&&window.GDDTrace?.validCode(photoCode)&&!alreadyTraced);
