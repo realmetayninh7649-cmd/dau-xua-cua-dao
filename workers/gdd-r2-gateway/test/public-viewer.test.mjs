@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{VERSION} from '../src/index.mjs';
+import worker from '../src/index.mjs';
+import {VERSION} from '../src/version.mjs';
 
 const user='11111111-1111-4111-8111-111111111111';
 const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

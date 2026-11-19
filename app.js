@@ -69,6 +69,13 @@
   const norm = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase();
   const slugify = s => norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,72) || 'tu-lieu';
   const safeUrl = s => {try{const u=new URL(String(s));return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}};
+  // Switch to R2 lightweight previews only after the independently gated release.
+  // The archived source URL is never rewritten in Supabase; admin always sees the original.
+  const displayImageUrl=raw=>{
+    const source=safeUrl(raw);
+    if(!source||state.admin)return source;
+    return safeUrl(window.GDDLegacyImages?.displayUrl(source)||source);
+  };
   const date = s => {if(!s)return '';try{return new Date(s).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return ''}};
   const statusTag = record => record.verified?'<span class="verification verified">ĐÃ ĐỐI CHIẾU</span>':'<span class="verification">CẦN ĐỐI CHIẾU</span>';
 // Chỉ nhúng các dịch vụ video được nhận diện rõ; không chèn HTML tùy ý.
@@ -109,7 +116,7 @@ function videoSource(raw){
   return {type:'external',url};
 }
   function videoPoster(record){
-    const source=videoSource(record.video_url),picture=safeUrl(record.cover_url)||(source?.type==='youtube'?source.poster:'');
+    const source=videoSource(record.video_url),picture=displayImageUrl(record.cover_url)||(source?.type==='youtube'?source.poster:'');
     const image=picture?`<img src="${escape(picture)}" alt="" loading="lazy">`:'<span class="video-placeholder-icon" aria-hidden="true">▣</span>';
     if(['youtube','facebook','file'].includes(source?.type)){
       return `<button class="video-poster-button" type="button" data-video-play="${escape(record.id)}" aria-label="Phát video ${escape(record.title)}">${image}<span class="video-play-badge" aria-hidden="true">▶</span><span class="video-play-caption">${source.type==='facebook'?'Video Facebook · Nhấn để xem':'Nhấn để xem ngay'}</span></button>`;
@@ -145,7 +152,7 @@ function videoSource(raw){
       const player=document.createElement('video');
       player.controls=true;player.playsInline=true;player.preload='metadata';
       player.src=source.url;
-      if(safeUrl(record.cover_url))player.poster=safeUrl(record.cover_url);
+      if(displayImageUrl(record.cover_url))player.poster=displayImageUrl(record.cover_url);
       player.setAttribute('aria-label',`Video Đạo Sử: ${record.title}`);
       slot.replaceChildren(player);player.play().catch(()=>{});
     }
@@ -168,7 +175,7 @@ function videoSource(raw){
   },true);
   // Free-tier bandwidth emergency mode: limit full-resolution images loaded in public lists.
   // The source URL remains intact in Supabase and full detail pages continue showing it.
-  const portrait = (p,showPreview=true) => {const src=showPreview?safeUrl(p.image_url):'';return src?`<img src="${escape(src)}" alt="Di ảnh ${escape(p.full_name)}" loading="lazy">`:`<div class="portrait-placeholder"><span class="symbol">${escape((p.secular_name||p.full_name||'Đ').trim().split(/\s+/).slice(-1)[0].charAt(0).toUpperCase())}</span></div>`};
+  const portrait = (p,showPreview=true) => {const src=showPreview?displayImageUrl(p.image_url):'';return src?`<img src="${escape(src)}" alt="Di ảnh ${escape(p.full_name)}" loading="lazy">`:`<div class="portrait-placeholder"><span class="symbol">${escape((p.secular_name||p.full_name||'Đ').trim().split(/\s+/).slice(-1)[0].charAt(0).toUpperCase())}</span></div>`};
   const toast = message => {const el=$('#toast');el.textContent=message;el.classList.add('is-visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('is-visible'),4500)};
   const publicRows = kind => state.admin?state.data[kind]:state.data[kind].filter(x=>x.published);
   const recordTitle = (kind,x) => kind==='people'?x.full_name:x.title;
@@ -189,7 +196,7 @@ function videoSource(raw){
     const newest=e=>new Date(placementOf(e.originKind,e.record)?.updated_at||e.record.created_at||0).getTime();
     return newest(b)-newest(a);
   });
-  const imageFromRecord=x=>safeUrl(x.cover_url||x.image_url||
+  const imageFromRecord=x=>displayImageUrl(x.cover_url||x.image_url||
     (/\.(png|jpe?g|webp)(\?|$)/i.test(x.file_url||'')?x.file_url:''));
 
 
@@ -217,7 +224,7 @@ function videoSource(raw){
     const more=$('#people-show-more');more.hidden=matching.length<=6;more.textContent=state.peopleExpanded?'Thu gọn hồ sơ ↑':'Xem thêm hồ sơ ↗';
     $('#article-list').innerHTML=posts.length?posts.slice(0,8).map(({record:p,originKind},i)=>{
       const linked=p.person_id?linkedPerson(p.person_id):null;
-      const image=(state.admin||i===0)?(imageFromRecord(p)||safeUrl(linked?.published?linked.image_url:'')):'';
+      const image=(state.admin||i===0)?(imageFromRecord(p)||displayImageUrl(linked?.published?linked.image_url:'')):'';
       const emptyArtwork='<div class="editorial-placeholder" aria-hidden="true"><span>✦</span><strong>TƯ LIỆU ĐẠO SỬ</strong><small>BIÊN KHẢO</small></div>';
       const artwork=image
         ?emptyArtwork+`<img src="${escape(image)}" data-photo-code="${escape(imageFromRecord(p)?p.archive_code:linked?.archive_code||'')}" alt="Ảnh bìa: ${escape(p.title)}" loading="lazy" decoding="async">`
@@ -324,7 +331,7 @@ function videoSource(raw){
     if(!record)return;
     state.detail={kind,id:record.id};
     const title=recordTitle(kind,record);
-    const src=safeUrl(record.cover_url||record.image_url||(kind==='documents'&&/\.(png|jpe?g|webp)(\?|$)/i.test(record.file_url||'')?record.file_url:''));
+    const src=displayImageUrl(record.cover_url||record.image_url||(kind==='documents'&&/\.(png|jpe?g|webp)(\?|$)/i.test(record.file_url||'')?record.file_url:''));
     const subtitle=kind==='people'?[record.rank,record.branch,record.subgroup,record.years].filter(Boolean).join(' · '):
       kind==='obituaries'?[record.deceased_name,record.memorial_date].filter(Boolean).join(' · '):
       kind==='documents'?[documentSubfolderTitle(record.subfolder_code),record.document_number,record.document_date].filter(Boolean).join(' · '):

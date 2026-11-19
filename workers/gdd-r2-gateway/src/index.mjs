@@ -1,6 +1,11 @@
+import { VERSION } from './version.mjs';
+import { LEGACY_PREVIEW_PATH, legacyPreviewResponse } from './legacy-preview.mjs';
 // GDDĐ v2.0.0-DK01.2 — Bảo tồn nguyên mẫu & bản xem nhẹ.
 // Bản gốc là R2 PRIVATE; KHÔNG có tuyến GET original hoặc URL tải gốc công khai.
-export const VERSION = 'GDDĐ v2.0.0-DK01.4';
+// Version resides in version.mjs so the Worker entrypoint has default export only.
+// Future cutover is explicitly disabled until the website owner approves reopening.
+// This flag is not affected by client requests or URL query parameters.
+const LEGACY_PREVIEW_ENABLED = false;
 const PROBE = '__gdd_internal__/dk01_read_probe_only';
 const MB = 1024 * 1024;
 const PART_BYTES = 8 * MB;
@@ -370,6 +375,8 @@ export default {
         'access-control-allow-headers':'Authorization, Content-Type',
         'access-control-max-age':'600','vary':'Origin','cache-control':'no-store'}});
     }
+    // Route is hard-disabled during maintenance; only 700 allowlisted public WebPs could be served after reopening.
+    if(path.startsWith(LEGACY_PREVIEW_PATH))return legacyPreviewResponse(req,env,path,cors,LEGACY_PREVIEW_ENABLED);
     // Public chỉ được đọc bản xem do quản trị viên công bố, không có bản gốc.
     if(path.startsWith('/v1/public/'))return publicView(req,env,path,cors);
     if(!['GET','POST','PUT'].includes(req.method))return failure(405,'Method not allowed',cors);
