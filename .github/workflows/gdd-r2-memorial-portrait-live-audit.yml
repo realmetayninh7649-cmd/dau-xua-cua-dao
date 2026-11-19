@@ -1,0 +1,49 @@
+name: "GDD R2 - Verify five memorial portraits on live Cloudflare Worker"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "maintenance-tasks/gdd-memorial-live-audit.flag"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check all 5 published memorial photos are HTTP 200 and decode as WebP"
+        run: |
+          python3 - <<'PY'
+          import urllib.request, urllib.error
+          BASE="https://gdd-r2-gateway.realmetayninh7649.workers.dev"
+          ALLOWED=[
+              "memorials/1794948675991-c161eafe-0f0e-4305-a58a-a51cd8c6004c.png",
+              "memorials/1794211599597-3783dc64-d926-4054-8be2-07df132ddb67.jpg",
+              "memorials/1794186660631-41499137-cc91-4314-bd99-c9ef6e2af93f.jpg",
+              "memorials/1794039717377-9b2ea46b-62e3-4141-8166-f1383e83515a.jpg",
+              "memorials/1793836888388-4043a5f0-a02f-4ffa-aca3-e6ef157cc9a9.jpg",
+          ]
+          def fetch(path):
+              request=urllib.request.Request(BASE+path,headers={
+                  "Origin":"https://dauxuacuadao.info.vn",
+                  "Cache-Control":"no-cache",
+                  "User-Agent":"GDD-Memorial-Live-Check/1.0"})
+              try:
+                  with urllib.request.urlopen(request,timeout=25) as res:
+                      return res.status,res.headers,res.read(3*1024*1024)
+              except urllib.error.HTTPError as exc:
+                  return exc.code,exc.headers,exc.read(200)
+          for index,source in enumerate(ALLOWED,1):
+              status,headers,image=fetch("/v1/legacy-preview/"+source+".webp")
+              if status!=200 or headers.get("Content-Type")!="image/webp" or len(image)<100 or image[:4]!=b"RIFF" or image[8:12]!=b"WEBP":
+                  raise SystemExit("Memorial portrait "+str(index)+" not available from real R2 Worker, HTTP "+str(status))
+              if headers.get("Access-Control-Allow-Origin")!="https://dauxuacuadao.info.vn":
+                  raise SystemExit("Memorial portrait CORS missing")
+              print("LIVE MEMORIAL PHOTO "+str(index)+"/5: HTTP 200, WebP valid, bytes="+str(len(image)))
+          status,headers,data=fetch("/v1/legacy-preview/memorials/unpublished-private-portrait.png.webp")
+          if status not in (403,404) or headers.get("Content-Type","").startswith("image/"):
+              raise SystemExit("Unpublished memorial images must remain inaccessible")
+          print("ALL FIVE PUBLISHED MEMORIAL PHOTOS LIVE; unpublished originals remain private")
+          PY
