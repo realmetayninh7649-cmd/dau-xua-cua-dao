@@ -12,7 +12,8 @@ test('Tep chinh duoc luu R2 truoc khi toi uu public',()=>{
  const app=read('app.js');
  const block=app.slice(app.indexOf('async function saveRecord'),app.indexOf('async function deleteRecord'));
  assert.ok(block.indexOf('window.GDDR2.archive(file,state.supabase')>=0);
- assert.ok(block.indexOf('window.GDDR2.archive(file,state.supabase')<block.indexOf('await uploadImage(file,kind)'));
+ assert.ok(block.indexOf('window.GDDR2.archive(file,state.supabase')<block.indexOf('window.GDDPrivatePublishing.publishArchivedImage(archivedPrimary')); 
+ assert.ok(!block.includes('await uploadImage(file,kind)'),'no public Supabase image upload');
  assert.ok(block.includes('window.GDDR2.link(archivedPrimary,kind,savedId'));
  assert.ok(block.includes('data.file_url=null;'));
  assert.ok(block.includes('data.published=false;'));
@@ -24,13 +25,12 @@ test('Album giu file goc truoc nen, PDF/Word khong public',()=>{
  assert.ok(idx>=0);
  const block=html.slice(idx,idx+11000);
  const archive=block.indexOf('window.GDDR2.archive(item.file,supa');
- const optimize=block.indexOf('window.GDDImageOptimizer.prepare(item.file');
- const imageGate=block.indexOf('if(!docFile&&!attached){');
- const publicUpload=block.indexOf('storage.upload(path,item.preparedFile');
+ const publish=block.indexOf('window.GDDPrivatePublishing.publishArchivedImage(item.archivedResult');
  const privateGate=block.indexOf('if(docFile){');
- assert.ok(archive>=0&&imageGate>archive&&optimize>imageGate&&publicUpload>optimize);
- assert.ok(privateGate>publicUpload,'private PDF/Word branch cannot use public image upload');
- assert.ok(block.includes('skipDerivatives:!docFile'));
+ assert.ok(archive>=0&&publish>archive&&privateGate>publish,
+   'public album links must be created only from verified R2 derivatives');
+ assert.ok(!block.includes('storage.upload(path,item.preparedFile'),'legacy public upload disabled');
+ assert.ok(block.includes('skipDerivatives:false'));
  assert.ok(block.includes('item.saved=true;done++;committed=true;'));
  assert.ok(!block.includes('item.file=prepared'));
 });
