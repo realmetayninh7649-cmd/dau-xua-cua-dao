@@ -4,8 +4,26 @@
 (() => {
   'use strict';
   const SUPABASE_HOST='gwpdgubxoquhrfbolftq.supabase.co';
-  const READER_PATH='/dau-xua-cua-dao/r2-xem.html';
+  const READER_PATH=window.location.hostname==='realmetayninh7649-cmd.github.io'
+    ?'/dau-xua-cua-dao/r2-xem.html':'/r2-xem.html';
   const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+  const LEGACY_DOCS_PREFIX='/storage/v1/object/public/dao-su-documents/';
+  // Only three already-published PDFs have private R2 page-image viewer derivatives.
+  // No raw PDF download, no R2 original keys, and no conversion for other documents.
+  const LEGACY_PDF_PAGES=Object.freeze({
+    'documents/1794684373312-e808f501-1bba-458d-b82f-f5f096479426.pdf':'a4bf8d79-a7a3-51cb-909c-0a4681902c01',
+    'documents/1794684462288-fc373424-39bf-4d8d-950c-2195aa01a603.pdf':'203886e9-cd67-58ab-96b3-ee4ff97b401a',
+    'media/1794860043784-52816aff-f9f7-4790-9e91-d87d7a86fc96.pdf':'1105db24-e971-5f1a-b632-d3b9f41b3b39'
+  });
+  function migratedPageAsset(url){
+    if(!url||url.hostname!==SUPABASE_HOST||url.search||url.hash||
+       !url.pathname.startsWith(LEGACY_DOCS_PREFIX))return '';
+    let relative;
+    try{relative=decodeURIComponent(url.pathname.slice(LEGACY_DOCS_PREFIX.length))}
+    catch{return ''}
+    return Object.prototype.hasOwnProperty.call(LEGACY_PDF_PAGES,relative)?LEGACY_PDF_PAGES[relative]:'';
+  }
+
   function parse(raw) {
     try {
       const u=new URL(String(raw||''),window.location.href);
@@ -30,7 +48,10 @@
     if(type==='r2'||type==='reader')return parse(raw).href;
     if(type==='legacy-pdf'||type==='legacy-word'){
       const target=new URL(READER_PATH,window.location.origin);
-      target.searchParams.set('source',parse(raw).href);
+      const pdfSource=parse(raw);
+      const pageAsset=type==='legacy-pdf'?migratedPageAsset(pdfSource):'';
+      if(pageAsset)target.searchParams.set('asset',pageAsset);
+      else target.searchParams.set('source',pdfSource.href);
       return target.href;
     }
     return String(raw||'');
