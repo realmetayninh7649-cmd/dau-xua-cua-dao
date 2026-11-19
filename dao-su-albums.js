@@ -463,7 +463,9 @@
         .eq('owner_kind',kind).eq('owner_id',id).order('sort_order',{ascending:false}).limit(1);
       if(maxError)throw maxError;
       position=Math.max(0,maxRows?.[0]?.sort_order??0);
-      const store=supa.storage.from('dao-su-images');
+      const {data:albumOwner,error:ownerError}=await supa.from(kind).select('published').eq('id',id).single();
+      if(ownerError||!albumOwner)throw Error('Chưa kiểm tra được bài chứa album.');
+      const albumPublished=albumOwner.published===true;
       let cursor=0;
       const worker=async()=>{
         while(!firstError&&cursor<files.length){
@@ -472,17 +474,21 @@
           let transferError=null;
           try{
             if(!item.uploadedUrl){
-              const optimized=item.optimizedFile||await imageStep(()=>
-                window.GDDImageOptimizer.prepare(item.file,{onStatus:message=>notify(message)}));
-              item.optimizedFile=optimized;
-              const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
-              const key=kind+'/'+Date.now()+'-'+suffix+'.'+FILE_EXT[optimized.type];
-              notify('Đang tải ảnh '+(index+1)+'/'+files.length+': '+item.file.name+'…');
-              const {error:upError}=await store.upload(key,optimized,{
-                contentType:optimized.type,cacheControl:'3600',upsert:false
-              });
-              if(upError)throw upError;
-              item.uploadedUrl=store.getPublicUrl(key).data.publicUrl;
+              if(!window.GDDR2?.archive||!window.GDDPrivatePublishing)
+                throw Error('Bộ bảo tồn ảnh riêng tư R2 chưa sẵn sàng.');
+              if(!item.archivedResult){
+                item.archivedResult=await window.GDDR2.archive(item.file,supa,{
+                  recordKind:kind,recordId:id,role:'album',skipDerivatives:false,
+                  onProgress:()=>notify('Đang bảo tồn và tạo ảnh xem R2 '+(index+1)+'/'+files.length)
+                });
+              }
+              if(item.archivedResult?.previewReady!==true||item.archivedResult?.downloadReady!==true)
+                throw Error('Đã lưu bản gốc R2 nhưng chưa tạo đủ ảnh xem và ảnh in.');
+              item.uploadedUrl=albumPublished
+                ?(await window.GDDPrivatePublishing.publishArchivedImage(item.archivedResult,{
+                    allowDownload:kind==='documents'
+                  })).url
+                :window.GDDPrivatePublishing.previewUrl(item.archivedResult.id);
             }
           }catch(error){transferError=error;}
           // Chỉ khoá bước tạo bản ghi, không khoá công đoạn tải qua mạng.
@@ -526,27 +532,7 @@
             turns[index+1]?.release();
           }
           if(!linked)continue;
-          // Bản ảnh có dòng lưu dấu vẫn được tạo như trước.
-          // Chỉ giữ tối đa một canvas đang hoạt động; truyền mạng không bị chặn.
-          if(linked.photo_code&&window.GDDTrace){
-            try{
-              const stamped=await imageStep(()=>
-                window.GDDTrace.stampedBlob(item.optimizedFile||item.file,linked.photo_code));
-              const traceKey=kind+'/'+Date.now()+'-'
-                +(globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'-trace.jpg';
-              const {error:traceError}=await store.upload(traceKey,stamped,{
-                contentType:'image/jpeg',cacheControl:'3600',upsert:false
-              });
-              if(traceError)throw traceError;
-              const stampedUrl=store.getPublicUrl(traceKey).data.publicUrl;
-              const {error:linkError}=await supa.from(ALBUM_TABLE)
-                .update({image_url:stampedUrl}).eq('id',linked.id);
-              if(linkError)throw linkError;
-            }catch(error){
-              console.warn('[GDD Trace] Chưa tạo được bản hiển thị lưu dấu:',error);
-              warnings.push('Mã '+linked.photo_code+': '+(error?.message||error));
-            }
-          }
+          // Visitor-side trace is applied to the optimized copy; R2 originals remain private.
           // Giải phóng bản đã nén sau khi tải và lưu dấu xong.
           item.optimizedFile=null;
           item.uploadedUrl='';
