@@ -4,7 +4,8 @@
  */
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import worker,{legacyPreviewResponse} from '../workers/gdd-r2-gateway/src/index.mjs';
+import worker from '../workers/gdd-r2-gateway/src/index.mjs';
+import {legacyPreviewResponse} from '../workers/gdd-r2-gateway/src/legacy-preview.mjs';
 
 const originalPath=fs.readFileSync('/tmp/gdd-r2-sample-path.txt','utf8').trim();
 const realWebP=fs.readFileSync('/tmp/gdd-r2-sample.webp');
