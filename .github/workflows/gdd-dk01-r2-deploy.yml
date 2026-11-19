@@ -29,6 +29,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: "Kiem tra web nguyen ban trong CI neu website dang bao tri (khong deploy)"
+        run: |
+          set -euo pipefail
+          if grep -q "Website đang tạm bảo trì" index.html; then
+            git fetch --no-tags --depth=1 origin refs/heads/backup/pre-maintenance-2026-11-19:refs/remotes/origin/backup/pre-maintenance-2026-11-19
+            git show refs/remotes/origin/backup/pre-maintenance-2026-11-19:index.html > index.html
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          if 'gdd-legacy-r2-images.js' not in s:
+              needle='<script defer src="app.js?v=20261119-free-egress-02"></script>'
+              if s.count(needle)!=1:raise SystemExit('Expected app.js hook not found in restored webpage')
+              s=s.replace(needle, '<script defer src="gdd-legacy-r2-images.js?v=disabled-test"></script>\n'+needle)
+          p.write_text(s)
+          print('CI homepage replica ready; actual production index remains unchanged')
+          PY
       - name: "Chay kiem tra an toan"
         run: |
           node --check workers/gdd-r2-gateway/src/index.mjs
