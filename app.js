@@ -940,29 +940,10 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       if(!savedId)throw new Error('Đã lưu dữ liệu nhưng không lấy được mã bài viết.');
       // Nếu việc tải ảnh thất bại, lần bấm sau cập nhật bài này, KHÔNG tạo thêm bài mới.
       state.editingId=savedId;
-      // Cấp mã xong mới tạo bản ảnh HIỂN THỊ có lề nguồn; nguyên mẫu R2 không thay đổi.
+      // All visitor previews and downloads are now watermarked on the derived
+      // R2/browser layer. Never alter a saved original URL by uploading a new
+      // -trace.jpg into the now-private Supabase archive bucket.
       let traceWarning='';
-      const photoField=kind==='documents'?'file_url':(['posts','videos','obituaries'].includes(kind)?'cover_url':'image_url');
-      const photoURL=data[photoField]||record?.[photoField]||'';
-      if(window.GDDTrace?.validCode(saved.archive_code)&&
-         /\.(?:jpe?g|png|webp)(?:\?|$)/i.test(photoURL)&&
-         !window.GDDTrace.isStampedURL(photoURL)){
-        try{
-          const traced=await window.GDDTrace.stampedBlob(photoURL,saved.archive_code);
-          const path=`${kind}/${Date.now()}-${globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2)}-trace.jpg`;
-          const store=state.supabase.storage.from('dao-su-images');
-          const {error:upError}=await store.upload(path,traced,
-            {contentType:'image/jpeg',upsert:false,cacheControl:'3600'});
-          if(upError)throw upError;
-          const tracedURL=store.getPublicUrl(path).data.publicUrl;
-          const {error:linkError}=await state.supabase.from(kind).update({[photoField]:tracedURL}).eq('id',savedId);
-          if(linkError)throw linkError;
-          data[photoField]=tracedURL;
-        }catch(err){
-          traceWarning='Đã lưu bài, nhưng chưa tạo được bản ảnh có dòng lưu dấu: '+(err.message||err);
-          console.warn('[GDD Trace]',err);
-        }
-      }
       let r2LinkProblem='';
       if(archivedPrimary){
         try{await window.GDDR2.link(archivedPrimary,kind,savedId,'primary',state.supabase)}
