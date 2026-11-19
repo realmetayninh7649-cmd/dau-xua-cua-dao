@@ -61,7 +61,7 @@ test('site counter renders current total and counts an unlinked link only once',
  assert.equal(sandbox.standalone,1);assert.equal(node.textContent,'45');
  callbacks.click({target:new Elem({filename:'document.pdf',fromArticle:true}),defaultPrevented:false});
  await new Promise(resolve=>setTimeout(resolve,5));
- assert.equal(standalone,1,'article click is not recorded twice');
+ assert.equal(sandbox.standalone,1,'article click is not recorded twice');
  sandbox.total++;article++;pending['gdd:content-download-recorded']();
  await new Promise(resolve=>setTimeout(resolve,5));
  assert.equal(node.textContent,'46');
