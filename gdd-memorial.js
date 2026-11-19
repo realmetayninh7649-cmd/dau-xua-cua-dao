@@ -126,7 +126,7 @@
   const dialogBody=$('#gdd-memorial-dialog-body',overlay);
 
   function featuredCard(row){
-    const portrait=safeUrl(row.portrait_url);
+    const originalPortrait=safeUrl(row.portrait_url);const portrait=window.GDDLegacyImages?.displayUrl(originalPortrait)||originalPortrait;
     const img=portrait?`<img loading="lazy" src="${escape(portrait)}" alt="Chân dung ${escape(row.person_name)}">`:'<span class="gdd-memorial-no-image" aria-hidden="true">✧</span>';
     const meta=[row.rank_title,row.anniversary_date&&'Kỷ niệm ngày qui vị: '+row.anniversary_date].filter(Boolean).join(' · ');
     const slug=encodeURIComponent(row.slug);
@@ -167,7 +167,7 @@
   function clearMemRoute(){location.hash='#trang-chu';}
 
   function archiveItem(r){
-    const img=safeUrl(r.portrait_url);
+    const originalPhoto=safeUrl(r.portrait_url);const img=window.GDDLegacyImages?.displayUrl(originalPhoto)||originalPhoto;
     const thumb=img?`<img loading="lazy" src="${escape(img)}" alt="">`:'<span class="gdd-memorial-archive-fallback">✧</span>';
     return `<button class="gdd-memorial-archive-item" type="button" data-gdd-mem-slug="${escape(r.slug)}">${thumb}<span><strong>${escape(r.person_name)}</strong><small>${escape([r.rank_title,r.anniversary_date].filter(Boolean).join(' · ')||'Tưởng niệm Chức sắc')}</small><em>${escape(r.summary||r.title||'Xem bài tưởng niệm')} · Đăng ${formatDay(r.published_at||r.created_at)}</em></span></button>`;
   }
@@ -200,7 +200,7 @@
       const {data,error}=await supa.from(TABLE).select('*').eq('published',true).eq('slug',slug).maybeSingle();
       if(error)throw error;
       if(!data){dialogBody.innerHTML='<p>Không tìm thấy bài tưởng niệm đã công bố.</p><a class="gdd-memorial-back" href="#tuong-niem">Xem các bài khác ↗</a>';return;}
-      const img=safeUrl(data.portrait_url);
+      const originalPhoto=safeUrl(data.portrait_url);const img=window.GDDLegacyImages?.displayUrl(originalPhoto)||originalPhoto;
       dialogBody.innerHTML=`<div class="gdd-memorial-kicker">TƯỞNG NIỆM CHỨC SẮC</div><h2>${escape(data.title)}</h2>
         ${img?`<img class="gdd-memorial-detail-image" src="${escape(img)}" alt="Chân dung ${escape(data.person_name)}">`:''}
         <p class="gdd-memorial-detail-meta">${escape([data.person_name,data.rank_title,data.death_date?'Ngày qui vị: '+data.death_date:'',data.anniversary_date?'Kỷ niệm: '+data.anniversary_date:''].filter(Boolean).join(' · '))}<br>Đăng ngày ${formatDay(data.published_at||data.created_at)}</p>
