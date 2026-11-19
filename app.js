@@ -76,6 +76,29 @@
     if(!source)return source;
     return safeUrl(window.GDDLegacyImages?.displayUrl(source)||source);
   };
+  // Old unpublished records are not part of the public R2 allowlist.
+  // Only a verified admin may request a short-lived signed Supabase URL,
+  // and only after a private-bucket image cannot be displayed.
+  document.addEventListener('error',async event=>{
+    const img=event.target;
+    if(!state.admin||!(img instanceof HTMLImageElement)||!state.supabase||img.dataset.gddSignedRetry)return;
+    const url=safeUrl(img.currentSrc||img.src);
+    const prefix=config.supabaseUrl+'/storage/v1/object/public/';
+    if(!url.startsWith(prefix))return;
+    let parsed;try{parsed=new URL(url)}catch{return}
+    const rel=parsed.pathname.slice('/storage/v1/object/public/'.length);
+    const bucket=rel.split('/')[0];
+    if(!['dao-su-images','dao-su-documents'].includes(bucket))return;
+    const key=decodeURIComponent(rel.slice(bucket.length+1));
+    if(!key||key.includes('..')||key.length>600)return;
+    img.dataset.gddSignedRetry='1';
+    try{
+      const {data,error}=await state.supabase.storage.from(bucket).createSignedUrl(key,600);
+      if(error||!data?.signedUrl)throw error||Error('Chưa ký được liên kết riêng tư');
+      if(img.isConnected&&state.admin)img.src=data.signedUrl;
+    }catch(e){console.warn('[GDD Admin private image] Không đọc được ảnh cũ:',e?.message||e)}
+  },true);
+
   const date = s => {if(!s)return '';try{return new Date(s).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return ''}};
   const statusTag = record => record.verified?'<span class="verification verified">ĐÃ ĐỐI CHIẾU</span>':'<span class="verification">CẦN ĐỐI CHIẾU</span>';
 // Chỉ nhúng các dịch vụ video được nhận diện rõ; không chèn HTML tùy ý.
