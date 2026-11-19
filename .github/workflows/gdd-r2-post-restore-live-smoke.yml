@@ -31,7 +31,7 @@ jobs:
                   status,headers,body=get(BASE+"/?r2-release-test=20261119",limit=300000)
                   html=body.decode("utf8",errors="replace")
                   if (status==200 and "Website đang tạm bảo trì" not in html and
-                      "gdd-legacy-r2-images.js" in html and "app.js" in html and "gdd-image-viewer" in html):
+                      "gdd-legacy-r2-images.js" in html and "app.js" in html and 'id="trang-chu"' in html):
                       print("LIVE HOMEPAGE RESTORED: expected app and R2 bridge present"); break
               except Exception as error:
                   if attempt==19:raise
