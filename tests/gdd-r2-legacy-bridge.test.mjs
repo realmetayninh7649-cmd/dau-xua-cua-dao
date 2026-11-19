@@ -36,7 +36,7 @@ test('relay cannot rewrite non-archive sources, PDF, private paths or query-tran
 test('private R2 cutover preserves original DB URLs while rendering only approved public derivatives',()=>{
   const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
   const album=fs.readFileSync(new URL('../dao-su-albums.js',import.meta.url),'utf8');
-  assert.match(app,/if\(!source\|\|state\.admin\)return source;/);
+  assert.match(app,/if\(!source\)return source;/);
   assert.match(app,/const displayImageUrl=raw=>/);
   assert.match(album,/img\.src=window\.GDDLegacyImages\?\.displayUrl\(url\)\|\|url/);
   assert.match(album,/else\{img\.src=safeUrl\(row\.image_url\)/);
