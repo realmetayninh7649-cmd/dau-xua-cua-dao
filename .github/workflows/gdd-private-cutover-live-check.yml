@@ -1,0 +1,17 @@
+name: "GDD - Verify private Supabase cutover on live website"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/gdd_private_cutover_live_check.py"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Read-only live verification: private sources denied, R2 previews online"
+        run: python3 scripts/gdd_private_cutover_live_check.py
