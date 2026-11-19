@@ -31,12 +31,10 @@ jobs:
           const original=fs.readFileSync(source,"utf8");
           const marker="const LEGACY_PREVIEW_ENABLED = false;";
           if(original.split(marker).length!==2)throw Error("Preview flag is missing or ambiguous");
-          // Workerd entrypoint only accepts the default handler export.
-          // Named helpers stay unchanged in the GitHub PR for Node tests; strip them in this ephemeral copy only.
-          const tmp=original.replace(marker,"const LEGACY_PREVIEW_ENABLED = true;")
-            .replace("export const VERSION =", "const VERSION =")
-            .replace("export async function legacyPreviewResponse","async function legacyPreviewResponse");
-          if(tmp.includes("export const VERSION")||tmp.includes("export async function legacyPreviewResponse"))throw Error("Unrecognized Worker exports");
+          // The real Worker entrypoint now has only a default export; never mask deployment incompatibilities.
+          if(/^export\s+(?:const|function|async function)\s/m.test(original))
+            throw Error("Named entrypoint export would break workerd");
+          const tmp=original.replace(marker,"const LEGACY_PREVIEW_ENABLED = true;");
           fs.writeFileSync(source,tmp);
           const config=JSON.parse(fs.readFileSync("workers/gdd-r2-gateway/wrangler.jsonc","utf8"));
           if(config.r2_buckets?.[0]?.bucket_name!=="gdd-dau-xua-cua-dao")throw Error("Unexpected R2 bucket");
