@@ -39,5 +39,31 @@
     const pub=await publishArchivedImage(asset,{allowDownload});
     return {...pub,asset};
   }
-  window.GDDPrivatePublishing=Object.freeze({previewUrl,printUrl,publishArchivedImage,archiveAndPublish});
+  async function publishLinkedImages(supabase,kind,recordId){
+    if(!supabase||!['people','posts','media','videos','obituaries','documents'].includes(kind)||!UUID.test(recordId))
+      throw Error('Thiếu thông tin công bố ảnh đính kèm.');
+    const {data:assets,error}=await supabase.from('gdd_r2_assets')
+      .select('asset_id,media_kind,preview_ready,download_ready,public_view')
+      .eq('record_kind',kind).eq('record_id',recordId);
+    if(error)throw error;
+    let count=0;
+    for(const asset of assets||[]){
+      if(asset.media_kind!=='image'||asset.public_view===true)continue;
+      if(asset.preview_ready!==true||asset.download_ready!==true)
+        throw Error('Có bản ảnh R2 chưa xử lý xong. Xin kiểm tra kho R2 trước khi công bố.');
+      await publishArchivedImage({id:asset.asset_id,previewReady:true,downloadReady:true},
+        {allowDownload:kind==='documents'});
+      count++;
+    }
+    return count;
+  }
+  function isPreviewURL(value){
+    try{
+      const u=new URL(String(value||''));
+      return u.origin===API && /^\/v1\/public\/[a-f0-9-]{36}\/preview$/i.test(u.pathname)
+        && !u.search&&!u.hash;
+    }catch{return false}
+  }
+  window.GDDPrivatePublishing=Object.freeze({previewUrl,printUrl,isPreviewURL,
+    publishArchivedImage,archiveAndPublish,publishLinkedImages});
 })();
