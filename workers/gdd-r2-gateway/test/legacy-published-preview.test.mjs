@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{legacyPreviewResponse} from '../src/index.mjs';
+import worker from '../src/index.mjs';
+import {legacyPreviewResponse} from '../src/legacy-preview.mjs';
 import {LEGACY_PUBLISHED_PATHS} from '../src/legacy-published-paths.mjs';
 
 const example='documents/1793751867587-m0vmt9onf.jpg';
