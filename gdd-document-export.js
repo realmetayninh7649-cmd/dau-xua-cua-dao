@@ -183,7 +183,8 @@
       if(!resolved)return;
       let suffix='';
       try{suffix=new URL(resolved).pathname}catch{return}
-      if(!/\.(?:jpe?g|png|webp)$/i.test(suffix)||seen.has(resolved))return;
+      if(!/\.(?:jpe?g|png|webp)$/i.test(suffix)&&!window.GDDPrivatePublishing?.isPreviewURL?.(resolved))return;
+      if(seen.has(resolved))return;
       seen.add(resolved);
       result.push(resolved);
     };
