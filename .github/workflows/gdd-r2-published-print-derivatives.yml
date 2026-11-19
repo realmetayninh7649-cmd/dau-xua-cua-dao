@@ -1,0 +1,29 @@
+name: "GDD R2 - Build and verify safe published print derivatives"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/r2_build_published_print_derivatives.py"
+      - "maintenance-tasks/gdd-public-print-paths.json"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gdd-r2-printed-document-derivatives
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install boto3==1.40.61 Pillow==11.3.0
+      - name: "Verify originals; only publish 133 watermarked printable copies"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+        run: python scripts/r2_build_published_print_derivatives.py
