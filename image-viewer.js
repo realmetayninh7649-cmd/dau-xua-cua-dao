@@ -373,13 +373,17 @@
     btn.disabled=true;
     btn.textContent='Đang chuẩn bị ảnh…';
     try {
-      const response=await fetch(url,{mode:'cors',credentials:'omit'});
+      // Visitors receive only the approved optimized R2 image, not its Supabase original.
+      const approvedUrl=window.GDDLegacyImages?.displayUrl?.(url)||url;
+      const response=await fetch(approvedUrl,{mode:'cors',credentials:'omit'});
       if(!response.ok)throw Error('Nguồn ảnh không cho phép tải');
       const original=await response.blob();
       if(!original.type.startsWith('image/'))throw Error('Tệp này không phải hình ảnh');
-      const output=photoCode&&window.GDDTrace?.validCode(photoCode)
-        ?(window.GDDTrace.isStampedURL(url)||window.GDDTraceDisplay?.isStampedBlob(url)?original:await window.GDDTrace.stampedBlob(original,photoCode))
-        :original;
+      const traceCode=window.GDDTrace?.validCode(photoCode)?photoCode:'TU-LIEU-CO-LUU-DAU';
+      // Never serve an unmarked file even when the record has no archive ID yet.
+      if(!window.GDDTrace?.stampedBlob)throw Error('Chưa có bộ tạo bản lưu dấu');
+      const output=(window.GDDTrace.isStampedURL(approvedUrl)||window.GDDTraceDisplay?.isStampedBlob(url))
+        ? original : await window.GDDTrace.stampedBlob(original,traceCode);
       const blobUrl=URL.createObjectURL(output),a=document.createElement('a');
       a.href=blobUrl;
       a.download=filename(url,label);
@@ -471,7 +475,7 @@
       }else if(!save){
         const button=document.createElement('button');
         button.type='button';button.className='gdd-image-action';
-        button.dataset.gddImageSave='1';button.textContent='↓ Tải ảnh gốc';
+        button.dataset.gddImageSave='1';button.textContent='↓ Tải ảnh có lưu dấu';
         button.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),button,img.dataset.photoCode||detail.dataset.gddArchiveCode));
         bar.append(button);
       }
