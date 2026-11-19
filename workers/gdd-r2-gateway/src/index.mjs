@@ -362,7 +362,7 @@ export default {
     if(path==='/health'){
       if(req.method!=='GET')return failure(405,'Method not allowed',false);
       return await headR2(env)
-        ? respond({status:'ok',version:VERSION,r2:'reachable'})
+        ? respond({status:'ok',version:VERSION,r2:'reachable',publicRateLimit:Boolean(env.GDD_PUBLIC_LIMIT)})
         : respond({status:'not_ready',version:VERSION},503);
     }
     if(!path.startsWith('/v1/'))return failure(404,'Not found',false);
@@ -375,6 +375,25 @@ export default {
         'access-control-allow-methods':'GET, POST, PUT, OPTIONS',
         'access-control-allow-headers':'Authorization, Content-Type',
         'access-control-max-age':'600','vary':'Origin','cache-control':'no-store'}});
+    }
+    // Enforce conservative traffic protection on public derivative routes only.
+    // Cloudflare edge cache serves eligible approved JPEG/WebP responses without
+    // running this Worker; dynamic metadata/admin/authenticated requests stay no-store.
+    const isPublicAsset=path.startsWith(LEGACY_PREVIEW_PATH)||
+      path.startsWith(LEGACY_PRINT_ROUTE)||path.startsWith('/v1/public/');
+    if(isPublicAsset){
+      // Prevent distinct query strings from bypassing cache and multiplying R2 GETs.
+      if(url.search)return failure(400,'Đường dẫn tài liệu có tham số không hợp lệ',cors);
+      const ip=req.headers.get('cf-connecting-ip');
+      if(ip&&env.GDD_PUBLIC_LIMIT?.limit){
+        try{
+          const {success}=await env.GDD_PUBLIC_LIMIT.limit({key:'public-assets:'+ip});
+          if(!success)return failure(429,'Đã quá số lượt yêu cầu. Vui lòng thử lại sau.',cors);
+        }catch{
+          // A limiter outage must never expose private sources or disable the website.
+          // Public allowlist and private-original routing remain independently enforced.
+        }
+      }
     }
     // Route is hard-disabled during maintenance; only 700 allowlisted public WebPs could be served after reopening.
     if(path.startsWith(LEGACY_PREVIEW_PATH))return legacyPreviewResponse(req,env,path,cors,LEGACY_PREVIEW_ENABLED);
