@@ -1,0 +1,77 @@
+name: "GDD R2 - Localhost HTTP 200 using verified R2 fixture (no deploy)"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gdd-r2-real-remote-localhost.yml"
+      - "scripts/r2_live_binding_local_smoke.py"
+      - "workers/gdd-r2-gateway/src/**"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  localhost-r2-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Create temporary local-only Worker copy with R2 remote binding"
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/gdd-remote-worker
+          cp -R workers/gdd-r2-gateway/src /tmp/gdd-remote-worker/src
+          node - <<'JS'
+          const fs=require("fs");
+          const source="/tmp/gdd-remote-worker/src/index.mjs";
+          const original=fs.readFileSync(source,"utf8");
+          const marker="const LEGACY_PREVIEW_ENABLED = false;";
+          if(original.split(marker).length!==2)throw Error("Preview flag is missing or ambiguous");
+          // The real Worker entrypoint now has only a default export; never mask deployment incompatibilities.
+          if(/^export\s+(?:const|function|async function)\s/m.test(original))
+            throw Error("Named entrypoint export would break workerd");
+          const tmp=original.replace(marker,"const LEGACY_PREVIEW_ENABLED = true;");
+          fs.writeFileSync(source,tmp);
+          const config=JSON.parse(fs.readFileSync("workers/gdd-r2-gateway/wrangler.jsonc","utf8"));
+          if(config.r2_buckets?.[0]?.bucket_name!=="gdd-dau-xua-cua-dao")throw Error("Unexpected R2 bucket");
+          config.name="gdd-r2-localhost-remote-test";
+          config.main="./src/index.mjs";
+          config.r2_buckets[0].remote=false;
+          config.workers_dev=false;
+          config.preview_urls=false;
+          fs.writeFileSync("/tmp/gdd-remote-worker/wrangler.jsonc",JSON.stringify(config,null,2));
+          console.log("Temporary local Worker prepared; prod unchanged");
+          JS
+      - name: "Install pinned S3 verification helper"
+        run: python -m pip install boto3==1.40.61
+      - name: "Fetch real R2 sample (read only), then seed local emulator and test localhost HTTP 200"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          python scripts/r2_live_binding_local_smoke.py --prepare
+          npx --yes wrangler@4.159.0 r2 object put gdd-dau-xua-cua-dao/legacy-private-image-previews-v1/documents/1793751867587-m0vmt9onf.jpg.webp --file=/tmp/gdd-local-r2-fixture.webp --local --persist-to /tmp/gdd-local-r2-state --config /tmp/gdd-remote-worker/wrangler.jsonc
+          npx --yes wrangler@4.159.0 dev --config /tmp/gdd-remote-worker/wrangler.jsonc --ip 127.0.0.1 --port 8787 --persist-to /tmp/gdd-local-r2-state > /tmp/gdd-r2-localhost-remote.log 2>&1 &
+          WORKER_PID=$!
+          trap 'kill "$WORKER_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for i in $(seq 1 45); do
+            if curl --silent --show-error --max-time 2 --output /dev/null http://127.0.0.1:8787/health 2>/dev/null; then READY=1; break; fi
+            if ! kill -0 "$WORKER_PID" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          if [ "$READY" != 1 ]; then
+            echo "Local Worker did not become ready; safe stop. No production deployment."
+            tail -n 15 /tmp/gdd-r2-localhost-remote.log | sed -E 's/[a-f0-9]{32}/[REDACTED]/g'
+            exit 1
+          fi
+          python scripts/r2_live_binding_local_smoke.py --check
+          echo "SUCCESS: Verified real R2 fixture served via actual Wrangler runtime HTTP 200 on localhost; production never deployed"

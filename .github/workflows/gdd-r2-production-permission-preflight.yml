@@ -1,0 +1,44 @@
+name: "GDD R2 - Read-only Cloudflare deployment permission preflight"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gdd-r2-production-permission-preflight.yml"
+permissions:
+  contents: read
+jobs:
+  preflight:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Verify existing account token and Worker settings (no changes)"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python3 - <<'PY'
+          import json,os,re,urllib.request,urllib.error
+          token=os.getenv("CLOUDFLARE_API_TOKEN","").strip()
+          account=os.getenv("CLOUDFLARE_ACCOUNT_ID","").strip()
+          if not re.fullmatch(r"[a-fA-F0-9]{32}",account):raise SystemExit("CLOUDFLARE_PREFLIGHT: account id missing")
+          if not token or len(token)<40:raise SystemExit("CLOUDFLARE_PREFLIGHT: API Token secret missing or invalid shape")
+          base="https://api.cloudflare.com/client/v4/accounts/"+account
+          def read(path):
+              req=urllib.request.Request(base+path,headers={"Authorization":"Bearer "+token,"Accept":"application/json"})
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:return r.status,json.load(r)
+              except urllib.error.HTTPError as e:
+                  return e.code,{"success":False}
+          code,j=read("/tokens/verify")
+          if code!=200 or j.get("success") is not True or j.get("result",{}).get("status")!="active":
+              raise SystemExit("CLOUDFLARE_PREFLIGHT: existing account token cannot be verified (HTTP "+str(code)+")")
+          print("CLOUDFLARE_TOKEN_VALID: YES")
+          code,j=read("/workers/scripts/gdd-r2-gateway/settings")
+          if code!=200 or j.get("success") is not True:
+              raise SystemExit("CLOUDFLARE_PREFLIGHT: Worker settings read denied (HTTP "+str(code)+")")
+          bindings=j.get("result",{}).get("bindings",[])
+          if not any(b.get("type")=="r2_bucket" and b.get("name")=="GDD_BUCKET" and b.get("bucket_name")=="gdd-dau-xua-cua-dao" for b in bindings):
+              raise SystemExit("CLOUDFLARE_PREFLIGHT: GDD_BUCKET binding does not match")
+          print("CLOUDFLARE_WORKER_READ_PERMISSIONS_PASS: linked private R2 bucket verified")
+          print("No Worker deployment or storage mutations performed")
+          PY

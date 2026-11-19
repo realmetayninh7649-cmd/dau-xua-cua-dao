@@ -1,0 +1,44 @@
+name: "GDD R2 - Verify LIVE Worker maintenance boundary"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gdd-r2-live-worker-boundary.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-live-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: "Read-only check live R2 gateway health and closed preview routes"
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error
+          BASE="https://gdd-r2-gateway.realmetayninh7649.workers.dev"
+          def probe(path, method="GET", headers=None):
+              request=urllib.request.Request(BASE+path,method=method,headers=headers or {"User-Agent":"GDD-R2-Maintenance-Preflight/1.0"})
+              try:
+                  with urllib.request.urlopen(request,timeout=20) as r:
+                      return r.status,r.headers.get("Content-Type",""),r.read(400)
+              except urllib.error.HTTPError as e:
+                  return e.code,e.headers.get("Content-Type",""),e.read(400)
+          status,mime,body=probe("/health")
+          if status!=200:raise SystemExit("Live R2 Worker health failed: HTTP "+str(status))
+          data=json.loads(body.decode("utf-8"))
+          if data.get("status")!="ok" or data.get("r2")!="reachable":raise SystemExit("R2 binding not healthy")
+          print("LIVE R2 WORKER HEALTH PASS: bucket binding reachable")
+          closed=[
+            "/v1/legacy-preview/documents/1793751867587-m0vmt9onf.jpg.webp",
+            "/legacy-private-images-v1/documents/1793751867587-m0vmt9onf.jpg",
+            "/files/private-example.jpg"
+          ]
+          for path in closed:
+              st,ct,payload=probe(path)
+              if st not in (403,404) or ct.startswith("image/"):
+                  raise SystemExit("Unexpected exposed live R2 path; HTTP "+str(st))
+          print("LIVE MAINTENANCE BOUNDARY PASS: staged preview and private originals inaccessible on production Worker")
+          st,ct,payload=probe("/v1/uploads/start",method="POST",headers={"Content-Type":"application/json"})
+          if st!=403:raise SystemExit("Unauthenticated R2 upload should be blocked, HTTP "+str(st))
+          print("LIVE UNAUTHENTICATED UPLOAD BLOCK PASS")
+          PY

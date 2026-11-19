@@ -1,0 +1,35 @@
+name: "GDD R2 - Test isolated legacy WebP preview cutover"
+on:
+  pull_request:
+    paths:
+      - "workers/gdd-r2-gateway/src/**"
+      - "workers/gdd-r2-gateway/test/legacy-published-preview.test.mjs"
+      - ".github/workflows/gdd-r2-legacy-preview-tests.yml"
+      - "gdd-legacy-r2-images.js"
+      - "app.js"
+      - "dao-su-albums.js"
+      - "tests/gdd-r2-legacy-bridge.test.mjs"
+permissions:
+  contents: read
+jobs:
+  test-preview-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Validate syntax and all six focused preview security cases"
+        run: |
+          node --check workers/gdd-r2-gateway/src/index.mjs
+          node --check workers/gdd-r2-gateway/src/legacy-published-paths.mjs
+          node --test workers/gdd-r2-gateway/test/legacy-published-preview.test.mjs
+          node --check gdd-legacy-r2-images.js
+          node --check app.js
+          node --check dao-su-albums.js
+          node --test tests/gdd-r2-legacy-bridge.test.mjs
+      - name: "Wrangler dry run: confirm Worker can bundle without uploading"
+        run: |
+          npx --yes wrangler@4.159.0 deploy --dry-run --config workers/gdd-r2-gateway/wrangler.jsonc --outdir /tmp/gdd-r2-deploy-dry-run
+          echo "WRANGLER BUNDLE PASS — no Cloudflare API called for deployment"

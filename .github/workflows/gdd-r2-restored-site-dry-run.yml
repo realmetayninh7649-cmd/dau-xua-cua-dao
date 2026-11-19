@@ -1,0 +1,58 @@
+name: "GDD R2 - Reconstructed full website offline dry run (no deploy)"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gdd-r2-restored-site-dry-run.yml"
+      - "gdd-legacy-r2-images.js"
+      - "app.js"
+      - "dao-su-albums.js"
+      - "workers/gdd-r2-gateway/src/**"
+permissions:
+  contents: read
+jobs:
+  offline-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Reconstruct pre-maintenance homepage only inside isolated CI runner"
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin refs/heads/backup/pre-maintenance-2026-11-19:refs/remotes/origin/backup/pre-maintenance-2026-11-19
+          git show refs/remotes/origin/backup/pre-maintenance-2026-11-19:index.html > index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          index=Path("index.html")
+          s=index.read_text()
+          target='<script defer src="app.js?v=20261119-free-egress-02"></script>'
+          if s.count(target)!=1 or "Website đang tạm bảo trì" in s:
+              raise SystemExit("Missing archived index or wrong backup: safe stop")
+          addition='<script defer src="gdd-legacy-r2-images.js?v=staged-disabled"></script>\n'+target
+          s=s.replace(target,addition)
+          index.write_text(s)
+          print("Full website restored ONLY in runner memory; production maintenance page untouched")
+          PY
+          node --check gdd-legacy-r2-images.js
+          node --check app.js
+          node --check dao-su-albums.js
+          node --test tests/gdd-r2-legacy-bridge.test.mjs
+      - name: "Verify all existing Worker tests against restored homepage"
+        run: node --test workers/gdd-r2-gateway/test/*.test.mjs
+      - name: "Install browser smoke runner"
+        run: npm install --no-save playwright-core@1.56.1
+      - name: "Run public layout, photo viewer, trace and album tests on localhost"
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/gdd-staged-offline-site.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$WEB_PID" 2>/dev/null || true' EXIT
+          sleep 2
+          export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          node tests/v20-active-site-smoke.mjs
+          node tests/image-viewer-gallery-smoke.mjs
+          node tests/photo-trace-smoke.mjs
+          node tests/album-upload-batch-smoke.mjs
+          echo "STAGED FULL SITE PASS: homepage restored only in CI; R2 preview switch still disabled"
