@@ -1,0 +1,84 @@
+name: "GDD R2 - Live WebP gateway correctness and privacy audit"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "maintenance-tasks/gdd-live-webp-check-20261119.flag"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install boto3==1.40.61
+      - name: "Read live public WebP; compare SHA256 with R2 and reject private keys"
+        env:
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,re,urllib.request,urllib.error
+          import boto3
+          from botocore.config import Config
+          BASE="https://gdd-r2-gateway.realmetayninh7649.workers.dev"
+          BUCKET="gdd-dau-xua-cua-dao"
+          ORIGIN="https://dauxuacuadao.info.vn"
+          account=os.environ.get("CLOUDFLARE_ACCOUNT_ID","")
+          access=os.environ.get("GDD_R2_ARCHIVE_ACCESS_KEY_ID","")
+          secret=os.environ.get("GDD_R2_ARCHIVE_SECRET_ACCESS_KEY","")
+          if not re.fullmatch(r"[0-9a-fA-F]{32}",account) or not re.fullmatch(r"[0-9a-fA-F]{32}",access) or not secret:
+              raise SystemExit("Invalid private R2 S3 credential shape; no network requests")
+          s3=boto3.client("s3",endpoint_url="https://"+account+".r2.cloudflarestorage.com",
+            aws_access_key_id=access,aws_secret_access_key=secret,region_name="auto",
+            config=Config(signature_version="s3v4",s3={"addressing_style":"path"},
+               request_checksum_calculation="when_required",response_checksum_validation="when_required"))
+          m=json.load(open("maintenance-tasks/r2-images-published-manifest.json",encoding="utf8"))
+          if m.get("count")!=700 or len(m.get("objects",[]))!=700:raise SystemExit("700-image manifest missing")
+          samples=[]
+          for folder in ["documents","media","people","posts","videos","memorials"]:
+              row=next((x for x in m["objects"] if x["path"].startswith(folder+"/")),None)
+              if row:samples.append(row)
+          if len(samples)<4:raise SystemExit("Insufficient representative published image paths")
+          def request(path,method="GET",origin=None):
+              hdr={"User-Agent":"GDD-R2-Public-Archive-Live-Audit/1.0","Cache-Control":"no-cache"}
+              if origin:hdr["Origin"]=origin
+              req=urllib.request.Request(BASE+path,method=method,headers=hdr)
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as res:
+                      return res.status,res.headers,res.read(8*1024*1024)
+              except urllib.error.HTTPError as exc:
+                  return exc.code,exc.headers,exc.read(600)
+          code,headers,body=request("/health")
+          if code!=200 or json.loads(body).get("r2")!="reachable":
+              raise SystemExit("Production Worker health is not ready")
+          for i,row in enumerate(samples):
+              path=row["path"]
+              key="legacy-private-image-previews-v1/"+path+".webp"
+              code,headers,body=request("/v1/legacy-preview/"+path+".webp",origin=ORIGIN)
+              if code!=200 or headers.get("Content-Type")!="image/webp" or headers.get("Access-Control-Allow-Origin")!=ORIGIN:
+                  raise SystemExit("Published WebP denied or wrong CORS/content-type at sample "+str(i+1)+" HTTP "+str(code))
+              if len(body)<100 or body[:4]!=b"RIFF" or body[8:12]!=b"WEBP":
+                  raise SystemExit("WebP binary signature missing")
+              meta=s3.head_object(Bucket=BUCKET,Key=key)
+              if hashlib.sha256(body).hexdigest()!=meta.get("Metadata",{}).get("sha256") or len(body)!=meta["ContentLength"]:
+                  raise SystemExit("Live HTTP WebP does not match immutable original preview in R2 at sample "+str(i+1))
+              print("LIVE WEBP VERIFIED "+str(i+1)+"/"+str(len(samples))+": "+str(len(body))+" bytes, SHA256 pass, CORS pass")
+          forbidden=["/v1/legacy-preview/people/draft-not-published.jpg.webp",
+            "/legacy-private-images-v1/people/private.jpg",
+            "/legacy-unlisted-private-v1/people/private.jpg",
+            "/files/private-example.jpg"]
+          for path in forbidden:
+              code,headers,data=request(path)
+              if code==200 or headers.get("Content-Type","").startswith("image/"):
+                  raise SystemExit("Private or unlisted object accidentally reachable")
+          print("PRIVATE R2 ROUTES BLOCKED: originals, unpublished and arbitrary keys")
+          print("LIVE R2 GATEWAY READY: all sampled public WebP GETs correct. Website index still controlled separately.")
+          PY
