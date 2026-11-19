@@ -362,7 +362,7 @@ export default {
     if(path==='/health'){
       if(req.method!=='GET')return failure(405,'Method not allowed',false);
       return await headR2(env)
-        ? respond({status:'ok',version:VERSION,r2:'reachable',publicRateLimit:Boolean(env.GDD_PUBLIC_LIMIT)})
+        ? respond({status:'ok',version:VERSION,r2:'reachable'})
         : respond({status:'not_ready',version:VERSION},503);
     }
     if(!path.startsWith('/v1/'))return failure(404,'Not found',false);
