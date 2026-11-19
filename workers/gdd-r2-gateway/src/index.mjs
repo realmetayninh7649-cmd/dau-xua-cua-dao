@@ -1,7 +1,8 @@
-import { LEGACY_PUBLISHED_PATHS } from './legacy-published-paths.mjs';
+import { VERSION } from './version.mjs';
+import { LEGACY_PREVIEW_PATH, legacyPreviewResponse } from './legacy-preview.mjs';
 // GDDĐ v2.0.0-DK01.2 — Bảo tồn nguyên mẫu & bản xem nhẹ.
 // Bản gốc là R2 PRIVATE; KHÔNG có tuyến GET original hoặc URL tải gốc công khai.
-export const VERSION = 'GDDĐ v2.0.0-DK01.4';
+// Version resides in version.mjs so the Worker entrypoint has default export only.
 // Future cutover is explicitly disabled until the website owner approves reopening.
 // This flag is not affected by client requests or URL query parameters.
 const LEGACY_PREVIEW_ENABLED = false;
@@ -229,42 +230,6 @@ async function api(req,env,url,cors,user) {
     }
   }
   return failure(404,'Không có đường dẫn này',cors);
-}
-
-const LEGACY_PREVIEW_PATH = '/v1/legacy-preview/';
-/**
- * Future ONLY-publicly-published WebP route, fail-closed while maintenance is active.
- * Never serve legacy-private-images-v1 originals, arbitrary R2 keys or documents.
- * Exported separately so security tests can exercise enabled behavior without deploying it.
- */
-export async function legacyPreviewResponse(req,env,path,originAllowed,enabled=false) {
-  if(!enabled)return failure(404,'Website đang bảo trì',originAllowed);
-  if(req.method!=='GET')return failure(405,'Method not allowed',originAllowed);
-  if(!path.startsWith(LEGACY_PREVIEW_PATH))return failure(404,'Không có ảnh xem',originAllowed);
-  const encoded=path.slice(LEGACY_PREVIEW_PATH.length);
-  if(encoded.length<8||encoded.length>180||!encoded.endsWith('.webp'))
-    return failure(404,'Không có ảnh xem',originAllowed);
-  let sourcePath;
-  try{sourcePath=decodeURIComponent(encoded.slice(0,-5))}catch{return failure(404,'Đường dẫn không hợp lệ',originAllowed)}
-  if(!/^[A-Za-z0-9_.\/-]{1,110}$/.test(sourcePath)
-     ||sourcePath.split('/').includes('..')
-     ||!LEGACY_PUBLISHED_PATHS.has(sourcePath))
-    return failure(404,'Không có ảnh xem',originAllowed);
-  try{
-    const obj=await env.GDD_BUCKET.get('legacy-private-image-previews-v1/'+sourcePath+'.webp');
-    if(!obj?.body)return failure(404,'Bản xem chưa sẵn sàng',originAllowed);
-    const headers=new Headers({
-      'content-type':'image/webp',
-      'content-disposition':'inline',
-      'cache-control':'public, max-age=86400',
-      'x-content-type-options':'nosniff',
-      'cross-origin-resource-policy':'cross-origin',
-      'referrer-policy':'no-referrer',
-      'x-robots-tag':'noindex'
-    });
-    if(originAllowed){headers.set('access-control-allow-origin',originAllowed);headers.set('vary','Origin')}
-    return new Response(obj.body,{status:200,headers});
-  }catch{return failure(503,'Không đọc được bản xem',originAllowed)}
 }
 
 // DK01.4: chỉ phân phối bản xem đã được Quản trị viên CHỦ ĐỘNG xuất bản.
