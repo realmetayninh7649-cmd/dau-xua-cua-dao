@@ -350,16 +350,16 @@
           published_at:published?(old?.published_at||now):null};
         const url=obj.portrait_url?safeUrl(obj.portrait_url):'';
         if(obj.portrait_url&&!url)throw Error('Đường dẫn chân dung phải bắt đầu bằng https://');
-        let file=form.elements.portrait_file.files?.[0];
+        const file=form.elements.portrait_file.files?.[0];
         if(file){
-          if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải. Vui lòng tải lại trang.');
-          file=await window.GDDImageOptimizer.prepare(file,{onStatus:message=>setStatus(message)});
-          const formats={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
-          setStatus('Đang tải ảnh chân dung đã tối ưu…');
-          stagedPath='memorials/'+Date.now()+'-'+(crypto.randomUUID?.()||Math.random().toString(36).slice(2))+'.'+formats[file.type];
-          const {error:upError}=await supa.storage.from(BUCKET).upload(stagedPath,file,{contentType:file.type,upsert:false});
-          if(upError)throw upError;
-          obj.portrait_url=supa.storage.from(BUCKET).getPublicUrl(stagedPath).data.publicUrl;
+          if(!window.GDDPrivatePublishing?.archiveAndPublish)
+            throw Error('Bộ lưu bản gốc và xuất ảnh xem R2 chưa sẵn sàng.');
+          setStatus('Đang lưu nguyên mẫu R2 và tạo ảnh xem tối ưu…');
+          const output=await window.GDDPrivatePublishing.archiveAndPublish(file,supa,{
+            role:'vault',allowDownload:false,
+            onProgress:()=>setStatus('Đang lưu và kiểm tra ảnh tưởng niệm trên R2…')
+          });
+          obj.portrait_url=output.url;
         }
         if(!activeEditorId){
           obj.slug=makeSlug(name)+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
