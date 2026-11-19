@@ -28,6 +28,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: "Dung trang web nguyen ban de kiem thu, khong mo production"
+        run: |
+          set -euo pipefail
+          if grep -q "Website đang tạm bảo trì" index.html; then
+            git fetch --no-tags --depth=1 origin refs/heads/backup/pre-maintenance-2026-11-19:refs/remotes/origin/backup/pre-maintenance-2026-11-19
+            git show refs/remotes/origin/backup/pre-maintenance-2026-11-19:index.html > index.html
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          needle='<script defer src="app.js?v=20261119-free-egress-02"></script>'
+          if 'gdd-legacy-r2-images.js' not in s:
+              if s.count(needle)!=1: raise SystemExit('Cannot find app.js script hook in original homepage')
+              s=s.replace(needle,'<script defer src="gdd-legacy-r2-images.js?v=stage-disabled"></script>\n'+needle)
+          p.write_text(s)
+          PY
       - name: "Kiem tra cu phap"
         run: |
           node --check app.js
