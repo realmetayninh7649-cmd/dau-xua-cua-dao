@@ -187,10 +187,13 @@
     // Không đưa ảnh CHƯA có mã vào màn hình xem lớn khi đang xử lý bản lưu dấu.
     full.style.visibility=mustTrace?'hidden':'';
     if(!mustTrace)full.src=url;
-    if(personPhoto)orig.removeAttribute('href');
-    else if(!mustTrace)orig.href=window.GDDLegacyImages?.displayUrl?.(url)||url;
-    else orig.removeAttribute('href');
-    orig.hidden=personPhoto||mustTrace;
+    // Full-screen gallery links initially open only an approved display version.
+    // When stamping completes the link is replaced by the marked blob.
+    const safeOpen=window.GDDLegacyImages?.displayUrl?.(url)||url;
+    const legacyUnmapped=/^https:\/\/gwpdgubxoquhrfbolftq\.supabase\.co\/storage\/v1\/object\/public\//.test(url)&&safeOpen===url;
+    if(personPhoto||legacyUnmapped)orig.removeAttribute('href');
+    else orig.href=safeOpen;
+    orig.hidden=personPhoto||legacyUnmapped;
     orig.textContent=alreadyTraced?'Mở bản ảnh có lưu dấu ↗':'Mở bản ảnh xem ↗';
     download.hidden=personPhoto||noImageDownload;
     download.textContent='↓ Tải ảnh có lưu dấu';
