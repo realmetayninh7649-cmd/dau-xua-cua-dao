@@ -204,7 +204,7 @@
         }else{
           const button=document.createElement('button');button.type='button';button.className='gdd-album-tile detail-cover';
           button.setAttribute('aria-label','Xem ảnh tư liệu số '+(i+1));
-          const img=document.createElement('img');img.loading='lazy';img.src=url;
+          const img=document.createElement('img');img.loading='lazy';img.src=window.GDDLegacyImages?.displayUrl(url)||url;
           if(item.photo_code)img.dataset.photoCode=item.photo_code;
           img.alt=item.caption?.trim()||'Ảnh tư liệu số '+(i+1);
           button.appendChild(img);
