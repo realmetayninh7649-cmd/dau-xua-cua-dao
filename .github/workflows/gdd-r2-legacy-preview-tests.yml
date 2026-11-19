@@ -14,7 +14,7 @@ permissions:
 jobs:
   test-preview-only:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,3 +29,7 @@ jobs:
           node --check app.js
           node --check dao-su-albums.js
           node --test tests/gdd-r2-legacy-bridge.test.mjs
+      - name: "Wrangler dry run: confirm Worker can bundle without uploading"
+        run: |
+          npx --yes wrangler@4.159.0 deploy --dry-run --config workers/gdd-r2-gateway/wrangler.jsonc --outdir /tmp/gdd-r2-deploy-dry-run
+          echo "WRANGLER BUNDLE PASS — no Cloudflare API called for deployment"
