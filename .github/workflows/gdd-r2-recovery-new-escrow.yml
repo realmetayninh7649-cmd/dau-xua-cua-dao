@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - "maintenance-tasks/gdd-new-recovery-rsa-public-20261119.pem"
+      - ".github/workflows/gdd-r2-recovery-new-escrow.yml"
 permissions:
   contents: read
 jobs:
@@ -22,6 +23,7 @@ jobs:
           GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
           GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
         run: |
+          python3 - <<'PY'
           import os,re,json,base64,secrets,pathlib
           import boto3
           from botocore.config import Config
@@ -54,6 +56,7 @@ jobs:
           out=pathlib.Path("/tmp/gdd-new-recovery");out.mkdir(parents=True,mode=0o700,exist_ok=True)
           (out/"GDD-R2-PRIVATE-KEY-WRAPPED-20261119.json").write_text(json.dumps(payload))
           print("Success: recovery key re-wrapped to new public RSA key. No plaintext output.")
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: gdd-new-recovery-escrow-${{ github.run_id }}
