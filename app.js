@@ -305,13 +305,14 @@ function videoSource(raw){
       if(!el)return;
       if(kind==='documents')el.hidden=state.documentSubfolder==='browse';
       el.innerHTML=rows.length?rows.map(({record:x,originKind})=>{
-        const src=state.admin?imageFromRecord(x):'';
+        // Published digitized documents use lazy R2 WebP thumbnails; other public lists remain lightweight.
+        const src=(state.admin||(kind==='documents'&&originKind==='documents'))?imageFromRecord(x):'';
         const meta=originKind==='obituaries'?x.memorial_date:
           originKind==='documents'?[documentSubfolderTitle(x.subfolder_code),x.document_number,x.document_date].filter(Boolean).join(' · '):
           sectionNames[originKind]||'';
         const preview=state.admin&&originKind==='videos'&&kind==='videos'
           ?`<div class="archive-thumb video-preview-slot" data-video-id="${escape(x.id)}">${videoPoster(x)}</div>`
-          :`<div class="archive-thumb" data-gdd-trace-code="${escape(x.archive_code||'')}">${src?`<img src="${escape(src)}" alt="${escape(x.title)}" loading="lazy">`:`<div aria-hidden="true">${kind==='obituaries'?'✧':'▤'}</div>`}</div>`;
+          :`<div class="archive-thumb" data-gdd-trace-code="${escape(x.archive_code||'')}">${src?`<img src="${escape(src)}" alt="Ảnh trang đầu văn kiện: ${escape(x.title)}" loading="lazy" decoding="async" fetchpriority="low">`:`<div aria-hidden="true">${kind==='obituaries'?'✧':'▤'}</div>`}</div>`;
         const description=String(x.summary||x.caption||x.body||'Tư liệu đang được bổ sung nội dung.').replace(/\s+/g,' ').slice(0,360);
         const readUrl=window.GDDDocumentReader?.readerUrl(x.file_url)||x.file_url;
         const readerLink=originKind==='documents'&&

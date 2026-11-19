@@ -18,7 +18,7 @@ function fakeDocument(){
     addEventListener(){},
     createElement(tag){
       return {nodeName:tag,style:{},setAttribute(){},remove(){},appendChild(){},
-        getContext(){return {drawImage(){}}},toDataURL(){return 'data:image/png;base64,iVBORw0KGgo='}};
+        getContext(){return {drawImage(){},fillRect(){}}},toDataURL(type){return 'data:'+(type||'image/png')+';base64,iVBORw0KGgo='}};
     }
   };
 }
@@ -34,10 +34,13 @@ class FakeFileReader{
     this.onload?.();
   }
 }
-function mockEnvironment({fetchFunction}={}){
+function mockEnvironment({fetchFunction,imageWidth=1800,imageHeight=2600}={}){
+  class SizedFakeImage extends FakeImage{
+    constructor(){super();this.naturalWidth=imageWidth;this.naturalHeight=imageHeight;}
+  }
   const c={window:{addEventListener(){}},document:fakeDocument(),
     MutationObserver:class{observe(){} disconnect(){}},
-    Image:FakeImage,
+    Image:SizedFakeImage,
     FileReader:FakeFileReader,
     Blob,
     URL, location:{href:'https://dauxuacuadao.info.vn/',
@@ -115,10 +118,34 @@ test('Original JPEG is embedded byte-for-byte (no 1400px resize, no JPEG quality
     blob:async()=>new Blob([jpeg],{type:'image/jpeg'})
   })});
   const image=await m.fullResolutionPrintScan(base+'documents/test-original.jpg');
-  assert.equal(image.width,4200);
-  assert.equal(image.height,6000);
+  assert.equal(image.width,1800);
+  assert.equal(image.height,2600);
   assert.equal(image.data.slice(0,23),'data:image/jpeg;base64,');
   assert.deepEqual(Buffer.from(image.data.split(',')[1],'base64'),Buffer.from(jpeg));
+});
+
+test('Oversized photographic scan is reduced only to 300-DPI A4 pixel limits, preserving its orientation',async()=>{
+  const jpeg=Uint8Array.from([0xff,0xd8,0xff,0xe0,0,1,2,3,4,5,6,7]);
+  const m=mockEnvironment({
+    imageWidth:4200,imageHeight:6000,
+    fetchFunction:async()=>({ok:true,blob:async()=>new Blob([jpeg],{type:'image/jpeg'})})
+  });
+  const scan=await m.fullResolutionPrintScan(base+'documents/huge.jpg');
+  assert.ok(scan.width<=2480&&scan.height<=3508);
+  assert.ok(scan.width>1800&&scan.height>2600);
+  assert.ok(Math.abs(scan.width/scan.height-4200/6000)<.002);
+  assert.ok(scan.data.startsWith('data:image/jpeg;base64,'));
+});
+
+test('Landscape oversized scan is capped to 3508x2480, not portrait letterboxing',async()=>{
+  const jpeg=Uint8Array.from([0xff,0xd8,0xff,0xe0,0,1,2,3,4,5,6,7]);
+  const m=mockEnvironment({
+    imageWidth:6200,imageHeight:4400,
+    fetchFunction:async()=>({ok:true,blob:async()=>new Blob([jpeg],{type:'image/jpeg'})})
+  });
+  const scan=await m.fullResolutionPrintScan(base+'documents/landscape.jpg');
+  assert.ok(scan.width<=3508&&scan.height<=2480);
+  assert.ok(scan.width>scan.height);
 });
 
 test('Failed source scan stops entire print export; no omitted pages',async()=>{
@@ -144,4 +171,15 @@ test('No digitized document scans must fail, not create a text-only PDF',()=>{
   const m=mockEnvironment();
   assert.throws(()=>m.documentScanSources({...record,documentFileUrl:'',cover:'',gallery:[]}),
     /chưa có ảnh chụp tài liệu/);
+});
+
+test('Digitized public catalog renders native first-page previews through lazy R2 image relay, not blank placeholders',()=>{
+  const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+  const css=fs.readFileSync(new URL('../gdd-document-folders.css',import.meta.url),'utf8');
+  assert.match(app,/kind==='documents'&&originKind==='documents'/);
+  assert.match(app,/const src=\(state\.admin\|\|\(kind==='documents'&&originKind==='documents'\)\)\?imageFromRecord\(x\):''/);
+  assert.match(app,/loading="lazy" decoding="async" fetchpriority="low"/);
+  assert.match(app,/const imageFromRecord=x=>displayImageUrl\(/);
+  assert.match(css,/#tai-lieu-so-hoa #document-grid \.archive-thumb > img/);
+  assert.match(css,/object-fit:contain/);
 });
