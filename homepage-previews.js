@@ -98,7 +98,7 @@
       const present=new Set([...list.querySelectorAll('[data-open-kind="posts"][data-id]')].map(x=>x.dataset.id));
       for(const p of data||[]){
         if(present.has(p.id))continue;
-        const image=safeURL(p.cover_url);
+        const rawImage=safeURL(p.cover_url);const image=window.GDDLegacyImages?.displayUrl(rawImage)||rawImage;
         const artwork=image?`<div class="editorial-placeholder" aria-hidden="true"><span>✦</span><strong>TƯ LIỆU ĐẠO SỬ</strong><small>BIÊN KHẢO</small></div><img src="${esc(image)}" alt="Ảnh bìa ${esc(p.title)}" loading="lazy">`:
           '<div class="editorial-placeholder" aria-hidden="true"><span>✦</span><strong>TƯ LIỆU ĐẠO SỬ</strong><small>BIÊN KHẢO</small></div>';
         const node=document.createElement('article');node.className='article-row editorial-article gdd-post-extra';
