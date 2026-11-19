@@ -197,7 +197,7 @@ function videoSource(raw){
     return newest(b)-newest(a);
   });
   const imageFromRecord=x=>displayImageUrl(x.cover_url||x.image_url||
-    (/\.(png|jpe?g|webp)(\?|$)/i.test(x.file_url||'')?x.file_url:''));
+    ((/\.(png|jpe?g|webp)(\?|$)/i.test(x.file_url||'')||window.GDDPrivatePublishing?.isPreviewURL?.(x.file_url))?x.file_url:''));
 
 
   // R2 public viewer: only an explicit approved page reader, never a raw PDF URL.
@@ -964,6 +964,10 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         btn.textContent='Hoàn tất ảnh còn lại';
         toast('Đã lưu bài. Một số ảnh chưa tải xong, có thể thử lại.');
         return;
+      }
+      if(data.published===true&&window.GDDPrivatePublishing?.publishLinkedImages){
+        try{await window.GDDPrivatePublishing.publishLinkedImages(state.supabase,kind,savedId);}
+        catch(publishError){r2LinkProblem=String(publishError?.message||publishError);}
       }
       await fetchData();
       if(kind==='people')window.dispatchEvent(new Event('gdd:people-anniversary-refresh'));
