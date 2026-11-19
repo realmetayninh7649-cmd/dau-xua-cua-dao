@@ -96,6 +96,10 @@ jobs:
           node --check gdd-r2-admin.js
           node --check workers/gdd-r2-gateway/client/uploader.mjs
           node --check gdd-memorial.js
+          node --check homepage-previews.js
+          node --check gdd-phase2-search.js
+          node --check gdd-legacy-r2-images.js
+          node --test tests/gdd-r2-legacy-bridge.test.mjs
           node --check gdd-festival-binh-ngo-2026.js
           node --check workers/gdd-r2-gateway/src/index.mjs
           node --check workers/gdd-r2-gateway/client/uploader.mjs
