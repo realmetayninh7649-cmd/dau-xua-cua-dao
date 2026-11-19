@@ -126,9 +126,13 @@ def safe_tarinfo(name,size):
 
 def process():
     cfg=json.loads(CONFIG.read_text("utf8"))
-    index=cfg.get("part")
-    if cfg.get("part_count")!=PART_COUNT or type(index) is not int or not 0<=index<PART_COUNT:
-        raise ValueError("Invalid one-shard transfer request")
+    index=int(os.environ["GDD_BACKUP_PART_INDEX"]) if "GDD_BACKUP_PART_INDEX" in os.environ else cfg.get("part")
+    allowed=cfg.get("parts",[cfg.get("part")])
+    if (cfg.get("part_count")!=PART_COUNT or type(index) is not int
+       or not 0<=index<PART_COUNT or type(allowed) is not list
+       or not 1<=len(allowed)<=6 or index not in allowed
+       or len(set(allowed))!=len(allowed)):
+        raise ValueError("Invalid bounded shard transfer request")
     if not pathlib.Path("maintenance-tasks/r2-images-published-manifest.json").is_file():
         raise ValueError("Missing reference manifest")
     s3=s3_client()
