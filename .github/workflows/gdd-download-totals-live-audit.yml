@@ -1,0 +1,17 @@
+name: "GDD - Live total website downloads audit"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/gdd_download_totals_live_audit.py"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Verify deployed downloads tile and Supabase RPC (read-only)"
+        run: python3 scripts/gdd_download_totals_live_audit.py
