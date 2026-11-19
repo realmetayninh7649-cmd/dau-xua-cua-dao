@@ -73,7 +73,7 @@
   // The archived source URL is never rewritten in Supabase; admin always sees the original.
   const displayImageUrl=raw=>{
     const source=safeUrl(raw);
-    if(!source||state.admin)return source;
+    if(!source)return source;
     return safeUrl(window.GDDLegacyImages?.displayUrl(source)||source);
   };
   const date = s => {if(!s)return '';try{return new Date(s).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})}catch{return ''}};
@@ -763,24 +763,10 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     $('#admin-overlay').hidden=false;document.body.classList.add('modal-open');
     buildEditor();$('.admin-panel').scrollTop=120;
   }
-  async function uploadImage(file,kind){
-    if(!file)return '';
-    if(file.type==='application/pdf'){
-      if(kind!=='documents')throw Error('PDF chỉ dành cho mục Tài liệu số hóa.');
-      if(file.size>15*1024*1024)throw Error('PDF vượt quá 15 MB.');
-    }else{
-      if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
-      file=await window.GDDImageOptimizer.prepare(file,{onStatus:message=>{
-        const el=$('#form-message');if(el)el.textContent=message;
-      }});
-    }
-    const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','application/pdf':'pdf'};
-    if(!types[file.type])throw Error('Tệp không đúng định dạng hỗ trợ.');
-    const bucket=file.type==='application/pdf'?'dao-su-documents':'dao-su-images';
-    const path=`${kind}/${Date.now()}-${Math.random().toString(36).slice(2,11)}.${types[file.type]}`;
-    const {error}=await state.supabase.storage.from(bucket).upload(path,file,{contentType:file.type,upsert:false});
-    if(error)throw error;
-    return state.supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  // Images are now archived and published through GDDPrivatePublishing.
+  // The old Supabase public-upload helper has been disabled deliberately.
+  async function uploadImage(){
+    throw Error('Đã ngừng tải ảnh vào bucket Supabase công khai. Hãy sử dụng R2.');
   }
 
   // Video dưới 6 MB dùng tải thường; video lớn dùng TUS 6 MB/chunk để giảm lỗi mạng.
@@ -890,7 +876,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         if(!window.GDDR2?.archive)throw Error('Bộ bảo tồn nguyên mẫu R2 chưa tải xong. Hãy tải lại trang.');
         archivedPrimary=await window.GDDR2.archive(file,state.supabase,{
           recordKind:kind,role:'primary',
-          skipDerivatives:!!window.GDDImageOptimizer?.isImage(file),
+          skipDerivatives:false,
           onProgress:progress=>{
             if(progress.phase==='original')
               $('#form-message').textContent='Đang bảo tồn bản gốc trong R2: '+Math.round(progress.bytes/progress.total*100)+'%';
@@ -908,8 +894,18 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
           data.published=false;
           $('#form-message').textContent='PDF/Word nguyên mẫu đã lưu riêng tại R2. Bài này sẽ là bản nháp cho tới khi có bản xem an toàn.';
         }else{
-          const url=await uploadImage(file,kind);
-          data[kind==='documents'?'file_url':(['posts','videos','obituaries'].includes(kind)?'cover_url':'image_url')]=url;
+          if(!window.GDDPrivatePublishing?.publishArchivedImage)
+            throw Error('Bộ tạo bản xem R2 chưa sẵn sàng.');
+          if(archivedPrimary?.previewReady!==true||archivedPrimary?.downloadReady!==true)
+            throw Error('Ảnh gốc đã cất R2 nhưng chưa có bản xem được duyệt. Không tạo liên kết hỏng.');
+          const field=kind==='documents'?'file_url':(['posts','videos','obituaries'].includes(kind)?'cover_url':'image_url');
+          if(data.published===true){
+            const published=await window.GDDPrivatePublishing.publishArchivedImage(archivedPrimary,{allowDownload:kind==='documents'});
+            data[field]=published.url;
+          }else{
+            // The draft remains private; admin can publish the prepared image via R2 library.
+            data[field]=window.GDDPrivatePublishing.previewUrl(archivedPrimary.id);
+          }
         }
       }
       if(!record)data.slug=slugify(data.full_name||data.title)+'-'+Date.now().toString(36).slice(-6);
