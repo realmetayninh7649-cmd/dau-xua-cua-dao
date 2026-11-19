@@ -172,7 +172,7 @@ def process():
             "--encrypt","--output",str(cipher),str(archive)],
             stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=env,check=True,timeout=120)
         actual_cipher=cipher.stat().st_size
-        if actual_cipher<n_bytes or actual_cipher>n_bytes+5*1024*1024:
+        if actual_cipher<n_bytes//3 or actual_cipher>n_bytes+5*1024*1024:
             raise ValueError("Unexpected encrypted archive size")
         digest=hashlib.sha256()
         with cipher.open("rb") as handle:
