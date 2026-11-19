@@ -18,11 +18,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ID=$(python3 -c 'import json; p=json.load(open("maintenance-tasks/gdrive-cleanup-artifact.json")); n=p.get("artifact_id"); assert type(n) is int and n>100000; print(n)')
-          NAME=$(gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ID" --jq '.name')
-          case "$NAME" in
-            gdd-drive-backup-*) ;;
-            *) echo "Refused cleanup: unexpected artifact category"; exit 1;;
-          esac
-          gh api -X DELETE "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ID"
-          echo "Encrypted temporary artifact safely purged after Drive verification"
+          python3 - <<'PY' > /tmp/gdd-artifacts-to-delete.txt
+          import json
+          conf=json.load(open("maintenance-tasks/gdrive-cleanup-artifact.json"))
+          ids=conf.get("artifact_ids",[conf.get("artifact_id")])
+          if not isinstance(ids,list) or not 1<=len(ids)<=6 or len(set(ids))!=len(ids) or any(type(x) is not int or x<=100000 for x in ids):
+              raise SystemExit("Invalid artifact cleanup request")
+          for aid in ids:print(aid)
+          PY
+          # Check ALL names before deleting any artifact.
+          while read -r ID; do
+            NAME=$(gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ID" --jq '.name')
+            case "$NAME" in
+              gdd-drive-backup-*) ;;
+              *) echo "Refused cleanup: unexpected artifact category"; exit 1;;
+            esac
+          done < /tmp/gdd-artifacts-to-delete.txt
+          while read -r ID; do
+            gh api -X DELETE "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ID"
+            echo "Private encrypted transport artifact $ID removed after confirmed Drive transfer"
+          done < /tmp/gdd-artifacts-to-delete.txt
