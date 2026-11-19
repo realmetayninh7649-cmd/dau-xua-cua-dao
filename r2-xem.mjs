@@ -140,5 +140,23 @@ el('r2-prev').addEventListener('click',()=>show(page-1));
 el('r2-next').addEventListener('click',()=>show(page+1));
 el('r2-zoom').addEventListener('change',e=>{zoom=Number(e.target.value)||100;if(info)show(page)});
 window.addEventListener('pagehide',()=>pdfDoc?.destroy?.().catch(()=>{}),{once:true});
-if(sourceRaw&&!id)initializeLegacy(sourceRaw);
-else initializeApproved();
+// Known, verified legacy PDF origins are now served as pre-rendered R2 JPEG pages.
+// Shared source= links are redirected too; do not fetch the public PDF itself.
+const SAFE_LEGACY_PDF_IDS=Object.freeze({
+  'documents/1794684373312-e808f501-1bba-458d-b82f-f5f096479426.pdf':'a4bf8d79-a7a3-51cb-909c-0a4681902c01',
+  'documents/1794684462288-fc373424-39bf-4d8d-950c-2195aa01a603.pdf':'203886e9-cd67-58ab-96b3-ee4ff97b401a',
+  'media/1794860043784-52816aff-f9f7-4790-9e91-d87d7a86fc96.pdf':'1105db24-e971-5f1a-b632-d3b9f41b3b39'
+});
+function mappedR2Asset(raw){
+  const source=validatePublicSource(raw);
+  if(!source||source.search||source.hash)return '';
+  const prefix='/storage/v1/object/public/dao-su-documents/';
+  if(!source.pathname.startsWith(prefix))return '';
+  const key=source.pathname.slice(prefix.length);
+  return Object.hasOwn(SAFE_LEGACY_PDF_IDS,key)?SAFE_LEGACY_PDF_IDS[key]:'';
+}
+if(sourceRaw&&!id){
+  const approved=mappedR2Asset(sourceRaw);
+  if(approved){const target=new URL(location.href);target.searchParams.delete('source');target.searchParams.set('asset',approved);location.replace(target.href)}
+  else initializeLegacy(sourceRaw);
+}else initializeApproved();
