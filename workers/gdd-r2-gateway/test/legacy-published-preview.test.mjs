@@ -28,11 +28,13 @@ test('exact pre-approved set has 700 published image paths',()=>{
   assert.equal(LEGACY_PUBLISHED_PATHS.has('people/private-draft.jpg'),false);
 });
 
-test('current production router fails closed during maintenance, never reads the R2 bucket',async()=>{
+test('production route serves only an already published WebP, never original bytes',async()=>{
   const {env,reads}=fixture();
   const response=await worker.fetch(new Request(base+example+'.webp'),env);
-  assert.equal(response.status,404);
-  assert.equal(reads.length,0);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('content-type'),'image/webp');
+  assert.deepEqual(reads,[expectedKey]);
+  assert.ok(reads.every(key=>!key.startsWith('legacy-private-images-v1/')));
 });
 
 test('when explicitly enabled for a future launch, only a published WebP can be read',async()=>{
