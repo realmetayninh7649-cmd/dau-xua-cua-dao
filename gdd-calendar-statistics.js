@@ -36,9 +36,10 @@
             <div class="gdd-visitor-block">
               <div class="gdd-visitor-unit"><span class="gdd-status-dot" aria-hidden="true"></span><span>Đang trực tuyến</span><strong id="gdd-online-count" aria-live="polite">—</strong></div>
               <div class="gdd-visitor-unit"><span class="gdd-visits-symbol" aria-hidden="true">↗</span><span>Tổng lượt truy cập</span><strong id="gdd-total-visits" aria-live="polite">—</strong></div>
+              <div class="gdd-visitor-unit gdd-download-unit"><span class="gdd-download-symbol" aria-hidden="true">↓</span><span>Tổng lượt tải về</span><strong id="gdd-total-downloads" aria-live="polite">—</strong></div>
             </div>
             <p class="gdd-visitor-note" id="gdd-visitor-note">Đang kiểm tra bộ đếm lượt truy cập…</p>
-            <p class="gdd-panel-footnote">Trực tuyến: số phiên hoạt động trong 5 phút gần nhất. Tổng truy cập: số phiên ghi nhận từ khi bật bộ đếm; không phải lượt xem trang.</p>
+            <p class="gdd-panel-footnote">Trực tuyến: số phiên hoạt động trong 5 phút gần nhất. Tổng truy cập: số phiên đã ghi nhận. Tổng tải về: lượt yêu cầu tải qua các nút của Website từ khi bật thống kê; không gồm lượt xem hay lưu thủ công.</p>
           </section>
         </div>
       </div>
@@ -117,12 +118,12 @@
   .gdd-statistics .number-band .number-grid strong{font:600 clamp(28px,2.8vw,37px)/1.25 'Noto Serif',Georgia,serif!important;color:#145749!important}
   .gdd-statistics .number-band .number-grid span{font:400 11px/1.45 'Be Vietnam Pro',sans-serif!important;color:#6c726b!important;overflow-wrap:anywhere}
   .gdd-statistics .number-band .number-message{display:none!important}
-  .gdd-visitor-block{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:25px 0 0;border-top:1px solid #e4decf;padding-top:22px}
+  .gdd-visitor-block{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:25px 0 0;border-top:1px solid #e4decf;padding-top:22px}
   .gdd-visitor-unit{min-width:0;border-radius:7px;border:1px solid #e2ddcf;background:#f7f5ec;padding:14px 11px;display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:10px;align-items:center}
   .gdd-visitor-unit>span:nth-child(2){font:600 12px/1.5 'Be Vietnam Pro',sans-serif;color:#55665c}
   .gdd-visitor-unit strong{grid-column:1/-1;font:600 33px/1.25 'Noto Serif',Georgia,serif;color:#195548;text-align:center}
   .gdd-status-dot{display:inline-block;width:9px;height:9px;background:#398570;border-radius:50%;box-shadow:0 0 0 4px #e4ebe4}
-  .gdd-visits-symbol{display:inline-block;font-size:21px;color:#af8a51}
+  .gdd-visits-symbol,.gdd-download-symbol{display:inline-block;font-size:21px;color:#af8a51}
   .gdd-visitor-note{font:400 11px/1.6 'Be Vietnam Pro',sans-serif;color:#7d806f;margin:12px 0 0}
   @media(max-width:900px){.gdd-dash-grid{grid-template-columns:1fr;gap:18px}.gdd-archive-dashboard{padding-bottom:46px}}
   @media(max-width:420px){.gdd-dash-card{padding:16px}.gdd-panel-head h3{font-size:15px}.gdd-cal-day{min-height:49px}.gdd-cal-day .gdd-solar{font-size:13px}.gdd-cal-day .gdd-lunar{font-size:9px}.gdd-visitor-unit>span:nth-child(2){font-size:10px}}
@@ -161,7 +162,7 @@
   .gdd-visitor-unit>span:nth-child(2){font-size:10px;line-height:1.3;}
   .gdd-visitor-unit strong {font-size:23px;line-height:1.1;}
   .gdd-status-dot {width:6px;height:6px;box-shadow:0 0 0 2px #e4ebe4;}
-  .gdd-visits-symbol {font-size:14px;}
+  .gdd-visits-symbol,.gdd-download-symbol {font-size:14px;}
   .gdd-visitor-note {margin-top:6px;font-size:9.5px;line-height:1.5;}
   @media(max-width:900px){.gdd-dash-grid{grid-template-columns:1fr;gap:12px;}}
   @media(max-width:420px){
@@ -175,6 +176,10 @@
     .gdd-cal-day .gdd-lunar{font-size:8px;}
     .gdd-panel-head h3{font-size:12px;}
     .gdd-statistics .number-band .number-grid span{font-size:9px!important;}
+  }
+  @media(max-width:350px){
+    .gdd-visitor-block{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .gdd-download-unit{grid-column:1/-1;}
   }
   @media(max-width:340px){
     .gdd-cal-day{min-height:30px;}
