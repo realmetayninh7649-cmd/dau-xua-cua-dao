@@ -1344,7 +1344,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
         .eq('owner_kind',kind).eq('owner_id',id).order('sort_order',{ascending:false}).limit(1);
       if(topError)throw topError;
       position=Math.max(0,top?.[0]?.sort_order||0);
-      const storage=supa.storage.from(BUCKET);
+      const {data:albumOwner,error:ownerError}=await supa.from(kind).select('published').eq('id',id).single();
+      if(ownerError||!albumOwner)throw Error('Chưa xác minh được quyền và trạng thái công bố của bài chứa album.');
+      const albumPublished=albumOwner.published===true;
       const worker=async()=>{
         while(!firstError&&nextIndex<total){
           const index=nextIndex++,item=items[index];
@@ -1357,7 +1359,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
             // Chỉ bảo tồn File GỐC, không nén, không làm thay đổi bytes trong R2.
             if(!item.archivedResult){
               item.archivedResult=await window.GDDR2.archive(item.file,supa,{
-                recordKind:kind,recordId:id,role:'album',skipDerivatives:!docFile,
+                recordKind:kind,recordId:id,role:'album',skipDerivatives:false,
                 onProgress:info=>{
                   if(info.phase==='original'&&info.total){
                     inform('Lưu R2 · '+(index+1)+'/'+total+' · '
@@ -1368,25 +1370,17 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
                 }
               });
             }
-            if(!docFile&&!attached){
-              if(!window.GDDImageOptimizer)throw Error('Bộ tối ưu ảnh chưa tải xong. Hãy tải lại trang.');
-              if(!item.preparedFile){
-                item.preparedFile=await imageTask(()=>window.GDDImageOptimizer.prepare(item.file,{
-                  onStatus:message=>inform(message)
-                }));
-              }
-              if(!item.uploadedUrl){
-                const extension=EXT[item.preparedFile.type];
-                if(!extension)throw Error('Không xác định được định dạng ảnh: '+item.file.name);
-                const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
-                const path=kind+'/'+Date.now()+'-'+suffix+'.'+extension;
-                inform('Đang lưu ảnh xem · '+(index+1)+'/'+total+' · '+item.file.name);
-                const {error:upError}=await storage.upload(path,item.preparedFile,{
-                  contentType:item.preparedFile.type,cacheControl:'3600',upsert:false
-                });
-                if(upError)throw upError;
-                item.uploadedUrl=storage.getPublicUrl(path).data.publicUrl;
-              }
+            if(!docFile&&!attached&&!item.uploadedUrl){
+              if(!window.GDDPrivatePublishing?.publishArchivedImage)
+                throw Error('Bộ tạo bản xem R2 chưa sẵn sàng.');
+              if(item.archivedResult?.previewReady!==true||item.archivedResult?.downloadReady!==true)
+                throw Error('Ảnh gốc đã cất ở R2 nhưng chưa xử lý xong ảnh xem/in. Xin thử lại sau.');
+              item.uploadedUrl=albumPublished
+                ?(await window.GDDPrivatePublishing.publishArchivedImage(item.archivedResult,{
+                    allowDownload:kind==='documents'
+                  })).url
+                :window.GDDPrivatePublishing.previewUrl(item.archivedResult.id);
+              inform('Đã xác minh bản xem R2 '+(index+1)+'/'+total);
             }
           }catch(error){preparationError=error;}
           // Với ảnh lỗi, luôn chờ tới lượt rồi nhả khóa để không kẹt toàn bộ hàng đợi.
@@ -1430,29 +1424,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           }
           if(!committed)continue;
           if(!docFile){
-            // Bản lưu dấu chỉ áp dụng cho ảnh xem; R2 gốc vẫn nguyên vẹn.
-            if(attached?.photo_code&&window.GDDTrace&&!item.stamped){
-              try{
-                const traced=await imageTask(()=>window.GDDTrace.stampedBlob(
-                  item.preparedFile||item.file,attached.photo_code
-                ));
-                const suffix=globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2);
-                const tracePath=kind+'/'+Date.now()+'-'+suffix+'-trace.jpg';
-                const {error:traceError}=await storage.upload(tracePath,traced,{
-                  contentType:'image/jpeg',cacheControl:'3600',upsert:false
-                });
-                if(traceError)throw traceError;
-                const traceURL=storage.getPublicUrl(tracePath).data.publicUrl;
-                const {error:linkError}=await supa.from(TABLE).update({
-                  image_url:traceURL
-                }).eq('id',attached.id);
-                if(linkError)throw linkError;
-                item.stamped=true;
-              }catch(error){
-                console.warn('[GDD Trace] Chưa tạo được bản ảnh có dòng lưu dấu:',error);
-                warnings.push('Mã '+attached.photo_code+': '+(error?.message||error));
-              }
-            }
+            // A stamp is added to the visitor's displayed/downloaded derivative
+            // by GDDTraceDisplay; never upload a second public original to Supabase.
+            item.stamped=true;
             item.saved=true;done++;
           }
           item.preparedFile=null;
