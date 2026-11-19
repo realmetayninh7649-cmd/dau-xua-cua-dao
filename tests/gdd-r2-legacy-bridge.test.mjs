@@ -42,3 +42,16 @@ test('staged public image bridge leaves administration and source data untouched
   assert.match(album,/else\{img\.src=safeUrl\(row\.image_url\)/);
   assert.match(app,/data-gdd-archive-qr/);
 });
+
+
+test('all 700 existing published Supabase image URLs produce deterministic WebP preview candidates',()=>{
+  const relay=bridge();
+  const manifest=JSON.parse(fs.readFileSync(new URL('../maintenance-tasks/r2-images-published-manifest.json',import.meta.url),'utf8'));
+  assert.equal(manifest.objects.length,700);
+  for(const entry of manifest.objects){
+    const originalUrl='https://gwpdgubxoquhrfbolftq.supabase.co/storage/v1/object/public/dao-su-images/'+entry.path;
+    const expected='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/legacy-preview/'+entry.path+'.webp';
+    assert.equal(relay.candidate(originalUrl),expected,'Mapping failed: '+entry.path);
+    assert.equal(relay.displayUrl(originalUrl),originalUrl,'Public cutover unexpectedly enabled: '+entry.path);
+  }
+});
