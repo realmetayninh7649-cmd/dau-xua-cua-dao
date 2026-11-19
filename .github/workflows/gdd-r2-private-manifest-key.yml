@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/gdd-r2-private-manifest-key.yml"
+      - "scripts/r2_setup_private_manifest_key.py"
 permissions:
   contents: read
 concurrency:
