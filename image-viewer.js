@@ -109,8 +109,8 @@
         <button class="gdd-image-icon" id="gdd-image-plus" type="button" aria-label="Phóng to">+</button>
         <button class="gdd-image-icon" id="gdd-image-reset" type="button" aria-label="Vừa khung" style="font-size:20px">↺</button>
       </div>
-      <button class="gdd-image-download" id="gdd-image-download" type="button">↓ Tải ảnh gốc</button>
-      <a class="gdd-image-download" id="gdd-image-original" href="#" target="_blank" rel="noopener noreferrer" style="background:#ffffff17;color:white;text-decoration:none">Mở ảnh gốc ↗</a>
+      <button class="gdd-image-download" id="gdd-image-download" type="button">↓ Tải ảnh có lưu dấu</button>
+      <a class="gdd-image-download" id="gdd-image-original" href="#" target="_blank" rel="noopener noreferrer" style="background:#ffffff17;color:white;text-decoration:none">Mở bản ảnh xem ↗</a>
       <div class="gdd-image-caption" id="gdd-image-caption">Chụm hai ngón tay để phóng to; kéo để xem chi tiết.</div>
     </div>`;
   document.body.appendChild(viewer);
@@ -178,7 +178,7 @@
     title=(item.title||'Ảnh tư liệu').trim();source=url;personPhoto=Boolean(item.isPerson);
     if(tracedPreviewURL){URL.revokeObjectURL(tracedPreviewURL);tracedPreviewURL='';}
     noImageDownload=Boolean(item.noDownload);
-    const photoCode=item.photoCode;
+    const photoCode=window.GDDTrace?.validCode(item.photoCode)?item.photoCode:'TU-LIEU-CO-LUU-DAU';
     const alreadyTraced=Boolean(window.GDDTrace?.isStampedURL(url)||
       window.GDDTraceDisplay?.isStampedBlob(url));
     const mustTrace=Boolean(photoCode&&window.GDDTrace?.validCode(photoCode)&&!alreadyTraced);
@@ -188,10 +188,10 @@
     full.style.visibility=mustTrace?'hidden':'';
     if(!mustTrace)full.src=url;
     if(personPhoto)orig.removeAttribute('href');
-    else if(!mustTrace)orig.href=url;
+    else if(!mustTrace)orig.href=window.GDDLegacyImages?.displayUrl?.(url)||url;
     else orig.removeAttribute('href');
     orig.hidden=personPhoto||mustTrace;
-    orig.textContent=alreadyTraced?'Mở bản ảnh có lưu dấu ↗':'Mở ảnh gốc ↗';
+    orig.textContent=alreadyTraced?'Mở bản ảnh có lưu dấu ↗':'Mở bản ảnh xem ↗';
     download.hidden=personPhoto||noImageDownload;
     download.textContent='↓ Tải ảnh có lưu dấu';
     loading.hidden=false;loading.textContent=mustTrace?'Đang chuẩn bị bản ảnh có lưu dấu…':'Đang mở ảnh…';
@@ -220,8 +220,9 @@
         // Không giấu lỗi: nguồn ngoài thiếu CORS thì bản xem còn chưa có dòng lưu dấu.
         full.dataset.gddTraceFailed='1';
         full.style.visibility='';
-        full.src=url;
-        caption.textContent='Nguồn ảnh chưa cho phép thêm dòng lưu dấu tự động; đang xem bản nguồn.';
+        full.src=window.GDDLegacyImages?.displayUrl?.(url)||url;
+        orig.hidden=true;download.hidden=true;
+        caption.textContent='Nguồn ảnh chưa hỗ trợ tạo bản lưu dấu, nên tạm khóa tải trực tiếp.';
         console.info('[GDD Trace] Nguồn ảnh không cho phép tạo bản lưu dấu:',err?.message||err);
       });
     }
@@ -393,7 +394,7 @@
       noticeDownload(btn,'Đã yêu cầu lưu bản ảnh có dòng nguồn và mã tư liệu (nếu đã cấp).');
     } catch(err) {
       console.warn('[GDD Photo Download]',err);
-      noticeDownload(btn,'Nguồn ảnh không cho tải trực tiếp. Nhấn “Mở ảnh gốc”, rồi chạm giữ ảnh để lưu trên iPhone.');
+      noticeDownload(btn,'Nguồn ảnh chưa cho phép tải bản có lưu dấu. Xin thử lại sau.');
     } finally {btn.disabled=false;btn.textContent=old;}
   }
   download.addEventListener('click',()=>{if(!personPhoto&&!noImageDownload)downloadImage(source,title,download,gallery[galleryIndex]?.photoCode);});
