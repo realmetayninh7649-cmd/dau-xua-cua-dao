@@ -31,7 +31,7 @@
   function makeBar(){
     const x=document.createElement('section');x.className='gdd-doc-export';
     const onlyScans=route()?.kind==='documents';
-    x.innerHTML='<h3>Lưu trữ và trích dẫn tư liệu</h3><p>'+(onlyScans?'PDF: chỉ các trang ảnh văn kiện, đúng thứ tự, giữ độ phân giải gốc để in khổ A4; không kèm chữ, bìa hay chú thích. Word: có đầy đủ phần thuyết minh, chú thích và nguồn tư liệu.':'Tải toàn văn bài viết, ảnh, chú thích và nguồn tư liệu đã công bố. Tệp được tạo trên thiết bị; website không lưu thêm bản PDF hay Word.')+'</p><div class="gdd-doc-actions"><button type="button" data-gdd-document="pdf">↓ Tải PDF</button><button type="button" data-gdd-document="docx">↓ Tải Word</button></div><div class="gdd-doc-status" role="status" aria-live="polite"></div>';
+    x.innerHTML='<h3>Lưu trữ và trích dẫn tư liệu</h3><p>'+(onlyScans?'PDF: chỉ ảnh văn kiện, đúng thứ tự, tự tối ưu tối đa 300 DPI trên giấy A4 để in; ảnh nhỏ giữ nguyên, không thêm bìa hay chữ. Word: có đầy đủ phần thuyết minh, chú thích và nguồn tư liệu.':'Tải toàn văn bài viết, ảnh, chú thích và nguồn tư liệu đã công bố. Tệp được tạo trên thiết bị; website không lưu thêm bản PDF hay Word.')+'</p><div class="gdd-doc-actions"><button type="button" data-gdd-document="pdf">↓ Tải PDF</button><button type="button" data-gdd-document="docx">↓ Tải Word</button></div><div class="gdd-doc-status" role="status" aria-live="polite"></div>';
     return x;
   }
   // Bộ thủ bút này là bài biên khảo gốc nhưng được người dùng chỉ rõ trong mục Hình ảnh.
@@ -233,19 +233,33 @@
       });
       const width=image.naturalWidth,height=image.naturalHeight;
       if(!width||!height)throw Error('Ảnh không có kích thước hợp lệ');
-      if(jpeg||png){
-        // Embed the stored original JPEG/PNG bytes, no 1400px resize or 82% JPEG recompression.
+      // Printing A4 at 300 DPI needs at most 2480x3508 pixels (or landscape 3508x2480).
+      // Do not upscale smaller archival scans, and never edit or upload their source files.
+      const landscape=width>height;
+      const maxW=landscape?3508:2480,maxH=landscape?2480:3508;
+      const scale=Math.min(1,maxW/width,maxH/height);
+      if(scale===1 && (jpeg||png)){
+        // Preserve native JPEG/PNG bytes when already within the 300-DPI A4 print budget.
         return {data:await readBlobDataURL(blob,jpeg?'image/jpeg':'image/png'),width,height};
       }
-      // PDFMake cannot embed WebP natively. Convert to lossless PNG at native pixel dimensions.
-      if(width*height>45000000)throw Error('Ảnh WebP quá lớn để chuyển PNG nguyên kích cỡ trên điện thoại');
+      const outW=Math.max(1,Math.round(width*scale));
+      const outH=Math.max(1,Math.round(height*scale));
+      if(outW*outH>12000000)throw Error('Ảnh quá lớn để xử lý PDF A4 an toàn trên điện thoại');
       const canvas=document.createElement('canvas');
-      canvas.width=width;canvas.height=height;
+      canvas.width=outW;canvas.height=outH;
       try{
-        const ctx=canvas.getContext('2d');
+        const ctx=canvas.getContext('2d',{alpha:false});
         if(!ctx)throw Error('Không thể mở vùng xử lý ảnh');
-        ctx.drawImage(image,0,0,width,height);
-        return {data:canvas.toDataURL('image/png'),width,height};
+        ctx.imageSmoothingEnabled=true;
+        ctx.imageSmoothingQuality='high';
+        ctx.fillStyle='#fff';
+        ctx.fillRect(0,0,outW,outH);
+        ctx.drawImage(image,0,0,outW,outH);
+        // JPEG scans are exported at 94% quality, instead of embedding oversized originals.
+        // PNG and WebP preserve handwriting and fine-line detail via lossless PNG encoding.
+        const mime=jpeg?'image/jpeg':'image/png';
+        const data=canvas.toDataURL(mime,jpeg?.94:undefined);
+        return {data,width:outW,height:outH};
       }finally{canvas.width=canvas.height=0}
     }finally{URL.revokeObjectURL(temp)}
   }
@@ -464,7 +478,7 @@
           try{make.createPdf(imageOnlyDocumentPdf(record,scans)).getBlob(resolve)}catch(e){reject(e)}
         });
         attachBlob(blob,record,'pdf',bar);
-        progress('Đã tạo bản PDF chỉ có '+scans.length+' trang ảnh tư liệu ở độ phân giải gốc. Bấm liên kết bên dưới để lưu và in.');
+        progress('Đã tạo PDF '+scans.length+' trang ảnh tư liệu, tối ưu theo khổ A4 300 DPI (không tự lưu lên kho). Bấm liên kết bên dưới để lưu và in.');
       }else{
         const images=await prepareImages(record,progress);
         progress('Đang tạo bản '+(isPdf?'PDF':'Word')+'…');
