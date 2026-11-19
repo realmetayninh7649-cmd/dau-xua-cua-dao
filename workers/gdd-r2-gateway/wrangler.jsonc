@@ -19,5 +19,18 @@
   "vars": {
     "SUPABASE_URL": "https://gwpdgubxoquhrfbolftq.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_9l_chqaqGQ69Nfx63Chjrw_RA2yPaGa"
-  }
+  },
+  "cache": {
+    "enabled": true
+  },
+  "ratelimits": [
+    {
+      "name": "GDD_PUBLIC_LIMIT",
+      "namespace_id": "26001119",
+      "simple": {
+        "limit": 500,
+        "period": 60
+      }
+    }
+  ]
 }
