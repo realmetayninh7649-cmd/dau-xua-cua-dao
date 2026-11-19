@@ -98,7 +98,7 @@ def inventory():
     items={}
     list_prefix(public_publishable_key(),"",set(),items)
     if len(items)!=TOTAL_STORAGE_OBJECTS:
-        raise ValueError("Source inventory mismatch, no copying permitted")
+        raise ValueError("Safe source object-count mismatch: expected 831 got "+str(len(items)))
     if sum(item["bytes"] for item in items.values())!=TOTAL_STORAGE_BYTES:
         raise ValueError("Source bytes changed, no copying permitted")
     if Counter(name.split("/")[0] for name in items)!=Counter(EXPECTED_COUNTS):
@@ -195,6 +195,9 @@ def main():
 if __name__=="__main__":
     try:main()
     except Exception as exc:
-        print("PRIVATE ARCHIVE STOPPED: "+type(exc).__name__+
+        safe_message=str(exc)
+        if not re.fullmatch(r"(Safe source object-count mismatch: expected 831 got [0-9]+|Source bytes changed, no copying permitted|Source folders changed, no copying permitted|Published archive inventory drift, no copying permitted|Private remainder not equal to independent SQL audit|Unexpected image row; preserve without action|Unexpected unsafe storage basename|Unexpected listing API response|Unexpected listing row|Unsafe Supabase Storage folder recursion)",safe_message):
+            safe_message=type(exc).__name__
+        print("PRIVATE ARCHIVE STOPPED: "+safe_message+
               "; no original deleted or public link changed",file=sys.stderr,flush=True)
         sys.exit(1)
