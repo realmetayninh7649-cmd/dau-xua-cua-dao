@@ -4,7 +4,8 @@
 (() => {
   'use strict';
   const SUPABASE_HOST='gwpdgubxoquhrfbolftq.supabase.co';
-  const READER_PATH='/dau-xua-cua-dao/r2-xem.html';
+  // Derive the route from the actual GitHub Pages/custom-domain base path.
+  const READER_PATH=new URL('r2-xem.html',new URL('.',window.location.href)).pathname;
   const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
   function parse(raw) {
     try {
@@ -25,11 +26,33 @@
     if(/\.(?:docx|doc)$/i.test(url.pathname))return 'legacy-word';
     return 'other';
   }
+  // Only the 3 verified historical PDF source objects have approved, complete
+  // R2 page-only viewers. Never provide the original PDF in these cases.
+  const APPROVED_PDF_READERS=Object.freeze({
+    'documents/1794684373312-e808f501-1bba-458d-b82f-f5f096479426.pdf':'a4bf8d79-a7a3-51cb-909c-0a4681902c01',
+    'documents/1794684462288-fc373424-39bf-4d8d-950c-2195aa01a603.pdf':'203886e9-cd67-58ab-96b3-ee4ff97b401a',
+    'media/1794860043784-52816aff-f9f7-4790-9e91-d87d7a86fc96.pdf':'1105db24-e971-5f1a-b632-d3b9f41b3b39'
+  });
+  function approvedReaderId(raw){
+    const url=parse(raw);
+    if(!url||url.hostname!==SUPABASE_HOST||url.port||url.username||url.password||url.search||url.hash)return '';
+    const prefix='/storage/v1/object/public/dao-su-documents/';
+    if(!url.pathname.startsWith(prefix))return '';
+    const key=url.pathname.slice(prefix.length);
+    return Object.hasOwn(APPROVED_PDF_READERS,key)?APPROVED_PDF_READERS[key]:'';
+  }
   function readerUrl(raw){
     const type=kind(raw);
-    if(type==='r2'||type==='reader')return parse(raw).href;
+    if(type==='r2')return parse(raw).href;
+    if(type==='reader'){
+      const old=parse(raw),mapped=approvedReaderId(old?.searchParams.get('source')||'');
+      if(mapped){const target=new URL(READER_PATH,window.location.origin);target.searchParams.set('asset',mapped);return target.href}
+      return old.href;
+    }
     if(type==='legacy-pdf'||type==='legacy-word'){
       const target=new URL(READER_PATH,window.location.origin);
+      const approved=type==='legacy-pdf'?approvedReaderId(raw):'';
+      if(approved){target.searchParams.set('asset',approved);return target.href}
       target.searchParams.set('source',parse(raw).href);
       return target.href;
     }
