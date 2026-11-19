@@ -1,0 +1,28 @@
+name: "GDD R2 - Bootstrap private OpenPGP key for 131-image manifest"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gdd-r2-private-manifest-key.yml"
+permissions:
+  contents: read
+concurrency:
+  group: gdd-r2-manifest-key-once
+  cancel-in-progress: false
+jobs:
+  key:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Install pinned S3 client"
+        run: python -m pip install boto3==1.40.61
+      - name: "Create R2 PRIVATE OpenPGP key, report public key only"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+        run: python scripts/r2_setup_private_manifest_key.py
