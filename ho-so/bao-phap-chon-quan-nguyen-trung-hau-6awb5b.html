@@ -1,52 +1,385 @@
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="google-site-verification" content="p2avLXTW_f9XmJIzGiYso0KACaV99J43RwG_PmgKze4">
-  <meta name="theme-color" content="#153b36">
-  <meta name="description" content="Dấu Xưa Cửa Đạo – Kho Tư Liệu Đạo Sử đang tạm bảo trì hệ thống để bảo tồn và tổ chức tư liệu. Kính mong quý độc giả hoan hỷ trở lại sau khi công việc hoàn tất.">
-  <title>Thông cáo bảo trì | Dấu Xưa Cửa Đạo</title>
-  <style>
-    :root { color-scheme: light; --green:#153b36; --green2:#265447; --gold:#ab8748; --cream:#f7f3e9; --ink:#28342e; --muted:#66746b; }
-    * { box-sizing: border-box; }
-    html { min-height:100%; background:#e8ece7; }
-    body { margin:0; min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:clamp(18px,4vw,54px); font-family:Georgia,"Times New Roman",serif; color:var(--ink); background: radial-gradient(ellipse at 50% 8%,#f8f7f0 0%,#edf0e9 58%,#e4ebe3 100%); }
-    .frame { position:relative; width:min(100%,710px); padding:clamp(26px,6vw,58px) clamp(23px,6vw,64px); border:1px solid #cab995; border-radius:3px; background:var(--cream); text-align:center; box-shadow:0 22px 65px rgba(28,57,44,.1),0 4px 14px rgba(28,57,44,.045); }
-    .frame::before { content:""; position:absolute; inset:9px; border:1px solid rgba(171,135,72,.32); pointer-events:none; }
-    .pretitle { font-size:11px; line-height:1.7; letter-spacing:.18em; font-weight:bold; color:var(--green2); text-transform:uppercase; }
-    .brand { margin:17px 0 5px; color:var(--green); font-size:clamp(29px,6vw,44px); line-height:1.25; letter-spacing:.055em; font-weight:normal; }
-    .subtitle { font-size:11px; line-height:1.7; font-weight:bold; letter-spacing:.21em; color:var(--gold); }
-    .ornament { display:flex; justify-content:center; align-items:center; gap:14px; margin:30px auto 25px; color:var(--gold); font-size:17px; }
-    .ornament::before,.ornament::after { content:""; width:min(21%,84px); height:1px; background:#c7b58c; }
-    .notice { display:inline-block; padding:7px 13px; border:1px solid rgba(171,135,72,.45); color:var(--green2); font:700 11px/1.5 system-ui,-apple-system,sans-serif; letter-spacing:.12em; }
-    h2 { margin:18px 0 22px; color:var(--green); font-size:clamp(20px,4vw,29px); line-height:1.5; font-weight:normal; }
-    .message { max-width:550px; margin:auto; color:#424c43; text-align:left; font-size:clamp(15px,2.55vw,17px); line-height:1.95; }
-    .message p { margin:0 0 15px; }
-    .message .salutation { color:var(--green); font-weight:bold; }
-    .message strong { color:var(--green); }
-    .end { margin:28px 0 0; padding-top:20px; border-top:1px solid #ded4bf; font-size:12px; letter-spacing:.1em; line-height:2; color:var(--green); }
-    .end span { display:block; color:var(--muted); font-size:11px; letter-spacing:normal; }
-    .footer { margin-top:14px; font:11px/1.7 system-ui,-apple-system,sans-serif; color:#738076; }
-    @media (max-width:420px) { .frame::before{inset:6px} .frame{padding:31px 24px} .ornament{margin:23px auto 20px} h2{margin:15px 0 18px} .message{line-height:1.8} }
-  </style>
-</head>
-<body>
-  <main class="frame" aria-labelledby="maintenance-title">
-    <div class="pretitle">Đại Đạo Tam Kỳ Phổ Độ</div>
-    <h1 class="brand">DẤU XƯA CỬA ĐẠO</h1>
-    <div class="subtitle">KHO TƯ LIỆU ĐẠO SỬ</div>
-    <div class="ornament" aria-hidden="true">✦</div>
-    <div class="notice">THÔNG CÁO</div>
-    <h2 id="maintenance-title">Website đang tạm bảo trì</h2>
-    <div class="message">
-      <p class="salutation">Kính thưa quý Chức sắc, Chức việc, Đồng đạo cùng quý độc giả,</p>
-      <p>Nhằm gìn giữ các tư liệu Đạo sử được an toàn và kiện toàn hệ thống lưu trữ, trang <strong>Dấu Xưa Cửa Đạo</strong> xin tạm ngưng phục vụ để bảo trì, sắp xếp và tối ưu lại kho dữ liệu.</p>
-      <p>Trong thời gian này, việc tra cứu hồ sơ Chức sắc, bài biên khảo, hình ảnh và tài liệu số hóa trên website sẽ tạm gián đoạn.</p>
-      <p>Khi công việc hoàn tất và hệ thống hoạt động ổn định, trang sẽ được <strong>mở lại tại địa chỉ cũ</strong>. Kính mong quý vị hoan hỷ cảm thông.</p>
-    </div>
-    <div class="end">TRÂN TRỌNG KÍNH CÁO<span>Dấu Xưa Cửa Đạo – Kho Tư Liệu Đạo Sử</span></div>
-    <div class="footer">Gìn giữ dấu xưa · Lưu truyền hậu thế</div>
-  </main>
-</body>
-</html>
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="index,follow"><title>BẢO PHÁP CHƠN QUÂN NGUYỄN TRUNG HẬU | Dấu Xưa Cửa Đạo</title><meta name="description" content="Một đời văn học, một tấm lòng vì Đạo Biên khảo hành trạng vị Thời Quân Chi Pháp Hiệp Thiên Đài, Đại Đạo Tam Kỳ Phổ Độ."><link rel="canonical" href="https://dauxuacuadao.info.vn/ho-so/bao-phap-chon-quan-nguyen-trung-hau-6awb5b.html"><meta property="og:type" content="article"><meta property="og:title" content="BẢO PHÁP CHƠN QUÂN NGUYỄN TRUNG HẬU"><meta property="og:description" content="Một đời văn học, một tấm lòng vì Đạo Biên khảo hành trạng vị Thời Quân Chi Pháp Hiệp Thiên Đài, Đại Đạo Tam Kỳ Phổ Độ."><meta property="og:url" content="https://dauxuacuadao.info.vn/ho-so/bao-phap-chon-quan-nguyen-trung-hau-6awb5b.html"><style>:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;color:#22372f;background:#faf8f2;font:16px/1.8 system-ui,-apple-system,"Segoe UI",sans-serif}a{color:#13584d}header,footer{background:#eff2e9;padding:18px max(20px,calc((100vw - 850px)/2))}main{max-width:850px;margin:0 auto;padding:28px 20px 68px}h1{font:700 clamp(26px,4vw,38px)/1.38 Georgia,"Times New Roman",serif;color:#1d473c}h2{font:700 22px/1.4 Georgia,serif}p{margin:16px 0}.brand{font-weight:800;letter-spacing:.02em;text-decoration:none}.section{font-size:13px;color:#7b6540;letter-spacing:.08em;text-transform:uppercase}.summary{font-weight:600;border-left:3px solid #9c834c;padding:4px 16px;background:#fff}.prose{white-space:pre-wrap;overflow-wrap:anywhere;font-family:Georgia,"Times New Roman",serif;font-size:17px;line-height:1.92;background:#fff;border:1px solid #ede5d8;border-radius:9px;padding:24px}.sources{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;background:#f2efe7;border-radius:8px;padding:16px}.back{display:inline-block;padding:9px 14px;border:1px solid #a9b7ae;border-radius:7px;text-decoration:none;margin:12px 0}ul{padding-left:22px}li{margin:11px 0}.card{border-bottom:1px solid #e4dfd4;padding:14px 0}.card a{font-size:18px;font-weight:700}small{color:#65716b}footer{font-size:13px;color:#54665d}@media(max-width:600px){.prose{padding:17px;font-size:16px}}</style></head><body><header><a class="brand" href="/">GIỮ ĐẠO GIỮA ĐỜI · DẤU XƯA CỬA ĐẠO</a></header><main><div class="section">Hồ sơ Chức sắc</div><h1>BẢO PHÁP CHƠN QUÂN NGUYỄN TRUNG HẬU</h1><p><small>Bảo Pháp Chơn Quân · Hiệp Thiên Đài · (1892–1961)</small></p><p class="summary">Một đời văn học, một tấm lòng vì Đạo  Biên khảo hành trạng vị Thời Quân Chi Pháp Hiệp Thiên Đài, Đại Đạo Tam Kỳ Phổ Độ.</p><article class="prose">I. THUỞ THIẾU THỜI, THEO NGHIỆP BÚT NGHIÊN
+
+Trong buổi đầu nền Đại Đạo Tam Kỳ Phổ Độ mới mở mang nơi đất Nam Kỳ, có nhiều bậc trí thức đương thời, vốn đã có công danh, nghề nghiệp, song bởi cảm mến mối Đạo Trời mà đem hết tài học, tâm lực phụng sự công cuộc phổ độ nhơn sanh. Trong số ấy có Ngài Bảo Pháp Chơn Quân Nguyễn Trung Hậu, một vị Thời Quân thuộc Chi Pháp Hiệp Thiên Đài, mà cuộc đời chẳng những gắn liền với những bước thăng trầm của nền Đạo, lại còn lưu danh trong giới văn học bởi những trước tác về giáo lý, thi văn cùng nhiều công trình khảo cứu.
+
+Ngài sanh ngày mùng 5 tháng 3 năm Nhâm Thìn, nhằm ngày 1 tháng 4 năm 1892, tại làng Bình Hòa, tỉnh Gia Định, nay thuộc vùng Bình Thạnh, thành phố Sài Gòn.
+
+Về thế danh của Ngài, các sách Đạo sử có chỗ ghi chẳng đồng. Có sách chép tên thuở nhỏ là Nguyễn Văn Hậu, sau đổi thành Nguyễn Trung Hậu; song trong bài tiểu sử do Ngài Hiến Pháp Trương Hữu Đức tuyên đọc năm 1974, lại ghi Nguyễn Trung Hậu là tên thật của Ngài. Dầu cách chép có khác, song các tài liệu đều nhìn nhận Ngài lấy tự, cũng là bút hiệu, Thuần Đức, thường dùng trong việc thi văn.
+
+Thân phụ Ngài là cụ Nguyễn Phục Lễ, cũng gọi Nguyễn Văn Nhiêu, hiệu Tiết Văn, vốn tinh thông nghề thuốc Bắc, từng trải qua bốn khóa làm nghị viên Hội Đồng Địa Hạt Gia Định. Thân mẫu là cụ bà Lê Thị Cơ, nguyên quán Bình Định.
+
+Sanh trưởng trong một gia đình biết trọng chữ nghĩa, từ thuở thiếu thời Ngài đã chuyên lòng học tập. Bấy giờ nền Tây học đang lần lần mở mang ở Nam Kỳ, Ngài theo chương trình Pháp học, nhưng chẳng vì vậy mà sao lãng văn chương Hán học. Ngoài những môn học trong trường, Ngài còn tự tìm sách chữ Nho mà đọc, tập làm thi, đặt câu đối, nghiên cứu niêm luật cùng những lẽ sâu xa của văn chương cổ.
+
+Cái học của Ngài, bởi vậy, chẳng riêng một mặt. Pháp văn thì đủ sức làm thầy dạy học, còn quốc văn cùng Hán văn cũng có phần thông hiểu. Nhờ vậy, khi bước vào nghề viết lách, Ngài có thể dùng lời văn sáng sủa để giải thích những điều đạo lý vốn khó hiểu, lại có thể vận dụng điển tích cùng thi luật mà xướng họa với các văn nhơn đương thời.
+
+Tháng 2 năm 1911, Ngài tốt nghiệp Trường Sư Phạm Gia Định, tức École Normale de Gia Định, rồi được bổ làm giáo viên tại một trường tiểu học ở đường Taberd. Về sau, trường ấy bãi bỏ, Ngài lại chuyển sang dạy tại trường đường Richaud, tức đường Nguyễn Đình Chiểu đời sau.
+
+Đến năm 1919, Ngài được giao làm thơ ký cho Giám đốc các trường tiểu học Sài Gòn. Công việc tuy có phần ổn định, nhưng lòng Ngài vẫn nặng với nghề giáo dục. Bởi vậy, tới năm 1922, Ngài thôi nhiệm vụ ấy mà đứng ra điều hành một trường tư thục mang tên Internat primaire de Dakao, tọa lạc tại đường D’Ariès.
+
+Về sau, trường này được giao lại cho ông Huỳnh Khương Ninh, rồi trở thành một cơ sở giáo dục mang tên ông.
+
+Trong khoảng năm 1918 đến năm 1920, Ngài lại thường lui tới xướng họa cùng các văn hữu trong Ngưu Giang Thi Xã. Bấy giờ, thú làm thi, bình văn còn thạnh hành trong giới trí thức Nam Kỳ. Người ta gặp nhau chẳng những để luận chuyện thế sự, mà còn đem những bài Đường luật, những câu đối khó ra thử tài nhau. Ngài Nguyễn Trung Hậu vốn sẵn lòng chuộng văn chương, nên cũng lấy đó làm điều vui thú. Bút hiệu Thuần Đức từ những năm ấy đã lần lần được biết đến trong giới thi hữu.
+
+Ngày 11 tháng 8 năm Kỷ Mùi, nhằm ngày 4 tháng 10 năm 1919, Ngài kết duyên cùng bà Diệp Thị Nguy, con ông Diệp Văn Chỉ và bà Dương Thị Kiến. Bà sanh ngày 24 tháng 11 năm Canh Tý, nhằm ngày 14 tháng 1 năm 1901.
+
+Riêng tên của bà, có tài liệu chép Diệp Thị Qui hoặc Diệp Thị Quy. Vì chưa tìm được giấy tờ hộ tịch nguyên thủy để đối chiếu, nên bài này tạm giữ theo cách ghi Diệp Thị Nguy trong các sách tiểu sử đã tham khảo.
+
+Hai ông bà sanh hạ được tám người con, gồm năm trai và ba gái. Trong số ấy, người trưởng nam là ông Nguyễn Trung Ngôn, về sau được ân phong Hiền Tài Ban Thế Đạo. Theo tài liệu Đạo sử, các người con của Ngài đều được ăn học, có lòng hướng về cửa Đạo và được ân phong phẩm Hiền Tài.
+
+Tưởng khi ấy, Ngài Nguyễn Trung Hậu cũng như bao người có học giữa đất Sài Gòn – Gia Định, một mặt lo việc gia đình, một mặt theo nghiệp dạy học, làm thi, viết báo. Công danh tuy chẳng phải đến bực sang trọng, song cũng đủ có nghề nghiệp mà lập thân. Nào ai biết rằng chỉ ít năm sau, một cuộc gặp gỡ nơi bàn cơ sẽ khiến bước đường đời của Ngài chuyển sang một ngã khác, để rồi tên tuổi Thuần Đức gắn liền với lịch sử khai sáng Đại Đạo Tam Kỳ Phổ Độ.
+
+II. GẶP MỐI ĐẠO TRỜI, BỎ DẦN VIỆC THẾ
+
+Vào khoảng cuối năm Ất Sửu 1925, giữa đất Sài Gòn, việc xây bàn thỉnh Tiên của ba ông Cao Quỳnh Cư, Phạm Công Tắc và Cao Hoài Sang bắt đầu được một số người trong giới trí thức biết đến.
+
+Lúc ấy, những cuộc đàm luận thi văn và việc tìm hiểu huyền cơ còn được nhiều người lưu tâm. Ngài Nguyễn Trung Hậu vốn có tánh ham học hỏi, lại chuộng những chuyện thi phú, nên khi nghe nói có cuộc xây bàn ứng đối thơ văn, Ngài cũng muốn tìm hiểu cho rõ.
+
+Theo một tài liệu khảo cứu, ngày 12 tháng 11 năm 1925, nhằm ngày 26 tháng 9 năm Ất Sửu, Ngài đã có mặt trong một buổi xây bàn, cùng dự việc đàm luận thi phú.
+
+Các sách Đạo sử thuật rằng trong một cuộc xây bàn, Đấng giáng cơ dùng tá danh AĂÂ đã làm thi có nhắc đến bút hiệu Thuần Đức của Ngài. Lại có lần Ngài đem những câu đối hiểm hóc ra thử, những tưởng khó có người ứng đáp cho chỉnh, nào dè lời đáp nơi bàn cơ lại khiến Ngài lấy làm cảm phục.
+
+Ngài vốn là người đã học văn chương, hiểu phép đối, biết luật thi, nên sự cảm phục ấy chẳng phải chỉ do lòng hiếu kỳ. Từ chỗ muốn thử cho biết, Ngài lần lần đem lòng kính tín nơi những lời dạy thiêng liêng, rồi tìm hiểu sâu thêm về mối Đại Đạo đang được khai mở.
+
+Qua đầu năm Bính Dần 1926, Ngài đã có mặt trong hàng môn đệ sơ khai.
+
+Đêm 30 tháng Chạp năm Ất Sửu, nhằm ngày 12 tháng 2 năm 1926, trong cuộc cầu cơ giao thừa, Ngài lãnh phần đọc lời cơ, cùng chư vị tiền khai dự những đàn cơ tại tư gia các vị đã thọ Đạo.
+
+Đến đêm mùng 9 tháng Giêng năm Bính Dần, Ngài lại có tên trong số môn đệ được Đức Chí Tôn điểm danh. Trong những người có mặt buổi ấy, Ngài Nguyễn Trung Hậu cùng ông Trương Hữu Đức về sau đều được Thiên phong vào hàng Thập Nhị Thời Quân Hiệp Thiên Đài.
+
+Từ đây, lòng Ngài càng thêm chuyên chú nơi việc Đạo.
+
+Ngày rằm tháng 3 năm Bính Dần, nhằm ngày 26 tháng 4 năm 1926, Đức Chí Tôn Thiên phong Ngài Nguyễn Trung Hậu cùng ông Trương Hữu Đức giữ nhiệm vụ Tiên Đạo Phò Cơ Đạo Sĩ.
+
+Lãnh trách nhiệm ấy rồi, hai Ngài cùng nhau phò loan, đi phổ độ tại những nơi như Chợ Lớn, Gò Công, Tân An, Mỹ Tho, Bến Tre cùng các tỉnh lân cận.
+
+Thuở đó, nền Đạo mới mở, cơ sở chưa được bao nhiêu, chức sắc còn ít, mọi việc phải nhờ công quả của những người có lòng hiến thân. Người lãnh việc phò cơ chẳng phải chỉ đến đàn mà đọc lời Thánh giáo, lại còn phải đi đó đi đây, giúp người hiểu đạo lý, giữ gìn những lời dạy được truyền ra, lo sao cho người mới nhập môn khỏi lầm lạc.
+
+Ngài Nguyễn Trung Hậu đã sẵn có gia đình cùng trường học phải chăm nom, nay lại thêm việc Đạo, thành thử công việc càng ngày càng nặng.
+
+Trong năm Bính Dần, trường tư của Ngài gặp điều chẳng được thuận tiện. Việc sanh kế trong gia đình khiến Ngài nhiều phen lo nghĩ. Bởi vậy, ngày 14 tháng 5 năm Bính Dần, nhằm ngày 23 tháng 6 năm 1926, Ngài cầu hỏi Đức Chí Tôn về việc làm ăn.
+
+Theo Thánh giáo được chép lại, Đức Chí Tôn khuyên Ngài giữ trọn nhơn nghĩa, đừng vì cảnh nghèo khó mà sanh lòng ngã chí.
+
+Lời dạy ấy khiến Ngài càng xét lại việc đời cùng bổn phận của mình. Về sau, Ngài cùng ông Đốc học Đoàn Văn Bản lại có dịp thỉnh giáo về những điều riêng, rồi Ngài quyết giao trường tư lại cho ông Huỳnh Khương Ninh, để bớt phần ràng buộc mà chuyên lo công việc Đại Đạo.
+
+Giữa lúc ấy, trong nhà lại xảy ra một việc đau lòng.
+
+Ngày 21 tháng 7 năm Bính Dần, nhằm ngày 28 tháng 8 năm 1926, thân mẫu Ngài là cụ bà Lê Thị Cơ từ trần.
+
+Ngài cùng chư vị tiền khai lập đàn cầu Đức Chí Tôn chỉ dạy cách cử hành tang lễ theo phép Đạo. Bấy giờ nghi thức Đại Đạo còn mới, nhiều việc chưa thành nền nếp như đời sau. Bởi vậy, tang lễ thân mẫu Ngài đã trở thành một dấu mốc đáng lưu ý trong lịch sử lễ nghi Cao Đài.
+
+Theo lời ghi của Ngài Nguyễn Trung Hậu được các sách Đạo sử dẫn lại, đây là đám tang đầu tiên cử hành theo nghi lễ Đại Đạo Tam Kỳ Phổ Độ, có chư chức sắc đương thời đến dự.
+
+Việc nhà vốn là chuyện riêng, song bởi nhằm lúc nền Đạo đang định lập lễ nghi, nên cuộc tang ấy lại được lưu vào sử liệu.
+
+Như vậy, chỉ trong một năm Bính Dần, Ngài Nguyễn Trung Hậu đã trải qua biết bao điều thay đổi: từ một nhà giáo ham chuộng thi văn mà gặp mối Đạo Trời, rồi lãnh phận sự phò cơ, đi phổ độ, giao lại trường học, lại chịu cảnh mất mẹ hiền. Những việc ấy nối nhau xảy đến, khiến bước đường của Ngài từ đây càng ngày càng gắn chặt với cửa Đạo.
+
+III. THỌ PHẨM BẢO PHÁP, GÁNH LẤY PHẦN PHÁP LUẬT ĐẠI ĐẠO
+
+Qua năm Đinh Mão, nền Đại Đạo đã lần lần có đủ cơ cấu Hội Thánh, các cơ quan được phân định trách nhiệm, phẩm trật cũng theo đó mà an lập.
+
+Ngày 12 tháng Giêng năm Đinh Mão, nhằm ngày 13 tháng 2 năm 1927, Ngài Nguyễn Trung Hậu được Đức Chí Tôn Thiên phong phẩm Bảo Pháp, thuộc Chi Pháp Hiệp Thiên Đài, đứng trong hàng Thập Nhị Thời Quân của Đại Đạo Tam Kỳ Phổ Độ.
+
+Kể từ đây, danh xưng Bảo Pháp Nguyễn Trung Hậu trở nên quen thuộc trong giới chức sắc và đạo hữu.
+
+Theo Pháp Chánh Truyền, Hiệp Thiên Đài có trách nhiệm bảo thủ Chơn truyền, gìn giữ luật pháp, làm trung gian nơi quyền thiêng liêng và quyền hữu hình. Trong cơ cấu ấy, Chi Pháp gồm các phẩm Hiến Pháp, Khai Pháp, Tiếp Pháp và Bảo Pháp, mỗi phẩm có phần trách nhiệm riêng.
+
+Phẩm Bảo Pháp giữ phần bảo trọng luật pháp Đại Đạo, sao cho việc thi hành khỏi sai lệch, phép tắc được phân minh, quyền hành chẳng vượt ngoài khuôn thước đã định.
+
+Người lãnh phận sự ấy phải biết luật, hiểu Đạo, mà cũng cần có lòng công bình, bởi pháp luật dầu có chép rõ đến đâu, nếu người cầm giữ vì tình riêng hay quyền lợi riêng mà làm sai, thì cái nghĩa bảo thủ Chơn truyền cũng khó được toàn vẹn.
+
+Ngài Bảo Pháp vốn là người có học, quen xét văn nghĩa, lại từng đảm trách việc phò loan, ghi chép Thánh giáo, nên những vấn đề thuộc giáo lý cùng luật pháp Đại Đạo đều được Ngài lưu tâm nghiên cứu.
+
+Ngày mùng 3 tháng 7 năm Đinh Mão, nhằm ngày 31 tháng 7 năm 1927, theo một đàn cơ được chép lại trong sách Đạo sử, có lời nói đến căn nguyên thiêng liêng của các vị Thời Quân. Trong đó, Ngài Bảo Pháp được truyền thuật có tiền thân là Xích Tinh Tử, còn Ngài Hiến Pháp Trương Hữu Đức là Từ Hàn Đạo Nhơn.
+
+Ấy là điều thuộc phần Thánh giáo và tín ngưỡng của Đại Đạo, được lưu truyền trong giới tín đồ. Khi khảo cứu hành trạng, cần giữ nguyên tánh chất của lời truyền thuật ấy, chẳng nên lẫn với những việc hữu hình có văn kiện và ngày tháng minh bạch.
+
+Cũng trong năm Đinh Mão, Ngài bắt đầu cho phổ biến các sách giảng giải giáo lý, đáng kể có quyển Luận Đạo Vấn Đáp và Tiên Thiên Tiểu Học.
+
+Hai tác phẩm ấy có mục đích giúp người mới bước vào cửa Đạo hiểu những điều căn bản, từ lý do con người cần tu hành, bổn phận của kẻ làm người, cho tới những lẽ đạo đức trong đời sống thường nhựt.
+
+Ngài biết rằng phần đông nhơn sanh chẳng phải ai cũng học rộng, hiểu nhiều. Nếu chỉ đem những danh từ cao xa, những lời huyền diệu mà giảng, thì người bình dân khó bề lãnh hội. Bởi vậy, Ngài dùng lối văn giản dị, khi hỏi khi đáp, lần theo từng điều mà giải thích.
+
+Cái tài của người dạy học thuở trước, đến lúc ấy lại trở thành một phương tiện hữu ích cho việc phổ thông giáo lý.
+
+Năm 1928, Ngài soạn quyển Chơn Lý. Đến năm 1930, lại có quyển Đại Đạo Căn Nguyên, ghi nhận nhiều việc thuộc thời kỳ khai sáng Đại Đạo.
+
+Riêng Đại Đạo Căn Nguyên là một trước tác có giá trị đối với việc tìm hiểu Đạo sử, bởi được biên soạn khi những biến cố buổi đầu chưa cách xa bao nhiêu năm, nhiều người có dự phần vẫn còn tại thế.
+
+Dầu vậy, sách cũng là lời ghi chép của một người trong cuộc, nên khi dùng làm sử liệu, người nghiên cứu vẫn phải đem đối chiếu với Thánh ngôn, Châu tri, Thánh lịnh, vi bằng và những tài liệu đồng thời khác, mới mong biết rõ chỗ nào đã xác định, chỗ nào còn cần xét lại.
+
+Ngoài việc viết sách quốc ngữ, Ngài còn đem sở trường Pháp văn ra giúp ích cho công cuộc truyền bá Đại Đạo.
+
+Vào khoảng tháng 7 năm 1930, Ngài được giao làm chủ bút tạp chí La Revue Caodaïste, một tờ báo Pháp văn dùng để giới thiệu giáo lý, tổ chức cùng những sinh hoạt của nền Đạo đến giới độc giả quen đọc tiếng Pháp.
+
+Ngài cũng có liên hệ với việc làm báo quốc ngữ, trong đó các công trình khảo cứu còn nhắc tới tờ Đại Đồng. Song niên đại cùng vai trò cụ thể của Ngài đối với từng số báo hiện chưa được đối chiếu trọn vẹn, nên chưa thể quyết đoán hơn.
+
+Vốn là người từng học trường Sư Phạm, lại thông hiểu Pháp văn, Ngài có đủ phương tiện để diễn đạt những điều đạo lý qua nhiều lối văn. Việc trước tác và báo chí ấy giúp cho lời giáo hóa chẳng riêng lưu hành trong một phạm vi hẹp, mà còn có dịp truyền đến những người chưa quen biết Đại Đạo.
+
+Trong khoảng thời gian này, ngoài công việc nơi Hội Thánh, Ngài vẫn theo đuổi văn chương, viết thi, dịch truyện và trao đổi cùng bạn hữu. Bút hiệu Thuần Đức bởi vậy vừa gắn với người văn nhơn đất Gia Định, vừa gắn với một vị chức sắc Hiệp Thiên Đài.
+
+IV. VIỆC ĐẠO NĂM QUÝ DẬU, NHỮNG BƯỚC THĂNG TRẦM TRONG HỘI THÁNH
+
+Qua năm Quý Dậu 1933, công việc Hội Thánh có nhiều điều thay đổi. Việc quyền hành, phẩm trật cùng sự thi hành Pháp Chánh Truyền trở thành những vấn đề được đem ra bàn luận giữa các cơ quan hữu trách.
+
+Bấy giờ, các phẩm Chưởng Pháp Cửu Trùng Đài chưa có chức sắc chánh vị đầy đủ. Bởi vậy, theo Châu Tri số 1, ban hành ngày mùng 7 tháng 3 năm Quý Dậu, nhằm ngày 1 tháng 4 năm 1933, Hội Thánh giao quyền hành Chưởng Pháp cho ba vị Thời Quân Hiệp Thiên Đài là Bảo Pháp Nguyễn Trung Hậu, Bảo Thế Lê Thiện Phước và Hiến Đạo Phạm Văn Tươi.
+
+Một số sách tiểu sử về sau ghi Ngài Bảo Pháp giữ nhiệm vụ Quyền Thái Chưởng Pháp. Song văn bản Châu Tri được chép lại có nêu việc ba vị cùng lãnh quyền Chưởng Pháp, nên muốn xác định trọn vẹn danh xưng cùng phạm vi quyền hành của từng vị, phải tìm xét thêm văn kiện nguyên thủy.
+
+Kể từ đó, Ngài Bảo Pháp phải dự phần vào nhiều việc hệ trọng thuộc quyền pháp Hội Thánh.
+
+Ngày 22 tháng 3 năm Quý Dậu, nhằm ngày 16 tháng 4 năm 1933, một cuộc Thượng Hội được triệu tập để xem xét những điều bất đồng liên quan đến quyền hành của Đức Quyền Giáo Tông Lê Văn Trung.
+
+Trong vi bằng còn được chép lại, Ngài Bảo Pháp có tên tham dự với tư cách Quyền Chưởng Pháp.
+
+Rồi đến ngày 19 tháng 5 năm Quý Dậu, nhằm ngày 11 tháng 6 năm 1933, tại Tòa Thánh lại có cuộc hội gọi là Hội Vạn Linh, do Quyền Ngọc Đầu Sư Lê Bá Trang cùng Ngài Bảo Pháp Nguyễn Trung Hậu đứng ra tổ chức.
+
+Những việc đem ra bàn luận khi ấy có liên quan đến quyền hành Hội Thánh, hiệu lực của các quyết nghị cùng cách thi hành Pháp Chánh Truyền.
+
+Đây là một đoạn sử không nên bỏ qua, bởi nó liên hệ trực tiếp đến trách nhiệm của Ngài trong thời kỳ Hội Thánh có sự bất đồng.
+
+Song người sau muốn xét việc xưa, chẳng thể chỉ nghe một phía mà luận định hết thảy. Những vi bằng, văn kiện cùng lời thuật về cuộc hội ấy có chỗ xuất phát từ những người giữ lập trường khác nhau. Vì vậy, tuy có thể xác nhận những cuộc hội đã xảy ra, thành phần tham dự cùng những vấn đề được nêu, song muốn phán xét động cơ và trách nhiệm của mỗi vị thì phải có thêm chứng liệu tương xứng.
+
+Ngài Bảo Pháp là một vị Thời Quân có công trong buổi đầu khai sáng Đại Đạo, điều ấy sử liệu đã ghi. Nhưng việc Ngài từng dự phần trong những biến cố quyền hành năm Quý Dậu cũng là sự thật cần được nhắc đến. Kính trọng công nghiệp người xưa chẳng có nghĩa là lược bỏ những việc không thuận, bởi cuộc đời của một người, nhứt là người từng lãnh trách nhiệm lớn, đâu phải lúc nào cũng chỉ có sự hanh thông.
+
+Sau những cuộc biến chuyển ấy, đến năm 1934, Ngài Bảo Pháp rời công việc thường trực nơi Tòa Thánh, trở về Gia Định dưỡng bịnh.
+
+Từ đó mở ra một quãng đời khác. Ngài không còn thường xuyên gánh vác công việc hành chánh tại Thánh địa như những năm trước, song việc học, việc viết cùng lòng quan tâm đến Đại Đạo vẫn chẳng vì thế mà dứt.
+
+V. TRỞ VỀ GIA ĐỊNH, LẤY VIỆC DẠY HỌC VÀ VĂN CHƯƠNG LÀM NGUỒN VUI
+
+Trở lại Gia Định, Ngài Bảo Pháp sống gần gia quyến, tiếp tục dạy học, đọc sách, làm thi và biên soạn giáo lý.
+
+Theo sách Đạo sử, Ngài từng dạy Pháp văn tại một số trường tư thục ở Sài Gòn, như Hưng Việt, Nguyễn Anh Bổn, Nguyễn Du cùng những trường khác.
+
+Đã trải qua những năm công việc Đạo nhiều bận rộn, nay trở về với nghề dạy học cũ, Ngài lại có dịp dùng sở học của mình mà giúp lớp trẻ. Tuy chẳng còn thường trực trong các cơ quan Hội Thánh, song nghề nghiệp ấy vẫn cho Ngài một đường tiếp tục công việc giáo dục.
+
+Tư gia Ngài được sách Đại Đạo Danh Nhân ghi tại số 186/42 đường Ngô Tùng Châu, vùng Gia Định, về sau đổi thành số 101/71 đường Nguyễn Văn Đậu theo địa chỉ được ghi lúc sách biên soạn.
+
+Tại đây, Ngài tiếp tục giao du cùng bạn văn, xướng họa, luận bàn kinh sách. Cái thú thi văn đã có từ thuở trai trẻ, nay trải qua những đổi thay của cuộc đời, lại càng trở nên gần gũi.
+
+Ngài vốn chẳng phải mới biết đạo lý từ khi gặp cơ bút năm 1925. Những bài thi sáng tác trước lúc nhập môn cho thấy Ngài đã sớm lưu tâm đến chuyện tu thân, lẽ sống cùng sự được mất ở đời.
+
+Đáng kể có bài Xuất Gia. Về sau, người trong gia đình từng cho rằng bài ấy được làm vào khoảng năm 1957 hoặc 1958, song khi tìm lại thủ bút để biên tập Thuần Đức Thi Hiệp Tuyển, có tài liệu cho biết bài đã được sáng tác từ năm 1919.
+
+Điều ấy giúp người sau hiểu thêm tâm tình của Ngài trong buổi còn làm nhà giáo, chưa bước chân vào hàng chức sắc Đại Đạo.
+
+Giữa thời kỳ sống tại Gia Định, gia đình Ngài lại chịu một nỗi buồn lớn.
+
+Ngày mùng 10 tháng Chạp năm Nhâm Thìn, nhằm ngày 24 tháng 1 năm 1953, hiền nội của Ngài là bà Diệp Thị Nguy từ trần.
+
+Hai ông bà đã kết duyên từ năm 1919, trải qua hơn ba mươi năm chung sống, nuôi dưỡng tám người con, cùng nhau đi qua những lúc thuận nghịch trong việc nhà. Đến khi người bạn trăm năm khuất bóng, Ngài lại phải chịu cảnh tuổi già thiếu người tri kỷ trong gia đình.
+
+Tuy vậy, công việc trước tác vẫn được Ngài tiếp tục.
+
+Năm 1955, quyển Thiên Đạo, hợp soạn cùng ông Phan Trường Mạnh, được xuất bản. Năm 1956, Ngài lại cùng Ngài Khai Đạo Phạm Tấn Đãi biên soạn quyển Luân Hồi Quả Báo.
+
+Ngoài ra còn có những sách như Bài Thuyết Đạo, Châu Thân Giải, Ăn Chay, Đức Tin cùng nhiều bài luận khác được các tài liệu về sau ghi nhận.
+
+Những tác phẩm ấy tuy có nội dung khác nhau, nhưng đều hướng vào việc giảng giải đạo lý, khuyên người tu tâm sửa tánh, xét lẽ nhơn quả, giữ gìn đức tin cùng làm tròn bổn phận của người tín đồ.
+
+Đã nhiều năm xa việc thường trực nơi Tòa Thánh, song qua những trang sách, Ngài vẫn làm công việc giáo hóa mà mình từng theo đuổi từ buổi đầu nhập Đạo.
+
+VI. TÁI THỦ PHẬN SỰ, LO VIỆC HẠNH ĐƯỜNG VÀ ĐẠO ĐỨC VĂN ĐÀN
+
+Năm Đinh Dậu 1957, tình thế trong Đạo có nhiều điều đáng lo nghĩ.
+
+Đức Hộ Pháp Phạm Công Tắc đã rời Tòa Thánh sang Cao Miên từ năm 1956. Các cơ quan Hội Thánh phải tiếp tục lo liệu công việc trong hoàn cảnh có nhiều đổi thay, cần đến những vị chức sắc kỳ cựu để giúp gìn giữ nền nếp.
+
+Đầu tháng 5 năm 1957, Ngài Bảo Pháp Nguyễn Trung Hậu cùng Đức Thượng Sanh Cao Hoài Sang và một số vị Thời Quân trở về Tòa Thánh, tái thủ phận sự.
+
+Sau hơn hai mươi năm ít trực tiếp dự việc hành chánh nơi Thánh địa, nay lại trở về chốn cũ, Ngài được giao một nhiệm vụ rất hợp với sở trường của mình.
+
+Ngày rằm tháng 4 năm Đinh Dậu, nhằm ngày 14 tháng 5 năm 1957, Hội Thánh cử Ngài giữ chức Giám đốc Hạnh Đường, có trách nhiệm giảng dạy, bồi dưỡng giáo lý, luật pháp cùng phép hành đạo cho hàng Giáo Hữu, Lễ Sanh.
+
+Hạnh Đường là nơi đào luyện chức sắc để sau này ra làm việc Đạo. Người muốn gánh vác một địa phận, lo cho nhơn sanh, nếu chỉ có lòng sốt sắng mà thiếu hiểu biết giáo lý, luật pháp, thì khó tránh khỏi điều sơ suất. Bởi vậy, việc giáo dục nơi Hạnh Đường được xem là một phận sự hệ trọng.
+
+Ngài Bảo Pháp từng làm giáo viên từ năm 1911, lại có nhiều năm biên soạn sách Đạo, thông hiểu cả quốc văn, Hán văn và Pháp văn. Cái vốn học ấy, đến khi Ngài làm Giám đốc Hạnh Đường, lại được đem ra giúp cho công cuộc đào luyện chức sắc hậu tấn.
+
+Ngài chẳng những giảng về giáo lý, mà còn chú trọng đến cách học hỏi, phép suy xét và sự trau giồi đạo đức của người đứng ra dìu dắt nhơn sanh.
+
+Trong thời kỳ này, Ngài lại có công khôi phục Đạo Đức Văn Đàn, một tổ chức dành cho những người có lòng yêu chuộng thi văn trong giới Đạo.
+
+Văn Đàn vốn được Ngài Tiếp Đạo Cao Đức Trọng, bút hiệu Huyền Quang, thành lập vào khoảng năm 1950, nhưng chỉ hoạt động được chừng hai năm rồi gián đoạn.
+
+Khi trở lại Tòa Thánh, Ngài Bảo Pháp đứng ra chấn chỉnh và khôi phục việc xướng họa. Những chức sắc cùng đạo hữu ham thích văn chương lại có nơi hội họp, trao đổi thi bài, học hỏi niêm luật cùng những cách dùng chữ trong quốc văn.
+
+Ngài thường giảng về phép làm thi Đường luật, từ sự bằng trắc, đối ngẫu cho tới cách giữ ý tứ trong lời văn. Vốn có kinh nghiệm xướng họa từ thuở còn trong Ngưu Giang Thi Xã, nên những điều Ngài truyền dạy chẳng phải chỉ là phép tắc trong sách vở, mà còn là kinh nghiệm lâu năm của người đã thực hành.
+
+Những người có dự phần xướng họa cùng Ngài được sách Đạo sử nhắc đến có Đức Thượng Sanh Cao Hoài Sang, Ngài Tiếp Đạo Cao Đức Trọng, Ngài Bảo Văn Pháp Quân cùng nhiều thi hữu khác.
+
+Nơi Văn Đàn, thi phú chẳng riêng dùng để khoe tài ứng đối. Người làm thi còn có thể đem lời văn mà khuyên nhau giữ đạo đức, nhắc chuyện tu hành, luận lẽ nhơn tình, hoặc bày tỏ những tâm sự khó nói giữa đời thường.
+
+Ấy cũng là một cách dùng văn chương mà giúp đời, giúp Đạo.
+
+Nhưng tuổi Ngài lúc ấy đã ngoài sáu mươi, sức khỏe lại chẳng được như xưa. Chứng huyết áp cao khiến Ngài nhiều phen mệt nhọc, khó bề tiếp tục gánh vác công việc thường xuyên.
+
+Đến ngày rằm tháng 11 năm Mậu Tuất, nhằm ngày 24 tháng 12 năm 1958, Ngài trở về Gia Định dưỡng bịnh, thôi trách nhiệm thường trực tại Hạnh Đường.
+
+Từ đó, Ngài ít có dịp về Tòa Thánh, song vẫn giữ mối liên hệ với các bạn Đạo cùng thi hữu. Những cuộc xướng họa không còn thường được gặp mặt như trước, thì lại trao đổi qua thơ từ bưu điện.
+
+Tuy đường xa cách trở, mà tấm lòng đối với văn chương cùng nền Đạo vẫn chẳng đổi dời.
+
+VII. BIẾN CỐ CUỐI ĐỜI VÀ NHỮNG VẦN THI TÂM SỰ
+
+Năm Canh Tý 1960, thời cuộc miền Nam lại xảy ra nhiều biến động.
+
+Ngày 11 tháng 11 năm ấy, tại Sài Gòn có cuộc đảo chánh chống chánh quyền Tổng thống Ngô Đình Diệm. Biến cố thất bại, nhiều người bị nhà cầm quyền xét hỏi vì có tên hoặc bị cho là liên hệ đến những văn kiện trong cuộc.
+
+Theo sách Đại Đạo Danh Nhân, tên Ngài Bảo Pháp Nguyễn Trung Hậu bị đưa vào một bản tuyên ngôn có liên hệ đến biến cố ấy, mà việc nêu tên không được sự thuận ý của Ngài.
+
+Sau cuộc đảo chánh, Ngài bị nhà cầm quyền Sài Gòn tạm giữ từ ngày 18 tháng 11 đến ngày 22 tháng 12 năm 1960, tính ra một tháng năm ngày.
+
+Lúc ấy Ngài đã gần bảy mươi tuổi, sức khỏe vốn suy yếu, lại phải gặp cảnh giam giữ giữa lúc thời cuộc rối ren.
+
+Trong thời gian ấy, Ngài làm được mười hai bài thi, gởi gắm tâm sự về cảnh ngộ của mình.
+
+Có hai câu được sách Đạo sử dẫn lại:
+
+Ai biết ta chăng ta tự biết,
+Riêng hiềm có miệng cũng như câm.
+
+Lời thi nghe qua tưởng nhẹ, mà xét kỹ lại có nhiều nỗi niềm. Một người vốn quen dùng ngòi bút để giảng giải cho người khác, đến khi việc phiền lụy xảy đến với chính mình, lại cảm thấy có điều muốn nói mà khó bề phân trần.
+
+Tuy nhiên, về nguyên do bị tạm giữ, các tài liệu hiện được dẫn chủ yếu thuộc loại sách Đạo sử và lời thuật lại. Muốn xác định cho trọn vẹn sự việc, cần tìm thêm hồ sơ điều tra hoặc các văn kiện của nhà cầm quyền đương thời. Bởi vậy, không nên chỉ căn cứ vào một lời thuật mà kết luận hết thảy những điều có liên quan.
+
+Được trở về với gia đình cuối năm 1960, Ngài lại tiếp tục sống trong cảnh thanh đạm, nghỉ dưỡng tại Gia Định.
+
+Sức khỏe ngày một suy, nhưng lòng yêu chuộng thi văn vẫn còn. Ngài tiếp tục xướng họa cùng bạn hữu, gởi những lời tâm sự qua các bài thi.
+
+Ngày 30 tháng 6 năm 1961, Ngài làm bài Thôn Chiều Buồn. Theo tài liệu hiện được ghi nhận, đây là bài thi cuối cùng còn biết được của Ngài.
+
+Trong ấy có hai câu:
+
+Khoanh tay đứng ngóng thuyền xa bến,
+Đứt ruột ngồi nghe nhạn gọi đàn.
+
+Những lời thi ấy bày ra một nỗi buồn của tuổi xế chiều, khi người đã trải qua nhiều cuộc đổi thay, lại thấy thời gian cùng những điều thân thuộc lần lần xa cách.
+
+Người đọc ngày nay có thể cảm được tâm sự trong câu chữ, song chẳng nên vì vậy mà tự đặt thêm những lời trăng trối hoặc cho rằng Ngài đã biết trước ngày qui vị. Sử liệu chỉ cho biết bài thi được làm vào ngày 30 tháng 6 năm 1961; còn những điều sâu kín trong lòng tác giả, chỉ có thể tìm hiểu qua chính những lời văn còn để lại.
+
+Chẳng bao lâu sau, Ngài lâm cơn bạo bịnh, kéo dài khoảng một trăm ngày.
+
+Đến lúc 16 giờ 50 phút, ngày mùng 7 tháng 9 năm Tân Sửu, nhằm ngày 16 tháng 10 năm 1961, Ngài Bảo Pháp Nguyễn Trung Hậu qui vị tại Gia Định.
+
+Ngài hưởng thọ bảy mươi tuổi tính theo tuổi ta.
+
+Từ một người học trò đất Gia Định, bước vào nghề giáo, rồi gặp mối Đạo Trời, lãnh phẩm Thời Quân, trải qua bao cuộc thay đổi trong Hội Thánh và ngoài thế cuộc, đến đây Ngài đã mãn phần nơi cõi tạm.
+
+Hội Thánh lo liệu tang lễ theo nghi thức Đại Đạo trong năm ngày. Linh cữu Ngài được đưa an táng tại nghĩa trang gia đình ông Bảy Bích, thuộc vùng Cây Quéo, Gia Định.
+
+VIII. DI LIÊN ĐÀI VỀ TÒA THÁNH, AN VỊ NƠI PHẦN ĐẤT THẬP NHỊ THỜI QUÂN:
+
+Sau khi Ngài Bảo Pháp qui vị, gia đình vẫn gìn giữ những trước tác cùng di cảo của Ngài.
+
+Ngày 26 tháng 7 năm 1973, người con trưởng nam là Hiền Tài Nguyễn Trung Ngôn thay mặt gia đình lập văn kiện hiến dâng bản quyền các trước tác của thân phụ cho Hội Thánh. Đến ngày 7 tháng 8 năm 1973, việc ấy được tiếp nhận, theo ghi chép trong Cao Đài Từ Điển.
+
+Đây là một việc đáng kể, bởi những sách Đạo cùng thi văn của Ngài vốn là tài sản tinh thần đã góp nhặt qua mấy mươi năm. Nay gia đình hiến dâng cho Hội Thánh, cũng là mong những điều Ngài từng dày công biên soạn được lưu truyền và tiếp tục giúp ích cho đời sau.
+
+Qua năm Giáp Dần 1974, Hội Thánh Tây Ninh tổ chức cải táng di hài Ngài từ Gia Định về Thánh địa, an vị nơi phần đất dành cho Thập Nhị Thời Quân.
+
+Cuộc lễ được cử hành từ ngày mùng 4 đến mùng 7 tháng 9 năm Giáp Dần, nhằm các ngày 18 đến 21 tháng 10 năm 1974.
+
+Ngày 18 tháng 10, phần mộ cũ được khai mở. Ngài Giáo Sư Ngọc Minh Thanh, bấy giờ giữ trách nhiệm Khâm Trấn Đạo Sài Gòn – Gia Định, cùng Ngài Giáo Sư Thái Hồ Thanh, phụ trách Nhà Thuyền Bát Nhã, coi sóc việc cải táng.
+
+Trong hai ngày 18 và 19 tháng 10, liên đài được quàn tại tư gia vùng Cây Quéo, cử hành những nghi lễ theo phép Đại Đạo. Ngài Hiến Pháp Trương Hữu Đức cùng đại diện Hội Thánh lưỡng đài, Hội Thánh Phước Thiện và nhiều chức sắc, đạo hữu đến niệm hương tưởng nhớ.
+
+Sáng ngày 20 tháng 10 năm 1974, đúng 6 giờ, đoàn di liên đài khởi hành từ Gia Định về Tòa Thánh Tây Ninh.
+
+Đến khoảng 15 giờ 30 phút, liên đài được đưa vào Báo Ân Từ, tiếp tục cử hành lễ tế điện cùng cầu siêu.
+
+Sáng hôm sau, ngày 21 tháng 10 năm 1974, nhằm ngày mùng 7 tháng 9 năm Giáp Dần, đúng ngày kỷ niệm mười ba năm Ngài qui vị, liên đài được đưa qua Đền Thánh để hành lễ, rồi di chuyển đến khu đất Thập Nhị Thời Quân tại Ao Hồ.
+
+Tại nơi an vị, Ngài Hiến Pháp Trương Hữu Đức, bấy giờ giữ trọng trách Chưởng Quản Hiệp Thiên Đài, tuyên đọc bài tiểu sử và lời tưởng niệm Ngài Bảo Pháp Nguyễn Trung Hậu.
+
+Bài diễn từ ấy thuật lại những chặng đường đời của Ngài, từ thân thế, học vấn, buổi sơ ngộ Đại Đạo, những công việc đã đảm nhiệm, cho tới ngày qui vị.
+
+Đại diện gia đình trong lễ cải táng có ông Nguyễn Trung Nghĩa, người con thứ nam, đứng ra lo liệu tang sự với tư cách quyền trưởng nam.
+
+Sau khi các nghi lễ hoàn tất, liên đài được nhập Bửu Tháp.
+
+Từ đó, di hài Ngài Bảo Pháp được an vị nơi phần đất Thập Nhị Thời Quân, cùng hàng với những vị đã có công trong buổi đầu lập thành cơ cấu Hiệp Thiên Đài.
+
+Đối với việc nghiên cứu hành trạng Ngài, bài tiểu sử do Hiến Pháp Trương Hữu Đức tuyên đọc trong dịp này là một tài liệu có giá trị, bởi người tuyên đọc vốn là một vị Thời Quân đồng thời, đã có mặt trong hàng môn đệ sơ khai và từng cùng Ngài đảm trách việc phò cơ từ năm Bính Dần 1926.
+
+Tuy nhiên, bản văn hiện thường được biết qua những sách in lại về sau, nên muốn khảo chứng đến từng lời, cần tìm được bản in hoặc thủ bản gần ngày lễ cải táng nhứt.
+
+IX. VĂN NGHIỆP ĐỂ LẠI VÀ CÔNG PHU GIÁO HÓA:
+
+Cuộc đời Ngài Bảo Pháp Nguyễn Trung Hậu, nếu chỉ kể từ ngày thọ phẩm Thời Quân cho tới lúc qui vị, thì còn thiếu một phần đáng kể. Bởi trong mấy mươi năm ấy, bên cạnh công việc của một vị chức sắc, Ngài còn là người chăm lo trước tác và truyền bá giáo lý bằng chữ quốc ngữ.
+
+Những tác phẩm hiện được các sách Đạo sử ghi nhận gồm Luận Đạo Vấn Đáp và Tiên Thiên Tiểu Học, xuất hiện năm 1927; Chơn Lý, năm 1928; Đại Đạo Căn Nguyên, năm 1930; Thiên Đạo, hợp soạn cùng Phan Trường Mạnh, năm 1955; và Luân Hồi Quả Báo, hợp soạn cùng Khai Đạo Phạm Tấn Đãi, năm 1956.
+
+Ngoài ra còn có các tác phẩm Bài Thuyết Đạo, Châu Thân Giải, Ăn Chay, Đức Tin, cùng nhiều bài văn và thi phẩm hiện chưa kiểm kê đầy đủ.
+
+Trong số ấy, Tiên Thiên Tiểu Học được Hội Thánh tái bản năm 1955; Đại Đạo Căn Nguyên lại có bản tái bản tại An Hội năm 1957.
+
+Cần nói rằng năm ghi trong các thư mục có khi là năm in lần đầu, có khi lại là năm tái bản. Bởi vậy, những quyển chưa tìm được bản in nguyên thủy thì chưa nên định chắc niên đại sáng tác.
+
+Riêng những tác phẩm về giáo lý, Ngài thường dùng lối giảng giải phân minh, nói từ điều dễ đến điều khó. Lời văn ít chuộng những chỗ rườm rà, mà cốt làm cho người đọc hiểu được cái nghĩa tu hành, phép sửa mình và bổn phận đối với xã hội.
+
+Đó cũng là chỗ người dạy học gặp người hành đạo trong cùng một thân phận.
+
+Người làm thầy muốn học trò hiểu bài, thì phải biết giảng cho tường tận; người truyền bá giáo lý muốn nhơn sanh biết Đạo, cũng phải đem những lẽ cao xa mà nói thành lời gần gũi. Ngài Bảo Pháp đã đem sở trường nghề giáo của mình mà làm công việc ấy.
+
+Còn trong thi văn, Ngài lấy hiệu Thuần Đức, có nhiều bài xướng họa, thi tự thuật, thi đạo và thi tả cảnh.
+
+Những bài như Xuất Gia, Dưới Chân Thầy, Đại Đạo Tam Kỳ Phổ Độ, Thôn Chiều Buồn cùng nhiều bài khác cho thấy văn nghiệp của Ngài kéo dài từ thuở thanh niên cho đến những ngày cuối đời.
+
+Sau cuộc lễ cải táng năm 1974, các thi hữu Đạo Đức Văn Đàn còn cho xuất bản tập Hoài Niệm Thuần Đức Tiên Sinh, trong đó có những lời tưởng niệm và thi văn liên hệ đến Ngài.
+
+Đối với hậu thế, những trước tác ấy có hai phần giá trị. Một là giá trị giáo lý, giúp người học Đạo hiểu thêm những điều được giảng dạy trong thời kỳ đầu. Hai là giá trị sử liệu, bởi lời văn của người đã sống qua các biến cố có thể giúp soi sáng phần nào những điều xảy ra trong quá khứ.
+
+Song hai phần ấy cũng cần được phân biệt. Một quyển sách giảng Đạo có thể là căn bản tín ngưỡng rất quý, nhưng khi lấy làm tài liệu lịch sử, vẫn phải xét đến ngày tháng, hoàn cảnh biên soạn cùng nguồn gốc những sự việc được thuật lại.
+
+Đặc biệt, quyển Đại Đạo Căn Nguyên là một đầu mối đáng chú ý đối với việc tìm hiểu buổi sơ khai Đại Đạo, bởi được biên soạn tương đối gần thời kỳ các việc ấy xảy ra.
+
+Những người chuyên tâm nghiên cứu Đạo sử ngày nay nếu có dịp đối chiếu bản in đầu với những bản in lại về sau, ắt sẽ giúp phân định thêm nhiều chi tiết, chẳng những về cuộc đời Ngài Bảo Pháp, mà còn về sinh hoạt Hội Thánh trong những năm Bính Dần, Đinh Mão và Quý Dậu.
+
+X. MỘT ĐỜI GẮN VỚI CỬA ĐẠO:
+
+Xét suốt hành trạng Ngài Bảo Pháp Nguyễn Trung Hậu, từ ngày sanh trưởng nơi đất Bình Hòa, theo học Trường Sư Phạm Gia Định, ra làm thầy giáo, đến lúc gặp cơ khai mở Đại Đạo và thọ phẩm Thời Quân, ta thấy đường đời của Ngài có nhiều chỗ đổi thay.
+
+Có lúc Ngài cầm phấn đứng lớp; có lúc phải đi phò loan phổ độ; có lúc lãnh trách nhiệm giữ quyền Chưởng Pháp; rồi cũng có lúc rời Tòa Thánh mà trở lại Gia Định, lo nghề dạy học và chuyên việc trước tác.
+
+Đến tuổi ngoài sáu mươi, Ngài lại được Hội Thánh triệu về, giao lo công việc Hạnh Đường, đào luyện chức sắc hậu tấn. Nhưng chưa được bao lâu thì sức khỏe suy yếu, phải trở về dưỡng bịnh. Những năm cuối đời lại gặp cảnh thời cuộc bất an, chịu điều phiền lụy, rồi lìa cõi thế vào ngày mùng 7 tháng 9 năm Tân Sửu.
+
+Chừng ấy việc, nếu đem xét theo cảnh đời, quả có lúc vinh, lúc nhục, lúc thuận, lúc nghịch. Mà ở giữa những cuộc biến đổi ấy, Ngài vẫn giữ lấy ngòi bút, đem cái học đã có mà viết sách, làm thi, giảng Đạo, dạy người.
+
+Phẩm Bảo Pháp là một trách nhiệm trong cơ cấu Hiệp Thiên Đài. Công việc Giám đốc Hạnh Đường là một nhiệm vụ Hội Thánh giao phó trong một thời kỳ nhứt định. Còn những sách Đạo cùng thi văn Ngài để lại, ấy là phần công phu đã theo Ngài gần trọn đời.
+
+Người sau khi nhắc đến Ngài, nên nhớ đủ cả những điều ấy. Chẳng vì muốn ca tụng mà bỏ qua những biến cố có thật; cũng chẳng vì thấy trong đời Ngài có những việc bất đồng mà quên mất công nghiệp buổi đầu cùng những trước tác còn truyền lại.
+
+Bởi Đạo sử vốn là chuyện người trước đã trải qua. Người đời sau chỉ có thể lấy tài liệu mà tìm hiểu, lấy sự ngay thẳng mà ghi chép, chớ chẳng nên đem lòng yêu ghét của mình sửa đổi những điều đã xảy ra.
+
+Tính từ ngày Ngài Nguyễn Trung Hậu sanh ra nơi đất Gia Định năm Nhâm Thìn 1892, đến ngày qui vị năm Tân Sửu 1961, một đời bảy mươi tuổi ta đã trải qua nhiều bước thăng trầm. Mười ba năm sau, di hài Ngài được đưa về Thánh địa Tây Ninh, an vị nơi phần đất Thập Nhị Thời Quân.
+
+Thân xác đã trở về với đất, song những trang Đại Đạo Căn Nguyên, Luận Đạo Vấn Đáp, Tiên Thiên Tiểu Học, Chơn Lý, Thiên Đạo, Luân Hồi Quả Báo cùng nhiều thi văn vẫn còn đó, làm chứng tích cho một đời tận tụy với chữ nghĩa và công cuộc giáo hóa.
+
+Ấy là phần di sản mà Ngài Bảo Pháp Chơn Quân Nguyễn Trung Hậu đã để lại cho nền Đại Đạo, cũng là điều đáng cho những người hậu học tìm đọc, suy xét và gìn giữ.
+
+LỜI THƯA CÙNG QUÍ ĐỘC GIẢ
+
+Bài biên khảo này chẳng phải một công trình mới phát kiến về cuộc đời và công nghiệp của Ngài Bảo Pháp Chơn Quân Nguyễn Trung Hậu. Từ ngày Đức Ngài qui vị đến nay, Hội Thánh Tây Ninh cùng nhiều bậc chức sắc, Hiền Tài và soạn giả đã từng ghi chép, biên soạn hành trạng của Ngài trong những sách Đạo sử.
+
+Nay người biên soạn chỉ góp nhặt những điều đã được lưu truyền trong các tài liệu ấy, đối chiếu thêm một số công trình khảo cứu khác, rồi sắp đặt lại theo thứ tự năm tháng, ngõ hầu giúp quí độc giả tiện bề theo dõi.
+
+Lời văn trong bài được viết lại theo lối quốc ngữ Nam Kỳ thuở trước, gần với cách kể chuyện, ký sự nhân vật và văn chương đạo lý hồi đầu thế kỷ XX; chẳng theo khuôn thức văn bản hành chánh Đạo. Tuy vậy, những danh xưng, phẩm vị, ngày tháng cùng sự kiện vẫn được giữ theo tài liệu đã tham khảo, không vì chuộng lời văn mà tự ý thay đổi sử thực.
+
+Các chi tiết còn có dị bản, như thế danh, tên người phối ngẫu, thời điểm nhập môn, trách nhiệm Chưởng Pháp năm 1933, việc bị tạm giữ năm 1960 cùng niên đại một số trước tác, vẫn cần tiếp tục tìm bản gốc để khảo chứng. Riêng danh sách đầy đủ tám người con cùng các giấy tờ hộ tịch của Ngài hiện chưa được xác định trọn vẹn.
+
+Nếu về sau tìm được những văn kiện xác đáng hơn, thiết tưởng cũng nên bổ túc, đính chánh, để bài viết ngày một gần với sự thật lịch sử.
+Tây Ninh, Ngày 08/07/2026
+Biên Soạn TRƯỜNG QUANG</article><h2>Tư liệu tham khảo</h2><div class="sources">TÀI LIỆU THAM KHẢO
+1. Trần Văn Rạng – Đại Đạo Danh Nhân, chương “Bảo Pháp Chơn Quân Nguyễn Trung Hậu”, tr. 112–120.
+2. Nguyễn Văn Hồng (Đức Nguyên) – Cao Đài Từ Điển, quyển I, mục “Bảo Pháp”.
+3. Nguyên Thủy – 28 Vị Tiền Khai Đại Đạo, phần tiểu sử Bảo Pháp Nguyễn Trung Hậu.
+4. Trương Hữu Đức (Hiến Pháp) – Tiểu sử và lời tưởng niệm Bảo Pháp Nguyễn Trung Hậu, tuyên đọc trong lễ cải táng ngày 21 tháng 10 năm 1974, được các sách Đạo sử dẫn lại.
+5. Trần Văn Rạng – Đại Đạo Sử Cương, quyển II, phần Châu Tri số 1 và các văn kiện năm Quý Dậu 1933.
+6. Nguyễn Văn Hồng – Đạo Sử Nhựt Ký, quyển I, phần 3, các vi bằng và văn kiện liên quan đến Thượng Hội, Hội Vạn Linh năm 1933.
+7. Đạt Tường – “Kỷ niệm 60 năm đăng tiên của Ngài Bảo Pháp Nguyễn Trung Hậu”, Cao Đài Giáo Lý, số 158, năm 2021.
+8. Jeremy Jammes – “Printing Cosmopolitanism, Challenging Orthodoxies: Cao Đài Journals in Twentieth Century Vietnam”, Vienna Journal of East Asian Studies, tập 10, năm 2018, tr. 175–209.
+9. Trần Thị Hải Yến – Nghiên cứu về Đạo Cao Đài trong bộ sưu tập tư liệu Pháp – Việt của Thư viện Quốc gia Pháp (Bibliothèque nationale de France).
+10. Đạo Đức Văn Đàn – Hoài Niệm Thuần Đức Tiên Sinh, xuất bản sau lễ cải táng năm 1974.
+
+Biên khảo và diễn văn lại theo lối quốc ngữ Nam Kỳ xưa, trên căn bản những tài liệu Đạo sử đã lưu truyền.</div><p><a class="back" href="/#nhan-vat/bao-phap-chon-quan-nguyen-trung-hau-6awb5b">Mở hồ sơ và hình ảnh trong kho tư liệu ↗</a></p><p><a href="/">Trang chủ</a> · <a href="/ho-so/">Danh mục tư liệu</a></p></main><footer>Kho tư liệu Đạo sử Cao Đài · Tòa Thánh Tây Ninh. Bản đọc phục vụ tìm kiếm; dữ liệu gốc được quản lý tại website chính.</footer></body></html>
