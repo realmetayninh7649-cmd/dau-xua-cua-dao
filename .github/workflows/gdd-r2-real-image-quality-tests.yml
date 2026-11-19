@@ -4,6 +4,7 @@ on:
     paths:
       - "scripts/r2_probe_actual_previews.py"
       - "scripts/r2_probe_live_worker_route.mjs"
+      - "scripts/r2_mobile_watermark_smoke.mjs"
       - "workers/gdd-r2-gateway/src/**"
       - ".github/workflows/gdd-r2-real-image-quality-tests.yml"
   workflow_dispatch:
@@ -35,3 +36,12 @@ jobs:
         run: |
           node --check scripts/r2_probe_live_worker_route.mjs
           node scripts/r2_probe_live_worker_route.mjs
+      - name: "Install browser test dependency"
+        run: npm install --no-save playwright-core@1.56.1
+      - name: "Check stamp and fullscreen viewer with real WebP on iPhone-like viewport"
+        run: |
+          cp /tmp/gdd-r2-sample.webp gdd-qa-temp-sample.webp
+          python -m http.server 8765 --bind 127.0.0.1 >/tmp/gdd-mobile-preview-server.log 2>&1 &
+          sleep 2
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node scripts/r2_mobile_watermark_smoke.mjs
+          rm -f gdd-qa-temp-sample.webp
