@@ -1,0 +1,21 @@
+name: "GDD R2 - Probe safe Storage list permission without filenames"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gdd-r2-private-inventory-permission-probe.yml"
+      - "scripts/gdd_public_storage_inventory_probe.py"
+permissions:
+  contents: read
+jobs:
+  list-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Read-only list permission test; never print file names"
+        run: |
+          python -m py_compile scripts/gdd_public_storage_inventory_probe.py
+          python scripts/gdd_public_storage_inventory_probe.py
