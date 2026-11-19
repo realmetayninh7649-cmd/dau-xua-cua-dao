@@ -23,18 +23,18 @@ try{
        prepare:async file=>{await new Promise(resolve=>setTimeout(resolve,5));return file;}};
      window.GDDTrace={stampedBlob:async()=>new Blob(['stamp'],{type:'image/jpeg'})};
      const rows=[],uploads=[],state={active:0,peak:0,failInsertOnce:false,failed:false};
-     const store={
-       async upload(path,file){
-         if(!path.endsWith('-trace.jpg')){
-           state.active++;state.peak=Math.max(state.peak,state.active);
-           uploads.push(file.name);
-           // Deliberately invert file arrival: the second upload wins the race.
-           await new Promise(resolve=>setTimeout(resolve,file.name==='01.jpg'?55:15));
-           state.active--;
-         }
-         return {error:null};
-       },
-       getPublicUrl:path=>({data:{publicUrl:'https://example.invalid/'+path}})
+     window.GDDR2={archive:async (file,supa,options)=>{
+       state.active++;state.peak=Math.max(state.peak,state.active);
+       uploads.push(file.name);
+       await new Promise(resolve=>setTimeout(resolve,file.name==='01.jpg'?55:15));
+       state.active--;
+       if(options.skipDerivatives!==false)throw Error('private R2 cutover requires derivative variants');
+       return{id:'12345678-1234-4123-8123-'+String(uploads.length).padStart(12,'0'),
+         previewReady:true,downloadReady:true};
+     }};
+     window.GDDPrivatePublishing={
+       publishArchivedImage:async asset=>({url:'https://r2.example.invalid/v1/public/'+asset.id+'/preview'}),
+       previewUrl:id=>'https://r2.example.invalid/v1/public/'+id+'/preview'
      };
      const selectQuery=()=>({
        filters:{},
@@ -46,7 +46,8 @@ try{
        },
        maybeSingle(){
          return Promise.resolve({data:rows.find(r=>r.image_url===this.filters.image_url)||null,error:null});
-       }
+       },
+       single(){return Promise.resolve({data:{published:true},error:null});}
      });
      const table={
        select(){return selectQuery()},
@@ -66,7 +67,7 @@ try{
      };
      window.__albumTestClient={
        auth:{getUser:async()=>({data:{user:{id:'tester'}},error:null})},
-       from:()=>table,storage:{from:()=>store}
+       from:()=>table
      };
      window.__albumState={rows,uploads,state};
    });
