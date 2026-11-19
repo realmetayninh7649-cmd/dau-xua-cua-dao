@@ -13,7 +13,7 @@ export async function legacyPrintResponse(req,env,path,cors){
   if(value.length<8||value.length>190||!value.endsWith('.jpg'))return json(404,'Bản in không tồn tại',cors);
   let sourcePath;
   try{sourcePath=decodeURIComponent(value.slice(0,-4))}catch{return json(404,'Đường dẫn không hợp lệ',cors)}
-  if(!/^[A-Za-z0-9_.\\/-]{1,110}$/.test(sourcePath)||sourcePath.split('/').includes('..')||
+  if(!new RegExp('^[A-Za-z0-9_./-]{1,110}$').test(sourcePath)||sourcePath.split('/').includes('..')||
     !LEGACY_PRINT_PATHS.has(sourcePath))return json(404,'Không có bản in được duyệt',cors);
   try{
     const obj=await env.GDD_BUCKET.get('legacy-published-print-v1/'+sourcePath+'.jpg');
