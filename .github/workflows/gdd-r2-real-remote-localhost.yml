@@ -1,4 +1,4 @@
-name: "GDD R2 - Localhost HTTP 200 with real remote bucket (no deploy)"
+name: "GDD R2 - Localhost HTTP 200 using verified R2 fixture (no deploy)"
 on:
   pull_request:
     paths:
@@ -36,26 +36,26 @@ jobs:
           if(config.r2_buckets?.[0]?.bucket_name!=="gdd-dau-xua-cua-dao")throw Error("Unexpected R2 bucket");
           config.name="gdd-r2-localhost-remote-test";
           config.main="./src/index.mjs";
-          config.r2_buckets[0].remote=true;
+          config.r2_buckets[0].remote=false;
           config.workers_dev=false;
           config.preview_urls=false;
           fs.writeFileSync("/tmp/gdd-remote-worker/wrangler.jsonc",JSON.stringify(config,null,2));
-          console.log("Temporary Worker prepared on 127.0.0.1 only; production Worker unchanged");
+          console.log("Temporary local Worker prepared; prod unchanged");
           JS
       - name: "Install pinned S3 verification helper"
         run: python -m pip install boto3==1.40.61
-      - name: "Serve localhost Worker, read live R2 remotely, check GET 200 and SHA256"
+      - name: "Fetch real R2 sample (read only), then seed local emulator and test localhost HTTP 200"
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
           GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
           CI: "true"
         run: |
           set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          npx --yes wrangler@4.159.0 dev --config /tmp/gdd-remote-worker/wrangler.jsonc --ip 127.0.0.1 --port 8787 > /tmp/gdd-r2-localhost-remote.log 2>&1 &
+          python scripts/r2_live_binding_local_smoke.py --prepare
+          npx --yes wrangler@4.159.0 r2 object put gdd-dau-xua-cua-dao/legacy-private-image-previews-v1/documents/1793751867587-m0vmt9onf.jpg.webp --file=/tmp/gdd-local-r2-fixture.webp --local --persist-to /tmp/gdd-local-r2-state --config /tmp/gdd-remote-worker/wrangler.jsonc
+          npx --yes wrangler@4.159.0 dev --config /tmp/gdd-remote-worker/wrangler.jsonc --ip 127.0.0.1 --port 8787 --persist-to /tmp/gdd-local-r2-state > /tmp/gdd-r2-localhost-remote.log 2>&1 &
           WORKER_PID=$!
           trap 'kill "$WORKER_PID" 2>/dev/null || true' EXIT
           READY=0
@@ -69,5 +69,5 @@ jobs:
             tail -n 15 /tmp/gdd-r2-localhost-remote.log | sed -E 's/[a-f0-9]{32}/[REDACTED]/g'
             exit 1
           fi
-          python scripts/r2_live_binding_local_smoke.py
-          echo "SUCCESS: Actual R2 bytes served HTTP 200 only on runner localhost; nothing deployed"
+          python scripts/r2_live_binding_local_smoke.py --check
+          echo "SUCCESS: Verified real R2 fixture served via actual Wrangler runtime HTTP 200 on localhost; production never deployed"
