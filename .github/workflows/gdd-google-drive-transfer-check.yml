@@ -1,0 +1,29 @@
+name: "GDD - Test safe archive transfer to Google Drive"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "maintenance-tasks/gdrive-transfer-test.flag"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Create harmless transfer-format test, no photo files"
+        run: |
+          mkdir -p /tmp/gdrive-archive-test
+          printf '{"website":"Dau Xua Cua Dao","note":"Test connector transfer only. No images or secrets.","snapshot":"2026-11-19"}\n' > /tmp/gdrive-archive-test/README.json
+          cd /tmp/gdrive-archive-test
+          zip -q /tmp/gdd-gdrive-safe-test.zip README.json
+      - name: "Upload to temporary GitHub artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-gdrive-transfer-test
+          path: /tmp/gdd-gdrive-safe-test.zip
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
