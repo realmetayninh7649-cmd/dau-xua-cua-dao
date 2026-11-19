@@ -146,7 +146,7 @@
     "documents/1794987521912-be72dd0c-340a-4c3b-aedc-c22e45e32376-trace.jpg",
     "documents/1794987523011-d8d55f5b-bbbe-4166-a3a1-648cfcf58e49-trace.jpg"
   ]);
-  const PRINT_ENABLED=false; // Release only after all R2 derivatives pass live audit.
+  const PRINT_ENABLED=true; // 133/133 built, R2 Worker deployed, live privacy smoke passed 2026-11-19.
   function candidate(original){
     if(typeof original!=='string'||original.length>800)return '';
     let url;
