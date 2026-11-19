@@ -162,6 +162,12 @@
     return WORKER_PREFIX+path+'.webp';
   }
   function printUrl(original){
+    // R2-published documentary scans use a higher-resolution approved JPEG,
+    // never the archival original object.
+    if(window.GDDPrivatePublishing?.isPreviewURL?.(original)){
+      const id=String(original).split('/').at(-2);
+      return window.GDDPrivatePublishing.printUrl(id);
+    }
     if(!PRINT_ENABLED)return String(original||'');
     let url;
     try{url=new URL(String(original||''))}catch{return String(original||'')}
