@@ -1,5 +1,6 @@
 import { VERSION } from './version.mjs';
 import { LEGACY_PREVIEW_PATH, legacyPreviewResponse } from './legacy-preview.mjs';
+import { LEGACY_PRINT_ROUTE, legacyPrintResponse } from './legacy-print.mjs';
 // GDDĐ v2.0.0-DK01.2 — Bảo tồn nguyên mẫu & bản xem nhẹ.
 // Bản gốc là R2 PRIVATE; KHÔNG có tuyến GET original hoặc URL tải gốc công khai.
 // Version resides in version.mjs so the Worker entrypoint has default export only.
@@ -377,6 +378,7 @@ export default {
     }
     // Route is hard-disabled during maintenance; only 700 allowlisted public WebPs could be served after reopening.
     if(path.startsWith(LEGACY_PREVIEW_PATH))return legacyPreviewResponse(req,env,path,cors,LEGACY_PREVIEW_ENABLED);
+    if(path.startsWith(LEGACY_PRINT_ROUTE))return legacyPrintResponse(req,env,path,cors);
     // Public chỉ được đọc bản xem do quản trị viên công bố, không có bản gốc.
     if(path.startsWith('/v1/public/'))return publicView(req,env,path,cors);
     if(!['GET','POST','PUT'].includes(req.method))return failure(405,'Method not allowed',cors);
