@@ -172,3 +172,14 @@ test('No digitized document scans must fail, not create a text-only PDF',()=>{
   assert.throws(()=>m.documentScanSources({...record,documentFileUrl:'',cover:'',gallery:[]}),
     /chưa có ảnh chụp tài liệu/);
 });
+
+test('Digitized public catalog renders native first-page previews through lazy R2 image relay, not blank placeholders',()=>{
+  const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+  const css=fs.readFileSync(new URL('../gdd-document-folders.css',import.meta.url),'utf8');
+  assert.match(app,/kind==='documents'&&originKind==='documents'/);
+  assert.match(app,/const src=\(state\.admin\|\|\(kind==='documents'&&originKind==='documents'\)\)\?imageFromRecord\(x\):''/);
+  assert.match(app,/loading="lazy" decoding="async" fetchpriority="low"/);
+  assert.match(app,/const imageFromRecord=x=>displayImageUrl\(/);
+  assert.match(css,/#tai-lieu-so-hoa #document-grid \.archive-thumb > img/);
+  assert.match(css,/object-fit:contain/);
+});
