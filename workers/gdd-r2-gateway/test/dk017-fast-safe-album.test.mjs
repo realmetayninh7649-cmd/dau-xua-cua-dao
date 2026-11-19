@@ -43,7 +43,8 @@ test('Private-cutover: gallery and primary create R2 derivatives before publishi
   const module=readFileSync(new URL('workers/gdd-r2-gateway/client/uploader.mjs',root),'utf8');
   assert.match(album,/skipDerivatives:false/);
   assert.match(album,/window.GDDPrivatePublishing.publishArchivedImage/);
-  assert.match(app,/skipDerivatives:!!window\.GDDImageOptimizer\?\.isImage\(file\)/);
+  assert.match(app,/skipDerivatives:false/);
+  assert.match(app,/window.GDDPrivatePublishing.publishArchivedImage/);
   assert.match(admin,/finishOptimizingExisting\(sourcePicker\.files\[0\],entry\.asset_id/);
   assert.match(module,/export async function finishOptimizingExisting/);
   assert.match(album,/gdd-r2-admin\.js\?v=20261118-batch-01/);
