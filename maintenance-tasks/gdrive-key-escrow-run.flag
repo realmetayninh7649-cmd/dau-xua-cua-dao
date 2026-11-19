@@ -1,0 +1,1 @@
+One-time encrypted transport of existing backup recovery key, RSA-OAEP + AES256GCM, never public plaintext.
