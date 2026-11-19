@@ -35,13 +35,14 @@ test('DK01.7: album upload preserves original bytes and skips unneeded R2 deriva
   }finally{globalThis.fetch=oldFetch}
 });
 
-test('DK01.7: both normal gallery and primary image use safe fast mode; R2 fallback exists',()=>{
+test('Private-cutover: gallery and primary create R2 derivatives before publishing; retry utility remains available',()=>{
   const root=new URL('../../../',import.meta.url);
   const album=readFileSync(new URL('index.html',root),'utf8');
   const app=readFileSync(new URL('app.js',root),'utf8');
   const admin=readFileSync(new URL('gdd-r2-admin.js',root),'utf8');
   const module=readFileSync(new URL('workers/gdd-r2-gateway/client/uploader.mjs',root),'utf8');
-  assert.match(album,/skipDerivatives:!docFile/);
+  assert.match(album,/skipDerivatives:false/);
+  assert.match(album,/window.GDDPrivatePublishing.publishArchivedImage/);
   assert.match(app,/skipDerivatives:!!window\.GDDImageOptimizer\?\.isImage\(file\)/);
   assert.match(admin,/finishOptimizingExisting\(sourcePicker\.files\[0\],entry\.asset_id/);
   assert.match(module,/export async function finishOptimizingExisting/);
