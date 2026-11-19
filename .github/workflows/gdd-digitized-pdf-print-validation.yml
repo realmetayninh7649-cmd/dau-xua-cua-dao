@@ -1,0 +1,73 @@
+name: "GDD - PDF So Hoa chi trang anh A4 de in"
+on:
+  pull_request:
+    paths:
+      - "gdd-document-export.js"
+      - "tests/digitized-pdf-real-render.mjs"
+      - "tests/digitized-image-only-pdf-smoke.mjs"
+      - ".github/workflows/gdd-digitized-pdf-print-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "gdd-document-export.js"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  print-pdf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Check original-image embedding logic and Word remains unchanged"
+        run: |
+          node --check gdd-document-export.js
+          node --test tests/digitized-image-only-pdf-smoke.mjs
+      - name: "Install pinned PDF renderer and examiner"
+        run: |
+          npm install --no-save playwright-core@1.56.1 pdfmake@0.2.20
+          python -m pip install pymupdf==1.26.5 Pillow==11.3.0
+      - name: "Create three separate native-size print scan fixtures"
+        run: |
+          python - <<'PY'
+          from PIL import Image,ImageDraw
+          from pathlib import Path
+          directory=Path("/tmp/gdd-pdf-test")
+          directory.mkdir(parents=True,exist_ok=True)
+          for n in (1,2,3):
+              im=Image.new("RGB",(1500,2100),(248,247,242))
+              paint=ImageDraw.Draw(im)
+              for y in range(120,1950,75):
+                  paint.line((85,y,1415,y),fill=(80+n*15,80,80),width=3)
+              paint.rectangle((150,160,1350,330),outline=(80,90,90),width=7)
+              im.save(directory/f"{n}.png",format="PNG")
+          print("Created 3 separate 1500x2100 print scan fixtures")
+          PY
+      - name: "Generate REAL PDF using browser pdfmake on iPhone-sized viewport"
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/digitized-pdf-real-render.mjs
+      - name: "Assert exactly three A4 pages, one native-resolution image per page, zero rendered text"
+        run: |
+          python - <<'PY'
+          import fitz
+          p="/tmp/gdd-pdf-test/print-only.pdf"
+          doc=fitz.open(p)
+          assert len(doc)==3, f"Expected exactly 3 pages, got {len(doc)}"
+          for i,page in enumerate(doc):
+              assert abs(page.rect.width-595.28)<2 and abs(page.rect.height-841.89)<2, "PDF page is not A4"
+              text=page.get_text("text").strip()
+              assert not text, f"Text unexpectedly appeared on page {i+1}: {text[:120]}"
+              images=page.get_images(full=True)
+              assert len(images)==1, f"Page {i+1} has {len(images)} embedded images instead of exactly one"
+              native=doc.extract_image(images[0][0])
+              assert native["width"]==1500 and native["height"]==2100, f"Page {i+1} raster resolution changed"
+              print(f"PRINT PDF VERIFIED PAGE {i+1}/3: A4, 1500x2100 image, no extra text or captions")
+          doc.close()
+          print("PRINT PDF PASS: original-size images only, no brand cover, no header/footer, ready for A4 printing")
+          PY
