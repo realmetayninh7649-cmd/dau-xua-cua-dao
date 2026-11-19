@@ -11,10 +11,10 @@ function bridge(){
 const original='https://gwpdgubxoquhrfbolftq.supabase.co/storage/v1/object/public/dao-su-images/documents/1793751867587-m0vmt9onf.jpg';
 const target='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/legacy-preview/documents/1793751867587-m0vmt9onf.jpg.webp';
 
-test('bridge is permanently disabled while maintenance flag is in effect',()=>{
+test('approved public image display routes already published originals to R2 WebP',()=>{
   const relay=bridge();
-  assert.equal(relay.enabled,false);
-  assert.equal(relay.displayUrl(original),original);
+  assert.equal(relay.enabled,true);
+  assert.equal(relay.displayUrl(original),target);
   assert.equal(relay.candidate(original),target);
 });
 test('relay cannot rewrite non-archive sources, PDF, private paths or query-transformed images',()=>{
@@ -52,6 +52,6 @@ test('all 700 existing published Supabase image URLs produce deterministic WebP 
     const originalUrl='https://gwpdgubxoquhrfbolftq.supabase.co/storage/v1/object/public/dao-su-images/'+entry.path;
     const expected='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/legacy-preview/'+entry.path+'.webp';
     assert.equal(relay.candidate(originalUrl),expected,'Mapping failed: '+entry.path);
-    assert.equal(relay.displayUrl(originalUrl),originalUrl,'Public cutover unexpectedly enabled: '+entry.path);
+    assert.equal(relay.displayUrl(originalUrl),expected,'Published WebP mapping unavailable: '+entry.path);
   }
 });
