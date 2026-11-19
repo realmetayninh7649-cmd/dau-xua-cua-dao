@@ -194,11 +194,19 @@
     max-width:100%;
     overflow:hidden;
   }
+  #tai-lieu-so-hoa #document-grid .archive-thumb{
+    background:#f4f1e9;
+    border-bottom:1px solid #e0d9c7;
+  }
   #tai-lieu-so-hoa #document-grid .archive-thumb > img{
+    box-sizing:border-box;
     max-width:100%;
     width:100%;
     height:100%;
+    padding:9px 15px;
     object-fit:contain;
+    object-position:center;
+    background:transparent;
   }
   #tai-lieu-so-hoa #document-grid .archive-card-copy{
     padding:14px!important;
