@@ -1,4 +1,4 @@
-/* Only 700 images already published on the website. No drafts or private originals. */
+/* 700 archived gallery images plus 5 memorial portraits already published on the website. No drafts or private originals. */
 export const LEGACY_PUBLISHED_PATHS = new Set([
   "documents/1793751867587-m0vmt9onf.jpg",
   "documents/1793751871563-58c25058-631b-4f44-9e15-607de5056dc7.jpg",
@@ -699,5 +699,10 @@ export const LEGACY_PUBLISHED_PATHS = new Set([
   "videos/1793748856117-3ff9ws1xt.jpg",
   "videos/1793748973161-rky60ygwk.png",
   "videos/1793749128644-5np389akf.jpg",
-  "videos/1793852949852-lnvermdbv.jpg"
+  "videos/1793852949852-lnvermdbv.jpg",
+  "memorials/1794948675991-c161eafe-0f0e-4305-a58a-a51cd8c6004c.png",
+  "memorials/1794211599597-3783dc64-d926-4054-8be2-07df132ddb67.jpg",
+  "memorials/1794186660631-41499137-cc91-4314-bd99-c9ef6e2af93f.jpg",
+  "memorials/1794039717377-9b2ea46b-62e3-4141-8166-f1383e83515a.jpg",
+  "memorials/1793836888388-4043a5f0-a02f-4ffa-aca3-e6ef157cc9a9.jpg"
 ]);

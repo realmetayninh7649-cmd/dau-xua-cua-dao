@@ -23,9 +23,18 @@ function fixture(){
 }
 
 test('exact pre-approved set has 700 published image paths',()=>{
-  assert.equal(LEGACY_PUBLISHED_PATHS.size,700);
+  assert.equal(LEGACY_PUBLISHED_PATHS.size,705);
   assert.equal(LEGACY_PUBLISHED_PATHS.has(example),true);
   assert.equal(LEGACY_PUBLISHED_PATHS.has('people/private-draft.jpg'),false);
+  const publishedMemorials=[
+    'memorials/1794948675991-c161eafe-0f0e-4305-a58a-a51cd8c6004c.png',
+    'memorials/1794211599597-3783dc64-d926-4054-8be2-07df132ddb67.jpg',
+    'memorials/1794186660631-41499137-cc91-4314-bd99-c9ef6e2af93f.jpg',
+    'memorials/1794039717377-9b2ea46b-62e3-4141-8166-f1383e83515a.jpg',
+    'memorials/1793836888388-4043a5f0-a02f-4ffa-aca3-e6ef157cc9a9.jpg',
+  ];
+  for(const path of publishedMemorials)assert.equal(LEGACY_PUBLISHED_PATHS.has(path),true);
+  assert.equal(LEGACY_PUBLISHED_PATHS.has('memorials/private-unpublished.png'),false);
 });
 
 test('production route serves only an already published WebP, never original bytes',async()=>{
