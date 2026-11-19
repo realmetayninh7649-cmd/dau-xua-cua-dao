@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Re-audit after enabling Worker edge cache and public request rate limiter.
 """Live public routing audit. Read-only; never touches a private original or a database row."""
 import json,hashlib,urllib.request,urllib.error, pathlib,os,sys,re
 BASE="https://gdd-r2-gateway.realmetayninh7649.workers.dev"
