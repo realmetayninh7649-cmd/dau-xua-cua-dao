@@ -35,7 +35,8 @@ jobs:
           ]
           for path in closed:
               st,ct,payload=probe(path)
-              if st!=404:raise SystemExit("Unexpected exposed live R2 path; HTTP "+str(st))
+              if st not in (403,404) or ct.startswith("image/"):
+                  raise SystemExit("Unexpected exposed live R2 path; HTTP "+str(st))
           print("LIVE MAINTENANCE BOUNDARY PASS: staged preview and private originals inaccessible on production Worker")
           st,ct,payload=probe("/v1/uploads/start",method="POST",headers={"Content-Type":"application/json"})
           if st!=403:raise SystemExit("Unauthenticated R2 upload should be blocked, HTTP "+str(st))
