@@ -46,8 +46,12 @@ try{
          await new Promise(ok=>setTimeout(ok,f.name==='01.jpg'?45:25));
          state.active--;
          options.onProgress?.({phase:'original',bytes:f.size,total:f.size});
-         return {id:'r2-'+f.name,originalBytes:f.size};
+         return {id:'r2-'+f.name,originalBytes:f.size,previewReady:!f.name.endsWith('.pdf'),downloadReady:!f.name.endsWith('.pdf')};
        },refresh:()=>{}
+     };
+     window.GDDPrivatePublishing={
+       publishArchivedImage:async asset=>({url:'https://r2.local.invalid/v1/public/'+asset.id+'/preview'}),
+       previewUrl:id=>'https://r2.local.invalid/v1/public/'+id+'/preview'
      };
      const store={
        async upload(path,file){
@@ -68,7 +72,8 @@ try{
        });},
        maybeSingle(){return Promise.resolve({data:rows.find(r=>
          r.owner_kind===this.filter.owner_kind&&r.owner_id===this.filter.owner_id&&
-         r.image_url===this.filter.image_url)||null,error:null});}
+         r.image_url===this.filter.image_url)||null,error:null});},
+       single(){return Promise.resolve({data:{published:true},error:null});}
      });
      const table={
        select:filterQuery,
@@ -119,14 +124,11 @@ try{
    assert.deepEqual(result.rows.map(x=>x.code),[
      'DXCD-SH-00001/001','DXCD-SH-00001/002','DXCD-SH-00001/003'
    ]);
-   assert.ok(result.rows.every(r=>r.url.includes('-trace.jpg')),device+' display trace');
+   assert.ok(result.rows.every(r=>r.url.includes('/v1/public/')&&r.url.endsWith('/preview')),device+' safe R2 derivative URLs');
    assert.equal(result.pending,0,device+' all processed');
    for(const name of ['01.jpg','02.jpg','03.jpg','04.pdf'])
      assert.equal(result.archives[name],1,device+' original R2 only once '+name);
-   for(const name of ['01.jpg','02.jpg','03.jpg'])
-     assert.equal(result.uploads.filter(u=>u.name===name).length,1,
-       device+' view upload only once '+name);
-   assert.ok(!result.uploads.some(u=>u.name==='04.pdf'),device+' private PDF');
+   assert.equal(result.uploads.length,0,device+' no public Supabase Storage uploads');
    console.log('UNLIMITED DOCUMENT UPLOAD PASS',device,JSON.stringify({
      concurrent:result.peak,records:result.rows.length,privatePdf:true,pending:result.pending
    }));
