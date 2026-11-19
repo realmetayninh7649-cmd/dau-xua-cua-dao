@@ -5,7 +5,7 @@ import { LEGACY_PREVIEW_PATH, legacyPreviewResponse } from './legacy-preview.mjs
 // Version resides in version.mjs so the Worker entrypoint has default export only.
 // Future cutover is explicitly disabled until the website owner approves reopening.
 // This flag is not affected by client requests or URL query parameters.
-const LEGACY_PREVIEW_ENABLED = false;
+const LEGACY_PREVIEW_ENABLED = true; // Public access only to exact 700 already-published WebP previews; no originals.
 const PROBE = '__gdd_internal__/dk01_read_probe_only';
 const MB = 1024 * 1024;
 const PART_BYTES = 8 * MB;
