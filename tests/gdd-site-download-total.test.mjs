@@ -52,17 +52,17 @@ test('site counter renders current total and counts an unlinked link only once',
    "Promise.resolve({createClient:()=>({rpc:async(name,payload)=>{if(name==='gdd_get_site_download_total')return {data:total,error:null};if(name==='gdd_record_site_unlinked_download'){standalone++;total++;return{data:total,error:null}}throw Error(name)}})})");
  assert.notEqual(source,site,'replaced external module for offline test');
  const sandbox={window,document,sessionStorage:{getItem:k=>fakeSession.get(k)||null,setItem:(k,v)=>fakeSession.set(k,v)},
-   Element:Elem,Date,Math,Uint8Array,Intl,Number,console,Promise};
+   Element:Elem,Date,Math,Uint8Array,Intl,Number,console,Promise,total:44,standalone:0};
  vm.runInNewContext(source,sandbox,{timeout:1500});
  callbacks.DOMContentLoaded();await new Promise(resolve=>setTimeout(resolve,5));
  assert.equal(node.textContent,'44');
  callbacks.click({target:new Elem({filename:'document.pdf'}),defaultPrevented:false});
  await new Promise(resolve=>setTimeout(resolve,5));
- assert.equal(standalone,1);assert.equal(node.textContent,'45');
+ assert.equal(sandbox.standalone,1);assert.equal(node.textContent,'45');
  callbacks.click({target:new Elem({filename:'document.pdf',fromArticle:true}),defaultPrevented:false});
  await new Promise(resolve=>setTimeout(resolve,5));
  assert.equal(standalone,1,'article click is not recorded twice');
- total++;article++;pending['gdd:content-download-recorded']();
+ sandbox.total++;article++;pending['gdd:content-download-recorded']();
  await new Promise(resolve=>setTimeout(resolve,5));
  assert.equal(node.textContent,'46');
 });
