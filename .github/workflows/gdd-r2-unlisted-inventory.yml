@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/gdd-r2-unlisted-inventory.yml"
+      - "scripts/r2_preserve_unlisted_private_images.py"
 permissions:
   contents: read
 jobs:
