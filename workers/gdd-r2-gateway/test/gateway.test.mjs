@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import gateway, { VERSION } from '../src/index.mjs';
+import gateway from '../src/index.mjs';
+import { VERSION } from '../src/version.mjs';
 
 const url = 'https://gdd-r2-gateway.example.workers.dev/health';
 test('chỉ cho truy cập /health, không lộ tuyến tư liệu', async () => {
