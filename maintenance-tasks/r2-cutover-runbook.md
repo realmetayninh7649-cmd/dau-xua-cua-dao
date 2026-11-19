@@ -5,7 +5,9 @@
 ## Đã hoàn tất
 
 - Đã sao lưu 3 PDF nguyên từng byte lên R2 riêng tư và kiểm tra SHA-256. Bản Supabase giữ nguyên.
-- 700 ảnh có tham chiếu trong nội dung đã công bố: 700 bản gốc (1.378.424.460 byte) và 700 WebP (176.241.312 byte) trên R2 riêng tư. Kiểm kê đủ số lượng. 
+- 700 ảnh có tham chiếu trong nội dung đã công bố: 700 bản gốc (1.378.424.460 byte) và 700 WebP nhẹ trên R2 riêng tư. Kiểm kê đủ số lượng.
+- **131 ảnh chưa công bố hoặc chưa có tham chiếu**: đã được sao lưu nguyên bản và đọc lại SHA-256, tổng 155.381.554 byte, tại R2 private `legacy-unlisted-private-v1/`; không tạo WebP công khai, không đổi URL. Công việc hoàn tất đủ 8/8 nhóm và kiểm kê cuối đạt: https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/actions/runs/44435201562
+- Toàn bộ **831 ảnh gốc (1.533.806.014 byte)** đã có bản dự phòng R2, không xóa bất kỳ ảnh nào trong Supabase. 
 - 50/50 mẫu đối chiếu mã băm, hướng ảnh, kích thước và RGB; sai khác RGB chuẩn hóa trung bình 0,0074, lớn nhất 0,0113. Đây không thay thế duyệt chữ nhỏ và dấu niêm trên ảnh tư liệu.
 - Giao diện iPhone giả lập 390 × 844 px thử ảnh WebP thật, dòng nguồn/mã ảnh và trình xem toàn màn hình thành công.
 - Bộ kiểm thử website phục hồi trong GitHub Actions **không triển khai** đã chạy thành công với bản `index.html` từ nhánh `backup/pre-maintenance-2026-11-19`.
@@ -28,7 +30,7 @@
 3. Chỉ sau bước 2 mới bật mapping trình duyệt và khôi phục trang chủ; nếu mapping bật trước Worker, ảnh sẽ bị 404. Giữ `maintenance-mode.flag` cho tới khi tất cả bài thử hoàn tất.
 4. Duyệt thủ công vài chân dung, ảnh nhiều chữ/pháp văn, tranh ảnh có watermark trên Safari iPhone thật; đảm bảo không thay đổi khuôn mặt, con dấu, thư pháp và không bỏ tính năng QR.
 5. Kiểm tra sau khi phục hồi số yêu cầu Supabase Storage giảm thực tế và mức sử dụng R2/Workers chưa vượt Free.
-6. 131 ảnh chưa có tham chiếu công khai cần bảo tồn riêng; 2 ảnh thuộc bài chưa công bố, 129 ảnh chưa được gắn tham chiếu — tuyệt đối không thêm vào danh sách phát hành công khai.
+6. 131 ảnh đã bảo tồn xong, trong đó có 2 ảnh gắn bài nháp và 129 ảnh không có tham chiếu. **Giữ bí mật danh sách**, không gộp với 700 ảnh được phép phát hành, không tạo tuyến xem chúng trên Worker. Bản danh mục GitHub chỉ có ciphertext OpenPGP; khóa giải mã nằm riêng trong kho R2 không có tuyến GET công khai.
 7. **Chỉ gỡ thông báo bảo trì khi người chủ website xác nhận chấp thuận mở lại**.
 
 ## Hoàn nguyên nhanh nếu ảnh bị lỗi
@@ -46,7 +48,8 @@
 
 ## Tham khảo phép thử
 
-- [Kiểm kê R2 700/700](https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/actions/runs/44423950718)
+- [Kiểm kê R2 700/700 bản gốc và WebP](https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/actions/runs/44423950718)
+- [Kiểm kê R2 131/131 ảnh riêng tư, giải mã danh mục bảo mật](https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/actions/runs/44435201562)
 - [Website phục hồi hoàn chỉnh nhưng chỉ trên GitHub CI](https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/actions/runs/44430290946)
 - [HTTP 200 bản WebP thực qua Worker localhost](https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/actions/runs/44430468131)
 - [Kiểm tra ảnh và khung xem iPhone giả lập](https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/actions/runs/44428344497)
