@@ -100,6 +100,9 @@ jobs:
           node --check homepage-previews.js
           node --check gdd-phase2-search.js
           node --check gdd-legacy-r2-images.js
+          node --check gdd-private-publishing.js
+          node --test tests/gdd-private-publishing.test.mjs
+          node --test tests/gdd-safe-download-cutover.test.mjs
           node --test tests/gdd-r2-legacy-bridge.test.mjs
           node --check gdd-festival-binh-ngo-2026.js
           node --check workers/gdd-r2-gateway/src/index.mjs
