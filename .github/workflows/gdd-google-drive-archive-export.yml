@@ -11,9 +11,36 @@ concurrency:
   group: gdd-google-drive-original-archive
   cancel-in-progress: false
 jobs:
+  choose-parts:
+    runs-on: ubuntu-latest
+    outputs:
+      parts: ${{ steps.prepare.outputs.parts }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: prepare
+        name: "Validate no more than six source-preservation shards per batch"
+        run: |
+          python3 - <<'PY'
+          import json,os
+          cfg=json.load(open("maintenance-tasks/gdrive-backup-part.json"))
+          parts=cfg.get("parts",[cfg.get("part")])
+          if cfg.get("part_count")!=24 or not isinstance(parts,list) or not 1<=len(parts)<=6:
+              raise SystemExit("Invalid number of requested shards")
+          if any(type(x) is not int or x<0 or x>=24 for x in parts) or len(set(parts))!=len(parts):
+              raise SystemExit("Invalid or duplicated shard index")
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write("parts="+json.dumps(parts,separators=(",",":"))+"\n")
+          print("Shards requested: "+str(len(parts))+"; no filenames exposed")
+          PY
   export-one-encrypted-part:
+    needs: choose-parts
     runs-on: ubuntu-latest
     timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        part: ${{ fromJSON(needs.choose-parts.outputs.parts) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,18 +48,19 @@ jobs:
           python-version: "3.12"
       - name: "Install pinned read-only R2 dependency"
         run: python -m pip install boto3==1.40.61
-      - name: "Verify each R2 original SHA256; encrypt shard before publishing temp artifact"
+      - name: "Verify original SHA256; encrypt before any temporary artifact upload"
         env:
+          GDD_BACKUP_PART_INDEX: ${{ matrix.part }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
           GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
         run: |
           python -m py_compile scripts/gdrive_export_verified_shard.py
           python scripts/gdrive_export_verified_shard.py
-      - name: "Upload only encrypted GPG file as short-lived GitHub Actions artifact"
+      - name: "Upload ONLY ciphertext GPG archive with one-day temporary retention"
         uses: actions/upload-artifact@v4
         with:
-          name: gdd-drive-backup-${{ github.run_id }}
+          name: gdd-drive-backup-${{ github.run_id }}-part-${{ matrix.part }}
           path: /tmp/gdd-drive-archive-export/*.tar.gpg
           if-no-files-found: error
           retention-days: 1
