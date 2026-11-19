@@ -141,7 +141,7 @@
   async function processImage(url){
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
     let response;
-    try{response=await fetch(url,{mode:'cors',credentials:'omit',signal:controller.signal})}
+    try{response=await fetch(window.GDDLegacyImages?.displayUrl?.(url)||url,{mode:'cors',credentials:'omit',signal:controller.signal})}
     finally{clearTimeout(timer)}
     if(!response.ok)throw Error('HTTP '+response.status);
     const blob=await response.blob();
@@ -211,7 +211,7 @@
   async function fullResolutionPrintScan(url){
     const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),45000);
     let response;
-    try{response=await fetch(url,{mode:'cors',credentials:'omit',signal:abort.signal})}
+    try{response=await fetch(window.GDDLegacyImages?.printUrl?.(url)||url,{mode:'cors',credentials:'omit',signal:abort.signal})}
     finally{clearTimeout(timer)}
     if(!response.ok)throw Error('Nguồn ảnh không trả dữ liệu (HTTP '+response.status+')');
     const blob=await response.blob();
