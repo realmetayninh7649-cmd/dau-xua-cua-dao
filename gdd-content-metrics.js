@@ -69,6 +69,7 @@
   async function countDownload(ref){
     const data=await register(ref.kind,ref.id,'download','d_'+randomHex());
     show(data,ref);
+    if(data)window.dispatchEvent(new Event('gdd:content-download-recorded'));
   }
   function mount(kind,id,published,container){
     if(!allowed.has(kind)||!published||!container||!/^[0-9a-f-]{36}$/i.test(id||''))return;
@@ -98,17 +99,22 @@
     const container=document.getElementById(containerId||'detail-content');
     mount(kind,String(id),published===true,container);
   });
-  document.addEventListener('click',e=>{
-    if(!active?.node?.isConnected)return;
-    const el=e.target instanceof Element?e.target:null;
-    if(!el)return;
-    const button=el.closest('a[download],#gdd-image-download,[data-gdd-image-save],[data-gdd-qr-download]');
-    if(!button||button.hidden||button.disabled)return;
-    // Tải hình ảnh/tệp không xuất phát từ một bài đang mở thì không gán nhầm số đếm.
+  function claimsDownloadClick(button){
+    if(!active?.node?.isConnected||!button||button.hidden||button.disabled)return false;
     const fromArticle=Boolean(button.closest('#detail-content,#gdd-memorial-dialog-body'));
-    const fromViewer=button.id==='gdd-image-download'&&document.getElementById('detail-overlay')?.hidden===false;
-    if(!fromArticle&&!fromViewer)return;
-    if(active.kind!=='memorial' && document.getElementById('detail-overlay')?.hidden!==false)return;
-    countDownload(active);
+    const fromViewer=button.id==='gdd-image-download'
+      &&document.getElementById('detail-overlay')?.hidden===false;
+    if(!fromArticle&&!fromViewer)return false;
+    if(active.kind!=='memorial'&&document.getElementById('detail-overlay')?.hidden!==false)return false;
+    return true;
+  }
+  // One event per article download action. The site-wide widget sums these
+  // records, so its standalone recorder must not count them a second time.
+  window.GDDContentMetrics=Object.freeze({claimsDownloadClick});
+  document.addEventListener('click',e=>{
+    const el=e.target instanceof Element?e.target:null;
+    const button=el?.closest('a[download],#gdd-image-download,[data-gdd-image-save],[data-gdd-qr-download]');
+    if(!claimsDownloadClick(button))return;
+    void countDownload(active);
   },true);
 })();
