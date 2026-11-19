@@ -30,7 +30,8 @@
   }
   function makeBar(){
     const x=document.createElement('section');x.className='gdd-doc-export';
-    x.innerHTML='<h3>Lưu trữ và trích dẫn tư liệu</h3><p>Tải toàn văn bài viết, ảnh, chú thích và nguồn tư liệu đã công bố. Tệp được tạo trên thiết bị; website không lưu thêm bản PDF hay Word.</p><div class="gdd-doc-actions"><button type="button" data-gdd-document="pdf">↓ Tải PDF</button><button type="button" data-gdd-document="docx">↓ Tải Word</button></div><div class="gdd-doc-status" role="status" aria-live="polite"></div>';
+    const onlyScans=route()?.kind==='documents';
+    x.innerHTML='<h3>Lưu trữ và trích dẫn tư liệu</h3><p>'+(onlyScans?'PDF: chỉ các trang ảnh văn kiện, đúng thứ tự, giữ độ phân giải gốc để in khổ A4; không kèm chữ, bìa hay chú thích. Word: có đầy đủ phần thuyết minh, chú thích và nguồn tư liệu.':'Tải toàn văn bài viết, ảnh, chú thích và nguồn tư liệu đã công bố. Tệp được tạo trên thiết bị; website không lưu thêm bản PDF hay Word.')+'</p><div class="gdd-doc-actions"><button type="button" data-gdd-document="pdf">↓ Tải PDF</button><button type="button" data-gdd-document="docx">↓ Tải Word</button></div><div class="gdd-doc-status" role="status" aria-live="polite"></div>';
     return x;
   }
   // Bộ thủ bút này là bài biên khảo gốc nhưng được người dùng chỉ rõ trong mục Hình ảnh.
@@ -101,9 +102,10 @@
   async function readGallery(record,progress){
     if(record.kind==='memorial')return record.gallery;
     const client=await getSupa();
-    const {data:owner,error:ownerError}=await client.from(record.kind).select('id')
+    const {data:owner,error:ownerError}=await client.from(record.kind).select(record.kind==='documents'?'id,file_url':'id')
       .eq('slug',record.slug).eq('published',true).maybeSingle();
     if(ownerError||!owner)throw Error('Không thể kiểm tra danh sách ảnh của bài viết: '+(ownerError?.message||'không tìm thấy bản ghi'));
+    if(record.kind==='documents')record.documentFileUrl=safeURL(owner.file_url);
     const result=[];
     for(let offset=0;offset<2000;offset+=200){
       const {data,error}=await client.from('archive_gallery_images')
@@ -171,6 +173,112 @@
       }catch(e){fail.push({...item,reason:e.message})}
     }
     return {ok,fail};
+  }
+  // TÀI LIỆU SỐ HÓA: print-only PDF, one ORIGINAL scan per A4 page.
+  // Word and PDF for Biên Khảo/Hồ sơ Chức sắc retain the existing scholarly layout.
+  function documentScanSources(record){
+    const seen=new Set(),result=[];
+    const add=url=>{
+      const resolved=safeURL(url);
+      if(!resolved)return;
+      let suffix='';
+      try{suffix=new URL(resolved).pathname}catch{return}
+      if(!/\.(?:jpe?g|png|webp)$/i.test(suffix)||seen.has(resolved))return;
+      seen.add(resolved);
+      result.push(resolved);
+    };
+    // Original scan linked as the primary document, followed by gallery scans in stored order.
+    add(record.documentFileUrl);
+    for(const item of record.gallery||[])add(item.url);
+    // Backward compatibility for legacy published documents with a visible image but no file_url.
+    if(!result.length)add(record.cover);
+    if(!result.length)throw Error('Bài số hóa chưa có ảnh chụp tài liệu JPG, PNG hoặc WebP để tạo bản PDF in. Không xuất PDF toàn chữ.');
+    return result;
+  }
+  function readBlobDataURL(blob,mime){
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onerror=()=>reject(Error('Thiết bị không đọc được dữ liệu ảnh gốc'));
+      reader.onload=()=>{
+        const value=String(reader.result||'');
+        const comma=value.indexOf(',');
+        if(comma<0)reject(Error('Dữ liệu ảnh không đúng dạng Base64'));
+        else resolve('data:'+mime+';base64,'+value.slice(comma+1));
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+  async function fullResolutionPrintScan(url){
+    const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),45000);
+    let response;
+    try{response=await fetch(url,{mode:'cors',credentials:'omit',signal:abort.signal})}
+    finally{clearTimeout(timer)}
+    if(!response.ok)throw Error('Nguồn ảnh không trả dữ liệu (HTTP '+response.status+')');
+    const blob=await response.blob();
+    if(!blob.size||blob.size>35*1024*1024)throw Error('Ảnh không có dữ liệu hoặc quá lớn để xuất trực tiếp trên thiết bị');
+    const magic=new Uint8Array(await blob.slice(0,16).arrayBuffer());
+    const jpeg=magic[0]===0xff&&magic[1]===0xd8;
+    const png=magic[0]===0x89&&magic[1]===0x50&&magic[2]===0x4e&&magic[3]===0x47;
+    const webp=magic[0]===0x52&&magic[1]===0x49&&magic[2]===0x46&&magic[3]===0x46
+      &&magic[8]===0x57&&magic[9]===0x45&&magic[10]===0x42&&magic[11]===0x50;
+    if(!jpeg&&!png&&!webp)throw Error('Nguồn không phải ảnh JPEG, PNG hoặc WebP hợp lệ');
+    const temp=URL.createObjectURL(blob);
+    try{
+      const image=new Image();
+      image.decoding='async';
+      await new Promise((resolve,reject)=>{
+        image.onload=resolve;
+        image.onerror=()=>reject(Error('Không giải mã được ảnh nguyên bản'));
+        image.src=temp;
+      });
+      const width=image.naturalWidth,height=image.naturalHeight;
+      if(!width||!height)throw Error('Ảnh không có kích thước hợp lệ');
+      if(jpeg||png){
+        // Embed the stored original JPEG/PNG bytes, no 1400px resize or 82% JPEG recompression.
+        return {data:await readBlobDataURL(blob,jpeg?'image/jpeg':'image/png'),width,height};
+      }
+      // PDFMake cannot embed WebP natively. Convert to lossless PNG at native pixel dimensions.
+      if(width*height>45000000)throw Error('Ảnh WebP quá lớn để chuyển PNG nguyên kích cỡ trên điện thoại');
+      const canvas=document.createElement('canvas');
+      canvas.width=width;canvas.height=height;
+      try{
+        const ctx=canvas.getContext('2d');
+        if(!ctx)throw Error('Không thể mở vùng xử lý ảnh');
+        ctx.drawImage(image,0,0,width,height);
+        return {data:canvas.toDataURL('image/png'),width,height};
+      }finally{canvas.width=canvas.height=0}
+    }finally{URL.revokeObjectURL(temp)}
+  }
+  async function preparePrintScans(record,progress){
+    const urls=documentScanSources(record),result=[];
+    for(let i=0;i<urls.length;i++){
+      progress('Đang lấy ảnh gốc độ phân giải cao '+(i+1)+'/'+urls.length+'…');
+      try{result.push(await fullResolutionPrintScan(urls[i]))}
+      catch(error){
+        // Never silently produce a truncated archive PDF or replace a failed original by a tiny thumbnail.
+        throw Error('Trang ảnh '+(i+1)+'/'+urls.length+' chưa tải được: '+(error?.message||error)+'. Chưa xuất PDF để tránh thiếu trang.');
+      }
+    }
+    return result;
+  }
+  function imageOnlyDocumentPdf(record,scans){
+    if(record.kind!=='documents'||!scans.length)throw Error('Bản PDF in chỉ tạo cho tư liệu số hóa có ảnh chụp');
+    const pageW=595.28,pageH=841.89,border=12;
+    const innerW=pageW-2*border,innerH=pageH-2*border-3;
+    const content=scans.map((im,i)=>{
+      const scale=Math.min(innerW/im.width,innerH/im.height);
+      const width=Math.min(innerW,im.width*scale),height=Math.min(innerH,im.height*scale);
+      return {
+        image:im.data,width,height,alignment:'center',
+        margin:[0,Math.max(0,(innerH-height)/2),0,0],
+        ...(i?{pageBreak:'before'}:{})
+      };
+    });
+    return {
+      pageSize:'A4',pageMargins:[border,border,border,border],content,
+      info:{title:record.title,author:'Dấu Xưa Cửa Đạo',subject:'Bản chụp tư liệu số hóa – PDF chỉ gồm các trang ảnh'}
+      // Intentionally no headers, footer, brand, captions, page numbers or text nodes.
+    };
   }
   function pdfDefinition(record,images){
     const brand='#215448',gold='#AA8147',muted='#647568';
@@ -347,20 +455,32 @@
       const record=snapshot(current);
       progress('Đang kiểm tra bộ ảnh công khai…');
       record.gallery=await readGallery(record,progress);
-      const images=await prepareImages(record,progress);
-      progress('Đang tạo bản '+(button.dataset.gddDocument==='pdf'?'PDF':'Word')+'…');
-      if(button.dataset.gddDocument==='pdf'){
+      const isPdf=button.dataset.gddDocument==='pdf';
+      if(isPdf && record.kind==='documents'){
+        const scans=await preparePrintScans(record,progress);
+        progress('Đang tạo PDF gồm '+scans.length+' trang ảnh A4, không kèm chữ hoặc trang bìa…');
         const make=await getPdf();
         const blob=await new Promise((resolve,reject)=>{
-          try{make.createPdf(pdfDefinition(record,images)).getBlob(resolve)}catch(e){reject(e)}
+          try{make.createPdf(imageOnlyDocumentPdf(record,scans)).getBlob(resolve)}catch(e){reject(e)}
         });
         attachBlob(blob,record,'pdf',bar);
+        progress('Đã tạo bản PDF chỉ có '+scans.length+' trang ảnh tư liệu ở độ phân giải gốc. Bấm liên kết bên dưới để lưu và in.');
       }else{
-        attachBlob(await docxBlob(record,images),record,'docx',bar);
+        const images=await prepareImages(record,progress);
+        progress('Đang tạo bản '+(isPdf?'PDF':'Word')+'…');
+        if(isPdf){
+          const make=await getPdf();
+          const blob=await new Promise((resolve,reject)=>{
+            try{make.createPdf(pdfDefinition(record,images)).getBlob(resolve)}catch(e){reject(e)}
+          });
+          attachBlob(blob,record,'pdf',bar);
+        }else{
+          attachBlob(await docxBlob(record,images),record,'docx',bar);
+        }
+        progress(images.fail.length?
+          'Đã tạo tệp. '+images.fail.length+' ảnh bị nguồn hạn chế tải; đã ghi chú thích và đường dẫn ảnh vào tài liệu. Bấm liên kết bên dưới để lưu.':
+          'Đã tạo tệp. Bấm liên kết bên dưới để lưu về thiết bị.');
       }
-      progress(images.fail.length?
-        'Đã tạo tệp. '+images.fail.length+' ảnh bị nguồn hạn chế tải; đã ghi chú thích và đường dẫn ảnh vào tài liệu. Bấm liên kết bên dưới để lưu.':
-        'Đã tạo tệp. Bấm liên kết bên dưới để lưu về thiết bị.');
     }catch(error){
       console.warn('[GDD Document Export]',error);
       progress('Không thể xuất tệp: '+(error?.message||String(error))+'. Xin thử lại.');
