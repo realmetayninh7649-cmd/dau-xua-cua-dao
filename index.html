@@ -1500,7 +1500,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           if(record.photo_code)figure.dataset.photoCode=record.photo_code;
           const no=offset+i+1;
           if(isDocument){
-            const tile=document.createElement('a');tile.href=url.href;tile.target='_blank';tile.rel='noopener noreferrer';
+            const tile=document.createElement('a');tile.href=window.GDDDocumentReader?.readerUrl(url.href)||url.href;tile.target='_blank';tile.rel='noopener noreferrer';
             tile.className='gdd-album-pdf-tile';
             const pdf=document.createElement('strong');pdf.className='gdd-album-pdf-label'+(isPdf?'':' gdd-album-word-label');pdf.textContent=docLabel;
             const title=document.createElement('small');title.textContent=record.caption||'Tài liệu '+docLabel+' '+no;
@@ -1526,18 +1526,11 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
           const original=document.createElement('div');
           if(isDocument){
             const link=document.createElement('a');
-            link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.className='gdd-album-open';
+            link.href=window.GDDDocumentReader?.readerUrl(url.href)||url.href;link.target='_blank';link.rel='noopener noreferrer';link.className='gdd-album-open';
             link.textContent=isPdf?'Xem PDF ↗':'Mở Word ↗';original.appendChild(link);
           }
-          if(isDocument){
-            const down=document.createElement('a'),u=new URL(url.href);
-            if(u.hostname.endsWith('.supabase.co')&&u.pathname.includes('/storage/v1/object/public/dao-su-documents/')){
-              u.searchParams.set('download','tai-lieu-'+String(no).padStart(2,'0')+'.'+ext);
-            }
-            down.href=u.href;down.download='tai-lieu-'+String(no).padStart(2,'0')+'.'+ext;
-            down.target='_blank';down.rel='noopener noreferrer';down.className='gdd-album-open';down.style.marginLeft='12px';
-            down.textContent='↓ Tải '+docLabel;original.appendChild(down);
-          }
+          // Raw PDF/Word source downloads are disabled; use the verified R2 reader.
+
           figure.appendChild(caption);
           if(original.childElementCount)figure.appendChild(original);
           gallery.appendChild(figure);added++;
