@@ -1,0 +1,37 @@
+name: "GDD R2 - Test quality and real preview bytes (read only)"
+on:
+  pull_request:
+    paths:
+      - "scripts/r2_probe_actual_previews.py"
+      - "scripts/r2_probe_live_worker_route.mjs"
+      - "workers/gdd-r2-gateway/src/**"
+      - ".github/workflows/gdd-r2-real-image-quality-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r2-private-image-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Install pinned image and R2 libraries"
+        run: python -m pip install boto3==1.40.61 Pillow==11.3.0
+      - name: "Check 40-65 genuine private R2 images, pixels and original hash"
+        env:
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python -m py_compile scripts/r2_probe_actual_previews.py
+          python scripts/r2_probe_actual_previews.py
+      - name: "Exercise production-disabled Worker route with real WebP bytes"
+        run: |
+          node --check scripts/r2_probe_live_worker_route.mjs
+          node scripts/r2_probe_live_worker_route.mjs
