@@ -4,7 +4,7 @@
  */
 ((root)=>{
   'use strict';
-  const ENABLED=false; // Must remain false until both Worker and website are independently verified.
+  const ENABLED=true; // Approved release: only previously published Supabase images use verified R2 WebP Worker.
   const SOURCE_ORIGIN='https://gwpdgubxoquhrfbolftq.supabase.co';
   const SOURCE_PREFIX='/storage/v1/object/public/dao-su-images/';
   const WORKER_PREFIX='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/legacy-preview/';
