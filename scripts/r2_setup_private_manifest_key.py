@@ -15,7 +15,7 @@ import sys
 
 from r2_preserve_published_images import make_s3,BUCKET
 
-KEY="__gdd_internal__/unlisted-manifest-private-key-v1.asc"
+KEY="__gdd_internal__/unlisted-manifest-private-key-v2.asc"
 
 def run(*args,stdin=None,env=None):
     return subprocess.check_output(args,input=stdin,stderr=subprocess.PIPE,env=env)
@@ -40,7 +40,10 @@ def main():
         else:
             config=b"""Key-Type: RSA
 Key-Length: 3072
-Key-Usage: encrypt
+Key-Usage: sign
+Subkey-Type: RSA
+Subkey-Length: 3072
+Subkey-Usage: encrypt
 Name-Real: GDD Private R2 Inventory
 Name-Email: gdd-private-manifest@example.invalid
 Expire-Date: 1y
