@@ -1,0 +1,29 @@
+name: "GDD - Migrate safe versioned editorial schema on WORKING D1 ONLY"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-working-editor-schema.yml"
+      - "scripts/gdd_prepare_d1_editor.py"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gdd-working-editor-schema-safe
+  cancel-in-progress: false
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "No private data: local SQLite synthetic editor migration test"
+        run: python3 scripts/gdd_prepare_d1_editor.py --local
+      - name: "Apply only after two 1892-row D1 count checks, idempotent schema"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: python3 scripts/gdd_prepare_d1_editor.py --remote
