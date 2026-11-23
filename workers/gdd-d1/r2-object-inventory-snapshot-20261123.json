@@ -1,0 +1,16 @@
+{
+  "type": "gdd-r2-readonly-object-list-baseline",
+  "verified_at_utc": "2026-11-23T16:14:16.641464+00:00",
+  "bucket": "gdd-dau-xua-cua-dao",
+  "object_count": 2512,
+  "total_bytes": 3156978971,
+  "object_list_sha256": "a055149d72babc6157825da075f294c38861b49839afe59bf606b6e849d9c427",
+  "list_requests": 3,
+  "source_workflow": "https://github.com/realmetayninh7649-cmd/dau-xua-cua-dao/actions/runs/45214158482",
+  "method": "S3 ListObjectsV2. SHA256 of concatenated private object key, size and ETag, in list order; only digest is stored.",
+  "limitations": [
+    "Fingerprint is NOT SHA256 of file bytes.",
+    "Snapshot does not prove remote independent backup or successful restore.",
+    "No private keys, personal records, object keys, filenames or URLs committed."
+  ]
+}
