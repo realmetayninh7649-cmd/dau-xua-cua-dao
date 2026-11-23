@@ -10,6 +10,7 @@ on:
       - "supabase-config.js"
       - "gdd-public-readonly.js"
       - "gdd-calendar-reminder-subscription.js"
+      - "gdd-people-organizer.js"
   workflow_dispatch:
 
 permissions:
