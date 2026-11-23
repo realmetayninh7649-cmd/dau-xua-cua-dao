@@ -1,0 +1,95 @@
+name: "GDD STAGING - Thu phuc hoi anh goc R2 ma hoa"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: [".github/workflows/gdd-staging-test-r2-recovery.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recovery-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install boto3==1.40.61
+      - uses: actions/download-artifact@v4
+        with:
+          name: gdd-staging-encrypted-source-part-0
+          run-id: 45216411713
+          repository: realmetayninh7649-cmd/dau-xua-cua-dao
+          github-token: ${{ github.token }}
+          path: /tmp/gdd-recovery-test-ciphertext
+      - name: "Decrypt one SHA256-verifiable encrypted R2 shard using existing R2 recovery key; discard plaintext"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import boto3,os,re,pathlib,subprocess,tarfile,hashlib,json,tempfile
+          from botocore.config import Config
+          aid=os.environ.get('CLOUDFLARE_ACCOUNT_ID','')
+          ak=os.environ.get('GDD_R2_ARCHIVE_ACCESS_KEY_ID','')
+          sk=os.environ.get('GDD_R2_ARCHIVE_SECRET_ACCESS_KEY','')
+          if not re.fullmatch('[a-fA-F0-9]{32}',aid) or not re.fullmatch('[a-fA-F0-9]{32}',ak) or len(sk)<16:
+              raise SystemExit('Missing R2 READ access')
+          s3=boto3.client('s3',endpoint_url=f'https://{aid}.r2.cloudflarestorage.com',aws_access_key_id=ak,
+              aws_secret_access_key=sk,region_name='auto',
+              config=Config(signature_version='s3v4',s3={'addressing_style':'path'},
+                request_checksum_calculation='when_required',response_checksum_validation='when_required'))
+          body=s3.get_object(Bucket='gdd-dau-xua-cua-dao',Key='__gdd_internal__/unlisted-manifest-private-key-v2.asc')
+          key=body['Body'].read(50000);body['Body'].close()
+          if not 1000<len(key)<45000 or not key.startswith(b'-----BEGIN PGP PRIVATE KEY BLOCK-----'):
+              raise SystemExit('Encrypted archive key missing; abort')
+          files=list(pathlib.Path('/tmp/gdd-recovery-test-ciphertext').glob('*.tar.gpg'))
+          if len(files)!=1:raise SystemExit('Expected exactly one encrypted shard')
+          with tempfile.TemporaryDirectory(prefix='gdd-test-recovery-') as td:
+              root=pathlib.Path(td);home=root/'gnupg';home.mkdir(mode=0o700)
+              env={**os.environ,'GNUPGHOME':str(home)}
+              subprocess.run(['gpg','--batch','--quiet','--import'],input=key,
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=env,check=True,timeout=40)
+              key=b'' # never write the unwrapped private key into a public artifact
+              dest=root/'restore.tar'
+              subprocess.run(['gpg','--batch','--yes','--quiet','--pinentry-mode','loopback',
+                '--decrypt','--output',str(dest),str(files[0])],
+                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=env,check=True,timeout=120)
+              with tarfile.open(dest,'r') as archive:
+                  m=archive.extractfile('MANIFEST.json')
+                  if m is None:raise SystemExit('Missing encrypted inventory manifest')
+                  info=json.load(m);m.close()
+                  if info.get('part')!=0 or info.get('total_parts')!=24:raise SystemExit('Wrong shard scope')
+                  entries=info.get('files',[])
+                  if not isinstance(entries,list) or not 1<=len(entries)<=100:
+                      raise SystemExit('Unexpected per-shard inventory')
+                  sum_bytes=0
+                  for row in entries:
+                      keyname=row.get('r2_key','')
+                      if not keyname or not keyname.startswith(('legacy-private-images-v1/','legacy-unlisted-private-v1/','legacy-private-dk016/')):
+                          raise SystemExit('Invalid encrypted manifest row')
+                      member=archive.getmember('originals/'+keyname)
+                      if not member.isfile() or member.size!=row.get('bytes'):
+                          raise SystemExit('Restore record size mismatch')
+                      handle=archive.extractfile(member)
+                      h=hashlib.sha256()
+                      while block:=handle.read(1024*1024):h.update(block)
+                      handle.close()
+                      if h.hexdigest()!=row.get('sha256'):
+                          raise SystemExit('Restore source SHA256 mismatch')
+                      sum_bytes+=member.size
+                  if sum_bytes!=info.get('original_bytes'):
+                      raise SystemExit('Restore shard byte count mismatch')
+                  print('R2_ENCRYPTED_BACKUP_DECRYPT_AND_RESTORE_TEST=PASS')
+                  print('R2_RESTORE_FILES_VERIFIED='+str(len(entries)))
+                  print('R2_RESTORE_BYTES_VERIFIED='+str(sum_bytes))
+                  print('NO_PLAINTEXT_ARTIFACTS_OR_LOGGED_PATHS=TRUE')
+          print('RECOVERY_TEST_CLEANUP_COMPLETED=TRUE')
+          PY
