@@ -21,8 +21,8 @@ jobs:
       - name: "Get ONLY ciphertext from prior successful D1 backup artifact"
         uses: actions/download-artifact@v4
         with:
-          name: gdd-d1-working-encrypted-45254490678
-          run-id: 45254490678
+          name: gdd-d1-working-encrypted-45258491904
+          run-id: 45258491904
           repository: realmetayninh7649-cmd/dau-xua-cua-dao
           github-token: ${{ github.token }}
           path: /tmp/gdd-d1-recovery-ciphertext
@@ -37,11 +37,11 @@ jobs:
           python3 - <<'PY'
           import os,pathlib,json,hashlib,boto3,re,subprocess,tempfile,sqlite3
           from botocore.config import Config
-          path=pathlib.Path('/tmp/gdd-d1-recovery-ciphertext/GDD-D1-LAM-VIEC-24-11-2026-MA-HOA.sql.gpg')
+          path=pathlib.Path('/tmp/gdd-d1-recovery-ciphertext/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg')
           if not path.is_file() or path.stat().st_size>20000000:
               raise SystemExit('Encrypted D1 artifact missing')
           sha=hashlib.sha256(path.read_bytes()).hexdigest()
-          if sha!='1cca3b1ba2b91a6a1fc09aa50e70ec6c1e06740531274ec5ef10af51f193d12e':
+          if sha!='55a1f982b36ba30de2cdb9247bffb01883714098ebce0f74a8b392edeeee49cb':
               raise SystemExit('D1 ciphertext differs from Google Drive verified backup')
           aid=os.environ.get('CLOUDFLARE_ACCOUNT_ID','')
           ak=os.environ.get('GDD_R2_ARCHIVE_ACCESS_KEY_ID','')
@@ -80,10 +80,14 @@ jobs:
                   total+=got
               audits=conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gdd_v2_editor_revisions'").fetchone()
               if not audits:raise SystemExit('Missing editorial audit history')
+              review_table=conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gdd_submission_status_audit'").fetchone()
+              review_trigger=conn.execute("SELECT name FROM sqlite_master WHERE type='trigger' AND name='gdd_v2_contribution_status'").fetchone()
+              if not review_table or not review_trigger:raise SystemExit('Latest D1 review audit schema missing')
               print('DRIVE_VERIFIED_D1_CIPHERTEXT_SHA256=PASS')
               print('ACTIVE_D1_OPENPGP_DECRYPT_AND_SQLITE_RESTORE=PASS')
               print('ACTIVE_D1_21_TABLES_RECOVERED_ROWS='+str(total))
               print('D1_EDITOR_REVISION_TABLE_RECOVERED=TRUE')
+              print('D1_SUBMISSION_REVIEW_AUDIT_RESTORED=TRUE')
               print('PRIVATE_SQL_WIPED_WITH_EPHEMERAL_DIRECTORY=TRUE')
               conn.close()
           print('NO_ORIGINAL_D1_SUPABASE_R2_WRITE=TRUE')
