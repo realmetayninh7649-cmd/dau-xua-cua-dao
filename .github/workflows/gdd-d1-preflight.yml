@@ -1,3 +1,4 @@
+# Re-check after Cloudflare D1 scoped token was configured on 2026-11-23.
 name: "GDD Cloudflare D1 - Kiem tra quyen chi doc"
 
 on:
