@@ -114,6 +114,20 @@ jobs:
               raise SystemExit('Published post count mismatch')
           print('PUBLISHED_PEOPLE_50_DRAFTS_HIDDEN=TRUE')
           print('PUBLISHED_POSTS_17=TRUE')
+          for kind,expected in [('gallery',615),('placements',8)]:
+              all_rows=[]
+              for offset in range(0,1100,100):
+                  url=base+'/api/v1/public/'+kind+'?limit=100&offset='+str(offset)
+                  with urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=25) as response:
+                      batch=json.load(response).get('data')
+                  if not isinstance(batch,list) or len(batch)>100:
+                      raise SystemExit('Invalid '+kind+' public pagination')
+                  all_rows.extend(batch)
+                  if len(batch)<100:break
+              else:raise SystemExit('Public '+kind+' pagination truncated')
+              if len(all_rows)!=expected:
+                  raise SystemExit('Published-only '+kind+' count mismatch')
+              print('PUBLIC_'+kind.upper()+'_COUNT='+str(len(all_rows)))
           print('PUBLIC_READ_ONLY_API_OK=True')
           print('ADMIN_AND_WRITES_DENIED=True')
           print('SUPABASE_R2_UNCHANGED=True')
