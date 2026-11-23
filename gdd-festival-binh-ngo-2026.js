@@ -12,8 +12,11 @@
 
   const key='gdd-festival-binh-ngo-2026-hidden';
   const starts=Date.parse('2026-11-18T00:00:00+07:00');
-  const ends=Date.parse('2026-12-15T23:59:59+07:00');
-  const isSeason=()=>Date.now()>=starts&&Date.now()<=ends;
+  // Hạ Ngươn Bính Ngọ: Rằm tháng Mười âm lịch = 23/11/2026.
+  // The decorative campaign expires at midnight in Asia/Ho_Chi_Minh.
+  // Keep the archival text in source; do not leave a seasonal takeover active.
+  const ends=Date.parse('2026-11-24T00:00:00+07:00');
+  const isSeason=()=>Date.now()>=starts&&Date.now()<ends;
   const isHomepage=()=>{
     const path=window.location.pathname;
     const root=path==='/'||path.endsWith('/index.html');
@@ -48,5 +51,10 @@
   window.addEventListener('hashchange',render);
   window.addEventListener('pageshow',render);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
+  // When a tab stays open across midnight, remove the banner automatically.
+  const remaining=ends-Date.now();
+  if(remaining>0&&remaining<2147483647){
+    window.setTimeout(render,remaining+25);
+  }
   render();
 })();

@@ -1,0 +1,26 @@
+name: "GDD - Verify festival automatically expires at VN midnight"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gdd-festival-binh-ngo-2026.js"
+      - "index.html"
+      - "tests/gdd-festival-expiry.test.mjs"
+      - ".github/workflows/gdd-festival-expiry.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  expiry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Check mobile home seasonal design cutoff using Asia/Ho_Chi_Minh +07"
+        run: |
+          set -euo pipefail
+          node --check gdd-festival-binh-ngo-2026.js
+          node --test tests/gdd-festival-expiry.test.mjs
