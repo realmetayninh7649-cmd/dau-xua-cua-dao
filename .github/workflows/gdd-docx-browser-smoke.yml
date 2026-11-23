@@ -1,0 +1,24 @@
+name: "GDD - Real DOCX text JPEG browser test with R2 mock on iPhone and laptop"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: [".github/workflows/gdd-docx-browser-smoke.yml","tests/gdd-docx-browser-smoke.mjs"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  docx:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Install pinned Mammoth parser and Chrome browser runner"
+        run: npm install --no-save mammoth@1.13.0 jszip@3.10.1 playwright-core@1.56.1
+      - name: "Real DOCX extraction to JPEG page on iPhone and desktop; private R2 mock"
+        run: |
+          set -euo pipefail
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/gdd-docx-browser-smoke.mjs
+          echo "NO_D1_OR_R2_ORIGINAL_WRITE=TRUE"
