@@ -1,0 +1,83 @@
+name: "GDD D1 - Trien khai Worker thu nghiem CHI DOC"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-worker-staging.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "An toan truoc khi xuat ban thu nghiem"
+        run: |
+          set -euo pipefail
+          node --check workers/gdd-d1/src/worker.mjs
+          python3 - <<'PY'
+          import json,pathlib
+          root=pathlib.Path('workers/gdd-d1')
+          cfg=json.loads((root/'wrangler.jsonc').read_text())
+          assert cfg['name']=='gdd-d1-api-staging'
+          assert cfg['workers_dev'] is True
+          assert cfg['d1_databases'][0]['binding']=='DB'
+          assert cfg['d1_databases'][0]['database_id']=='bffcd3e0-e46e-4280-b8dd-82e8d3402b3d'
+          js=(root/'src/worker.mjs').read_text()
+          assert "if(request.method!=='GET')" in js
+          assert "WHERE published=1" in js
+          print('READ_ONLY_WORKER_CODE_APPROVED=True')
+          PY
+      - name: "Chi deploy Worker staging rieng khong sua R2"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          npx --yes wrangler@4.159.0 deploy --config workers/gdd-d1/wrangler.jsonc
+      - name: "Smoke test GET public va chan toan bo ghi"
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://gdd-d1-api-staging.realmetayninh7649.workers.dev'
+          for n in range(8):
+              try:
+                  with urllib.request.urlopen(base+'/health',timeout=15) as response:
+                      check=json.load(response)
+                  if check.get('status')=='ok': break
+              except Exception: pass
+              time.sleep(3)
+          else:raise SystemExit('Staging Worker health check failed')
+          with urllib.request.urlopen(base+'/api/v1/public/people?limit=5&offset=0',timeout=20) as response:
+              obj=json.load(response)
+          rows=obj.get('data') or []
+          if len(rows)!=5 or not all(r.get('published') is True for r in rows):
+              raise SystemExit('Published people API failed')
+          with urllib.request.urlopen(base+'/api/v1/public/posts?limit=3',timeout=20) as response:
+              posts=json.load(response).get('data') or []
+          if len(posts)!=3 or not all(r.get('published') is True for r in posts):
+              raise SystemExit('Published posts API failed')
+          for url,method,expected in [
+              ('/api/v1/admin/session','GET',403),
+              ('/api/v1/public/admin_users','GET',404),
+              ('/api/v1/public/people','POST',405)
+          ]:
+              request=urllib.request.Request(base+url,method=method)
+              try:
+                  urllib.request.urlopen(request,timeout=20)
+              except urllib.error.HTTPError as exc:
+                  if exc.code!=expected:raise SystemExit('API guard unexpected '+str(exc.code))
+              else:raise SystemExit('API guard allowed '+method+' '+url)
+          print('PUBLIC_READ_ONLY_API_OK=True')
+          print('ADMIN_AND_WRITES_DENIED=True')
+          print('SUPABASE_R2_UNCHANGED=True')
+          PY
