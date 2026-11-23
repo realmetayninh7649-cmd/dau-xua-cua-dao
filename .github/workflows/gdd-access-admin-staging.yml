@@ -82,8 +82,14 @@ jobs:
               except urllib.error.HTTPError as err:
                   # Cloudflare Access may have been enabled already; 403 is expected.
                   return err.code,None
-          status,health=get('/health')
+          import time
+          for attempt in range(12):
+              status,health=get('/health')
+              if status==200:break
+              print('ADMIN_GATEWAY_HEALTH_RETRY='+str(attempt+1)+',HTTP='+str(status))
+              time.sleep(3)
           if status!=200:raise SystemExit('Gateway health unexpected HTTP '+str(status))
+          print('ADMIN_GATEWAY_HEALTH_OK=TRUE')
           status,_=get('/api/v1/admin/session')
           if status!=403:raise SystemExit('Admin gateway not fail-closed: HTTP '+str(status))
           status,_=get('/api/v1/admin/session','POST')
