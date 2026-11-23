@@ -1,8 +1,9 @@
-name: "GDD SEO - Tai lieu cong khai va sitemap"
+name: "GDD SEO - Dong bo tai lieu da cong bo tu D1"
 on:
-  # Khóa đồng bộ SEO tự động sử dụng Supabase trong đợt chuyển dữ liệu D1.
-  # Giữ nguyên các trang SEO và sitemap hiện tại; chỉ chạy tay khi đã đối chiếu nguồn.
+  schedule:
+    - cron: "45 19 * * *"
   workflow_dispatch:
+
 
 permissions:
   contents: write
@@ -27,7 +28,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: "Tao trang cong khai va sitemap tu Supabase RLS"
+      - name: "Kiem tra nguon D1 chi co published=true"
+        run: node --test tests/gdd-seo-d1.test.mjs
+      - name: "Tao trang cong khai va sitemap tu Cloudflare D1"
         run: node scripts/gdd-seo-build.mjs
       - name: "Kiem tra dau ra SEO"
         run: |
@@ -48,7 +51,7 @@ jobs:
             echo "Khong co thay doi SEO: bo qua dong goi va trien khai."
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m "SEO: dong bo trang da cong bo va sitemap tu Supabase"
+            git commit -m "SEO: dong bo trang da cong bo va sitemap tu Cloudflare D1"
             git push origin HEAD:main
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
