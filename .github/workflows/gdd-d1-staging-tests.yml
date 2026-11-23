@@ -1,0 +1,70 @@
+name: "GDD D1 Staging - Kiem thu schema va ma"
+
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - "workers/gdd-d1/**"
+      - ".github/workflows/gdd-d1-staging-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Kiem tra cu phap"
+        run: |
+          node --check workers/gdd-d1/src/worker.mjs
+          node --check workers/gdd-d1/scripts/build-d1-import.mjs
+      - name: "Thu nghiem schema va bo nhap voi 21 ban ghi GIA"
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, sqlite3
+          p=pathlib.Path("workers/gdd-d1")
+          src=(p/"source-schema-manifest.json")
+          manifest=json.loads(src.read_text())
+          assert len(manifest["tables"])==21
+          db=sqlite3.connect("/tmp/gdd-d1-schema-test.sqlite")
+          db.executescript((p/"migrations/0001_supabase_21_tables.sql").read_text())
+          names={x[0] for x in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          assert set(manifest["tables"]).issubset(names), "Missing D1 tables"
+          rows={}
+          for name,info in manifest["tables"].items():
+              record={}
+              for field in info["columns"]:
+                  t=field["postgres_type"]
+                  if t=="bool":v=True
+                  elif t in ("int2","int4","int8","numeric","float4","float8"):v=1
+                  elif t=="_text":v=["gia lap"]
+                  elif t=="uuid":v="00000000-0000-4000-8000-000000000001"
+                  else:v="GDD_TEST_ONLY"
+                  record[field["name"]]=v
+              rows[name]=[record]
+          pathlib.Path("/tmp/gdd-d1-synthetic.json").write_text(json.dumps({"tables":rows,"exported_at":"TEST"}))
+          print("SCHEMA_TEST_PASS: 21 tables")
+          PY
+          node workers/gdd-d1/scripts/build-d1-import.mjs \
+            --input /tmp/gdd-d1-synthetic.json \
+            --output /tmp/gdd-d1-import-synthetic.sql \
+            --confirm-private-offline
+          python3 - <<'PY'
+          import json,sqlite3,pathlib
+          c=sqlite3.connect("/tmp/gdd-d1-schema-test.sqlite")
+          c.executescript(pathlib.Path("/tmp/gdd-d1-import-synthetic.sql").read_text())
+          t=json.loads(pathlib.Path("workers/gdd-d1/source-schema-manifest.json").read_text())["tables"]
+          for name in t:
+              n=c.execute('SELECT COUNT(*) FROM "'+name+'"').fetchone()[0]
+              assert n==1,(name,n)
+          a=c.execute("SELECT COUNT(*) FROM gdd_import_audit").fetchone()[0]
+          assert a==21,a
+          print("IMPORT_TEST_PASS: 21 tables and audit checks")
+          PY
