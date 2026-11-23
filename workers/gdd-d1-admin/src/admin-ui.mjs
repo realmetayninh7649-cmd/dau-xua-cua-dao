@@ -46,7 +46,25 @@ export const ADMIN_HTML=`<!doctype html>
 <ul id="record-list" class="records"></ul>
 <div class="pagination"><button id="previous" type="button">Trang trước</button><span id="page">Trang 1</span><button id="next" type="button">Trang sau</button></div>
 </section>
-<footer>Giai đoạn thử nghiệm · Bảo toàn Supabase, Cloudflare R2 và mã định danh tư liệu · Chưa cho phép chỉnh sửa</footer>
+<section aria-labelledby="sandbox-title">
+<div class="heading"><h2 id="sandbox-title">Thử biên tập — cơ sở D1 riêng</h2><small>KHÔNG sửa tư liệu thật</small></div>
+<p class="audit-caution">Mọi nội dung dưới đây chỉ được ghi vào cơ sở thử nghiệm riêng, không xuất bản ra website và không tác động 21 bảng tư liệu đã phục hồi. Có thể tạo bản nháp, sửa, xem lịch sử và khôi phục nội dung cũ. Không có nút xóa vĩnh viễn.</p>
+<div class="controls">
+<label for="sandbox-kind">Loại bản thử</label>
+<select id="sandbox-kind"><option value="people">Hồ sơ Chức sắc</option><option value="posts">Biên khảo</option><option value="documents">Tài liệu</option><option value="media">Hình ảnh</option></select>
+</div>
+<div class="sandbox-form">
+<label for="sandbox-title-input">Nhan đề thử nghiệm</label><input id="sandbox-title-input" type="text" maxlength="160" placeholder="Chỉ ghi nội dung thử nghiệm">
+<label for="sandbox-summary">Tóm tắt</label><textarea id="sandbox-summary" maxlength="2000" rows="3"></textarea>
+<label for="sandbox-body">Nội dung</label><textarea id="sandbox-body" maxlength="16000" rows="5"></textarea>
+<label class="sandbox-checkbox"><input id="sandbox-published" type="checkbox"> Đánh dấu công bố *trong sandbox* (không đưa lên web)</label>
+<div class="controls"><button id="sandbox-save" type="button">Tạo bản nháp thử nghiệm</button><button id="sandbox-new" type="button">Tạo bản mới</button><button id="sandbox-refresh" type="button">Làm mới danh sách</button></div>
+</div>
+<p id="sandbox-status" role="status" aria-live="polite">Đang tải danh sách thử nghiệm…</p>
+<ul id="sandbox-list" class="records"></ul>
+<h3>Lịch sử phiên bản và phục hồi</h3><ul id="sandbox-history" class="records"></ul>
+</section>
+<footer>Giai đoạn thử nghiệm · Bảo toàn Supabase, Cloudflare R2 và mã định danh tư liệu · Tư liệu thật vẫn chỉ đọc</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
 :root{color-scheme:light;--ink:#233e35;--gold:#ac8548;--muted:#637168;--line:#deddd3;--bg:#f6f5ef}
@@ -77,6 +95,15 @@ th{color:var(--muted);font-size:.85rem}
 .number{text-align:right;font-variant-numeric:tabular-nums}
 .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 .controls label{font-weight:600}
+.sandbox-form{display:grid;gap:10px}
+.sandbox-form label{font-size:.91rem;font-weight:600}
+.sandbox-form input[type=text],.sandbox-form textarea{font:inherit;width:100%;border:1px solid #aeb9b1;border-radius:8px;padding:10px;background:#fff;color:var(--ink)}
+.sandbox-form textarea{resize:vertical}
+.sandbox-checkbox{display:flex;gap:8px;align-items:center}
+.sandbox-checkbox input{width:18px;height:18px}
+.sandbox-line{display:flex;gap:9px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.sandbox-line button{font-size:.84rem;padding:7px 9px}
+
 .safe-list{padding-left:24px;line-height:1.6}.safe-list li{padding:5px 0}.audit-caution{color:#695a41;font-size:.86rem;padding:10px;background:#fff8e8;border-radius:6px}
 .records{padding:0;margin:0;list-style:none}
 .records li{padding:12px 2px;border-bottom:1px solid var(--line)}
@@ -196,6 +223,103 @@ async function loadRecords(){
 }
 $('refresh').addEventListener('click',()=>{overview();loadRecords()});
 $('r2-audit').addEventListener('click',auditR2);
+// Access-protected synthetic D1 editing sandbox; no real data write endpoints.
+let sandboxActive=null,sandboxVersion=null,sandboxRecords=[];
+const sandboxApi='/api/v1/admin/sandbox';
+function sandboxStatus(message){$('sandbox-status').textContent=message;}
+function sandboxReset(){
+ sandboxActive=null;sandboxVersion=null;
+ $('sandbox-kind').disabled=false;$('sandbox-kind').value='people';
+ $('sandbox-title-input').value='';$('sandbox-summary').value='';$('sandbox-body').value='';
+ $('sandbox-published').checked=false;$('sandbox-published').disabled=true;
+ $('sandbox-save').textContent='Tạo bản nháp thử nghiệm';
+ $('sandbox-history').replaceChildren();
+}
+async function sandboxWrite(path,method,payload){
+ const r=await fetch(path,{method,credentials:'same-origin',cache:'no-store',
+   headers:{'Content-Type':'application/json','Accept':'application/json'},
+   body:JSON.stringify(payload)});
+ const data=await r.json().catch(()=>({error:'unknown'}));
+ if(!r.ok)throw Error(data.error||('HTTP '+r.status));
+ return data;
+}
+async function sandboxHistory(id){
+ const list=$('sandbox-history');list.replaceChildren();
+ const json=await api(sandboxApi+'/'+encodeURIComponent(id)+'/history');
+ for(const row of json.data||[]){
+  const item=document.createElement('li');item.className='sandbox-line';
+  appendText(item,'span','Phiên bản '+row.version_from+' → '+row.version_to+' · '+String(row.changed_at||'').slice(0,19));
+  const btn=document.createElement('button');btn.type='button';btn.textContent='Khôi phục bản trước';
+  btn.addEventListener('click',async()=>{
+   if(sandboxActive!==id||!Number.isInteger(sandboxVersion))return;
+   if(!confirm('Khôi phục nội dung trước đó trong cơ sở THỬ NGHIỆM?'))return;
+   btn.disabled=true;
+   try{
+    await sandboxWrite(sandboxApi+'/'+encodeURIComponent(id)+'/restore','POST',
+      {version:sandboxVersion,audit_id:row.audit_id});
+    sandboxStatus('Đã phục hồi phiên bản trong D1 thử nghiệm.');await sandboxRefresh();
+   }catch(e){sandboxStatus('Lỗi phục hồi bản thử: '+e.message)}
+   finally{btn.disabled=false}
+  });
+  item.append(btn);list.append(item);
+ }
+ if(!list.children.length)appendText(list,'li','Chưa có bản sửa nào.');
+}
+function sandboxChoose(item){
+ sandboxActive=item.id;sandboxVersion=item.version;
+ $('sandbox-kind').value=item.kind;$('sandbox-kind').disabled=true;
+ $('sandbox-title-input').value=item.title||'';
+ $('sandbox-summary').value=item.summary||'';
+ $('sandbox-body').value=item.body||'';
+ $('sandbox-published').checked=item.published===1;
+ $('sandbox-published').disabled=false;
+ $('sandbox-save').textContent='Lưu thay đổi thử nghiệm';
+ sandboxHistory(item.id).catch(e=>sandboxStatus('Không đọc được lịch sử bản thử: '+e.message));
+}
+async function sandboxRefresh(){
+ try{
+  const data=await api(sandboxApi);
+  if(data.mode!=='synthetic-sandbox-only')throw Error('Nguồn không phải sandbox');
+  sandboxRecords=Array.isArray(data.data)?data.data:[];
+  const list=$('sandbox-list');list.replaceChildren();
+  for(const item of sandboxRecords){
+   const row=document.createElement('li');row.className='sandbox-line';
+   appendText(row,'span',item.title+' · '+item.kind+' · phiên bản '+item.version);
+   const btn=document.createElement('button');btn.type='button';btn.textContent='Sửa bản thử';
+   btn.addEventListener('click',()=>sandboxChoose(item));
+   row.append(btn);list.append(row);
+  }
+  if(!sandboxRecords.length)appendText(list,'li','Chưa có bản thử nào.');
+  if(sandboxActive){
+   const item=sandboxRecords.find(x=>x.id===sandboxActive);
+   if(item)sandboxChoose(item);else sandboxReset();
+  }
+  sandboxStatus('Đang xem '+sandboxRecords.length+' bản ghi giả lập. Dữ liệu gốc không thay đổi.');
+ }catch(e){sandboxStatus('Không tải được D1 sandbox: '+e.message)}
+}
+async function sandboxSave(){
+ const button=$('sandbox-save');
+ const title=$('sandbox-title-input').value.trim();
+ if(!title){sandboxStatus('Cần nhập nhan đề thử nghiệm.');return}
+ button.disabled=true;
+ try{
+  const common={title,summary:$('sandbox-summary').value,body:$('sandbox-body').value};
+  if(sandboxActive){
+   await sandboxWrite(sandboxApi+'/'+encodeURIComponent(sandboxActive),'PATCH',{
+     ...common,published:$('sandbox-published').checked,version:sandboxVersion});
+  }else{
+   await sandboxWrite(sandboxApi,'POST',{...common,kind:$('sandbox-kind').value,published:false});
+  }
+  sandboxStatus('Đã lưu bản thử vào D1 riêng.');
+  await sandboxRefresh();
+ }catch(e){sandboxStatus('Không lưu được bản thử: '+e.message)}
+ finally{button.disabled=false}
+}
+$('sandbox-save').addEventListener('click',sandboxSave);
+$('sandbox-new').addEventListener('click',sandboxReset);
+$('sandbox-refresh').addEventListener('click',sandboxRefresh);
+sandboxReset();sandboxRefresh();
+
 $('kind').addEventListener('change',()=>{offset=0;loadRecords()});
 $('view').addEventListener('change',()=>{offset=0;loadRecords()});
 $('previous').addEventListener('click',()=>{if(offset>=pageSize){offset-=pageSize;loadRecords()}});
