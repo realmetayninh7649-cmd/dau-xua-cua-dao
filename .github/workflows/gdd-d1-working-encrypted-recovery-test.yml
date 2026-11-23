@@ -1,0 +1,96 @@
+name: "GDD - Full decrypt/SQLite restore test of encrypted active D1 backup"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-working-encrypted-recovery-test.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  test-restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install boto3==1.40.61
+      - name: "Get ONLY ciphertext from prior successful D1 backup artifact"
+        uses: actions/download-artifact@v4
+        with:
+          name: gdd-d1-working-encrypted-45254490678
+          run-id: 45254490678
+          repository: realmetayninh7649-cmd/dau-xua-cua-dao
+          github-token: ${{ github.token }}
+          path: /tmp/gdd-d1-recovery-ciphertext
+      - name: "Decrypt in disposable runner with pre-existing private R2 GPG key; restore 21 tables and audit"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib,json,hashlib,boto3,re,subprocess,tempfile,sqlite3
+          from botocore.config import Config
+          path=pathlib.Path('/tmp/gdd-d1-recovery-ciphertext/GDD-D1-LAM-VIEC-24-11-2026-MA-HOA.sql.gpg')
+          if not path.is_file() or path.stat().st_size>20000000:
+              raise SystemExit('Encrypted D1 artifact missing')
+          sha=hashlib.sha256(path.read_bytes()).hexdigest()
+          if sha!='1cca3b1ba2b91a6a1fc09aa50e70ec6c1e06740531274ec5ef10af51f193d12e':
+              raise SystemExit('D1 ciphertext differs from Google Drive verified backup')
+          aid=os.environ.get('CLOUDFLARE_ACCOUNT_ID','')
+          ak=os.environ.get('GDD_R2_ARCHIVE_ACCESS_KEY_ID','')
+          sk=os.environ.get('GDD_R2_ARCHIVE_SECRET_ACCESS_KEY','')
+          if not re.fullmatch('[a-fA-F0-9]{32}',aid) or not re.fullmatch('[a-fA-F0-9]{32}',ak) or len(sk)<16:
+              raise SystemExit('R2 READ-only recovery key access missing')
+          client=boto3.client('s3',endpoint_url='https://'+aid+'.r2.cloudflarestorage.com',
+            aws_access_key_id=ak,aws_secret_access_key=sk,region_name='auto',
+            config=Config(signature_version='s3v4',s3={'addressing_style':'path'},
+              request_checksum_calculation='when_required',response_checksum_validation='when_required'))
+          obj=client.get_object(Bucket='gdd-dau-xua-cua-dao',
+            Key='__gdd_internal__/unlisted-manifest-private-key-v2.asc')
+          key=obj['Body'].read(50000);obj['Body'].close()
+          if not key.startswith(b'-----BEGIN PGP PRIVATE KEY BLOCK-----'):
+              raise SystemExit('PGP private key not available')
+          with tempfile.TemporaryDirectory(prefix='gdd-restore-private-d1-') as tmp:
+              root=pathlib.Path(tmp);home=root/'gnupg';home.mkdir(mode=0o700)
+              env={**os.environ,'GNUPGHOME':str(home)}
+              subprocess.run(['gpg','--batch','--quiet','--import'],input=key,
+                stderr=subprocess.DEVNULL,stdout=subprocess.DEVNULL,env=env,check=True,timeout=50)
+              key=b''
+              sqlfile=root/'recovered.sqlite.sql'
+              subprocess.run(['gpg','--batch','--quiet','--yes','--pinentry-mode','loopback','--decrypt',
+                '--output',str(sqlfile),str(path)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+                env=env,check=True,timeout=80)
+              if sqlfile.stat().st_size<10000 or sqlfile.stat().st_size>40000000:
+                  raise SystemExit('Decrypted D1 size not plausible')
+              conn=sqlite3.connect(':memory:');conn.executescript(sqlfile.read_text())
+              original=json.loads(pathlib.Path('workers/gdd-d1/source-row-counts-20261123.json').read_text())['table_counts']
+              if len(original)!=21 or sum(original.values())!=1892:
+                  raise SystemExit('Baseline changed')
+              total=0
+              for name,n in original.items():
+                  got=conn.execute('SELECT count(*) FROM "'+name+'"').fetchone()[0]
+                  if got<n:raise SystemExit('Lost source rows in recovered D1: '+name)
+                  total+=got
+              audits=conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gdd_v2_editor_revisions'").fetchone()
+              if not audits:raise SystemExit('Missing editorial audit history')
+              print('DRIVE_VERIFIED_D1_CIPHERTEXT_SHA256=PASS')
+              print('ACTIVE_D1_OPENPGP_DECRYPT_AND_SQLITE_RESTORE=PASS')
+              print('ACTIVE_D1_21_TABLES_RECOVERED_ROWS='+str(total))
+              print('D1_EDITOR_REVISION_TABLE_RECOVERED=TRUE')
+              print('PRIVATE_SQL_WIPED_WITH_EPHEMERAL_DIRECTORY=TRUE')
+              conn.close()
+          print('NO_ORIGINAL_D1_SUPABASE_R2_WRITE=TRUE')
+          PY
+      - name: "Erase encrypted temporary copy and GNUPG working directories"
+        if: always()
+        run: |
+          rm -rf /tmp/gdd-d1-recovery-ciphertext
+          find /tmp -maxdepth 1 -type d -name 'gdd-restore-private-d1-*' -exec rm -rf {} +
+          echo 'D1_RECOVERY_TEST_SCRATCH_ERASED=TRUE'
