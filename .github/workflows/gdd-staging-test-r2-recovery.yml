@@ -1,4 +1,4 @@
-name: "GDD STAGING - Thu phuc hoi anh goc R2 ma hoa"
+name: "GDD R2 - Thu giai ma SHA256 7 goi goc luu GitHub"
 on:
   push:
     branches: [cloudflare-d1-migration-20261123]
@@ -11,8 +11,20 @@ permissions:
 
 jobs:
   recovery-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - {part: 0, source_run: 45216411713}
+          - {part: 1, source_run: 45216976580}
+          - {part: 2, source_run: 45216976580}
+          - {part: 3, source_run: 45216976580}
+          - {part: 4, source_run: 45216976580}
+          - {part: 5, source_run: 45216976580}
+          - {part: 6, source_run: 45216976580}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,13 +33,14 @@ jobs:
       - run: python3 -m pip install boto3==1.40.61
       - uses: actions/download-artifact@v4
         with:
-          name: gdd-staging-encrypted-source-part-0
-          run-id: 45216411713
+          name: gdd-staging-encrypted-source-part-${{ matrix.part }}
+          run-id: ${{ matrix.source_run }}
           repository: realmetayninh7649-cmd/dau-xua-cua-dao
           github-token: ${{ github.token }}
           path: /tmp/gdd-recovery-test-ciphertext
-      - name: "Decrypt one SHA256-verifiable encrypted R2 shard using existing R2 recovery key; discard plaintext"
+      - name: "Decrypt and SHA256-check archived original shard with R2 recovery key; discard plaintext"
         env:
+          ARCHIVE_PART_INDEX: ${{ matrix.part }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
           GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
@@ -66,7 +79,7 @@ jobs:
                   m=archive.extractfile('MANIFEST.json')
                   if m is None:raise SystemExit('Missing encrypted inventory manifest')
                   info=json.load(m);m.close()
-                  if info.get('part')!=0 or info.get('total_parts')!=24:raise SystemExit('Wrong shard scope')
+                  if info.get('part')!=int(os.environ['ARCHIVE_PART_INDEX']) or info.get('total_parts')!=24:raise SystemExit('Wrong shard scope')
                   entries=info.get('files',[])
                   if not isinstance(entries,list) or not 1<=len(entries)<=100:
                       raise SystemExit('Unexpected per-shard inventory')
