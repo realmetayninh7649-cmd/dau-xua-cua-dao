@@ -1,0 +1,86 @@
+name: "GDD D1 - Cai schema 21 bang vao database moi"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-apply-schema.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: "D1 staging schema only; no import, no Worker deploy"
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Kiem tra config schema va ten D1 truoc khi ghi"
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/gdd-d1/src/worker.mjs
+          python3 - <<'PY'
+          import json,pathlib,sqlite3
+          root=pathlib.Path('workers/gdd-d1')
+          config=json.loads((root/'wrangler.jsonc').read_text())
+          binding=config['d1_databases'][0]
+          assert binding['database_name']=='gdd-dao-su-archive'
+          assert binding['database_id']=='bffcd3e0-e46e-4280-b8dd-82e8d3402b3d'
+          assert binding['binding']=='DB'
+          sql=(root/'migrations/0001_supabase_21_tables.sql').read_text()
+          conn=sqlite3.connect(':memory:')
+          conn.executescript(sql)
+          manifest=json.loads((root/'source-schema-manifest.json').read_text())['tables']
+          actual={x[0] for x in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          assert len(manifest)==21 and set(manifest).issubset(actual)
+          print('SAFE_D1_SCHEMA_CHECK=21_TABLES_MATCH')
+          PY
+      - name: "Ap dung schema vao D1 moi (KHONG nhap du lieu)"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4.159.0 d1 migrations apply gdd-dao-su-archive --remote --config workers/gdd-d1/wrangler.jsonc --yes
+          echo "D1_SCHEMA_MIGRATION_REQUESTED=true"
+      - name: "Doc kiem tra schema tu Cloudflare D1"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']
+          token=os.environ['CLOUDFLARE_D1_API_TOKEN']
+          uid='bffcd3e0-e46e-4280-b8dd-82e8d3402b3d'
+          url='https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database/'+uid+'/query'
+          def query(sql):
+              req=urllib.request.Request(url,method='POST',data=json.dumps({'sql':sql}).encode('utf8'),
+                headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
+              with urllib.request.urlopen(req,timeout=30) as response:
+                  o=json.load(response)
+              if o.get('success') is not True: raise RuntimeError('D1 verification query failed')
+              return o.get('result') or []
+          result=query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+          rows=result[0].get('results',[]) if result else []
+          names={r.get('name') for r in rows}
+          manifest=json.load(open('workers/gdd-d1/source-schema-manifest.json'))['tables']
+          missing=set(manifest)-names
+          if missing: raise SystemExit('D1 schema missing '+str(len(missing))+' tables')
+          print('D1_SCHEMA_VERIFIED_TABLES='+str(len(manifest)))
+          count=query("SELECT COUNT(*) AS n FROM people")
+          n=count[0].get('results',[{}])[0].get('n',-1)
+          if n!=0:raise SystemExit('Existing data unexpectedly modified or imported; stop!')
+          print('D1_PEOPLE_ROWS=0')
+          print('NO_SOURCE_DATA_IMPORTED=true')
+          PY
