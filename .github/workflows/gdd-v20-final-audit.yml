@@ -116,7 +116,17 @@ jobs:
         run: node --test workers/gdd-r2-gateway/test/*.test.mjs
       - name: "Cai browser smoke runner"
         run: npm install --no-save playwright-core@1.56.1
-      - name: "Thu nghiem web tai cho: Desktop va man hinh iPhone"
+      - name: "Chon bo kiem thu phu hop voi nguon du lieu dang dung"
+        id: mode
+        shell: bash
+        run: |
+          if grep -q 'publicReadProvider: "d1-staging"' supabase-config.js; then
+            echo "d1=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "d1=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: "Thu nghiem web tai cho: Desktop va man hinh iPhone (Supabase legacy)"
+        if: steps.mode.outputs.d1 != 'true'
         run: |
           set -eu
           python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/gdd-v20-http.log 2>&1 &
@@ -135,6 +145,12 @@ jobs:
           node tests/unlimited-document-upload-smoke.mjs
           node tests/photo-trace-smoke.mjs
           node tests/photo-code-lookup-smoke.mjs
+      - name: "D1 production: real 11-category content, iPhone and desktop, secured admin redirect"
+        if: steps.mode.outputs.d1 == 'true'
+        run: |
+          set -euo pipefail
+          export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          node tests/gdd-live-public-reopen-smoke.mjs
       - name: "Luu anh chung cu khi smoke test khong dat"
         if: failure()
         uses: actions/upload-artifact@v4
