@@ -7,10 +7,12 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "gdd-dao-su-archive",
-      "database_id": "bffcd3e0-e46e-4280-b8dd-82e8d3402b3d",
+      "database_name": "gdd-dao-su-restore-full-20261123",
+      "database_id": "ddce6b9f-90e1-488f-bf9b-5ddf5d170346",
       "migrations_dir": "migrations"
     }
   ],
-  "observability": {"enabled": false}
+  "observability": {
+    "enabled": false
+  }
 }

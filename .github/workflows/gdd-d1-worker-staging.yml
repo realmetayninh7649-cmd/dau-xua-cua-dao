@@ -4,6 +4,9 @@ on:
     branches: [cloudflare-d1-migration-20261123]
     paths:
       - ".github/workflows/gdd-d1-worker-staging.yml"
+      - "workers/gdd-d1/wrangler.jsonc"
+      - "workers/gdd-d1/src/worker.mjs"
+      - "tests/d1-public-restored.test.mjs"
   workflow_dispatch:
 
 permissions:
@@ -29,12 +32,23 @@ jobs:
           assert cfg['name']=='gdd-d1-api-staging'
           assert cfg['workers_dev'] is True
           assert cfg['d1_databases'][0]['binding']=='DB'
-          assert cfg['d1_databases'][0]['database_id']=='bffcd3e0-e46e-4280-b8dd-82e8d3402b3d'
+          assert cfg['d1_databases'][0]['database_id']=='ddce6b9f-90e1-488f-bf9b-5ddf5d170346'
+          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-restore-full-20261123'
+          assert not cfg.get('r2_buckets')
+          assert cfg.get('preview_urls') is False
           js=(root/'src/worker.mjs').read_text()
           assert "if(request.method!=='GET')" in js
           assert "WHERE published=1" in js
+          assert 'INSERT INTO' not in js and 'DELETE FROM' not in js
+          assert 'WHERE published=1' in js
           print('READ_ONLY_WORKER_CODE_APPROVED=True')
           PY
+      - name: "Unit test chi xuat ban du lieu cong khai tu D1 phuc hoi"
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/d1-public-restored.test.mjs
+          echo "D1_PUBLISHED_DRAFT_ISOLATION=PASS"
       - name: "Chi deploy Worker staging rieng khong sua R2"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_WORKER_TOKEN }}
@@ -88,6 +102,18 @@ jobs:
               except urllib.error.HTTPError as exc:
                   if exc.code!=expected:raise SystemExit('API guard unexpected '+str(exc.code))
               else:raise SystemExit('API guard allowed '+method+' '+url)
+          # Full restored D1 has unpublished records: only the approved 50/52 people
+          # and 17 published posts must be visible through public endpoints.
+          with urllib.request.urlopen(urllib.request.Request(base+'/api/v1/public/people?limit=100',headers=headers),timeout=20) as response:
+              visible_people=json.load(response).get('data') or []
+          if len(visible_people)!=50 or any(p.get('published') is not True for p in visible_people):
+              raise SystemExit('Draft leak or unexpected published people count')
+          with urllib.request.urlopen(urllib.request.Request(base+'/api/v1/public/posts?limit=100',headers=headers),timeout=20) as response:
+              visible_posts=json.load(response).get('data') or []
+          if len(visible_posts)!=17 or any(p.get('published') is not True for p in visible_posts):
+              raise SystemExit('Published post count mismatch')
+          print('PUBLISHED_PEOPLE_50_DRAFTS_HIDDEN=TRUE')
+          print('PUBLISHED_POSTS_17=TRUE')
           print('PUBLIC_READ_ONLY_API_OK=True')
           print('ADMIN_AND_WRITES_DENIED=True')
           print('SUPABASE_R2_UNCHANGED=True')
