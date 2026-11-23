@@ -85,14 +85,22 @@
     if(postsLoaded||postsLoading)return;
     postsLoading=true;
     try{
-      const conf=window.SITE_CONFIG||{};
-      if(!conf.supabaseUrl||!conf.supabasePublishableKey)throw Error('Chưa kết nối Supabase.');
-      const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-      const sb=createClient(conf.supabaseUrl,conf.supabasePublishableKey);
-      const {data,error}=await sb.from('posts')
-        .select('id,title,category,summary,cover_url,created_at')
-        .eq('published',true).order('created_at',{ascending:false}).limit(500);
-      if(error)throw error;
+      let data;
+      try{
+        const conf=window.SITE_CONFIG||{};
+        if(!conf.supabaseUrl||!conf.supabasePublishableKey)throw Error('Chưa kết nối Supabase.');
+        const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+        const sb=createClient(conf.supabaseUrl,conf.supabasePublishableKey);
+        const response=await sb.from('posts')
+          .select('id,title,category,summary,cover_url,created_at')
+          .eq('published',true).order('created_at',{ascending:false}).limit(500);
+        if(response.error)throw response.error;
+        data=response.data;
+      }catch(readError){
+        const backup=await window.GDDPublicReadOnly?.load();
+        if(!backup)throw readError;
+        data=(backup.posts||[]).filter(row=>row.published===true);
+      }
       const list=$('#article-list');
       if(!list)return;
       const present=new Set([...list.querySelectorAll('[data-open-kind="posts"][data-id]')].map(x=>x.dataset.id));
