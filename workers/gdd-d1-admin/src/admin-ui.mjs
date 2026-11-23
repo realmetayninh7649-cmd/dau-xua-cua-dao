@@ -22,7 +22,7 @@ export const ADMIN_HTML=`<!doctype html>
 <ul class="safe-list" id="safety-report">
 <li>Đang tải kết quả kiểm tra…</li>
 </ul>
-<p class="audit-caution">Thông số chỉ phản ánh cơ sở dữ liệu tại thời điểm kiểm tra; chưa xác nhận tất cả tệp gốc thực tế trên R2.</p></section>
+<p class="audit-caution">Đã kiểm kê danh sách đối tượng R2 ngày 23/11/2026. Đây chỉ là dấu kiểm kê tệp, chưa phải xác minh nội dung từng tệp hay bản sao lưu độc lập có thể phục hồi.</p></section>
 <section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Đối chiếu với số liệu Supabase ngày 23/11/2026 (bản chụp)</small></div>
 <div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
 </section>
@@ -135,7 +135,11 @@ async function overview(){
      'Ảnh album có đầy đủ liên kết và mã ảnh: '
        +(audit.gallery.rows-audit.gallery.without_image_url-audit.gallery.without_photo_code)
        +'/'+audit.gallery.rows+' (số liệu kiểm tra metadata).',
-     'Hồ sơ người quản trị và tư liệu độc giả gửi về: xử lý bằng kênh riêng tư, chưa đưa sang D1.'
+     'Hồ sơ người quản trị và tư liệu độc giả gửi về: xử lý bằng kênh riêng tư, chưa đưa sang D1.',
+     'Đối tượng vật lý hiện diện trong kho R2 tại bản chụp: '
+       +summary.r2_object_inventory_snapshot.object_count.toLocaleString('vi-VN')
+       +' ('+(summary.r2_object_inventory_snapshot.total_bytes/1073741824).toFixed(2)+' GiB).'
+       +' Đây không phải số chỉ mục tài sản đã nhập D1.'
    ])appendText(auditList,'li',message);
    for(const item of summary.inventory){
     const tr=document.createElement('tr');appendText(tr,'td',names[item.table]||item.table);
