@@ -6,6 +6,7 @@ on:
       - "app.js"
       - "gdd-public-readonly.js"
       - "supabase-config.js"
+      - "gdd-calendar-reminder-subscription.js"
       - "tests/d1-web-preview.test.mjs"
       - "tests/d1-web-preview-browser-smoke.mjs"
       - ".github/workflows/gdd-d1-web-preview-test.yml"

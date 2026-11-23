@@ -62,3 +62,10 @@ test('staging switch disables Supabase sign-in and never enables editor',()=>{
  assert.ok(app.includes("state.admin=false;state.user=null;state.supabase=null"));
  assert.ok(app.includes("$('#admin-login-area').hidden=true"));
 });
+
+test('calendar reminder signup is disabled in public D1 preview',()=>{
+ const reminders=readFileSync('gdd-calendar-reminder-subscription.js','utf8');
+ assert.ok(reminders.includes("if(cfg.publicReadProvider==='d1-staging')"));
+ assert.ok(reminders.includes('button.disabled=true'));
+ assert.ok(reminders.includes('Tính năng nhắc lịch tạm khóa'));
+});
