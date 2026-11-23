@@ -203,3 +203,12 @@ test('active administrator page hides old maintenance banner and synthetic panel
  assert.ok(ADMIN_JS.includes('async function workWrite('));
  assert.doesNotThrow(()=>new Script(ADMIN_JS,{filename:'gdd-admin-production-ui.js'}));
 });
+
+test('DOCX originals remain private and only text-only pages may be published',()=>{
+ assert.ok(ADMIN_HTML.includes('id="r2-managed-docx-pages"'));
+ assert.ok(ADMIN_JS.includes("viewSource:'docx_text'"));
+ assert.ok(ADMIN_JS.includes('mammoth@1.13.0/mammoth.browser.min.js'));
+ assert.ok(ADMIN_JS.includes('extractRawText'));
+ assert.ok(!ADMIN_JS.includes('convertToHtml('));
+ assert.doesNotThrow(()=>new Script(ADMIN_JS,{filename:'gdd-admin-docx-client.js'}));
+});

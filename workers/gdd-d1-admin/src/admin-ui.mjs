@@ -38,13 +38,14 @@ export const ADMIN_HTML=`<!doctype html>
 </section>
 <section aria-labelledby="r2-managed-title" id="r2-managed-panel" hidden>
 <div class="heading"><h2 id="r2-managed-title">Bảo tồn ảnh / PDF / Word vào kho R2</h2><small>Cloudflare Access · Nguyên mẫu riêng tư</small></div>
-<p class="audit-caution">Ảnh hoặc tài liệu được cất nguyên vẹn dưới dạng bản gốc riêng tư trong R2. Tệp lớn tải thành các phần 8 MB. Chỉ khi chủ động nhấn Công bố bản xem thì ảnh tối ưu mới được mở cho độc giả. PDF cần tạo bản đọc từng trang trước khi công bố; bản đọc DOCX đang được hoàn thiện và không thể công bố chỉ bằng cách tải bản gốc.</p>
+<p class="audit-caution">Ảnh hoặc tài liệu được cất nguyên vẹn dưới dạng bản gốc riêng tư trong R2. Tệp lớn tải thành các phần 8 MB. Chỉ khi chủ động nhấn Công bố bản xem thì ảnh tối ưu mới được mở cho độc giả. PDF được chuyển thành ảnh từng trang. DOCX có thể tạo bản đọc **chữ** từng trang (không bảo toàn ảnh nhúng hoặc định dạng Word phức tạp); với DOCX chứa hình ảnh, xin xuất PDF để giữ nguyên bố cục trước khi công bố. Bản gốc luôn được giữ riêng.</p>
 <div class="controls"><input id="r2-managed-file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.tif,.tiff,.heic,.heif,.avif">
 <button id="r2-managed-upload" type="button">Bảo tồn bản gốc vào R2</button></div>
 <p id="r2-managed-status" role="status" aria-live="polite">Chưa chọn tệp để lưu.</p>
 <div id="r2-managed-actions" hidden>
 <div class="controls"><button id="r2-managed-derivative" type="button">Tạo bản xem và bản in JPEG của ảnh</button>
-<button id="r2-managed-pdf-pages" type="button">Tạo bản đọc PDF từng trang</button></div>
+<button id="r2-managed-pdf-pages" type="button">Tạo bản đọc PDF từng trang</button>
+<button id="r2-managed-docx-pages" type="button">Tạo bản đọc chữ DOCX</button></div>
 <div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-public-confirm" type="checkbox"> Tôi đã kiểm tra hình ảnh và đồng ý công bố bản xem</label></div>
 <div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-download-confirm" type="checkbox"> Cho phép tải bản JPEG tối ưu (không phải bản gốc)</label>
 <button id="r2-managed-publish" type="button">Công bố bản xem</button></div>
@@ -314,6 +315,7 @@ async function managedUpload(){
   const isImage=file.type.startsWith('image/');
   $('r2-managed-derivative').disabled=!isImage;
   $('r2-managed-pdf-pages').disabled=file.type!=='application/pdf';
+  $('r2-managed-docx-pages').disabled=file.type!=='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   $('r2-managed-actions').hidden=false;
   managedStatus('Đã bảo tồn nguyên mẫu riêng tư ('+(file.size/1048576).toFixed(1)+
     ' MB). Mã R2: '+info.id+'. '+(isImage?'Tạo bản xem trước khi công bố.':'Tài liệu vẫn riêng tư; cần bản đọc PDF/DOCX từng trang.'));
@@ -416,6 +418,98 @@ async function managedPdfPages(){
    managedStatus('Chưa tạo xong bản đọc PDF: '+e.message)}
  finally{button.disabled=false;try{await pdf?.destroy()}catch{}}
 }
+
+// Browser-only DOCX text rendition. No DOCX source bytes leave the user's browser
+// except for the separately Access-authenticated private R2 original upload.
+const MAMMOTH_BROWSER='https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.min.js';
+let mammothPromise=null;
+function loadMammoth(){
+ if(window.mammoth?.extractRawText)return Promise.resolve(window.mammoth);
+ if(mammothPromise)return mammothPromise;
+ mammothPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');script.src=MAMMOTH_BROWSER;
+  script.async=true;
+  script.onload=()=>window.mammoth?.extractRawText?resolve(window.mammoth):
+    reject(Error('Không mở được thư viện bản đọc DOCX'));
+  script.onerror=()=>reject(Error('Không tải được bộ đọc Word'));
+  document.head.append(script);
+ });
+ return mammothPromise;
+}
+function wrapWordText(ctx,value,maxWidth){
+ // Render via Canvas text only, never use raw DOCX HTML or execute macros.
+ const lines=[];
+ for(const para of value.replace(/\r\n?/g,'\n').split('\n')){
+  const words=para.trim().split(/\s+/).filter(Boolean);
+  if(!words.length){lines.push('');continue}
+  let line='';
+  for(let word of words){
+   if(!line && ctx.measureText(word).width>maxWidth){
+    while(word.length){
+     let n=1;
+     while(n<word.length&&ctx.measureText(word.slice(0,n+1)).width<=maxWidth)n++;
+     lines.push(word.slice(0,n));word=word.slice(n);
+    }
+    continue;
+   }
+   if(line&&ctx.measureText(line+' '+word).width>maxWidth){
+    lines.push(line);line=word;
+   }else line=line?line+' '+word:word;
+  }
+  if(line)lines.push(line);
+ }
+ return lines;
+}
+async function managedDocxPages(){
+ const mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+ if(!managedFile||!managedAsset||managedFile.type!==mime){
+  managedStatus('Vui lòng chọn DOCX và lưu bản gốc riêng tư trước.');return;
+ }
+ if(managedFile.size>35*1024*1024){
+  managedStatus('DOCX vượt 35 MB: xin tạo PDF và gửi bản đọc theo từng tập.');return;
+ }
+ const button=$('r2-managed-docx-pages');button.disabled=true;
+ try{
+  managedStatus('Đang đọc chữ trong DOCX cục bộ (không tải lên dịch vụ chuyển đổi)…');
+  const reader=await loadMammoth();
+  const result=await reader.extractRawText({arrayBuffer:await managedFile.arrayBuffer()});
+  const raw=String(result.value||'').replace(/\0/g,'').trim();
+  if(raw.length<20)throw Error('Tài liệu không có đủ chữ. Hãy xuất DOCX có hình ảnh thành PDF để giữ nguyên nội dung.');
+  if(raw.length>200000)throw Error('Tài liệu quá dài; xin chia thành nhiều tập rồi tải lại.');
+  const canvas=document.createElement('canvas');
+  canvas.width=1400;canvas.height=2000;
+  const ctx=canvas.getContext('2d',{alpha:false});
+  if(!ctx)throw Error('Thiết bị không tạo được ảnh bản đọc');
+  ctx.font='31px Georgia, serif';
+  const lines=wrapWordText(ctx,raw,1160);
+  const perPage=38;
+  const pageCount=Math.ceil(lines.length/perPage);
+  if(pageCount<1||pageCount>120)throw Error('Bản đọc chỉ hỗ trợ tối đa 120 trang mỗi tập.');
+  for(let i=0;i<pageCount;i++){
+   managedStatus('Đang tạo bản đọc chữ DOCX trang '+(i+1)+'/'+pageCount+'…');
+   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+   ctx.fillStyle='#202c27';ctx.font='31px Georgia, serif';ctx.textBaseline='top';
+   const pageLines=lines.slice(i*perPage,(i+1)*perPage);
+   pageLines.forEach((line,j)=>ctx.fillText(line,110,122+j*44));
+   ctx.fillStyle='#52665b';ctx.font='24px Georgia, serif';
+   ctx.fillText('DẤU XƯA CỬA ĐẠO  ·  BẢN ĐỌC CHỮ DOCX',110,1840);
+   ctx.fillText('Trang '+(i+1)+' / '+pageCount,110,1880);
+   const image=await new Promise((resolve,reject)=>canvas.toBlob(
+    blob=>blob?resolve(blob):reject(Error('Không tạo được trang '+(i+1))),
+    'image/jpeg',0.85));
+   if(image.size>3*1024*1024||image.size<32)throw Error('Ảnh trang vượt mức lưu trữ.');
+   await managedRequest('/v1/assets/'+managedAsset+'/page/'+(i+1),
+     {method:'PUT',data:image,type:'image/jpeg'});
+  }
+  canvas.width=0;canvas.height=0;
+  managedPdfPageCount=pageCount;managedPreviewReady=true;
+  managedStatus('Đã tạo '+pageCount+' trang đọc chữ DOCX. Hình ảnh nhúng và bố cục phức tạp không được chuyển; xin đối chiếu trước khi công bố.');
+ }catch(e){
+  managedPdfPageCount=0;managedPreviewReady=false;
+  managedStatus('Chưa tạo xong bản đọc DOCX: '+e.message);
+ }finally{button.disabled=false}
+}
+
 async function managedPublish(){
  const btn=$('r2-managed-publish');
  if(!managedAsset||!managedPreviewReady){managedStatus('Cần tạo bản xem hợp lệ trước khi công bố.');return}
@@ -424,8 +518,11 @@ async function managedPublish(){
  btn.disabled=true;
  try{
   const isPdf=managedFile?.type==='application/pdf';
+  const isDocx=managedFile?.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   const payload=isPdf
     ?{publish:true,pageCount:managedPdfPageCount,viewSource:'pdf'}
+    :isDocx
+    ?{publish:true,pageCount:managedPdfPageCount,viewSource:'docx_text'}
     :{publish:true,allowDownload:$('r2-managed-download-confirm').checked};
   const out=await managedRequest('/v1/assets/'+managedAsset+'/publication',
     {method:'POST',data:JSON.stringify(payload)});
@@ -437,6 +534,7 @@ async function managedPublish(){
 $('r2-managed-upload').addEventListener('click',managedUpload);
 $('r2-managed-derivative').addEventListener('click',managedDerivatives);
 $('r2-managed-pdf-pages').addEventListener('click',managedPdfPages);
+$('r2-managed-docx-pages').addEventListener('click',managedDocxPages);
 $('r2-managed-publish').addEventListener('click',managedPublish);
 
 
