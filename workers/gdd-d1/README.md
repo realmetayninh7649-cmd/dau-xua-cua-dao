@@ -1,71 +1,50 @@
-# Dấu Xưa Cửa Đạo – kế hoạch thay Supabase bằng Cloudflare D1
+# Dấu Xưa Cửa Đạo — chuyển Supabase sang Cloudflare D1
 
-**Trạng thái: STAGING – chưa kết nối Cloudflare D1, chưa chuyển dữ liệu riêng tư, chưa bật ghi/quản trị.**
+**Cập nhật: 23/11/2026. Trạng thái: STAGING — chưa mở lại website, chưa bật ghi.**
 
-Nhánh chuẩn bị: `cloudflare-d1-migration-20261123`. Trang chính hiện vẫn đang bảo trì;
-nhánh `backup-before-cloudflare-maintenance-20261123` chứa giao diện và mã gốc để khôi phục.
-Không nâng Supabase lên gói trả phí; không xóa Supabase/R2, không sửa mã QR, đường dẫn ảnh, tài liệu hoặc ID.
+## Đã triển khai thực tế
 
-## Những gì đã chuẩn bị
+- **Cloudflare D1 Free:** database `gdd-dao-su-archive`, đúng 21 bảng theo schema Supabase (215 cột). Có migration SQL và kiểm thử tự động.
+- **Nhập dữ liệu công khai:** 741 bản ghi đã xác minh trong D1: 50 hồ sơ đã công bố, 17 bài biên khảo, 21 tài liệu, 13 mục media, 8 video, 2 ai tín, 5 tưởng niệm, 2 âm thanh, 615 ảnh album và 8 phân loại. Không đưa bản nháp hoặc dữ liệu riêng tư lên GitHub.
+- **Worker API công khai:** `gdd-d1-api-staging`, chỉ truy vấn bản ghi đã công bố, không hỗ trợ ghi.
+- **Cloudflare Access Free:** Self-hosted application bảo vệ duy nhất `gdd-d1-admin-staging.realmetayninh7649.workers.dev`. Đã kiểm tra truy cập chưa xác thực bị chuyển tới Cloudflare Access. Chủ website thử đăng nhập thành công với kết quả `authenticated:true, write_enabled:false`.
+- **Worker quản trị:** `gdd-d1-admin-staging`, xác minh `ctx.access`, AUD và vân tay email được cho phép. Không lưu email chủ website dưới dạng chữ thuần trong code GitHub công khai.
+- **Giao diện quản trị thử nghiệm:** `/admin` hiển thị kiểm kê 21 bảng, đối chiếu số lượng Supabase và D1, cho xem các danh sách tư liệu **đã công bố**, khóa toàn bộ HTTP POST/PUT/PATCH/DELETE. Giao diện dùng tiếng Việt, phù hợp màn hình iPhone.
+- **Số liệu nguồn Supabase:** truy vấn `SELECT count(*)` trực tiếp, không sửa/xóa bảng nguồn. 21 bảng có tổng **1.892 bản ghi** ở thời điểm 23/11/2026; D1 đã có 741, còn **chênh lệch 1.151 bản ghi**. Bản chụp số lượng tại `source-row-counts-20261123.json`. Đây là mốc đối soát, phải đếm lại trước khi chuyển chính thức.
+- **Kiểm thử:** GitHub Actions `gdd-access-admin-staging.yml`, `gdd-d1-staging-tests.yml`, `gdd-d1-import-public.yml`, `gdd-d1-worker-staging.yml`. Kiểm tra xác thực, danh sách công khai, trạng thái khóa ghi và bảo vệ URL.
 
-- `migrations/0001_supabase_21_tables.sql`: 21 bảng, 215 cột, khóa chính và chỉ mục từ schema Supabase thực tế.
-- `source-schema-manifest.json`: tên cột/kiểu dữ liệu/khóa chính để đối soát.
-- `src/worker.mjs`: API công khai **chỉ đọc** với kiểm tra `published=1`, danh sách bảng cho phép,
-  truy vấn tham số hóa, CORS giới hạn và cache nhẹ.
-- `/api/v1/admin/session`: chỉ trả xác thực nếu **Cloudflare Access** xác nhận đúng ứng dụng
-  và địa chỉ quản trị thuộc danh sách được cấp phép. Mặc định từ chối; tất cả thao tác ghi đang bị khóa.
-- `scripts/build-d1-import.mjs`: bộ chuyển đổi **ngoại tuyến** từ bản xuất đầy đủ 21 bảng sang SQL,
-  chống thiếu bảng, cột lạ và trùng khóa chính.
+## Dữ liệu còn thiếu trong D1 (chưa được nhập, vẫn ở Supabase)
 
-## Những bước cần hoàn tất trước khi đổi hệ thống chính
+Đặc biệt có:
+- **2 hồ sơ Chức sắc chưa công bố**: không đưa vào API công khai.
+- **269 chỉ mục R2** (`gdd_r2_assets`), **55 bộ đếm ảnh** (`gdd_album_photo_counters`).
+- **197 sự kiện thống kê, 74 bản ghi tổng hợp thống kê, 550 phiên truy cập**, cùng các bảng tổng cộng.
+- **1 bản ghi `admin_users`** và **1 `submissions`** chứa thông tin quản trị/đóng góp cần xử lý riêng tư.
 
-1. Xác nhận tài khoản Cloudflare có quyền D1 và vẫn ở gói Free; không bật thanh toán tự động.
-2. Tạo D1 mới **không đụng đến R2**: `npx wrangler d1 create gdd-dao-su-archive`.
-3. Sao chép `wrangler.jsonc.example` thành `wrangler.jsonc`, thay UUID D1 do Cloudflare cấp.
-4. Áp dụng schema lên D1 mới bằng `npx wrangler d1 migrations apply gdd-dao-su-archive --remote`.
-5. Xuất đầy đủ 21 bảng qua kết nối chủ sở hữu vào vị trí **riêng tư ngoài GitHub**.
-   Bao gồm dữ liệu chưa công bố, R2 metadata và bảng thống kê; không xuất `auth.users`/mật khẩu.
-6. Chuyển ngoại tuyến: `node scripts/build-d1-import.mjs --input /PRIVATE/full-export.json --output /PRIVATE/d1-import.sql --confirm-private-offline`.
-   Tập tin SQL có dữ liệu riêng tư, **không commit hoặc đẩy lên repository công khai**.
-7. Kiểm tra số dòng từng bảng, ảnh PDF/Word/R2, mã QR, slug, quyền riêng tư;
-   thử phục hồi từ sao lưu độc lập trước khi chuyển giao diện công khai.
-8. Cấu hình Cloudflare Access làm đăng nhập quản trị mới; tạo danh sách người quản trị,
-   đưa các API sửa/xóa/tải tệp qua quyền Access đã xác thực. R2 gateway cũ vẫn dựa vào JWT Supabase,
-   phải thay quy trình xác thực và thử toàn bộ trước khi tắt kết nối Supabase.
-9. Chỉ khi tất cả kiểm thử đạt mới đổi frontend sang API D1, tắt bảo trì, theo dõi Free quota.
-   Giữ nguyên dự án Supabase như bản dự phòng trong thời gian kiểm chứng.
+Khác biệt 1.151 là **số bản ghi**, không phải 1.151 hồ sơ Chức sắc và không phản ánh số tệp R2. Lưu trữ ảnh/PDF gốc là chuyện riêng với việc nhập metadata D1.
 
-## Kết nối Cloudflare D1 (bước chủ tài khoản cần thực hiện)
+## Quy tắc không được phá vỡ
 
-Lần kiểm tra Cloudflare đầu tiên bằng token Worker/R2 cũ trả về **HTTP 401**,
-vì vậy D1 CHƯA được tạo hoặc triển khai; token cũ vẫn dành riêng cho R2.
+1. **Giữ Supabase Free và dữ liệu gốc ở nguyên trạng** cho đến khi có bản sao lưu độc lập, xác nhận khả năng phục hồi và đủ dữ liệu trong D1. Không xóa bảng/ảnh cũ.
+2. **Không ghi dữ liệu qua Worker quản trị hiện tại.** Mã chạy không có lệnh SQL INSERT/UPDATE/DELETE và chỉ cho phép HTTP GET.
+3. **Tuyệt đối không commit dữ liệu riêng tư, ảnh gốc, token hay mật khẩu** vào repository GitHub công khai. Bản xuất đầy đủ phải chuyển bằng kênh riêng và có checksum.
+4. **R2 gateway cũ vẫn phụ thuộc Supabase JWT**, nên hiện chưa thể sử dụng lại tính năng tải/đăng tệp từ giao diện D1 mới. Phải thay xác thực R2 an toàn trước khi cho phép ghi.
+5. Cloudflare Access phải giới hạn đúng tài khoản quản trị; cấm `Everyone`, `Bypass` và không được để lộ đường dẫn bản nháp trong API công khai.
+6. Không bật gói tính phí, chưa thay DNS, chưa bật website thật, chưa gỡ trang BẢO TRÌ.
+7. Mọi thay đổi chỉ lên nhánh `cloudflare-d1-migration-20261123`. Nhánh `backup-before-cloudflare-maintenance-20261123` bảo toàn website trước bảo trì; nhánh `main` hiện có trang bảo trì.
 
-- Trên Cloudflare Dashboard: **My Profile → API Tokens → Create Token → Custom Token**.
-- Chọn **Account → D1 → Edit** và giới hạn tới đúng tài khoản đang dùng R2.
-- Trên GitHub repository: **Settings → Secrets and variables → Actions → New repository secret**,
-  đặt tên chính xác `CLOUDFLARE_D1_API_TOKEN`; dán token vào ô Secret tại GitHub,
-  **không gửi vào ChatGPT, không lưu trong commit hoặc README**.
-- Sau khi GitHub có secret mới, chạy lại workflow `GDD Cloudflare D1 - Kiem tra quyen chi doc`
-  ở nhánh staging. Việc kiểm tra chỉ GET danh sách D1, tuyệt đối chưa tạo hoặc thay đổi tài nguyên.
-- Giữ nguyên `CLOUDFLARE_API_TOKEN` hiện có để R2 gateway tiếp tục an toàn.
+## Công việc tiếp theo để có thể mở website
 
-## Yêu cầu an toàn
+1. Hoàn thiện bản xuất và **bản sao lưu phục hồi được** của 21 bảng Supabase, gồm bản nháp, tài sản R2 metadata, chứng từ, mã QR, trường định danh.
+2. Nhập riêng tư vào D1; so sánh `id`, `slug`, `archive_code`, `photo_code`, `published`, số dòng **từng bảng**; không ghi đè dữ liệu công khai đã chuyển sai cách.
+3. Thiết kế backend CRUD có xác thực Access và lịch sử sửa đổi/khả năng rollback; kiểm thử trước khi bật quyền ghi trên staging.
+4. Chuyển R2 gateway khỏi Supabase Auth, kiểm tra tải ảnh/PDF/Word và quyền chỉ xem/tải bản hiển thị; bảo toàn bản gốc.
+5. Phục hồi giao diện quản trị đầy đủ, kiểm thử trên iPhone, rồi mới nối website và mở lại trang chính.
 
-- Tài khoản GitHub này là **public**. Không đưa khóa API, secret, email độc giả, tệp gốc,
-  danh sách nộp bài chưa công bố, token Access, bản xuất đầy đủ hoặc dữ liệu quản trị vào nhánh.
-- Không triển khai Worker mới nếu chưa có Cloudflare Access hoặc chưa xác minh quyền.
-- Không cho phép GET thông tin bảng riêng tư qua public API; không để POST/PUT/PATCH/DELETE hoạt động
-  trong phiên bản staging này.
-- Ảnh gốc vẫn ở Cloudflare R2, không đẩy hình ảnh/âm thanh vào D1 (giới hạn 500 MB/database trên Free).
-- Khi còn bảo trì, GitHub Pages chỉ phục vụ trang HTML tĩnh với HTTP 200; không tự giả HTTP 503.
-- Supabase Free có thể hạn chế Egress; tuyệt đối không dùng Service Role key trong frontend.
+## Liên kết thử nghiệm
 
-## API thử nghiệm khi D1 đã được cấu hình
+- Admin UI: `https://gdd-d1-admin-staging.realmetayninh7649.workers.dev/admin` (**bắt buộc Cloudflare Access**)
+- API public: `https://gdd-d1-api-staging.realmetayninh7649.workers.dev/health`
+- Website chính (bảo trì): `https://dauxuacuadao.info.vn/`
 
-- `GET /health`
-- `GET /api/v1/public/people?limit=30&offset=0`
-- `GET /api/v1/public/posts/{slug}`
-- `GET /api/v1/public/albums?owner_kind=people&owner_id={UUID}`
-- `GET /api/v1/admin/session` (mặc định 403, chỉ Access xác thực trả 200)
-
-**Chưa có thao tác tạo D1, nhập dữ liệu hay triển khai lên tài khoản Cloudflare trong giai đoạn này.**
+**Tất cả tài nguyên vừa tạo đều đang dùng Cloudflare Free, vẫn cần giám sát hạn mức sử dụng thực tế.**
