@@ -1,0 +1,32 @@
+{
+  "source": "Supabase public schema: read-only aggregate SQL",
+  "project_id": "gwpdgubxoquhrfbolftq",
+  "snapshot_date": "2026-11-23",
+  "data_privacy": "Aggregate counts only. No personally identifiable rows, credentials or file URLs.",
+  "people": {
+    "published": 50,
+    "unpublished": 2
+  },
+  "r2_asset_metadata": {
+    "rows": 269,
+    "preview_ready": 103,
+    "download_ready": 103,
+    "unknown_original_sizes": 0
+  },
+  "gallery": {
+    "rows": 615,
+    "without_image_url": 0,
+    "without_photo_code": 0
+  },
+  "album_photo_counters": 55,
+  "sensitive_tables": {
+    "admin_users": 1,
+    "submissions": 1
+  },
+  "caveats": [
+    "No claim that every R2 object exists in bucket; file inventory requires a separate R2 audit.",
+    "Preview-ready is an index flag, not a guarantee of full archive integrity.",
+    "Counts may change after the snapshot date. Refresh before final cutover.",
+    "Do not publish unapproved people or submission rows."
+  ]
+}
