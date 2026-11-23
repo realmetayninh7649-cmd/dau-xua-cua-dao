@@ -45,6 +45,11 @@ try{
   assert.ok(result.docWidth<=result.viewport+3,'page overflows viewport');
   await page.screenshot({path:'/tmp/gdd-public-site-smoke/'+name+'.png',fullPage:false});
   console.log('LIVE_D1_WEBSITE_UI_'+name.toUpperCase()+'=PASS',JSON.stringify(result));
+  await page.route('https://gdd-d1-admin-staging.realmetayninh7649.workers.dev/**',
+    route=>route.fulfill({status:200,contentType:'text/html',body:'<h1>Access admin portal</h1>'}));
+  await page.locator('#admin-open').click();
+  await page.waitForURL(url=>url.hostname==='gdd-d1-admin-staging.realmetayninh7649.workers.dev',{timeout:12000});
+  console.log('D1_PUBLIC_ADMIN_REDIRECT_'+name.toUpperCase()+'=PASS');
   await page.close();
  }
  const page=await browser.newPage();
@@ -56,6 +61,7 @@ try{
  }
  await page.close();
  console.log('LIVE_PAGE_SCRIPT_ERRORS='+errors.length);
+ assert.equal(errors.length,0,'Public website has unhandled script errors');
  for(const issue of errors.slice(0,12))console.log('LIVE_PUBLIC_PAGEERROR_DETAIL='+JSON.stringify(issue));
  console.log('MAIN_PRODUCTION_UNCHANGED=TRUE');
 }finally{await browser.close()}
