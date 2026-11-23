@@ -1,43 +1,14 @@
-/* GDD - Sinh trang SEO cong khai tu Supabase (khong su dung service role).
- * Chi truy xuat ban ghi published=true qua khoa publishable va RLS.
- * Khong sua du lieu goc, khong doi QR/hash route.
+/* Dấu Xưa Cửa Đạo — SEO công khai từ Cloudflare D1, không Supabase.
+ * Chỉ đọc các bản ghi published:true từ D1; tuyệt đối không chép bản nháp.
+ * Không xóa thư mục hoặc tệp tư liệu, không thay đổi QR hay mã định danh.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-
-const ROOT = process.cwd();
-const BASE = 'https://dauxuacuadao.info.vn';
-// Site owner requested a temporary full-public-site maintenance mode.
-// Keep existing file names/routes, but serve the static home maintenance notice
-// from every SEO HTML route without fetching Supabase or touching database records.
-if (fs.existsSync(path.join(ROOT, 'maintenance-mode.flag'))) {
-  const notice = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  if (!notice.includes('Website đang tạm bảo trì') || /<script\b/i.test(notice)) {
-    throw new Error('Maintenance notice missing or not static; refuse to replace public SEO pages');
-  }
-  let updated = 0;
-  for (const section of ['ho-so','bien-khao']) {
-    const dir = path.join(ROOT, section);
-    if (!fs.existsSync(dir)) continue;
-    for (const name of fs.readdirSync(dir)) {
-      if (!/\.html$/i.test(name)) continue;
-      const target = path.join(dir, name);
-      if (!fs.statSync(target).isFile()) continue;
-      if (fs.readFileSync(target,'utf8') !== notice) {
-        fs.writeFileSync(target, notice,'utf8');
-        updated += 1;
-      }
-    }
-  }
-  console.log('MAINTENANCE ACTIVE: public SEO routes display notice; changed '+updated+' pages.');
-  process.exit(0);
-}
-const config = fs.readFileSync(path.join(ROOT, 'supabase-config.js'), 'utf8');
-const api = config.match(/supabaseUrl:\s*["'](https:\/\/[^"']+)["']/)?.[1];
-const key = config.match(/supabasePublishableKey:\s*["']([^"']+)["']/)?.[1];
-if (!api || !key || !api.endsWith('.supabase.co') || !key.startsWith('sb_publishable_')) {
-  throw new Error('Khong tim thay Supabase public configuration hop le');
-}
+const ROOT=process.cwd();
+const BASE='https://dauxuacuadao.info.vn';
+const API='https://gdd-d1-api-staging.realmetayninh7649.workers.dev';
+if(fs.existsSync(path.join(ROOT,'maintenance-mode.flag')))
+  throw Error('Maintenance flag must be manually reviewed; do not rewrite public SEO pages');
 const SAFE_SLUG = /^[a-z0-9][a-z0-9_-]{0,180}$/;
 const e = (x) => String(x ?? '').replace(/[&<>"']/g, c => ({
   '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
@@ -52,24 +23,23 @@ function write(rel, body) {
   fs.mkdirSync(path.dirname(full), {recursive:true});
   fs.writeFileSync(full, body, 'utf8');
 }
-async function fetchPublished(table, fields) {
-  let all = [];
-  for(let offset=0; offset<5000; offset+=500){
-    const qs = new URLSearchParams({
-      select:fields.join(','), published:'eq.true', order:'created_at.desc',
-      limit:'500', offset:String(offset)
-    });
-    const res = await fetch(api + '/rest/v1/' + table + '?' + qs, {
-      headers: {apikey:key, Accept:'application/json'},
-      signal:AbortSignal.timeout(25000)
-    });
-    if(!res.ok) throw new Error(table + ' fetch failed HTTP ' + res.status + ': ' + (await res.text()).slice(0,220));
-    const list = await res.json();
-    if(!Array.isArray(list)) throw new Error(table + ' khong tra ve danh sach');
-    all.push(...list);
-    if(list.length < 500) break;
+async function fetchPublished(table,fields) {
+  if(!['people','posts'].includes(table))throw Error('Invalid SEO source table');
+  const all=[];
+  for(let offset=0;offset<=2000;offset+=100){
+    const url=API+'/api/v1/public/'+table+'?limit=100&offset='+offset;
+    const response=await fetch(url,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(25000)});
+    if(!response.ok)throw Error('D1 '+table+' fetch failed '+response.status);
+    const data=await response.json();
+    if(!Array.isArray(data?.data)||data.data.length>100||
+      data.data.some(row=>row.published!==true))throw Error('Non-public or malformed D1 rows');
+    all.push(...data.data);
+    if(data.data.length<100)break;
+    if(offset>=2000)throw Error('Unbounded D1 pagination');
   }
-  return all.filter(x => x.published === true && SAFE_SLUG.test(x.slug || ''));
+  const out=all.filter(x=>x.published===true&&SAFE_SLUG.test(x.slug||''));
+  if(out.length!==all.length)throw Error('Malformed published D1 slug');
+  return out;
 }
 function theme() {
   return '<style>:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;color:#22372f;background:#faf8f2;font:16px/1.8 system-ui,-apple-system,"Segoe UI",sans-serif}a{color:#13584d}header,footer{background:#eff2e9;padding:18px max(20px,calc((100vw - 850px)/2))}main{max-width:850px;margin:0 auto;padding:28px 20px 68px}h1{font:700 clamp(26px,4vw,38px)/1.38 Georgia,"Times New Roman",serif;color:#1d473c}h2{font:700 22px/1.4 Georgia,serif}p{margin:16px 0}.brand{font-weight:800;letter-spacing:.02em;text-decoration:none}.section{font-size:13px;color:#7b6540;letter-spacing:.08em;text-transform:uppercase}.summary{font-weight:600;border-left:3px solid #9c834c;padding:4px 16px;background:#fff}.prose{white-space:pre-wrap;overflow-wrap:anywhere;font-family:Georgia,"Times New Roman",serif;font-size:17px;line-height:1.92;background:#fff;border:1px solid #ede5d8;border-radius:9px;padding:24px}.sources{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;background:#f2efe7;border-radius:8px;padding:16px}.back{display:inline-block;padding:9px 14px;border:1px solid #a9b7ae;border-radius:7px;text-decoration:none;margin:12px 0}ul{padding-left:22px}li{margin:11px 0}.card{border-bottom:1px solid #e4dfd4;padding:14px 0}.card a{font-size:18px;font-weight:700}small{color:#65716b}footer{font-size:13px;color:#54665d}@media(max-width:600px){.prose{padding:17px;font-size:16px}}</style>';
@@ -106,7 +76,9 @@ async function main() {
     fetchPublished('people',['slug','full_name','rank','branch','years','summary','biography','sources','published','created_at','updated_at']),
     fetchPublished('posts',['slug','title','category','summary','body','sources','published','created_at','updated_at'])
   ]);
-  if(people.length===0 && posts.length===0) throw new Error('Khong co tai lieu cong khai: dung build de tranh xoa du lieu SEO');
+  // Cardinality guard: an API outage or partial response must never overwrite good SEO files.
+  if(people.length<45 || posts.length<15 || people.length>5000 || posts.length>5000)
+    throw Error('Published D1 SEO cardinality out of bounds: no files will be changed');
   const sections=[
     {dir:'ho-so',label:'Danh mục hồ sơ Chức sắc',rows:people.map(x=>page('people',x))},
     {dir:'bien-khao',label:'Danh mục bài biên khảo',rows:posts.map(x=>page('posts',x))}
@@ -114,7 +86,8 @@ async function main() {
   const urls=[{url:BASE+'/'},{url:BASE+'/chung-nhan.html'}];
   for(const section of sections) {
     // Hai thu muc nay chi danh cho trang SEO duoc sinh tu dong.
-    fs.rmSync(path.join(ROOT,section.dir),{recursive:true,force:true});
+    // Never delete the whole directory. Old routes remain until explicitly audited.
+    fs.mkdirSync(path.join(ROOT,section.dir),{recursive:true});
     for(const entry of section.rows) {
       write(entry.rel,entry.html);
       urls.push({url:entry.url,lastmod:entry.date});
@@ -129,12 +102,6 @@ async function main() {
   console.log('SEO ready: '+people.length+' published people, '+posts.length+' published posts, '+urls.length+' URLs');
 }
 main().catch(err=>{
-  const reason=String(err?.message||err||'');
-  if(/HTTP 402/.test(reason)&&/exceed_(?:cached_)?egress_quota|restricted/i.test(reason)){
-    // Giữ nguyên các trang và sitemap đã công bố, không xóa tệp khi API bị hạn chế.
-    console.warn('SUPABASE EGRESS QUOTA: giữ nguyên SEO và sitemap hiện có; không đồng bộ trong lần chạy này.');
-    return;
-  }
-  console.error(err);
-  process.exitCode=1;
+ console.error('PUBLIC_D1_SEO_BUILD_FAILED',String(err?.message||'unknown'));
+ process.exitCode=1;
 });

@@ -1,0 +1,37 @@
+name: "GDD - D1 SEO read-only dry run before publication"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: ["scripts/gdd-seo-build.mjs","tests/gdd-seo-d1.test.mjs",".github/workflows/gdd-seo-d1-dryrun.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dryrun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Compile and verify only published D1 source"
+        run: |
+          node --check scripts/gdd-seo-build.mjs
+          node --test tests/gdd-seo-d1.test.mjs
+      - name: "Build public SEO pages in disposable runner only"
+        run: |
+          set -euo pipefail
+          node scripts/gdd-seo-build.mjs
+          node - <<'JS'
+          const fs=require('fs');
+          const xml=fs.readFileSync('sitemap.xml','utf8');
+          const people=fs.readdirSync('ho-so').filter(x=>x.endsWith('.html')&&x!=='index.html');
+          const posts=fs.readdirSync('bien-khao').filter(x=>x.endsWith('.html')&&x!=='index.html');
+          if(people.length<45||posts.length<15)throw Error('SEO archive incomplete');
+          if(!xml.includes('https://dauxuacuadao.info.vn/'))throw Error('No canonical base');
+          if(xml.includes('supabase.co'))throw Error('Unexpected Supabase references');
+          console.log('D1_SEO_DRYRUN_PASS',JSON.stringify({people:people.length,posts:posts.length,sitemap_urls:(xml.match(/<url>/g)||[]).length}));
+          JS
+          git status --short | head -30
+          echo "NO_GITHUB_PUSH_AND_NO_PRODUCTION_CHANGES=TRUE"
