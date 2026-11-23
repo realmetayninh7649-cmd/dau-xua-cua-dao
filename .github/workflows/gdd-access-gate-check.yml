@@ -1,0 +1,33 @@
+name: "GDD Access Gate Read-Only Verification"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: [".github/workflows/gdd-access-gate-check.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: "Check unauthenticated admin gateway is not public"
+        run: |
+          python3 - <<'PY'
+          import urllib.request, urllib.error
+          target='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl):return None
+          opener=urllib.request.build_opener(NoRedirect())
+          for path in ['/health','/api/v1/admin/session']:
+              req=urllib.request.Request(target+path,headers={'User-Agent':'GDD-Access-Audit/1.0'})
+              try:
+                  with opener.open(req,timeout=15) as res:status,location=res.status,res.headers.get('Location','')
+              except urllib.error.HTTPError as exc:
+                  status,location=exc.code,exc.headers.get('Location','')
+              redirect=status in (301,302,303,307,308) and 'cloudflareaccess.com' in location.lower()
+              print(path+' STATUS='+str(status)+' ACCESS_REDIRECT='+str(redirect))
+              if not redirect:raise SystemExit('Access not confirmed for '+path)
+          print('CLOUDFLARE_ACCESS_GUARD_VERIFIED=TRUE')
+          print('NO_CHANGES_MADE=TRUE')
+          PY
