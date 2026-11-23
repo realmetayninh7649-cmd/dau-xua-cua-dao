@@ -82,6 +82,9 @@ test('21-table D1 inventory counts imported published records',async()=>{
  assert.equal(body.source_integrity_snapshot.r2_asset_metadata.rows,269);
  assert.equal(body.source_integrity_snapshot.gallery.without_photo_code,0);
  assert.equal(body.source_integrity_snapshot.gallery.without_image_url,0);
+ assert.equal(body.r2_object_inventory_snapshot.object_count,2512);
+ assert.equal(body.r2_object_inventory_snapshot.total_bytes,3156978971);
+
  assert.equal(body.published_records,118);
  assert.equal(body.gallery_images,615);
  assert.equal(body.r2_asset_records,0);
