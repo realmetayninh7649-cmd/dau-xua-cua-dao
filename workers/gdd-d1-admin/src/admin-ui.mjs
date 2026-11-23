@@ -3,87 +3,18 @@ export const ADMIN_HTML=`<!doctype html>
 <html lang="vi"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Quản trị tư liệu — Dấu Xưa Cửa Đạo (Thử nghiệm)</title>
+<title>Quản trị tư liệu — Dấu Xưa Cửa Đạo </title>
 <link rel="stylesheet" href="/admin/style.css">
 <script src="/admin/app.js" defer></script>
 </head><body>
 <header class="masthead"><div class="wrap">
 <p class="eyebrow">ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ · KHO TƯ LIỆU ĐẠO SỬ</p>
 <h1>Quản trị tư liệu</h1>
-<p class="lead">Bảng điều khiển D1 · Chế độ thử nghiệm chỉ đọc</p>
+<p class="lead">Bảng quản trị tư liệu · Cloudflare D1 và R2</p>
 </div></header>
 <main class="wrap">
-<section class="notice" role="status"><strong>Đang kiểm thử an toàn.</strong> Dữ liệu hiển thị lấy từ Cloudflare D1. Chức năng thêm, sửa, xóa, tải tệp vẫn được khóa. Website chính vẫn đang bảo trì.</section>
-<section aria-labelledby="state-title"><div class="heading"><h2 id="state-title">Tình trạng dữ liệu</h2><button id="refresh" type="button">Làm mới</button></div>
-<p id="status" role="status" aria-live="polite">Đang kiểm tra phiên quản trị và dữ liệu D1…</p>
-<div id="overview" class="summary" aria-live="polite"></div>
-</section>
-<section aria-labelledby="safety-title"><div class="heading"><h2 id="safety-title">Kiểm tra bảo toàn tư liệu gốc</h2><small>Đối chiếu từ Supabase ngày 23/11/2026</small></div>
-<ul class="safe-list" id="safety-report">
-<li>Đang tải kết quả kiểm tra…</li>
-</ul>
-<p class="audit-caution">Đã kiểm kê danh sách đối tượng R2 ngày 23/11/2026. Đây chỉ là dấu kiểm kê tệp, chưa phải xác minh nội dung từng tệp hay bản sao lưu độc lập có thể phục hồi.</p>
-<div class="controls"><button id="r2-audit" type="button">Kiểm kê R2 trực tiếp (chỉ đọc)</button></div>
-<p id="r2-live-status" role="status" aria-live="polite">Chưa quét kho R2 trong phiên này.</p></section>
-<section aria-labelledby="r2-managed-title" id="r2-managed-panel" hidden>
-<div class="heading"><h2 id="r2-managed-title">Bảo tồn ảnh / PDF / Word vào kho R2</h2><small>Cloudflare Access · Nguyên mẫu riêng tư</small></div>
-<p class="audit-caution">Ảnh hoặc tài liệu được cất nguyên vẹn dưới dạng bản gốc riêng tư trong R2. Tệp lớn tải thành các phần 8 MB. Chỉ khi chủ động nhấn Công bố bản xem thì ảnh tối ưu mới được mở cho độc giả. PDF/DOCX cần tạo bản đọc từng trang riêng trước khi công bố.</p>
-<div class="controls"><input id="r2-managed-file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.tif,.tiff,.heic,.heif,.avif">
-<button id="r2-managed-upload" type="button">Bảo tồn bản gốc vào R2</button></div>
-<p id="r2-managed-status" role="status" aria-live="polite">Chưa chọn tệp để lưu.</p>
-<div id="r2-managed-actions" hidden>
-<div class="controls"><button id="r2-managed-derivative" type="button">Tạo bản xem và bản in JPEG của ảnh</button>
-<button id="r2-managed-pdf-pages" type="button">Tạo bản đọc PDF từng trang</button></div>
-<div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-public-confirm" type="checkbox"> Tôi đã kiểm tra hình ảnh và đồng ý công bố bản xem</label></div>
-<div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-download-confirm" type="checkbox"> Cho phép tải bản JPEG tối ưu (không phải bản gốc)</label>
-<button id="r2-managed-publish" type="button">Công bố bản xem</button></div>
-</div>
-</section>
-<section aria-labelledby="r2-sandbox-title">
-<div class="heading"><h2 id="r2-sandbox-title">Thử tải ảnh, PDF, Word lên R2 riêng tư</h2><small>Không công bố bản gốc</small></div>
-<p class="audit-caution">Chỉ dùng tệp thử nghiệm tối đa 2 MB, giới hạn 20 tệp trong kho thử. Tệp mới nằm trong thư mục nội bộ riêng của R2, không có đường dẫn tải công khai; không xóa hay ghi đè ảnh/PDF tư liệu cũ.</p>
-<div class="controls"><input id="r2-sandbox-file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.docx"><button id="r2-sandbox-upload" type="button">Tải tệp thử nghiệm</button><button id="r2-sandbox-refresh" type="button">Kiểm kê tệp thử</button></div>
-<p id="r2-sandbox-status" role="status" aria-live="polite">Chưa kiểm tra kho thử.</p>
-</section>
-<section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Đối chiếu với số liệu Supabase ngày 23/11/2026 (bản chụp)</small></div>
-<div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
-</section>
-<section aria-labelledby="records-title"><div class="heading"><h2 id="records-title">Xem tư liệu đã công bố và bản nháp</h2><small>Bản nháp chỉ mở cho người quản trị đã xác thực; không hiển thị hồ sơ tài khoản hoặc tư liệu độc giả gửi về</small></div>
-<div class="controls"><label for="kind">Chuyên mục</label><select id="kind">
-<option value="people">Hồ sơ Chức sắc</option>
-<option value="posts">Biên khảo</option>
-<option value="documents">Tài liệu số hóa</option>
-<option value="media">Hình ảnh</option>
-<option value="videos">Video</option>
-<option value="obituaries">Ai tín</option>
-<option value="gdd_memorials">Tưởng niệm</option>
-<option value="gdd_audio_programs">Âm thanh Đại Đạo</option>
-<option value="gdd_calendar_memorials">Lịch tưởng niệm</option>
-</select><label for="view">Trạng thái</label><select id="view">
-<option value="published">Đã công bố</option>
-<option value="draft">Bản nháp (riêng tư)</option>
-</select></div>
-<ul id="record-list" class="records"></ul>
-<div class="pagination"><button id="previous" type="button">Trang trước</button><span id="page">Trang 1</span><button id="next" type="button">Trang sau</button></div>
-</section>
-<section aria-labelledby="sandbox-title">
-<div class="heading"><h2 id="sandbox-title">Thử biên tập — cơ sở D1 riêng</h2><small>KHÔNG sửa tư liệu thật</small></div>
-<p class="audit-caution">Mọi nội dung dưới đây chỉ được ghi vào cơ sở thử nghiệm riêng, không xuất bản ra website và không tác động 21 bảng tư liệu đã phục hồi. Có thể tạo bản nháp, sửa, xem lịch sử và khôi phục nội dung cũ. Không có nút xóa vĩnh viễn.</p>
-<div class="controls">
-<label for="sandbox-kind">Loại bản thử</label>
-<select id="sandbox-kind"><option value="people">Hồ sơ Chức sắc</option><option value="posts">Biên khảo</option><option value="documents">Tài liệu</option><option value="media">Hình ảnh</option></select>
-</div>
-<div class="sandbox-form">
-<label for="sandbox-title-input">Nhan đề thử nghiệm</label><input id="sandbox-title-input" type="text" maxlength="160" placeholder="Chỉ ghi nội dung thử nghiệm">
-<label for="sandbox-summary">Tóm tắt</label><textarea id="sandbox-summary" maxlength="2000" rows="3"></textarea>
-<label for="sandbox-body">Nội dung</label><textarea id="sandbox-body" maxlength="16000" rows="5"></textarea>
-<label class="sandbox-checkbox"><input id="sandbox-published" type="checkbox"> Đánh dấu công bố *trong sandbox* (không đưa lên web)</label>
-<div class="controls"><button id="sandbox-save" type="button">Tạo bản nháp thử nghiệm</button><button id="sandbox-new" type="button">Tạo bản mới</button><button id="sandbox-refresh" type="button">Làm mới danh sách</button></div>
-</div>
-<p id="sandbox-status" role="status" aria-live="polite">Đang tải danh sách thử nghiệm…</p>
-<ul id="sandbox-list" class="records"></ul>
-<h3>Lịch sử phiên bản và phục hồi</h3><ul id="sandbox-history" class="records"></ul>
-</section>
+<section class="notice" role="status"><strong>Website công khai đã hoạt động.</strong> Nội dung được biên tập trên cơ sở D1 làm việc, có lưu lịch sử phiên bản. Tư liệu nguyên mẫu trong R2 được giữ riêng tư. Không có chức năng xóa vĩnh viễn; bản sao phục hồi chuẩn được bảo toàn.</section>
+ <nav class="quick-links" aria-label="Liên kết"><a href="https://dauxuacuadao.info.vn/" target="_blank" rel="noopener noreferrer">Mở website công khai</a></nav>
 <section aria-labelledby="work-title" id="work-editor-panel" hidden>
 <div class="heading"><h2 id="work-title">Biên tập tư liệu trên D1 làm việc</h2><small>Cloudflare Access · Có lưu lịch sử sửa</small></div>
 <p class="audit-caution">Dữ liệu có mã hồ sơ được giữ nguyên. Hồ sơ mới chỉ tạo bản nháp; không tự cấp mã định danh. Có thể phục hồi phiên bản cũ; không có thao tác xóa vĩnh viễn. Bản sao lưu D1 chuẩn không bị tác động.</p>
@@ -105,7 +36,55 @@ export const ADMIN_HTML=`<!doctype html>
 <h3>Lịch sử chỉnh sửa và phục hồi</h3><ul class="records" id="work-revisions"></ul>
 </div>
 </section>
-<footer>Giai đoạn thử nghiệm · Bảo toàn Supabase, Cloudflare R2 và mã định danh tư liệu · Chức năng biên tập chỉ dùng D1 làm việc</footer>
+<section aria-labelledby="r2-managed-title" id="r2-managed-panel" hidden>
+<div class="heading"><h2 id="r2-managed-title">Bảo tồn ảnh / PDF / Word vào kho R2</h2><small>Cloudflare Access · Nguyên mẫu riêng tư</small></div>
+<p class="audit-caution">Ảnh hoặc tài liệu được cất nguyên vẹn dưới dạng bản gốc riêng tư trong R2. Tệp lớn tải thành các phần 8 MB. Chỉ khi chủ động nhấn Công bố bản xem thì ảnh tối ưu mới được mở cho độc giả. PDF cần tạo bản đọc từng trang trước khi công bố; bản đọc DOCX đang được hoàn thiện và không thể công bố chỉ bằng cách tải bản gốc.</p>
+<div class="controls"><input id="r2-managed-file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.tif,.tiff,.heic,.heif,.avif">
+<button id="r2-managed-upload" type="button">Bảo tồn bản gốc vào R2</button></div>
+<p id="r2-managed-status" role="status" aria-live="polite">Chưa chọn tệp để lưu.</p>
+<div id="r2-managed-actions" hidden>
+<div class="controls"><button id="r2-managed-derivative" type="button">Tạo bản xem và bản in JPEG của ảnh</button>
+<button id="r2-managed-pdf-pages" type="button">Tạo bản đọc PDF từng trang</button></div>
+<div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-public-confirm" type="checkbox"> Tôi đã kiểm tra hình ảnh và đồng ý công bố bản xem</label></div>
+<div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-download-confirm" type="checkbox"> Cho phép tải bản JPEG tối ưu (không phải bản gốc)</label>
+<button id="r2-managed-publish" type="button">Công bố bản xem</button></div>
+</div>
+</section>
+<section aria-labelledby="records-title"><div class="heading"><h2 id="records-title">Xem tư liệu đã công bố và bản nháp</h2><small>Bản nháp chỉ mở cho người quản trị đã xác thực; không hiển thị hồ sơ tài khoản hoặc tư liệu độc giả gửi về</small></div>
+<div class="controls"><label for="kind">Chuyên mục</label><select id="kind">
+<option value="people">Hồ sơ Chức sắc</option>
+<option value="posts">Biên khảo</option>
+<option value="documents">Tài liệu số hóa</option>
+<option value="media">Hình ảnh</option>
+<option value="videos">Video</option>
+<option value="obituaries">Ai tín</option>
+<option value="gdd_memorials">Tưởng niệm</option>
+<option value="gdd_audio_programs">Âm thanh Đại Đạo</option>
+<option value="gdd_calendar_memorials">Lịch tưởng niệm</option>
+</select><label for="view">Trạng thái</label><select id="view">
+<option value="published">Đã công bố</option>
+<option value="draft">Bản nháp (riêng tư)</option>
+</select></div>
+<ul id="record-list" class="records"></ul>
+<div class="pagination"><button id="previous" type="button">Trang trước</button><span id="page">Trang 1</span><button id="next" type="button">Trang sau</button></div>
+</section>
+<details class="admin-technical"><summary>Kiểm kê dữ liệu và kiểm tra bảo toàn tư liệu</summary><div class="technical-content">
+<section aria-labelledby="state-title"><div class="heading"><h2 id="state-title">Thống kê và đối chiếu dữ liệu</h2><button id="refresh" type="button">Làm mới</button></div>
+<p id="status" role="status" aria-live="polite">Đang kiểm tra phiên quản trị và dữ liệu D1…</p>
+<div id="overview" class="summary" aria-live="polite"></div>
+</section>
+<section aria-labelledby="safety-title"><div class="heading"><h2 id="safety-title">Kiểm tra bảo toàn tư liệu gốc</h2><small>Đối chiếu từ Supabase ngày 23/11/2026</small></div>
+<ul class="safe-list" id="safety-report">
+<li>Đang tải kết quả kiểm tra…</li>
+</ul>
+<p class="audit-caution">Đã kiểm kê danh sách đối tượng R2 ngày 23/11/2026. Đây chỉ là dấu kiểm kê tệp, chưa phải xác minh nội dung từng tệp hay bản sao lưu độc lập có thể phục hồi.</p>
+<div class="controls"><button id="r2-audit" type="button">Kiểm kê R2 trực tiếp (chỉ đọc)</button></div>
+<p id="r2-live-status" role="status" aria-live="polite">Chưa quét kho R2 trong phiên này.</p></section>
+<section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Đối chiếu với số liệu Supabase ngày 23/11/2026 (bản chụp)</small></div>
+<div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
+</section>
+</div></details>
+<footer>Quản trị tư liệu · D1 làm việc · R2 riêng tư · Lưu lịch sử thay đổi · Bảo toàn bản sao phục hồi</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
 :root{color-scheme:light;--ink:#233e35;--gold:#ac8548;--muted:#637168;--line:#deddd3;--bg:#f6f5ef}
@@ -154,6 +133,15 @@ th{color:var(--muted);font-size:.85rem}
 #status{font-size:.91rem;color:#54665b}
 footer{font-size:.83rem;color:var(--muted);text-align:center;padding:8px 0}
 @media(max-width:440px){.masthead{padding-top:25px}.eyebrow{font-size:.65rem}.wrap{width:calc(100% - 26px)}section:not(.notice){padding:14px}}
+
+.quick-links{margin:-3px 0 22px;display:flex;flex-wrap:wrap;gap:10px}
+.quick-links a{display:inline-flex;align-items:center;border:1px solid #b4c5b9;border-radius:10px;padding:9px 13px;background:#fff;color:#244137;text-decoration:none;font-weight:650}
+.quick-links a:focus-visible{outline:3px solid #b38c52;outline-offset:2px}
+.admin-technical{border:1px solid #d8dcd4;border-radius:12px;background:#fff;margin:18px 0 25px}
+.admin-technical>summary{cursor:pointer;font-weight:700;padding:16px 18px;list-style:revert}
+.admin-technical .technical-content{padding:0 12px 15px}
+.admin-technical .technical-content>section{margin:15px 0}
+@media(max-width:500px){.admin-technical .technical-content{padding:0 7px 12px}.quick-links a{width:100%;justify-content:center}}
 `;
 export const ADMIN_JS=`
 'use strict';
@@ -191,8 +179,8 @@ async function overview(){
   if(session.working_editor_enabled===true)workList().catch(()=>{});
   const inventory=$('inventory'),cards=$('overview');inventory.replaceChildren();cards.replaceChildren();
   for(const [count,label] of [
-    [summary.source_total,'Bản ghi nguồn Supabase'],
-    [summary.total_records,'Đã chuyển vào D1'],
+    [summary.source_total,'Bản ghi nguồn (bản chụp 23/11)'],
+    [summary.total_records,'Bản ghi D1 làm việc'],
     [summary.remaining_records,'Chênh lệch còn lại'],
     [summary.table_count,'Bảng dữ liệu'],
     [summary.published_records,'Bản ghi công khai (9 nhóm)'],
@@ -224,8 +212,8 @@ async function overview(){
     appendText(tr,'td',Number(item.remaining).toLocaleString('vi-VN'),'number');inventory.append(tr);
    }
    setStatus(summary.row_counts_match_snapshot===true
-     ? 'Đã xác thực · D1 phục hồi riêng đủ 21 bảng theo số lượng ngày 23/11/2026 · Chỉ đọc'
-     : 'CẢNH BÁO: Số lượng D1 không khớp bản chụp Supabase; chưa được phép mở website.');
+     ? 'Đã xác thực · D1 làm việc đang hoạt động · Đối chiếu 21 bảng với bản chụp ngày 23/11/2026'
+     : 'Đã có thay đổi so với bản chụp 23/11/2026 · Kiểm tra các bản ghi mới hoặc chỉnh sửa trong D1 làm việc.');
  }catch(err){setStatus('Không thể đối chiếu D1: '+err.message)}
 }
 async function auditR2(){
@@ -267,36 +255,6 @@ async function loadRecords(){
 }
 $('refresh').addEventListener('click',()=>{overview();loadRecords()});
 $('r2-audit').addEventListener('click',auditR2);
-async function sandboxR2Refresh(){
- const label=$('r2-sandbox-status');
- try{
-  const data=await api('/api/v1/admin/r2/staging-uploads');
-  if(data.mode!=='private-r2-upload-sandbox')throw Error('Kho dữ liệu không hợp lệ');
-  label.textContent='Kho tải lên thử: '+data.count+'/'+data.max_total_objects+' tệp. Bản gốc luôn riêng tư, không công bố.';
- }catch(e){label.textContent='Chưa kiểm tra được kho thử: '+e.message;}
-}
-async function sandboxR2Upload(){
- const file=$('r2-sandbox-file').files[0];
- const label=$('r2-sandbox-status'),button=$('r2-sandbox-upload');
- if(!file){label.textContent='Hãy chọn một tệp thử nghiệm.';return}
- if(file.size<1||file.size>2*1024*1024){label.textContent='Tệp thử phải có dung lượng tối đa 2 MB.';return}
- button.disabled=true;
- try{
-  label.textContent='Đang lưu tệp thử trong kho R2 riêng tư…';
-  const res=await fetch('/api/v1/admin/r2/staging-uploads',
-   {method:'POST',body:file,credentials:'same-origin',cache:'no-store',
-     headers:{'Content-Type':file.type}});
-  const info=await res.json();
-  if(!res.ok||info.original_private!==true||info.published!==false)
-    throw Error(info.error||'Trạng thái riêng tư không hợp lệ');
-  label.textContent='Đã lưu tệp thử riêng tư. SHA-256: '+info.sha256.slice(0,16)+'…; không thể tải công khai.';
-  $('r2-sandbox-file').value='';
- }catch(e){label.textContent='Không lưu được tệp thử: '+e.message}
- finally{button.disabled=false}
-}
-$('r2-sandbox-upload').addEventListener('click',sandboxR2Upload);
-$('r2-sandbox-refresh').addEventListener('click',sandboxR2Refresh);
-
 // Cloudflare Access R2 originals: use the already tested private R2 gateway.
 const managedBase='/api/v1/admin/r2/managed';
 let managedFile=null,managedAsset=null,managedPreviewReady=false,managedPdfPageCount=0;
@@ -474,104 +432,15 @@ $('r2-managed-derivative').addEventListener('click',managedDerivatives);
 $('r2-managed-pdf-pages').addEventListener('click',managedPdfPages);
 $('r2-managed-publish').addEventListener('click',managedPublish);
 
-sandboxR2Refresh();
-// Access-protected synthetic D1 editing sandbox; no real data write endpoints.
-let sandboxActive=null,sandboxVersion=null,sandboxRecords=[];
-const sandboxApi='/api/v1/admin/sandbox';
-function sandboxStatus(message){$('sandbox-status').textContent=message;}
-function sandboxReset(){
- sandboxActive=null;sandboxVersion=null;
- $('sandbox-kind').disabled=false;$('sandbox-kind').value='people';
- $('sandbox-title-input').value='';$('sandbox-summary').value='';$('sandbox-body').value='';
- $('sandbox-published').checked=false;$('sandbox-published').disabled=true;
- $('sandbox-save').textContent='Tạo bản nháp thử nghiệm';
- $('sandbox-history').replaceChildren();
-}
-async function sandboxWrite(path,method,payload){
- const r=await fetch(path,{method,credentials:'same-origin',cache:'no-store',
+// A single secure writer used by the real, versioned D1 editorial panel.
+async function workWrite(path,method,payload){
+ const response=await fetch(path,{method,credentials:'same-origin',cache:'no-store',
    headers:{'Content-Type':'application/json','Accept':'application/json'},
    body:JSON.stringify(payload)});
- const data=await r.json().catch(()=>({error:'unknown'}));
- if(!r.ok)throw Error(data.error||('HTTP '+r.status));
+ const data=await response.json().catch(()=>({error:'invalid_response'}));
+ if(!response.ok)throw Error(data.error||('HTTP '+response.status));
  return data;
 }
-async function sandboxHistory(id){
- const list=$('sandbox-history');list.replaceChildren();
- const json=await api(sandboxApi+'/'+encodeURIComponent(id)+'/history');
- for(const row of json.data||[]){
-  const item=document.createElement('li');item.className='sandbox-line';
-  appendText(item,'span','Phiên bản '+row.version_from+' → '+row.version_to+' · '+String(row.changed_at||'').slice(0,19));
-  const btn=document.createElement('button');btn.type='button';btn.textContent='Khôi phục bản trước';
-  btn.addEventListener('click',async()=>{
-   if(sandboxActive!==id||!Number.isInteger(sandboxVersion))return;
-   if(!confirm('Khôi phục nội dung trước đó trong cơ sở THỬ NGHIỆM?'))return;
-   btn.disabled=true;
-   try{
-    await sandboxWrite(sandboxApi+'/'+encodeURIComponent(id)+'/restore','POST',
-      {version:sandboxVersion,audit_id:row.audit_id});
-    sandboxStatus('Đã phục hồi phiên bản trong D1 thử nghiệm.');await sandboxRefresh();
-   }catch(e){sandboxStatus('Lỗi phục hồi bản thử: '+e.message)}
-   finally{btn.disabled=false}
-  });
-  item.append(btn);list.append(item);
- }
- if(!list.children.length)appendText(list,'li','Chưa có bản sửa nào.');
-}
-function sandboxChoose(item){
- sandboxActive=item.id;sandboxVersion=item.version;
- $('sandbox-kind').value=item.kind;$('sandbox-kind').disabled=true;
- $('sandbox-title-input').value=item.title||'';
- $('sandbox-summary').value=item.summary||'';
- $('sandbox-body').value=item.body||'';
- $('sandbox-published').checked=item.published===1;
- $('sandbox-published').disabled=false;
- $('sandbox-save').textContent='Lưu thay đổi thử nghiệm';
- sandboxHistory(item.id).catch(e=>sandboxStatus('Không đọc được lịch sử bản thử: '+e.message));
-}
-async function sandboxRefresh(){
- try{
-  const data=await api(sandboxApi);
-  if(data.mode!=='synthetic-sandbox-only')throw Error('Nguồn không phải sandbox');
-  sandboxRecords=Array.isArray(data.data)?data.data:[];
-  const list=$('sandbox-list');list.replaceChildren();
-  for(const item of sandboxRecords){
-   const row=document.createElement('li');row.className='sandbox-line';
-   appendText(row,'span',item.title+' · '+item.kind+' · phiên bản '+item.version);
-   const btn=document.createElement('button');btn.type='button';btn.textContent='Sửa bản thử';
-   btn.addEventListener('click',()=>sandboxChoose(item));
-   row.append(btn);list.append(row);
-  }
-  if(!sandboxRecords.length)appendText(list,'li','Chưa có bản thử nào.');
-  if(sandboxActive){
-   const item=sandboxRecords.find(x=>x.id===sandboxActive);
-   if(item)sandboxChoose(item);else sandboxReset();
-  }
-  sandboxStatus('Đang xem '+sandboxRecords.length+' bản ghi giả lập. Dữ liệu gốc không thay đổi.');
- }catch(e){sandboxStatus('Không tải được D1 sandbox: '+e.message)}
-}
-async function sandboxSave(){
- const button=$('sandbox-save');
- const title=$('sandbox-title-input').value.trim();
- if(!title){sandboxStatus('Cần nhập nhan đề thử nghiệm.');return}
- button.disabled=true;
- try{
-  const common={title,summary:$('sandbox-summary').value,body:$('sandbox-body').value};
-  if(sandboxActive){
-   await sandboxWrite(sandboxApi+'/'+encodeURIComponent(sandboxActive),'PATCH',{
-     ...common,published:$('sandbox-published').checked,version:sandboxVersion});
-  }else{
-   await sandboxWrite(sandboxApi,'POST',{...common,kind:$('sandbox-kind').value,published:false});
-  }
-  sandboxStatus('Đã lưu bản thử vào D1 riêng.');
-  await sandboxRefresh();
- }catch(e){sandboxStatus('Không lưu được bản thử: '+e.message)}
- finally{button.disabled=false}
-}
-$('sandbox-save').addEventListener('click',sandboxSave);
-$('sandbox-new').addEventListener('click',sandboxReset);
-$('sandbox-refresh').addEventListener('click',sandboxRefresh);
-sandboxReset();sandboxRefresh();
-
 // D1 WORKING EDITOR. All fields use DOM textContent/value; no unsafe HTML insertion.
 const workFields={
  people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','sources','image_url','verified','published','sort_order','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date'],
@@ -706,7 +575,7 @@ async function workHistory(){
    if(!confirm('Khôi phục phiên bản trong D1 làm việc? Có ghi lại lịch sử mới.'))return;
    button.disabled=true;
    try{
-    await sandboxWrite(workRoot+snapshot.kind+'/'+snapshot.id+'/restore','POST',
+    await workWrite(workRoot+snapshot.kind+'/'+snapshot.id+'/restore','POST',
       {version:workCurrent.record.gdd_version,revision_id:rev.revision_id});
     workStatus('Đã khôi phục phiên bản trước và ghi lịch sử mới.');
     await workOpen(snapshot.kind,snapshot.id);await workList();
@@ -726,7 +595,7 @@ async function workSave(){
   const isCreate=!selected.id;
   if(!Object.keys(fields).length)throw Error('Chưa có nội dung thay đổi');
   if(isCreate){fields.published=false;}
-  const result=await sandboxWrite(workRoot+selected.kind+(selected.id?'/'+selected.id:''),
+  const result=await workWrite(workRoot+selected.kind+(selected.id?'/'+selected.id:''),
     isCreate?'POST':'PATCH',isCreate?{fields}:{version:selected.record.gdd_version,fields});
   if(!result?.data?.id)throw Error('Máy chủ chưa xác nhận đã lưu');
   workStatus(isCreate?'Đã tạo bản nháp trên D1 làm việc.':'Đã lưu thay đổi và ghi lịch sử phiên bản.');

@@ -168,7 +168,7 @@ test('R2 inventory refuses a truncated or repeated cursor, never gives partial s
 test('full Access administrator client bundle syntax and editorial controls are valid',()=>{
  try{new Script(ADMIN_JS,{filename:'gdd-access-admin-client.js'});}
  catch(error){console.error('ADMIN_JS_SCRIPT_POSITION:',String(error.stack||error).slice(0,900));throw error;}
- for(const id of ['work-editor-panel','work-fields','work-save','work-kind','work-revisions','r2-sandbox-upload'])
+ for(const id of ['work-editor-panel','work-fields','work-save','work-kind','work-revisions','r2-managed-upload'])
   assert.ok(ADMIN_HTML.includes('id="'+id+'"'),id+' missing from admin HTML');
  assert.ok(ADMIN_JS.includes('gdd_version'));
  assert.ok(!ADMIN_JS.includes('eval('));
@@ -188,4 +188,18 @@ test('PDF per-page reader is pinned and private-original-safe',()=>{
  assert.ok(ADMIN_JS.includes('managedPdfPages'));
  assert.ok(ADMIN_JS.includes("viewSource:'pdf'"));
  assert.ok(ADMIN_HTML.includes('id="r2-managed-pdf-pages"'));
+});
+
+test('active administrator page hides old maintenance banner and synthetic panels',()=>{
+ assert.ok(!ADMIN_HTML.includes('Website chính vẫn đang bảo trì'));
+ assert.ok(!ADMIN_HTML.includes('Chế độ thử nghiệm chỉ đọc'));
+ assert.ok(!ADMIN_HTML.includes('id="sandbox-title"'));
+ assert.ok(!ADMIN_HTML.includes('id="r2-sandbox-title"'));
+ assert.ok(ADMIN_HTML.includes('Website công khai đã hoạt động.'));
+ assert.ok(ADMIN_HTML.includes('id="work-editor-panel"'));
+ assert.ok(ADMIN_HTML.includes('id="r2-managed-panel"'));
+ assert.ok(ADMIN_HTML.includes('<details class="admin-technical">'));
+ assert.ok(!ADMIN_JS.includes('sandboxR2Refresh()'));
+ assert.ok(ADMIN_JS.includes('async function workWrite('));
+ assert.doesNotThrow(()=>new Script(ADMIN_JS,{filename:'gdd-admin-production-ui.js'}));
 });
