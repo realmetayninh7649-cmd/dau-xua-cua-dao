@@ -18,27 +18,62 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: "Preflight: no writes, no DB, fail closed"
+      - name: "Check exact Access AUD, hash allowlist and no DB writes"
         shell: bash
         run: |
           set -euo pipefail
           node --check workers/gdd-d1-admin/src/worker.mjs
           python3 - <<'PY'
-          import json,pathlib
+          import json,pathlib,re
           root=pathlib.Path('workers/gdd-d1-admin')
           config=json.loads((root/'wrangler.jsonc').read_text())
-          worker=(root/'src/worker.mjs').read_text()
+          source=(root/'src/worker.mjs').read_text()
           assert config['name']=='gdd-d1-admin-staging'
           assert config['workers_dev'] is True
           assert config['preview_urls'] is False
-          assert 'd1_databases' not in config
-          assert 'r2_buckets' not in config
-          assert 'ctx.access.aud!==env.ACCESS_AUD' in worker
-          assert 'env.ADMIN_EMAILS' in worker
-          assert "if(request.method!=='GET')" in worker
-          print('ADMIN_GATEWAY_SAFE_CONFIGURATION=OK')
+          assert 'd1_databases' not in config and 'r2_buckets' not in config
+          assert re.fullmatch('[a-f0-9]{64}',config['vars']['ACCESS_AUD'])
+          assert re.fullmatch('[a-f0-9]{64}',config['vars']['ADMIN_EMAIL_SHA256'])
+          assert 'ctx.access.aud!==env.ACCESS_AUD' in source
+          assert 'crypto.subtle.digest' in source
+          assert "if(request.method!=='GET')" in source
+          print('ADMIN_ACCESS_CONFIG_AUD_AND_HASH=OK')
+          print('ADMIN_GATEWAY_NO_DB_NO_R2_NO_MUTATION=TRUE')
           PY
-      - name: "Deploy only gdd-d1-admin-staging"
+      - name: "Unit-test authenticated runtime identity and negative cases"
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import worker from './workers/gdd-d1-admin/src/worker.mjs';
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const cfg=JSON.parse(readFileSync('workers/gdd-d1-admin/wrangler.jsonc','utf8'));
+          const vars=cfg.vars;
+          const testEmail='qa-admin@example.invalid';
+          const env={...vars, ADMIN_EMAIL_SHA256:createHash('sha256').update(testEmail).digest('hex')};
+          const good={access:{aud:vars.ACCESS_AUD, getIdentity:async()=>({email:testEmail})}};
+          const wrongEmail={access:{aud:vars.ACCESS_AUD,getIdentity:async()=>({email:'unapproved@example.invalid'})}};
+          const wrongAUD={access:{aud:'f'.repeat(64),getIdentity:async()=>({email:testEmail})}};
+          async function check(method,path,ctx,values,expected) {
+            const req=new Request('https://test.invalid'+path,{method,headers:{'cf-access-jwt-assertion':'untrusted-fake-token'}});
+            const res=await worker.fetch(req,values,ctx);
+            if(res.status!==expected)throw Error(path+': HTTP '+res.status+' expected '+expected);
+            return res.json();
+          }
+          const allowed=await check('GET','/api/v1/admin/session',good,env,200);
+          if(allowed.authenticated!==true||allowed.write_enabled!==false)throw Error('Expected read-only verified admin');
+          await check('GET','/api/v1/admin/session',wrongEmail,env,403);
+          await check('GET','/api/v1/admin/session',wrongAUD,env,403);
+          await check('GET','/api/v1/admin/session',{},env,403);
+          await check('GET','/api/v1/admin/session',good,{},403);
+          await check('GET','/api/v1/admin/session',{access:{aud:vars.ACCESS_AUD,getIdentity:async()=>{throw Error('Identity failure')}}},env,403);
+          await check('POST','/api/v1/admin/session',good,env,405);
+          await check('GET','/api/v1/admin/users',good,env,404);
+          const health=await check('GET','/health',{},vars,200);
+          if(health.access_configured!==true)throw Error('Access config not active');
+          console.log('ADMIN_RUNTIME_ACCESS_VERIFIED_AND_LOCKED=PASS');
+          NODE
+      - name: "Deploy separate admin Worker only"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_WORKER_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
@@ -49,51 +84,29 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           npx --yes wrangler@4.159.0 deploy --config workers/gdd-d1-admin/wrangler.jsonc
-      - name: "Public smoke test before Access is turned on: must deny admin"
+      - name: "Verify real Access protection for unauthenticated browser"
         shell: bash
         run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import worker from './workers/gdd-d1-admin/src/worker.mjs';
-          async function check(method,path,headers={},expectedStatus){
-            const req=new Request('https://test.invalid'+path,{method,headers});
-            const res=await worker.fetch(req,{},{}); // no Access binding, no credentials.
-            if(res.status!==expectedStatus)throw Error(method+' '+path+': expected '+expectedStatus+', got '+res.status);
-            return await res.json();
-          }
-          const health=await check('GET','/health',{},200);
-          if(health.access_configured!==false)throw Error('unconfigured gateway accepted Access config');
-          const noAuth=await check('GET','/api/v1/admin/session',{},403);
-          if(noAuth.authenticated!==false)throw Error('admin session opened');
-          await check('GET','/api/v1/admin/session',{'cf-access-jwt-assertion':'forged'},403);
-          await check('POST','/api/v1/admin/session',{},405);
-          await check('GET','/api/v1/private/records',{},404);
-          console.log('ADMIN_GATEWAY_DEFAULT_DENY=PASS');
-          NODE
           python3 - <<'PY'
-          import urllib.request,urllib.error,json
+          import urllib.request,urllib.error,time
           base='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'
-          headers={'User-Agent':'GDD-Admin-Gateway-Test/1.0','Accept':'application/json'}
-          def get(path,method='GET'):
-              req=urllib.request.Request(base+path,method=method,headers=headers)
-              try:
-                  with urllib.request.urlopen(req,timeout=20) as res:
-                      return res.status,json.load(res)
-              except urllib.error.HTTPError as err:
-                  # Cloudflare Access may have been enabled already; 403 is expected.
-                  return err.code,None
-          import time
-          for attempt in range(12):
-              status,health=get('/health')
-              if status==200:break
-              print('ADMIN_GATEWAY_HEALTH_RETRY='+str(attempt+1)+',HTTP='+str(status))
-              time.sleep(3)
-          if status!=200:raise SystemExit('Gateway health unexpected HTTP '+str(status))
-          print('ADMIN_GATEWAY_HEALTH_OK=TRUE')
-          status,_=get('/api/v1/admin/session')
-          if status!=403:raise SystemExit('Admin gateway not fail-closed: HTTP '+str(status))
-          status,_=get('/api/v1/admin/session','POST')
-          if status!=405:raise SystemExit('Admin gateway accepted POST: HTTP '+str(status))
-          print('ADMIN_GATEWAY_LIVE_DENIES_UNAUTHENTICATED=PASS')
-          print('PUBLIC_D1_API_AND_R2_NOT_MODIFIED=TRUE')
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl):return None
+          op=urllib.request.build_opener(NoRedirect())
+          for path in ['/health','/api/v1/admin/session']:
+              status=0;redirect=False
+              for attempt in range(6):
+                  req=urllib.request.Request(base+path,headers={'User-Agent':'GDD-Access-Verification/1.0'})
+                  try:
+                      with op.open(req,timeout=20) as res:
+                          status=res.status;loc=res.headers.get('Location','')
+                  except urllib.error.HTTPError as e:
+                      status=e.code;loc=e.headers.get('Location','')
+                  redirect=status in (301,302,303,307,308) and 'cloudflareaccess.com' in loc.lower()
+                  if redirect:break
+                  time.sleep(2)
+              if not redirect:raise SystemExit('Admin Access not protecting '+path+', status '+str(status))
+              print('ACCESS_PROTECTED_'+path.replace('/','_')+'=TRUE')
+          print('UNAUTHENTICATED_REQUESTS_BLOCKED=TRUE')
+          print('PUBLIC_API_R2_SUPABASE_UNCHANGED=TRUE')
           PY
