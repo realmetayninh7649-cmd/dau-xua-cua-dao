@@ -135,7 +135,7 @@ async function overview(){
      'Ảnh album có đầy đủ liên kết và mã ảnh: '
        +(audit.gallery.rows-audit.gallery.without_image_url-audit.gallery.without_photo_code)
        +'/'+audit.gallery.rows+' (số liệu kiểm tra metadata).',
-     'Hồ sơ người quản trị và tư liệu độc giả gửi về: xử lý bằng kênh riêng tư, chưa đưa sang D1.',
+     'Hồ sơ quản trị và tư liệu độc giả gửi về đã được phục hồi trong D1 riêng; nội dung nhạy cảm không hiển thị tại giao diện.',
      'Đối tượng vật lý hiện diện trong kho R2 tại bản chụp: '
        +summary.r2_object_inventory_snapshot.object_count.toLocaleString('vi-VN')
        +' ('+(summary.r2_object_inventory_snapshot.total_bytes/1073741824).toFixed(2)+' GiB).'
@@ -147,7 +147,9 @@ async function overview(){
     appendText(tr,'td',Number(item.count).toLocaleString('vi-VN'),'number');
     appendText(tr,'td',Number(item.remaining).toLocaleString('vi-VN'),'number');inventory.append(tr);
    }
-   setStatus('Đã xác thực · D1 cập nhật trực tiếp, Supabase đối chiếu theo bản chụp 23/11/2026 · Chỉ đọc');
+   setStatus(summary.row_counts_match_snapshot===true
+     ? 'Đã xác thực · D1 phục hồi riêng đủ 21 bảng theo số lượng ngày 23/11/2026 · Chỉ đọc'
+     : 'CẢNH BÁO: Số lượng D1 không khớp bản chụp Supabase; chưa được phép mở website.');
  }catch(err){setStatus('Không thể đối chiếu D1: '+err.message)}
 }
 async function loadRecords(){

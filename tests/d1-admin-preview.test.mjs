@@ -9,16 +9,19 @@ const auditEmail='qa-person@example.invalid';
 const vars={...original.vars,
  ADMIN_EMAIL_SHA256:createHash('sha256').update(auditEmail).digest('hex')};
 let sqlHistory=[];
-const counts={people:50,posts:17,documents:21,media:13,videos:8,
- obituaries:2,gdd_memorials:5,gdd_audio_programs:2,
- archive_gallery_images:615,gdd_content_placements:8};
+const counts=JSON.parse(readFileSync('workers/gdd-d1/source-row-counts-20261123.json','utf8')).table_counts;
+const publishedCounts={people:50,posts:17,documents:21,media:13,videos:8,
+ obituaries:2,gdd_memorials:5,gdd_audio_programs:2,gdd_calendar_memorials:0};
 const db={prepare(sql){
  sqlHistory.push(sql);
  assert.ok(/^SELECT\s/i.test(sql),'Only SELECT statements are supported: '+sql);
  const match=sql.match(/FROM "(\w+)"/);
  const key=match?.[1];
  if(/COUNT\(\*\)/.test(sql)){
-  return {first:async(field)=>{assert.equal(field,'n');return counts[key]??0;}};
+  return {first:async(field)=>{
+   assert.equal(field,'n');
+   return (/WHERE published=1/.test(sql)?publishedCounts[key]:counts[key])??0;
+  }};
  }
  if(/FROM people WHERE published=1/.test(sql))
   return {bind:(limit,offset)=>{assert.equal(limit,15);assert.equal(offset,0);
@@ -75,8 +78,8 @@ test('21-table D1 inventory counts imported published records',async()=>{
  assert.equal(res.status,200);assert.equal(body.table_count,21);
  assert.equal(body.inventory.length,21);
  assert.equal(body.source_total,1892);
- assert.equal(body.total_records,741);
- assert.equal(body.remaining_records,1151);
+ assert.equal(body.total_records,1892);
+ assert.equal(body.remaining_records,0);
  assert.equal(body.source_snapshot_date,'2026-11-23');
  assert.equal(body.source_integrity_snapshot.people.unpublished,2);
  assert.equal(body.source_integrity_snapshot.r2_asset_metadata.rows,269);
@@ -89,7 +92,9 @@ test('21-table D1 inventory counts imported published records',async()=>{
  assert.equal(body.gallery_images,615);
  assert.equal(body.r2_asset_records,0);
  assert.equal(body.write_enabled,false);
- assert.equal(sqlHistory.length,21);
+ assert.equal(sqlHistory.length,30);
+ assert.equal(body.row_counts_match_snapshot,true);
+ assert.ok(sqlHistory.some(sql=>/FROM "people" WHERE published=1/.test(sql)));
 });
 test('published list read-only with parameterized paging',async()=>{
  sqlHistory=[];

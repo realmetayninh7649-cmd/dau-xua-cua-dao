@@ -39,8 +39,8 @@ jobs:
           assert 'r2_buckets' not in cfg
           assert len(cfg['d1_databases'])==1
           assert cfg['d1_databases'][0]['binding']=='DB'
-          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-archive'
-          assert cfg['d1_databases'][0]['database_id']=='bffcd3e0-e46e-4280-b8dd-82e8d3402b3d'
+          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-restore-full-20261123'
+          assert cfg['d1_databases'][0]['database_id']=='ddce6b9f-90e1-488f-bf9b-5ddf5d170346'
           assert re.fullmatch('[a-f0-9]{64}',cfg['vars']['ACCESS_AUD'])
           assert re.fullmatch('[a-f0-9]{64}',cfg['vars']['ADMIN_EMAIL_SHA256'])
           assert 'ctx.access.aud!==env.ACCESS_AUD' in js
@@ -52,6 +52,9 @@ jobs:
           assert sum(baseline['table_counts'].values())==1892
           assert baseline['snapshot_date']=='2026-11-23'
           assert js.count('INSERT INTO')==0 and js.count('DELETE FROM')==0
+          assert 'row_counts_match_snapshot' in js
+          assert 'WHERE published=1' in js
+          assert 'publishedCount' in js
           print('D1_ADMIN_STAGING_ONLY_SELECT=TRUE')
           PY
       - name: "Test Access policies and all read-only management API routes"

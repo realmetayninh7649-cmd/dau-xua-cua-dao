@@ -71,10 +71,18 @@ function pageParams(url){
  return {limit,offset};
 }
 async function inventory(env){
- const rows=await Promise.all(INVENTORY.map(async table=>{
+ const rows=[];
+ // Sequential queries avoid opening many simultaneous D1 connections on the Free tier.
+ for(const table of INVENTORY){
    const n=await env.DB.prepare('SELECT COUNT(*) AS n FROM "'+table+'"').first('n');
-   return {table,count:Number(n)||0};
- }));
+   rows.push({table,count:Number(n)||0});
+ }
+ // Full restoration includes unpublished records; count only genuinely published rows.
+ let publishedCount=0;
+ for(const table of PUBLISHED_TABLES){
+   const n=await env.DB.prepare('SELECT COUNT(*) AS n FROM "'+table+'" WHERE published=1').first('n');
+   publishedCount+=Number(n)||0;
+ }
  const counts=Object.fromEntries(rows.map(x=>[x.table,x.count]));
  const enriched=rows.map(row=>({
    ...row,
@@ -94,7 +102,8 @@ async function inventory(env){
    source_total:SOURCE_BASELINE.expected_total,
    total_records:rows.reduce((s,x)=>s+x.count,0),
    remaining_records:enriched.reduce((s,x)=>s+x.remaining,0),
-   published_records:PUBLISHED_TABLES.reduce((s,t)=>s+(counts[t]||0),0),
+   published_records:publishedCount,
+   row_counts_match_snapshot:enriched.every(row=>row.count===row.source_count),
    gallery_images:counts.archive_gallery_images||0,
    r2_asset_records:counts.gdd_r2_assets||0,
    inventory:enriched
