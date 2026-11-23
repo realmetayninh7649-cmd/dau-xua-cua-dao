@@ -42,6 +42,10 @@ jobs:
           assert 'crypto.subtle.digest' in js
           assert "if(request.method!=='GET')" in js
           assert "WHERE published=1" in js
+          baseline=json.loads(pathlib.Path('workers/gdd-d1/source-row-counts-20261123.json').read_text())
+          assert len(baseline['table_counts'])==21
+          assert sum(baseline['table_counts'].values())==1892
+          assert baseline['snapshot_date']=='2026-11-23'
           assert js.count('INSERT INTO')==0 and js.count('DELETE FROM')==0
           print('D1_ADMIN_STAGING_ONLY_SELECT=TRUE')
           PY
