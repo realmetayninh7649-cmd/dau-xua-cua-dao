@@ -46,6 +46,31 @@ try{
   assert.ok(info.width<=info.viewport+4,'mobile horizontal overflow');
   assert.deepEqual(errors,[],'public page errors');
   console.log('WEBKIT_LIVE_PUBLIC_'+label+'=PASS',JSON.stringify(info));
+  // Verify real published archive QR and layout, not only collection counts.
+  await page.evaluate(()=>location.hash='#chuc-sac');
+  await page.waitForFunction(()=>document.querySelector('#chuc-sac')?.hidden===false,null,{timeout:9000});
+  await page.evaluate(()=>{
+    const first=document.querySelector('#people-grid [data-open-kind="people"]');
+    if(!first)throw Error('Missing people archive button');
+    first.click();
+  });
+  await page.waitForFunction(()=>{
+    const item=document.querySelector('#detail-content [data-gdd-archive-qr]');
+    return Boolean(item&&item.querySelector('canvas'));
+  },null,{timeout:15000});
+  const qr=await page.evaluate(()=>{
+   const item=document.querySelector('#detail-content [data-gdd-archive-qr]');
+   const canvas=item?.querySelector('canvas');
+   return {code:item?.dataset.archiveCode,url:item?.dataset.archiveUrl,
+     pixels:canvas?.width,download:!!item?.querySelector('[data-gdd-qr-download]'),
+     copy:!!item?.querySelector('[data-gdd-qr-copy]'),
+     width:document.documentElement.scrollWidth};
+  });
+  assert.ok(qr.code&&qr.url?.includes('#'),JSON.stringify(qr));
+  assert.ok(qr.pixels>=120&&qr.download&&qr.copy,JSON.stringify(qr));
+  assert.ok(qr.width<=width+4,'QR overflow');
+  console.log('WEBKIT_REAL_PUBLISHED_QR_'+label+'=PASS',JSON.stringify({pixels:qr.pixels,download:qr.download,copy:qr.copy}));
+  await page.evaluate(()=>document.querySelector('#detail-overlay [data-close="detail"]').click());
   let mocked=false;
   await page.route('**/api/v1/contributions',async route=>{
    assert.equal(route.request().method(),'POST');
