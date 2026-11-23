@@ -128,4 +128,13 @@ async function main() {
   write('sitemap.xml',xml);
   console.log('SEO ready: '+people.length+' published people, '+posts.length+' published posts, '+urls.length+' URLs');
 }
-main().catch(err=>{console.error(err);process.exitCode=1;});
+main().catch(err=>{
+  const reason=String(err?.message||err||'');
+  if(/HTTP 402/.test(reason)&&/exceed_(?:cached_)?egress_quota|restricted/i.test(reason)){
+    // Giữ nguyên các trang và sitemap đã công bố, không xóa tệp khi API bị hạn chế.
+    console.warn('SUPABASE EGRESS QUOTA: giữ nguyên SEO và sitemap hiện có; không đồng bộ trong lần chạy này.');
+    return;
+  }
+  console.error(err);
+  process.exitCode=1;
+});
