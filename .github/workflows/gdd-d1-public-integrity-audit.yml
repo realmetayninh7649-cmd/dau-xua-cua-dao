@@ -1,0 +1,44 @@
+name: "GDD D1 - Kiem toan 741 ban ghi cong khai CHI DOC"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-public-integrity-audit.yml"
+      - "scripts/gdd_d1_public_integrity_audit.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Validate audit script is read-only"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/gdd_d1_public_integrity_audit.py
+          python3 - <<'PY'
+          import pathlib
+          src=pathlib.Path('scripts/gdd_d1_public_integrity_audit.py').read_text()
+          assert 'SELECT * FROM "' in src
+          assert 'all_columns_match' in src
+          for token in ['DELETE FROM ', 'UPDATE "', 'INSERT INTO ', 'put_object(', 'delete_object(']:
+              assert token not in src, 'Unexpected write primitive in audit'
+          print('D1_PUBLIC_INTEGRITY_AUDIT_READ_ONLY=TRUE')
+          PY
+      - name: "Compare exact 741 public rows and all schema columns"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/gdd_d1_public_integrity_audit.py
