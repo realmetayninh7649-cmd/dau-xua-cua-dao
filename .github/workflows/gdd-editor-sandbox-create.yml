@@ -1,0 +1,93 @@
+name: "GDD - Tao D1 SANDBOX sua ban ghi khong dung ban goc"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: [".github/workflows/gdd-editor-sandbox-create.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: gdd-editor-sandbox-free-create
+  cancel-in-progress: false
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Tao hoac tai su dung D1 thu nghiem Free, CHI ghi du lieu gia lap"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request, urllib.error, json,os,re,uuid,time
+          token=os.getenv('CLOUDFLARE_D1_API_TOKEN','')
+          account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          if not token or not re.fullmatch(r'[a-f0-9]{32}',account):
+              raise SystemExit('Cloudflare D1 credentials missing')
+          base='https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database'
+          name='gdd-editor-sandbox-20261124'
+          headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'}
+          def send(method,url,payload=None):
+              content=None if payload is None else json.dumps(payload).encode()
+              req=urllib.request.Request(url,headers=headers,method=method,data=content)
+              with urllib.request.urlopen(req,timeout=30) as response:
+                  obj=json.load(response)
+              if obj.get('success') is not True:raise SystemExit('Cloudflare operation failed (no raw details)')
+              return obj
+          items=send('GET',base+'?per_page=100').get('result') or []
+          matches=[x for x in items if x.get('name')==name]
+          if len(matches)>1:raise SystemExit('Duplicate sandbox name')
+          if matches:
+              db=matches[0]
+          else:
+              if len(items)>=10:raise SystemExit('D1 Free 10 database cap: do not create')
+              db=send('POST',base,{'name':name}).get('result') or {}
+          dbid=db.get('uuid')
+          if not re.fullmatch(r'[a-f0-9-]{36}',str(dbid)):
+              raise SystemExit('Unexpected DB UUID')
+          qurl=base+'/'+dbid+'/query'
+          def query(sql):
+              obj=send('POST',qurl,{'sql':sql})
+              result=obj.get('result') or []
+              if not result or result[0].get('success') is False:
+                  raise SystemExit('D1 sandbox query failure')
+              return result[0].get('results') or []
+          schemas=[
+              """CREATE TABLE IF NOT EXISTS sandbox_items(
+                  id TEXT PRIMARY KEY,
+                  kind TEXT NOT NULL CHECK(kind IN ('people','posts','documents','media')),
+                  title TEXT NOT NULL,
+                  summary TEXT NOT NULL DEFAULT '',
+                  body TEXT NOT NULL DEFAULT '',
+                  published INTEGER NOT NULL DEFAULT 0 CHECK(published IN (0,1)),
+                  version INTEGER NOT NULL DEFAULT 1,
+                  updated_at TEXT NOT NULL
+              )""",
+              """CREATE TABLE IF NOT EXISTS sandbox_revisions(
+                  audit_id TEXT PRIMARY KEY,
+                  record_id TEXT NOT NULL,
+                  before_json TEXT NOT NULL,
+                  after_json TEXT NOT NULL,
+                  changed_at TEXT NOT NULL,
+                  version_from INTEGER NOT NULL,
+                  version_to INTEGER NOT NULL
+              )"""
+          ]
+          for sql in schemas:query(sql)
+          sample='11111111-2222-4333-8444-555555555555'
+          query("INSERT OR IGNORE INTO sandbox_items(id,kind,title,summary,body,published,version,updated_at) "+
+                "VALUES('"+sample+"','people','HO SO THU NGHIEM','Khong co du lieu nguon','',0,1,'2026-11-24T00:00:00Z')")
+          count=query('SELECT COUNT(*) AS n FROM sandbox_items')
+          if len(count)!=1 or count[0].get('n',0)<1:
+              raise SystemExit('Sandbox seed unsuccessful')
+          print('D1_EDITOR_SANDBOX_CREATED_OR_REUSED=TRUE')
+          print('D1_EDITOR_SANDBOX_UUID='+dbid)
+          print('D1_EDITOR_SANDBOX_SAMPLE_ONLY=TRUE')
+          print('SUPABASE_D1_ARCHIVE_R2_ORIGINALS_UNCHANGED=TRUE')
+          PY
