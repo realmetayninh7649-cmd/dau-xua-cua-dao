@@ -13,6 +13,15 @@
 - **Số liệu nguồn Supabase:** truy vấn `SELECT count(*)` trực tiếp, không sửa/xóa bảng nguồn. 21 bảng có tổng **1.892 bản ghi** ở thời điểm 23/11/2026; D1 đã có 741, còn **chênh lệch 1.151 bản ghi**. Bản chụp số lượng tại `source-row-counts-20261123.json`. Đây là mốc đối soát, phải đếm lại trước khi chuyển chính thức.
 - **Kiểm thử:** GitHub Actions `gdd-access-admin-staging.yml`, `gdd-d1-staging-tests.yml`, `gdd-d1-import-public.yml`, `gdd-d1-worker-staging.yml`. Kiểm tra xác thực, danh sách công khai, trạng thái khóa ghi và bảo vệ URL.
 
+## Đối soát bổ sung ngày 23/11/2026
+
+- **Đối soát đủ 741/741 bản ghi công khai:** workflow `gdd-d1-public-integrity-audit.yml` so sánh **từng cột của 11 bảng tư liệu công khai**, bao gồm ID, slug, mã định danh, mã ảnh, URL và nội dung; kết quả PASS. Bản công khai gốc là `public-fallback.json`. Không kiểm tra bản nháp riêng tư.
+- **Kiểm kê thực tế R2:** workflow `gdd-d1-r2-readonly-audit.yml` chỉ chạy `SELECT COUNT(*)` trên D1 và S3 `ListObjectsV2` trên bucket R2 được cấp quyền. Phát hiện **2.512 đối tượng, tổng 3.156.978.971 byte (xấp xỉ 2,94 GiB)**; 3 lượt liệt kê. Không tải/xóa/sửa ảnh.
+- **Dấu kiểm kê R2:** SHA-256 trên chuỗi tên đối tượng riêng tư + kích thước + ETag để hỗ trợ đối chiếu sự thay đổi danh sách, lưu duy nhất digest ở `r2-object-inventory-snapshot-20261123.json`. **Không phải SHA-256 của nội dung 2.512 tệp**, không xác minh từng file còn đọc được.
+- **Bảng quản trị thử nghiệm** hiển thị tổng số đối tượng R2 theo **bản chụp ngày 23/11**, phân biệt rõ với 269 chỉ mục R2 chưa chuyển từ Supabase.
+- **Hai lượt sao lưu R2 delta** gần nhất (ngày 21 và 22/11 UTC) đều báo không phát hiện original mới/thay đổi, do đó **không tạo artifact mới**. Điều này không chứng minh đã tồn tại một bản sao lưu toàn phần, độc lập và thử phục hồi được.
+- Chưa xuất hay chuyển dữ liệu riêng tư qua GitHub công khai. **Không khởi động nhập 1.151 bản ghi còn lại hoặc mở CRUD** cho đến khi có xuất dữ liệu qua kênh riêng tư, bản sao lưu phục hồi được và kiểm thử trên nhánh staging.
+
 ## Dữ liệu còn thiếu trong D1 (chưa được nhập, vẫn ở Supabase)
 
 Đặc biệt có:
