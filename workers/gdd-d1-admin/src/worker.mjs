@@ -7,6 +7,8 @@ import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from './admin-ui.mjs';
 import {handleEditorSandbox} from './editor-sandbox.mjs';
 import {handleR2Sandbox} from './r2-sandbox.mjs';
 import {handleWorkingEditor} from './working-editor.mjs';
+import {handleR2AccessApi,handleR2AccessView} from '../../gdd-r2-gateway/src/index.mjs';
+import {handleManagedR2} from './r2-managed.mjs';
 import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 import SOURCE_AUDIT from '../../gdd-d1/source-integrity-audit-20261123.json' with {type:'json'};
 import R2_BASELINE from '../../gdd-d1/r2-object-inventory-snapshot-20261123.json' with {type:'json'};
@@ -144,6 +146,21 @@ async function inventory(env){
 export default {
  async fetch(request,env,ctx){
    const url=new URL(request.url),path=url.pathname;
+   // Managed R2 originals and derivatives use Access identity and no Supabase token.
+   if(path.startsWith('/api/v1/admin/r2/managed/')){
+     if(!await isAdministrator(env,ctx))
+       return json({authenticated:false,error:'unauthorized'},403);
+     if(env.ENABLE_MANAGED_R2!=='enabled')
+       return json({error:'r2_managed_disabled'},403);
+     if(request.method!=='GET'){
+       const origin=request.headers.get('Origin');
+       const site=request.headers.get('Sec-Fetch-Site');
+       if(origin!=='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'
+         ||(site&&site!=='same-origin'))
+         return json({error:'csrf_rejected'},403);
+     }
+     return handleManagedR2(request,env,path);
+   }
    // Working editorial API: Access + CSRF + a server-set fail-closed feature flag.
    if(path.startsWith('/api/v1/admin/work/')){
      if(!await isAdministrator(env,ctx))

@@ -11,6 +11,8 @@ on:
       - "tests/d1-editor-sandbox.test.mjs"
       - "tests/d1-r2-sandbox.test.mjs"
       - "tests/d1-working-editor.test.mjs"
+      - "tests/d1-r2-managed.test.mjs"
+      - "workers/gdd-r2-gateway/src/index.mjs"
       - "workers/gdd-d1-admin/migrations/**"
   workflow_dispatch:
 
@@ -34,6 +36,7 @@ jobs:
           node --check workers/gdd-d1-admin/src/editor-sandbox.mjs
           node --check workers/gdd-d1-admin/src/r2-sandbox.mjs
           node --check workers/gdd-d1-admin/src/working-editor.mjs
+          node --check workers/gdd-d1-admin/src/r2-managed.mjs
           node --check workers/gdd-d1-admin/src/admin-ui.mjs
           python3 - <<'PY'
           import json,pathlib,re
@@ -55,6 +58,15 @@ jobs:
           assert 'handleR2Sandbox(request,env.GDD_BUCKET)' in js
           assert "handleWorkingEditor(request,env.DB,path)" in js
           assert cfg['vars']['ENABLE_WORKING_EDITOR']=='enabled'
+          assert cfg['vars']['ENABLE_MANAGED_R2']=='disabled'
+          assert "handleManagedR2(request,env,path)" in js
+          helper=(root/'src/r2-managed.mjs').read_text()
+          assert 'indexAsset(env' in helper
+          assert 'bucket.delete(' not in helper and 'GDD_BUCKET.delete(' not in helper
+          assert 'SUPABASE_URL' not in helper
+          gateway=pathlib.Path('workers/gdd-r2-gateway/src/index.mjs').read_text()
+          assert 'export async function handleR2AccessApi' in gateway
+          assert 'export async function handleR2AccessView' in gateway
           assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-editor-live-clone-20261124'
           assert cfg['d1_databases'][0]['database_id']=='56bf9fcc-3f9a-43e5-82f7-8c521f5b370a'
           assert "if(env.ENABLE_WORKING_EDITOR!=='enabled')" in js
@@ -95,7 +107,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs
+          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs tests/d1-r2-managed.test.mjs
           echo "D1_ADMIN_UNIT_TESTS=PASS"
       - name: "Deploy ONLY isolated Access-protected admin worker"
         env:
@@ -117,7 +129,7 @@ jobs:
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self,req,fp,code,msg,headers,newurl):return None
           opener=urllib.request.build_opener(NoRedirect())
-          for path in ['/','/admin','/admin/app.js','/api/v1/admin/session','/api/v1/admin/summary','/api/v1/admin/r2/inventory','/api/v1/admin/r2/staging-uploads','/api/v1/admin/sandbox','/api/v1/admin/work/people']:
+          for path in ['/','/admin','/admin/app.js','/api/v1/admin/session','/api/v1/admin/summary','/api/v1/admin/r2/inventory','/api/v1/admin/r2/staging-uploads','/api/v1/admin/r2/managed/v1/uploads/start','/api/v1/admin/sandbox','/api/v1/admin/work/people']:
               status=0
               for attempt in range(6):
                   req=urllib.request.Request(base+path,

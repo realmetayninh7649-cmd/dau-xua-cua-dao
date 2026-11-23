@@ -102,7 +102,7 @@ function isDerivative(bytes,variant) {
     ? bytes[0]===82&&bytes[1]===73&&bytes[2]===70&&bytes[3]===70&&bytes[8]===87&&bytes[9]===69&&bytes[10]===66&&bytes[11]===80
     : bytes[0]===255&&bytes[1]===216&&bytes[2]===255;
 }
-async function api(req,env,url,cors,user) {
+export async function handleR2AccessApi(req,env,url,cors,user) {
   const path=url.pathname;
   // iOS / small files: one authenticated PUT avoids fragile multipart sessions.
   // Never compress or transform source bytes. No public GET endpoint is exposed.
@@ -288,7 +288,7 @@ async function publicView(req,env,path,originAllowed) {
     return imageResponse(object,originAllowed,variant==='download');
   }catch{return failure(503,'Không đọc được ảnh xem',originAllowed)}
 }
-async function adminView(req,env,path,cors,user) {
+export async function handleR2AccessView(req,env,path,cors,user) {
   const match=VIEW_ADMIN_PATH.exec(path);
   if(!match||!UUID.test(match[1]))return failure(404,'Đường dẫn không hợp lệ',cors);
   const id=match[1],operation=match[2],page=Number(match[3]||0);
@@ -403,7 +403,7 @@ export default {
     if(!['GET','POST','PUT'].includes(req.method))return failure(405,'Method not allowed',cors);
     const user=await authenticate(req,env);
     if(!user)return failure(403,'Chỉ Quản trị viên hợp lệ được truy cập',cors);
-    if(VIEW_ADMIN_PATH.test(path))return adminView(req,env,path,cors,user);
-    return api(req,env,url,cors,user);
+    if(VIEW_ADMIN_PATH.test(path))return handleR2AccessView(req,env,path,cors,user);
+    return handleR2AccessApi(req,env,url,cors,user);
   }
 };
