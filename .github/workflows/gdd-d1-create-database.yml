@@ -1,0 +1,63 @@
+name: "GDD D1 - Tao database staging mot lan"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-create-database.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create-database:
+    name: "Tao D1 rieng cho Dao su, chi 1 database, giu nguyen R2/Supabase"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Cloudflare D1 create idempotent"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, json, re, urllib.request, urllib.error
+          token=os.environ.get('CLOUDFLARE_D1_API_TOKEN','').strip()
+          account=os.environ.get('CLOUDFLARE_ACCOUNT_ID','').strip()
+          if not token or not re.fullmatch('[0-9a-fA-F]{32}',account):
+              raise SystemExit('Missing scoped D1 token or account ID; nothing created')
+          base='https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database'
+          headers={'Authorization':'Bearer '+token,'Accept':'application/json','Content-Type':'application/json'}
+          def call(url,method='GET',body=None):
+              request=urllib.request.Request(url,headers=headers,method=method,
+                 data=(json.dumps(body).encode('utf8') if body is not None else None))
+              with urllib.request.urlopen(request,timeout=30) as reply:
+                  result=json.load(reply)
+              if result.get('success') is not True:
+                  codes=[str(e.get('code')) for e in result.get('errors',[])]
+                  raise RuntimeError('Cloudflare API rejected request: '+','.join(codes))
+              return result.get('result')
+          data=call(base+'?per_page=100')
+          matches=[item for item in data if item.get('name')=='gdd-dao-su-archive']
+          if len(matches)>1:raise SystemExit('Multiple databases with target name; refusing')
+          if matches:
+              db=matches[0]
+              print('D1_ALREADY_EXISTS=True')
+          else:
+              if len(data)>=10:raise SystemExit('Free D1 count threshold reached; nothing created')
+              db=call(base,'POST',{'name':'gdd-dao-su-archive'})
+              print('D1_CREATED=True')
+          # Follow-up GET verifies actual state using API, not a guessed ID.
+          check=call(base+'?per_page=100')
+          confirmed=[x for x in check if x.get('name')=='gdd-dao-su-archive']
+          if len(confirmed)!=1:raise SystemExit('D1 exists but could not be verified')
+          db=confirmed[0]
+          dbid=db.get('uuid') or db.get('id') or ''
+          if not re.fullmatch('[0-9a-f-]{36}',dbid,re.I):raise SystemExit('D1 UUID missing')
+          print('D1_DATABASE_NAME=gdd-dao-su-archive')
+          print('D1_DATABASE_UUID='+dbid)
+          print('D1_DATABASE_COUNT='+str(len(check)))
+          print('NO_SUPABASE_OR_R2_CHANGES=True')
+          print('D1_TABLE_MIGRATION_NOT_YET_APPLIED=True')
+          PY
