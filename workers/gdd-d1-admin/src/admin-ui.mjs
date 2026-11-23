@@ -26,7 +26,7 @@ export const ADMIN_HTML=`<!doctype html>
 <section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Đối chiếu với số liệu Supabase ngày 23/11/2026 (bản chụp)</small></div>
 <div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
 </section>
-<section aria-labelledby="records-title"><div class="heading"><h2 id="records-title">Xem trước tư liệu đã công bố</h2><small>Không hiển thị bản nháp hoặc thông tin quản trị riêng tư</small></div>
+<section aria-labelledby="records-title"><div class="heading"><h2 id="records-title">Xem tư liệu đã công bố và bản nháp</h2><small>Bản nháp chỉ mở cho người quản trị đã xác thực; không hiển thị hồ sơ tài khoản hoặc tư liệu độc giả gửi về</small></div>
 <div class="controls"><label for="kind">Chuyên mục</label><select id="kind">
 <option value="people">Hồ sơ Chức sắc</option>
 <option value="posts">Biên khảo</option>
@@ -37,6 +37,9 @@ export const ADMIN_HTML=`<!doctype html>
 <option value="gdd_memorials">Tưởng niệm</option>
 <option value="gdd_audio_programs">Âm thanh Đại Đạo</option>
 <option value="gdd_calendar_memorials">Lịch tưởng niệm</option>
+</select><label for="view">Trạng thái</label><select id="view">
+<option value="published">Đã công bố</option>
+<option value="draft">Bản nháp (riêng tư)</option>
 </select></div>
 <ul id="record-list" class="records"></ul>
 <div class="pagination"><button id="previous" type="button">Trang trước</button><span id="page">Trang 1</span><button id="next" type="button">Trang sau</button></div>
@@ -153,10 +156,10 @@ async function overview(){
  }catch(err){setStatus('Không thể đối chiếu D1: '+err.message)}
 }
 async function loadRecords(){
- const kind=$('kind').value,records=$('record-list');
+ const kind=$('kind').value,view=$('view').value,records=$('record-list');
  records.replaceChildren();appendText(records,'li','Đang tải tư liệu…');
  try{
-  const result=await api('/api/v1/admin/records?kind='+encodeURIComponent(kind)+'&limit='+pageSize+'&offset='+offset);
+  const result=await api('/api/v1/admin/records?kind='+encodeURIComponent(kind)+'&view='+encodeURIComponent(view)+'&limit='+pageSize+'&offset='+offset);
   records.replaceChildren();
   const rows=Array.isArray(result.data)?result.data:[];
   hasNext=rows.length===pageSize;
@@ -166,7 +169,7 @@ async function loadRecords(){
    appendText(item,'span',[r.category,r.archive_code,r.created_at?.slice(0,10)].filter(Boolean).join(' · '),'detail');
    records.append(item);
   }
-  if(!rows.length)appendText(records,'li','Không có bản ghi công khai ở trang này.');
+  if(!rows.length)appendText(records,'li','Không có bản ghi trong trạng thái được chọn.');
   $('page').textContent='Trang '+(Math.floor(offset/pageSize)+1);
   $('previous').disabled=offset===0;$('next').disabled=!hasNext;
  }catch(e){
@@ -176,6 +179,7 @@ async function loadRecords(){
 }
 $('refresh').addEventListener('click',()=>{overview();loadRecords()});
 $('kind').addEventListener('change',()=>{offset=0;loadRecords()});
+$('view').addEventListener('change',()=>{offset=0;loadRecords()});
 $('previous').addEventListener('click',()=>{if(offset>=pageSize){offset-=pageSize;loadRecords()}});
 $('next').addEventListener('click',()=>{if(hasNext){offset+=pageSize;loadRecords()}});
 overview();loadRecords();

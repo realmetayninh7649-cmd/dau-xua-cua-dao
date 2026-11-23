@@ -23,9 +23,11 @@ const db={prepare(sql){
    return (/WHERE published=1/.test(sql)?publishedCounts[key]:counts[key])??0;
   }};
  }
- if(/FROM people WHERE published=1/.test(sql))
+ if(/FROM people WHERE published=(0|1)/.test(sql))
   return {bind:(limit,offset)=>{assert.equal(limit,15);assert.equal(offset,0);
-   return {all:async()=>({results:[{id:'test-id',title:'Hồ sơ thử nghiệm',category:'Giáo Hữu',archive_code:'CS-CTD.GH-1',created_at:'2026-11-23'}]})}
+   return {all:async()=>({results:/WHERE published=0/.test(sql)
+     ?[{id:'draft-test',title:'Bản nháp kiểm thử',category:'Giáo Hữu',created_at:'2026-11-23'}]
+     :[{id:'test-id',title:'Hồ sơ thử nghiệm',category:'Giáo Hữu',archive_code:'CS-CTD.GH-1',created_at:'2026-11-23'}]})}
   }};
  throw Error('Unexpected SQL '+sql);
 }};
@@ -102,6 +104,7 @@ test('published list read-only with parameterized paging',async()=>{
  assert.equal(res.status,200);assert.equal(body.data.length,1);
  assert.equal(body.data[0].title,'Hồ sơ thử nghiệm');
  assert.equal(body.write_enabled,false);
+ assert.equal(body.view,'published');
  assert.match(sqlHistory[0],/published=1/);
  for(const p of ['/api/v1/admin/records?kind=people&limit=1000',
                  '/api/v1/admin/records?kind=people&offset=-1'])
@@ -113,4 +116,18 @@ test('all mutations denied regardless of identity or URL',async()=>{
   assert.equal(res.status,405);
   assert.equal(body.write_enabled,false);
  }
+});
+
+test('draft records only on Access-protected allowlisted admin route',async()=>{
+ sqlHistory=[];
+ const {res,body}=await call('/api/v1/admin/records?kind=people&view=draft&limit=15&offset=0');
+ assert.equal(res.status,200);
+ assert.equal(body.view,'draft');
+ assert.equal(body.write_enabled,false);
+ assert.equal(body.data.length,1);
+ assert.equal(body.data[0].title,'Bản nháp kiểm thử');
+ assert.match(sqlHistory[0],/WHERE published=0/);
+ assert.equal((await call('/api/v1/admin/records?kind=people&view=draft',{ctx:{}})).res.status,403);
+ assert.equal((await call('/api/v1/admin/records?kind=submissions&view=draft')).res.status,404);
+ assert.equal((await call('/api/v1/admin/records?kind=people&view=all')).res.status,400);
 });

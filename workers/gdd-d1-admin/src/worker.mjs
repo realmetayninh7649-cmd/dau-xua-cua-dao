@@ -30,6 +30,10 @@ const SQL_LISTS=Object.freeze({
  gdd_audio_programs:'SELECT id, title, category, NULL AS archive_code, created_at FROM gdd_audio_programs WHERE published=1 ORDER BY created_at DESC LIMIT ? OFFSET ?',
  gdd_calendar_memorials:'SELECT id, full_name AS title, rank AS category, NULL AS archive_code, created_at FROM gdd_calendar_memorials WHERE published=1 ORDER BY created_at DESC LIMIT ? OFFSET ?'
 });
+// Only the Access-validated administrator may request a draft list.
+// Derive each statement from an internal allowlist; never interpolate client identifiers.
+const DRAFT_SQL_LISTS=Object.freeze(Object.fromEntries(Object.entries(SQL_LISTS)
+ .map(([kind,sql])=>[kind,sql.replace('WHERE published=1','WHERE published=0')])));
 const HEADERS=Object.freeze({
  'X-Content-Type-Options':'nosniff',
  'Referrer-Policy':'no-referrer',
@@ -141,9 +145,13 @@ export default {
          return json({error:'not_found'},404);
        const paging=pageParams(url);
        if(!paging)return json({error:'invalid_pagination'},400);
-       const {results}=await env.DB.prepare(SQL_LISTS[kind])
+       const view=url.searchParams.get('view')||'published';
+       if(view!=='published'&&view!=='draft')
+         return json({error:'invalid_view'},400);
+       const sql=view==='draft'?DRAFT_SQL_LISTS[kind]:SQL_LISTS[kind];
+       const {results}=await env.DB.prepare(sql)
          .bind(paging.limit,paging.offset).all();
-       return json({kind,data:results||[],limit:paging.limit,offset:paging.offset,
+       return json({kind,view,data:results||[],limit:paging.limit,offset:paging.offset,
          write_enabled:false});
      }catch(e){
        console.error('Admin preview query error',String(e?.name||'unknown'));
