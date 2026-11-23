@@ -7,8 +7,8 @@ on:
       - ".github/workflows/gdd-seo-publish.yml"
       - "supabase-config.js"
       - "app.js"
-  schedule:
-    - cron: "17 * * * *"
+  # Tạm dừng chạy tự động khi Supabase Free đang bị giới hạn Egress (HTTP 402).
+  # Vẫn giữ nút chạy thủ công; khôi phục lịch sau khi hạn mức được đặt lại.
   workflow_dispatch:
 
 permissions:
