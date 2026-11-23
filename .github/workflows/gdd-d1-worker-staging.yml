@@ -68,12 +68,12 @@ jobs:
                   print('D1_HEALTH_ATTEMPT='+str(n+1)+' '+last_error)
               time.sleep(3)
           else:raise SystemExit('Staging Worker health check failed: '+last_error)
-          with urllib.request.urlopen(base+'/api/v1/public/people?limit=5&offset=0',timeout=20) as response:
+          with urllib.request.urlopen(urllib.request.Request(base+'/api/v1/public/people?limit=5&offset=0',headers=headers),timeout=20) as response:
               obj=json.load(response)
           rows=obj.get('data') or []
           if len(rows)!=5 or not all(r.get('published') is True for r in rows):
               raise SystemExit('Published people API failed')
-          with urllib.request.urlopen(base+'/api/v1/public/posts?limit=3',timeout=20) as response:
+          with urllib.request.urlopen(urllib.request.Request(base+'/api/v1/public/posts?limit=3',headers=headers),timeout=20) as response:
               posts=json.load(response).get('data') or []
           if len(posts)!=3 or not all(r.get('published') is True for r in posts):
               raise SystemExit('Published posts API failed')
@@ -82,7 +82,7 @@ jobs:
               ('/api/v1/public/admin_users','GET',404),
               ('/api/v1/public/people','POST',405)
           ]:
-              request=urllib.request.Request(base+url,method=method)
+              request=urllib.request.Request(base+url,method=method,headers=headers)
               try:
                   urllib.request.urlopen(request,timeout=20)
               except urllib.error.HTTPError as exc:
