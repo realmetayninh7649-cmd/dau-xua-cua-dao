@@ -4,7 +4,7 @@
  * Admin UI is intentionally separate from production R2 and public API Workers.
  */
 import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from './admin-ui.mjs';
-import SOURCE_BASELINE from '../source-row-counts-20261123.json' with {type:'json'};
+import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 const INVENTORY=Object.freeze([
  'admin_users','archive_gallery_images','documents','gdd_album_photo_counters',
  'gdd_audio_programs','gdd_calendar_memorials','gdd_content_metric_events',
