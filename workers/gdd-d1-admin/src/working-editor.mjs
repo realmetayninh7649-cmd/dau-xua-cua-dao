@@ -85,18 +85,13 @@ async function list(db,kind,params){
  const limit=Number(params.get('limit')||20),offset=Number(params.get('offset')||0);
  if(!Number.isInteger(limit)||limit<1||limit>50||!Number.isInteger(offset)||offset<0||offset>5000)
    return response({error:'invalid_pagination'},400);
- const schema=SCHEMAS[kind],title=schema.title;
- const {results}=await db.prepare(
-   'SELECT id,slug,'+title+' AS title,published,created_at,updated_at,gdd_version FROM "'+kind+
-   '" ORDER BY created_at DESC LIMIT ? OFFSET ?'
- ).bind(limit,offset).all().catch(async e=>{
-   // The calendar table has no slug; use an explicit allowlisted query.
-   if(kind!=='gdd_calendar_memorials')throw e;
-   return db.prepare(
-     'SELECT id,NULL AS slug,full_name AS title,published,created_at,updated_at,gdd_version '+
-     'FROM gdd_calendar_memorials ORDER BY created_at DESC LIMIT ? OFFSET ?'
-   ).bind(limit,offset).all();
- });
+ const title=SCHEMAS[kind].title;
+ const sql=kind==='gdd_calendar_memorials'
+   ? 'SELECT id,NULL AS slug,full_name AS title,published,created_at,updated_at,gdd_version '+
+       'FROM gdd_calendar_memorials ORDER BY created_at DESC LIMIT ? OFFSET ?'
+   : 'SELECT id,slug,"'+title+'" AS title,published,created_at,updated_at,gdd_version FROM "'+kind+
+       '" ORDER BY created_at DESC LIMIT ? OFFSET ?';
+ const {results}=await db.prepare(sql).bind(limit,offset).all();
  return response({kind,data:results||[],limit,offset,write_enabled:true});
 }
 export async function handleWorkingEditor(request,db,path){
