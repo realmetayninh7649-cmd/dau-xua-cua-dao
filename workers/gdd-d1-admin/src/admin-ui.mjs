@@ -18,6 +18,11 @@ export const ADMIN_HTML=`<!doctype html>
 <p id="status" role="status" aria-live="polite">Đang kiểm tra phiên quản trị và dữ liệu D1…</p>
 <div id="overview" class="summary" aria-live="polite"></div>
 </section>
+<section aria-labelledby="safety-title"><div class="heading"><h2 id="safety-title">Kiểm tra bảo toàn tư liệu gốc</h2><small>Đối chiếu từ Supabase ngày 23/11/2026</small></div>
+<ul class="safe-list" id="safety-report">
+<li>Đang tải kết quả kiểm tra…</li>
+</ul>
+<p class="audit-caution">Thông số chỉ phản ánh cơ sở dữ liệu tại thời điểm kiểm tra; chưa xác nhận tất cả tệp gốc thực tế trên R2.</p></section>
 <section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Đối chiếu với số liệu Supabase ngày 23/11/2026 (bản chụp)</small></div>
 <div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
 </section>
@@ -67,6 +72,7 @@ th{color:var(--muted);font-size:.85rem}
 .number{text-align:right;font-variant-numeric:tabular-nums}
 .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 .controls label{font-weight:600}
+.safe-list{padding-left:24px;line-height:1.6}.safe-list li{padding:5px 0}.audit-caution{color:#695a41;font-size:.86rem;padding:10px;background:#fff8e8;border-radius:6px}
 .records{padding:0;margin:0;list-style:none}
 .records li{padding:12px 2px;border-bottom:1px solid var(--line)}
 .records strong{display:block;overflow-wrap:anywhere}
@@ -120,6 +126,17 @@ async function overview(){
     const div=document.createElement('div');div.className='stat';
     appendText(div,'b',Number(count).toLocaleString('vi-VN'));appendText(div,'span',label);cards.append(div);
    }
+   const audit=summary.source_integrity_snapshot;
+   const auditList=$('safety-report');auditList.replaceChildren();
+   for(const message of [
+     'Hồ sơ Chức sắc chưa công bố: '+audit.people.unpublished+' — giữ riêng, không phát hành.',
+     'Chỉ mục tài sản R2: '+audit.r2_asset_metadata.rows
+       +' — '+audit.r2_asset_metadata.preview_ready+' đã đánh dấu sẵn bản xem.',
+     'Ảnh album có đầy đủ liên kết và mã ảnh: '
+       +(audit.gallery.rows-audit.gallery.without_image_url-audit.gallery.without_photo_code)
+       +'/'+audit.gallery.rows+' (số liệu kiểm tra metadata).',
+     'Hồ sơ người quản trị và tư liệu độc giả gửi về: xử lý bằng kênh riêng tư, chưa đưa sang D1.'
+   ])appendText(auditList,'li',message);
    for(const item of summary.inventory){
     const tr=document.createElement('tr');appendText(tr,'td',names[item.table]||item.table);
     appendText(tr,'td',Number(item.source_count).toLocaleString('vi-VN'),'number');
