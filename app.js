@@ -504,9 +504,12 @@ function videoSource(raw){
       history.pushState({...history.state,__gddLayer:'admin'},'',location.href);
     }
     $('#admin-overlay').hidden=false;document.body.classList.add('modal-open');$('.admin-panel').scrollTop=0;
-    if(!state.supabase){$('#login-message').textContent='Chưa kết nối cơ sở dữ liệu trực tuyến. Xem tệp HƯỚNG-DẪN.md để hoàn tất cài đặt.';$('#login-form button').disabled=true;return}
+    if(!state.supabase){$('#login-message').textContent='Chưa kết nối cơ sở dữ liệu trực tuyến.';$('#login-form button').disabled=true;return}
     if(state.user){await verifyAdmin();return}
     $('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;
+    $('#login-message').textContent=state.usingFallback
+      ? 'Supabase tạm hạn chế dịch vụ do vượt lưu lượng. Chức năng quản trị chưa thể đăng nhập lúc này; không cần đổi mật khẩu. Vui lòng tải lại trang sau khi hạn mức được khôi phục.'
+      : '';
   }
   async function verifyAdmin(){
     if(!state.user)return;
@@ -1191,11 +1194,29 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     $('#admin-open').addEventListener('click',openAdmin);
     $('#login-form').addEventListener('submit',async e=>{
       e.preventDefault();if(!state.supabase)return;
-      const form=e.currentTarget,btn=$('button[type="submit"]',form);btn.disabled=true;$('#login-message').textContent='Đang xác thực…';
-      const email=form.elements.email.value.trim(),password=form.elements.password.value;
-      const {data,error}=await state.supabase.auth.signInWithPassword({email,password});
-      if(error){$('#login-message').textContent=error.message}else{state.user=data.user;await verifyAdmin();if(state.admin){$('#login-message').textContent='';form.reset();await fetchData()}else await state.supabase.auth.signOut()}
-      btn.disabled=false;
+      if(state.usingFallback){
+        $('#login-message').textContent='Supabase đang giới hạn dịch vụ do vượt lưu lượng. Chưa thể đăng nhập quản trị; không cần thay đổi mật khẩu. Hãy tải lại website sau khi Supabase được mở lại.';
+        return;
+      }
+      const form=e.currentTarget,btn=$('button[type="submit"]',form);
+      btn.disabled=true;$('#login-message').textContent='Đang xác thực…';
+      try{
+        const email=form.elements.email.value.trim(),password=form.elements.password.value;
+        const {data,error}=await state.supabase.auth.signInWithPassword({email,password});
+        if(error){
+          const quota=/exceed_(?:cached_)?egress_quota|service for this project is restricted|\b402\b/i.test(String(error.message||''));
+          $('#login-message').textContent=quota
+            ? 'Supabase tạm hạn chế dịch vụ vì vượt lưu lượng. Chưa thể đăng nhập; mật khẩu không nhất thiết bị sai.'
+            : String(error.message||'Không thể đăng nhập lúc này.');
+        }else{
+          state.user=data.user;
+          await verifyAdmin();
+          if(state.admin){$('#login-message').textContent='';form.reset();await fetchData()}
+          else await state.supabase.auth.signOut();
+        }
+      }catch(error){
+        $('#login-message').textContent='Không kết nối được máy chủ quản trị. Xin thử lại sau.';
+      }finally{btn.disabled=false;}
     });
     $('#logout-button').addEventListener('click',async()=>{window.GDDR2?.close();if(state.supabase)await state.supabase.auth.signOut();state.user=null;state.admin=false;$('#admin-login-area').hidden=false;$('#admin-editor-area').hidden=true;closeAdmin();await fetchData();toast('Đã đăng xuất')});
     $$('.editor-tabs button').forEach(b=>b.addEventListener('click',()=>{state.editorKind=b.dataset.kind;state.editingId=null;state.editorListExpanded=false;$('#editor-record-search').value='';buildEditor();renderEditorList()}));
