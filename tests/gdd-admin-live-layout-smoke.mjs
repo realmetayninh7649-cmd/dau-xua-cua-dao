@@ -25,7 +25,22 @@ const server=createServer((req,res)=>{
  else if(pathname==='/admin/app.js'){type='text/javascript';body=ADMIN_JS}
  else if(pathname==='/api/v1/admin/session')body=JSON.stringify(session);
  else if(pathname==='/api/v1/admin/summary')body=JSON.stringify(summary);
- else if(pathname.startsWith('/api/v1/admin/work/'))body=JSON.stringify({data:[],kind:'people'});
+ else if(pathname==='/api/v1/admin/work/people'){
+  const offset=Number(new URL(req.url,'http://127.0.0.1').searchParams.get('offset')||0);
+  const people=Array.from({length:14},(_,i)=>({
+    id:'aaaaaaaa-aaaa-4aaa-8aaa-'+String(i+1).padStart(12,'0'),
+    title:'HỒ SƠ SỐ '+(i+1),full_name:'HỒ SƠ SỐ '+(i+1),published:1,
+    archive_code:'CS-CTD.GS-'+String(i+1).padStart(5,'0'),gdd_version:1
+  }));
+  body=JSON.stringify({data:people.slice(offset,offset+10),kind:'people'});
+ }
+ else if(pathname.startsWith('/api/v1/admin/work/people/')){
+  const id=pathname.split('/').at(-1);
+  const person={id,title:'HỒ SƠ SỐ 2',full_name:'HỒ SƠ SỐ 2',published:1,
+    archive_code:'CS-CTD.GS-00002',gdd_version:1};
+  body=JSON.stringify({data:id==='history'?[]:person});
+ }
+ else if(pathname.startsWith('/api/v1/admin/work/'))body=JSON.stringify({data:[],kind:'posts'});
  else if(pathname==='/api/v1/admin/records')body=JSON.stringify({data:[],has_next:false});
  else {status=404;body=JSON.stringify({error:'not_found'})}
  res.writeHead(status,{'content-type':type,'cache-control':'no-store'});res.end(body);
@@ -70,6 +85,30 @@ try{
   console.log('ADMIN_D1_REOPENED_UI_'+label.toUpperCase()+'=PASS',
     JSON.stringify({width,editorVisible:info.editorVisible,R2Visible:info.r2Visible,
       technicalCollapsed:info.technical,firstPanel:info.firstPanel,oldSandboxRemoved:!info.testR2Present&&!info.testEditorPresent}));
+  // Authoring always comes BEFORE the initially collapsed (potentially long) list.
+  await page.waitForFunction(()=>document.querySelector('#work-list-count')?.textContent.includes('10 bản ghi'),null,{timeout:12000});
+  assert.equal(await page.locator('#work-list-details').evaluate(el=>el.open),false);
+  assert.equal(await page.locator('.work-archive-lookup').evaluate(el=>el.open),false);
+  const order=await page.evaluate(()=>{
+    const editor=document.getElementById('work-edit-area');
+    const list=document.getElementById('work-list-details');
+    return Boolean(editor.compareDocumentPosition(list)&Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  assert.equal(order,true,'editor must appear before the archival list');
+  await page.locator('#work-list-details summary').click();
+  assert.equal(await page.locator('#work-list .work-row-title').count(),10);
+  await page.locator('#work-search').fill('HỒ SƠ SỐ 2');
+  assert.equal(await page.locator('#work-list .work-row-title').count(),1,'title filter should reduce visible list');
+  await page.locator('#work-list button').click();
+  await page.waitForFunction(()=>!document.getElementById('work-edit-area').hidden);
+  assert.equal(await page.locator('#work-list-details').evaluate(el=>el.open),false,'edit closes old list');
+  assert.equal(await page.locator('#work-edit-heading').textContent(),'Đang sửa HỒ SƠ SỐ 2');
+  await page.locator('#work-new').click();
+  await page.waitForFunction(()=>document.getElementById('work-edit-heading').textContent.includes('Tạo bản nháp'));
+  assert.equal(await page.locator('#work-list-details').evaluate(el=>el.open),false,'new draft should not reopen old list');
+  assert.equal(await page.locator('#work-fields label').count()>0,true,'draft form must be populated');
+  console.log('ADMIN_COMPACT_COMPOSE_FIRST_'+label.toUpperCase()+'=PASS',
+    JSON.stringify({editorBeforeList:order,tenRowsPerPage:10,searchFilters:true,editAutoOpensForm:true,draftOnTop:true}));
   await page.close();
  }
  assert.equal(requests.some(x=>x.includes('/sandbox')),false,'synthetic sandbox API must not auto-fetch');
