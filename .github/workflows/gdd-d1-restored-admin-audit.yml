@@ -24,7 +24,11 @@ jobs:
           import json,pathlib
           c=json.loads(pathlib.Path('workers/gdd-d1-admin/wrangler.jsonc').read_text())
           assert c['name']=='gdd-d1-admin-staging'
-          assert len(c.get('d1_databases',[]))==1
+          assert len(c.get('d1_databases',[]))==2
+          edit=c['d1_databases'][1]
+          assert edit['binding']=='EDIT_DB'
+          assert edit['database_name']=='gdd-editor-sandbox-20261124'
+          assert edit['database_id']=='cf3f0c4e-6cdd-4360-b421-03c87717c688'
           d=c['d1_databases'][0]
           assert d['binding']=='DB'
           assert d['database_name']=='gdd-dao-su-restore-full-20261123'

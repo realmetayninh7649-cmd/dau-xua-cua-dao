@@ -57,6 +57,8 @@ export async function handleEditorSandbox(request,db,path){
    if(request.method!=='POST')return noWrite(request.method);
    const body=await readBody(request);
    const entry=cleanData(body);
+   // New records are always drafts. Reject untrusted publication types and direct publication.
+   if(entry.published!==0)return result({error:'invalid_publication'},400);
    const id=crypto.randomUUID(),time=new Date().toISOString();
    await db.prepare('INSERT INTO sandbox_items(id,kind,title,summary,body,published,version,updated_at) VALUES(?,?,?,?,?,?,1,?)')
      .bind(id,entry.kind,entry.title,entry.summary,entry.body,0,time).run();
@@ -92,7 +94,8 @@ export async function handleEditorSandbox(request,db,path){
    ).bind(payload.audit_id,id).first();
    if(!revision)return result({error:'revision_not_found'},404);
    let old;try{old=JSON.parse(revision.before_json)}catch{throw Error('invalid_revision')}
-   data=cleanData(old,before);
+   data=cleanData({kind:before.kind,title:old.title,summary:old.summary,
+       body:old.body,published:Boolean(old.published)},before);
    data.kind=before.kind;
   }else data=cleanData(payload,before);
   if(!Number.isInteger(data.published)||![0,1].includes(data.published))
