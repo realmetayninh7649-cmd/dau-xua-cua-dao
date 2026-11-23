@@ -1,0 +1,37 @@
+name: "GDD D1 - Kiem thu giao dien xem thu truoc mo web"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - "app.js"
+      - "gdd-public-readonly.js"
+      - "supabase-config.js"
+      - "tests/d1-web-preview.test.mjs"
+      - ".github/workflows/gdd-d1-web-preview-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Only test code; DO NOT deploy website or modify Supabase/R2"
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check gdd-public-readonly.js
+          node --test tests/d1-web-preview.test.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('index.html').read_text()
+          assert 'gdd-public-readonly.js' in text
+          assert text.index('gdd-public-readonly.js')<text.index('app.js')
+          print('PUBLIC_UI_PREVIEW_TEST_ONLY=PASS')
+          PY
