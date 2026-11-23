@@ -71,7 +71,10 @@ test('21-table D1 inventory counts imported published records',async()=>{
  const {res,body}=await call('/api/v1/admin/summary');
  assert.equal(res.status,200);assert.equal(body.table_count,21);
  assert.equal(body.inventory.length,21);
+ assert.equal(body.source_total,1892);
  assert.equal(body.total_records,741);
+ assert.equal(body.remaining_records,1151);
+ assert.equal(body.source_snapshot_date,'2026-11-23');
  assert.equal(body.published_records,118);
  assert.equal(body.gallery_images,615);
  assert.equal(body.r2_asset_records,0);
