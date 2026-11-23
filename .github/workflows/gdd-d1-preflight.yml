@@ -1,0 +1,48 @@
+name: "GDD Cloudflare D1 - Kiem tra quyen chi doc"
+
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: "Kiem tra Cloudflare D1 khong thay doi tai nguyen"
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: "Kiem tra quyen D1 Read/Write bang API chi doc"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, re, urllib.request, urllib.error
+          token=os.environ.get('CLOUDFLARE_API_TOKEN','').strip()
+          account=os.environ.get('CLOUDFLARE_ACCOUNT_ID','').strip()
+          if not token or not re.fullmatch(r'[0-9a-fA-F]{32}',account):
+              raise SystemExit('CHUA THE: GitHub token/account Cloudflare chua duoc cau hinh')
+          url='https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database?per_page=100'
+          req=urllib.request.Request(url,headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+          try:
+              with urllib.request.urlopen(req,timeout=20) as response:
+                  obj=json.load(response)
+          except urllib.error.HTTPError as e:
+              print('D1_PREFLIGHT_HTTP='+str(e.code))
+              if e.code==403:
+                  raise SystemExit('CHUA DU QUYEN: token hien tai can cap D1 Read/Write. Khong tao D1.')
+              raise SystemExit('CHUA THE: Cloudflare D1 API khong truy cap duoc')
+          if not obj.get('success'):raise SystemExit('CHUA THE: Cloudflare D1 API bao loi')
+          data=obj.get('result')or[]
+          names=[str(d.get('name','')) for d in data]
+          print('D1_READ_ACCESS=OK')
+          print('D1_DATABASE_COUNT='+str(len(data)))
+          print('GDD_DATABASE_EXISTS='+str('gdd-dao-su-archive' in names))
+          print('NO_CHANGES_MADE=TRUE')
+          PY
