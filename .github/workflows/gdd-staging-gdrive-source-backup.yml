@@ -1,0 +1,67 @@
+name: "GDD STAGING - Sao luu R2 ma hoa sang Google Drive (chuyen goi)"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-staging-gdrive-source-backup.yml"
+      - "maintenance-tasks/gdrive-backup-part.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: gdd-staging-encrypted-r2-gdrive-transfer
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      parts: ${{ steps.parts.outputs.parts }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: parts
+        name: Verify bounded read-only backup batch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os
+          cfg=json.load(open("maintenance-tasks/gdrive-backup-part.json"))
+          a=cfg.get("parts")
+          if cfg.get("part_count")!=24 or not isinstance(a,list) or not 1<=len(a)<=6 or any(type(p)!=int or p<0 or p>23 for p in a) or len(set(a))!=len(a):
+            raise SystemExit("Refuse invalid backup batch")
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:f.write("parts="+json.dumps(a,separators=(",",":"))+"\n")
+          print("VALIDATED_ENCRYPTED_SHARD_COUNT="+str(len(a)))
+          PY
+  encrypted-r2-backup:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        part: ${{ fromJSON(needs.prepare.outputs.parts) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install boto3==1.40.61
+      - name: "Verify SHA256 of R2 originals, encrypt locally, NO source writes"
+        env:
+          GDD_BACKUP_PART_INDEX: ${{ matrix.part }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/gdrive_export_verified_shard.py
+          python3 scripts/gdrive_export_verified_shard.py
+      - name: "Upload encrypted ciphertext only for transfer; short retention"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-staging-encrypted-source-part-${{ matrix.part }}
+          path: /tmp/gdd-drive-archive-export/*.tar.gpg
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
