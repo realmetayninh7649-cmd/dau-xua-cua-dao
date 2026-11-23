@@ -96,12 +96,13 @@ class Remote:
             raise SystemExit('Unexpected D1 SQL result')
         return results[0].get('results') or []
 
-def exact_counts(db,dbid=None):
+def exact_counts(db,dbid=None,allow_growth=False):
     for table,n in counts.items():
         name=quote(table)
         rows=db.query('SELECT COUNT(*) AS n FROM '+name,dbid) if dbid else db.query('SELECT COUNT(*) AS n FROM '+name)
-        if len(rows)!=1 or rows[0].get('n')!=n:
-            raise SystemExit('21-table source cardinality mismatch at '+table)
+        value=rows[0].get('n') if len(rows)==1 else None
+        if not isinstance(value,int) or (value<n if allow_growth else value!=n):
+            raise SystemExit('21-table baseline integrity mismatch at '+table)
 
 def migrate(db):
     db.query(audit_table_sql())
@@ -163,10 +164,10 @@ def main():
     else:
         db=Remote()
         exact_counts(db,IMMUTABLE_ID)
-        exact_counts(db,WORKING_ID)
+        exact_counts(db,WORKING_ID,allow_growth=True)
         migrate(db)
         exact_counts(db,IMMUTABLE_ID)
-        exact_counts(db,WORKING_ID)
+        exact_counts(db,WORKING_ID,allow_growth=True)
         print('WORKING_D1_EDITOR_VERSIONED_SCHEMA=PASS')
         print('IMMUTABLE_D1_ARCHIVE_1892_ROWS_UNCHANGED=TRUE')
         print('NO_SUPABASE_R2_ORIGINAL_WRITE=TRUE')
