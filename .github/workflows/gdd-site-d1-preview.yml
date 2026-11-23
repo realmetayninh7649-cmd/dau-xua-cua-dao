@@ -12,6 +12,9 @@ on:
       - "gdd-calendar-reminder-subscription.js"
       - "gdd-people-organizer.js"
       - "homepage-previews.js"
+      - "gdd-calendar-statistics.js"
+      - "gdd-site-download-counter.js"
+      - "gdd-content-metrics.js"
   workflow_dispatch:
 
 permissions:

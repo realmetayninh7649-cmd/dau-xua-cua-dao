@@ -8,6 +8,8 @@
   'use strict';
   if(window.GDDDownloadStats)return;
   const cfg=window.SITE_CONFIG||{};
+  const d1=cfg.publicReadProvider==='d1-staging';
+  const statsURL='https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/stats';
   const format=new Intl.NumberFormat('vi-VN');
   const allowed=new Set(['image','pdf','word','qr','audio','other']);
   let clientPromise=null,refreshPending=null,refreshAt=0;
@@ -50,6 +52,15 @@
     if(!force&&Date.now()-refreshAt<20000)return;
     refreshPending=(async()=>{
       try{
+        if(d1){
+          const response=await fetch(statsURL,{cache:'no-store',credentials:'omit'});
+          if(!response.ok)throw Error('HTTP '+response.status);
+          const totals=await response.json();
+          const n=Number(totals.total_downloads);
+          if(!Number.isSafeInteger(n)||n<0||totals.source!=='cloudflare-d1')
+            throw Error('Tổng lượt tải D1 không hợp lệ');
+          refreshAt=Date.now();render(n);return n;
+        }
         const client=await loadClient();if(!client)return;
         const {data,error}=await client.rpc('gdd_get_site_download_total');
         if(error)throw error;
@@ -69,6 +80,18 @@
     const eventId=randomUUID(),sid=sessionId();
     if(!eventId||!sid)return;
     try{
+      if(d1){
+        const response=await fetch(statsURL+'/download',{
+          method:'POST',cache:'no-store',credentials:'omit',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({event_id:eventId,session_id:sid,kind})});
+        if(!response.ok)throw Error('HTTP '+response.status);
+        const totals=await response.json();
+        if(Number.isSafeInteger(totals.total_downloads)&&totals.total_downloads>=0){
+          refreshAt=Date.now();render(totals.total_downloads);
+        }
+        return;
+      }
       const client=await loadClient();if(!client)return;
       const {data,error}=await client.rpc('gdd_record_site_unlinked_download',{
         p_event_id:eventId,p_session_id:sid,p_download_kind:kind
