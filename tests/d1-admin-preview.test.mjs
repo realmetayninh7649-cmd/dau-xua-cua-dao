@@ -65,6 +65,9 @@ test('dashboard has mobile layout and strict CSP and does not embed private data
  assert.ok(!ADMIN_JS.includes('.innerHTML'));
  assert.ok(ADMIN_CSS.includes('@media(max-width:440px)'));
  assert.ok(ADMIN_HTML.includes('viewport'));
+ assert.ok(ADMIN_HTML.includes('Kiểm tra bảo toàn tư liệu gốc'));
+ assert.ok(ADMIN_JS.includes('source_integrity_snapshot'));
+
 });
 test('21-table D1 inventory counts imported published records',async()=>{
  sqlHistory=[];
@@ -75,6 +78,10 @@ test('21-table D1 inventory counts imported published records',async()=>{
  assert.equal(body.total_records,741);
  assert.equal(body.remaining_records,1151);
  assert.equal(body.source_snapshot_date,'2026-11-23');
+ assert.equal(body.source_integrity_snapshot.people.unpublished,2);
+ assert.equal(body.source_integrity_snapshot.r2_asset_metadata.rows,269);
+ assert.equal(body.source_integrity_snapshot.gallery.without_photo_code,0);
+ assert.equal(body.source_integrity_snapshot.gallery.without_image_url,0);
  assert.equal(body.published_records,118);
  assert.equal(body.gallery_images,615);
  assert.equal(body.r2_asset_records,0);
