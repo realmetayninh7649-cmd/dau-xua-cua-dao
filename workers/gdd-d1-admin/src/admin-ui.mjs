@@ -25,6 +25,19 @@ export const ADMIN_HTML=`<!doctype html>
 <p class="audit-caution">Đã kiểm kê danh sách đối tượng R2 ngày 23/11/2026. Đây chỉ là dấu kiểm kê tệp, chưa phải xác minh nội dung từng tệp hay bản sao lưu độc lập có thể phục hồi.</p>
 <div class="controls"><button id="r2-audit" type="button">Kiểm kê R2 trực tiếp (chỉ đọc)</button></div>
 <p id="r2-live-status" role="status" aria-live="polite">Chưa quét kho R2 trong phiên này.</p></section>
+<section aria-labelledby="r2-managed-title" id="r2-managed-panel" hidden>
+<div class="heading"><h2 id="r2-managed-title">Bảo tồn ảnh / PDF / Word vào kho R2</h2><small>Cloudflare Access · Nguyên mẫu riêng tư</small></div>
+<p class="audit-caution">Ảnh hoặc tài liệu được cất nguyên vẹn dưới dạng bản gốc riêng tư trong R2. Tệp lớn tải thành các phần 8 MB. Chỉ khi chủ động nhấn Công bố bản xem thì ảnh tối ưu mới được mở cho độc giả. PDF/DOCX cần tạo bản đọc từng trang riêng trước khi công bố.</p>
+<div class="controls"><input id="r2-managed-file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.tif,.tiff,.heic,.heif,.avif">
+<button id="r2-managed-upload" type="button">Bảo tồn bản gốc vào R2</button></div>
+<p id="r2-managed-status" role="status" aria-live="polite">Chưa chọn tệp để lưu.</p>
+<div id="r2-managed-actions" hidden>
+<div class="controls"><button id="r2-managed-derivative" type="button">Tạo bản xem và bản in JPEG của ảnh</button></div>
+<div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-public-confirm" type="checkbox"> Tôi đã kiểm tra hình ảnh và đồng ý công bố bản xem</label></div>
+<div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-download-confirm" type="checkbox"> Cho phép tải bản JPEG tối ưu (không phải bản gốc)</label>
+<button id="r2-managed-publish" type="button">Công bố bản xem</button></div>
+</div>
+</section>
 <section aria-labelledby="r2-sandbox-title">
 <div class="heading"><h2 id="r2-sandbox-title">Thử tải ảnh, PDF, Word lên R2 riêng tư</h2><small>Không công bố bản gốc</small></div>
 <p class="audit-caution">Chỉ dùng tệp thử nghiệm tối đa 2 MB, giới hạn 20 tệp trong kho thử. Tệp mới nằm trong thư mục nội bộ riêng của R2, không có đường dẫn tải công khai; không xóa hay ghi đè ảnh/PDF tư liệu cũ.</p>
@@ -173,6 +186,7 @@ async function overview(){
    api('/api/v1/admin/session'),api('/api/v1/admin/summary')]);
   if(session.authenticated!==true||session.write_enabled!==false)throw Error('Phiên quản trị chưa hợp lệ');
   $('work-editor-panel').hidden=session.working_editor_enabled!==true;
+  $('r2-managed-panel').hidden=session.managed_r2_enabled!==true;
   if(session.working_editor_enabled===true)workList().catch(()=>{});
   const inventory=$('inventory'),cards=$('overview');inventory.replaceChildren();cards.replaceChildren();
   for(const [count,label] of [
@@ -281,6 +295,130 @@ async function sandboxR2Upload(){
 }
 $('r2-sandbox-upload').addEventListener('click',sandboxR2Upload);
 $('r2-sandbox-refresh').addEventListener('click',sandboxR2Refresh);
+
+// Cloudflare Access R2 originals: use the already tested private R2 gateway.
+const managedBase='/api/v1/admin/r2/managed';
+let managedFile=null,managedAsset=null,managedPreviewReady=false;
+function managedStatus(message){$('r2-managed-status').textContent=message}
+async function managedRequest(path,{method='GET',data=null,type='application/json'}={}){
+ const h={};
+ if(data!==null)h['Content-Type']=type;
+ const r=await fetch(managedBase+path,{method,body:data,headers:h,
+  credentials:'same-origin',cache:'no-store'});
+ const json=await r.json().catch(()=>({error:'invalid_response'}));
+ if(!r.ok)throw Error(json.error||('HTTP '+r.status));
+ return json;
+}
+async function managedUpload(){
+ const file=$('r2-managed-file').files[0],button=$('r2-managed-upload');
+ if(!file){managedStatus('Hãy chọn ảnh/PDF/Word cần lưu.');return}
+ if(file.size<1||file.size>1024*1024*1024){managedStatus('Chỉ nhận tệp tối đa 1 GiB trong lần tải này.');return}
+ button.disabled=true;managedFile=null;managedAsset=null;managedPreviewReady=false;
+ $('r2-managed-actions').hidden=true;
+ try{
+  let info;
+  if(file.size<=6*1024*1024){
+   managedStatus('Đang lưu nguyên mẫu R2…');
+   info=await managedRequest('/v1/uploads/small?name='+encodeURIComponent(file.name)+
+     '&size='+file.size,{method:'PUT',data:file,type:file.type||'application/octet-stream'});
+  }else{
+   managedStatus('Đang tạo phiên tải nhiều phần…');
+   const started=await managedRequest('/v1/uploads/start',{method:'POST',
+     data:JSON.stringify({name:file.name,size:file.size})});
+   if(!started.id||!started.key||!started.uploadId||started.partBytes!==8*1024*1024)
+     throw Error('Phiên tải nhiều phần không hợp lệ');
+   const parts=[];
+   const total=Math.ceil(file.size/started.partBytes);
+   for(let i=0;i<total;i++){
+    managedStatus('Đang lưu phần '+(i+1)+'/'+total+' vào R2…');
+    const slice=file.slice(i*started.partBytes,Math.min(file.size,(i+1)*started.partBytes));
+    const done=await managedRequest('/v1/uploads/part?key='+encodeURIComponent(started.key)+
+      '&uploadId='+encodeURIComponent(started.uploadId)+'&part='+(i+1),
+      {method:'PUT',data:slice,type:'application/octet-stream'});
+    if(done.partNumber!==i+1||typeof done.etag!=='string')throw Error('Phần tệp không xác minh được');
+    parts.push({partNumber:done.partNumber,etag:done.etag});
+   }
+   info=await managedRequest('/v1/uploads/complete',{method:'POST',
+     data:JSON.stringify({key:started.key,uploadId:started.uploadId,size:file.size,parts})});
+  }
+  if(!info?.originalPreserved||!info.id||info.publiclyAccessible!==false)
+   throw Error('Máy chủ chưa xác nhận bản gốc riêng tư');
+  managedFile=file;managedAsset=info.id;
+  $('r2-managed-public-confirm').checked=false;$('r2-managed-download-confirm').checked=false;
+  const isImage=/^image\//.test(file.type);
+  $('r2-managed-derivative').disabled=!isImage;
+  $('r2-managed-actions').hidden=false;
+  managedStatus('Đã bảo tồn nguyên mẫu riêng tư ('+(file.size/1048576).toFixed(1)+
+    ' MB). Mã R2: '+info.id+'. '+(isImage?'Tạo bản xem trước khi công bố.':'Tài liệu vẫn riêng tư; cần bản đọc PDF/DOCX từng trang.'));
+ }catch(e){managedStatus('Chưa hoàn tất tải R2: '+e.message)}
+ finally{button.disabled=false}
+}
+async function managedImageBlob(image,type,maxDimension,quality){
+ const width=image.naturalWidth,height=image.naturalHeight;
+ if(!width||!height)throw Error('Không đọc được kích thước ảnh');
+ const scale=Math.min(1,maxDimension/Math.max(width,height));
+ const canvas=document.createElement('canvas');
+ canvas.width=Math.max(1,Math.round(width*scale));
+ canvas.height=Math.max(1,Math.round(height*scale));
+ const ctx=canvas.getContext('2d');
+ if(!ctx)throw Error('Không thể tạo ảnh xem trên thiết bị');
+ if(type==='image/jpeg'){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height)}
+ ctx.drawImage(image,0,0,canvas.width,canvas.height);
+ return new Promise((resolve,reject)=>canvas.toBlob(
+  blob=>blob?resolve(blob):reject(Error('Không kết xuất được ảnh xem')),
+  type,quality));
+}
+async function managedDerivatives(){
+ if(!managedFile||!managedAsset||!managedFile.type.startsWith('image/')){
+  managedStatus('Chỉ ảnh mới hỗ trợ tạo bản xem tự động.');return
+ }
+ const btn=$('r2-managed-derivative');btn.disabled=true;
+ const src=URL.createObjectURL(managedFile);
+ try{
+  managedStatus('Đang tạo ảnh xem tối ưu trên điện thoại…');
+  const image=new Image();
+  await new Promise((resolve,reject)=>{
+   image.onload=resolve;image.onerror=()=>reject(Error('Không đọc được ảnh'));
+   image.src=src;
+  });
+  let preview=await managedImageBlob(image,'image/webp',1800,0.8);
+  let type='image/webp';
+  const header=new Uint8Array(await preview.slice(0,12).arrayBuffer());
+  if(header[0]!==82||header[1]!==73||header[8]!==87){
+   preview=await managedImageBlob(image,'image/jpeg',1800,0.83);type='image/jpeg';
+  }
+  if(preview.size>8*1024*1024)throw Error('Ảnh xem vượt mức 8 MB');
+  await managedRequest('/v1/assets/'+managedAsset+'/preview',
+    {method:'PUT',data:preview,type});
+  managedStatus('Đã tạo ảnh xem. Đang tạo bản in JPEG tối ưu…');
+  const print=await managedImageBlob(image,'image/jpeg',3600,0.88);
+  if(print.size>8*1024*1024)throw Error('Ảnh bản in vượt 8 MB; cần giảm kích thước.');
+  await managedRequest('/v1/assets/'+managedAsset+'/download',
+    {method:'PUT',data:print,type:'image/jpeg'});
+  managedPreviewReady=true;
+  managedStatus('Đã lưu bản xem và bản JPEG tối ưu. Nguyên mẫu vẫn riêng tư. Chỉ công bố khi đã kiểm tra và xác nhận.');
+ }catch(e){managedStatus('Chưa tạo xong bản xem: '+e.message)}
+ finally{btn.disabled=false;URL.revokeObjectURL(src)}
+}
+async function managedPublish(){
+ const btn=$('r2-managed-publish');
+ if(!managedAsset||!managedPreviewReady){managedStatus('Cần tạo bản xem hợp lệ trước khi công bố.');return}
+ if(!$('r2-managed-public-confirm').checked){managedStatus('Cần xác nhận đã kiểm tra ảnh trước khi công bố.');return}
+ if(!confirm('Công bố ảnh xem tối ưu, không phải bản gốc R2?'))return;
+ btn.disabled=true;
+ try{
+  const out=await managedRequest('/v1/assets/'+managedAsset+'/publication',
+    {method:'POST',data:JSON.stringify({publish:true,
+      allowDownload:$('r2-managed-download-confirm').checked})});
+  if(out.published!==true||out.originalPrivate!==true)throw Error('R2 chưa xác minh công bố');
+  managedStatus('Đã công bố bản xem an toàn. Độc giả có thể mở từ trình đọc khi bài đã liên kết mã tài sản '+managedAsset+'.');
+ }catch(e){managedStatus('Chưa công bố được bản xem: '+e.message)}
+ finally{btn.disabled=false}
+}
+$('r2-managed-upload').addEventListener('click',managedUpload);
+$('r2-managed-derivative').addEventListener('click',managedDerivatives);
+$('r2-managed-publish').addEventListener('click',managedPublish);
+
 sandboxR2Refresh();
 // Access-protected synthetic D1 editing sandbox; no real data write endpoints.
 let sandboxActive=null,sandboxVersion=null,sandboxRecords=[];

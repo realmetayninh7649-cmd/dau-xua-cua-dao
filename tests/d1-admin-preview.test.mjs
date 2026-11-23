@@ -171,3 +171,11 @@ test('full Access administrator client bundle syntax and editorial controls are 
  assert.ok(ADMIN_JS.includes('gdd_version'));
  assert.ok(!ADMIN_JS.includes('eval('));
 });
+
+test('managed R2 production original flow is correctly exposed only in Access admin UI',()=>{
+ assert.doesNotThrow(()=>new Function(ADMIN_JS));
+ for(const id of ['r2-managed-panel','r2-managed-upload','r2-managed-derivative','r2-managed-publish'])
+  assert.ok(ADMIN_HTML.includes('id="'+id+'"'),id+' not found');
+ assert.ok(ADMIN_JS.includes("managedBase='/api/v1/admin/r2/managed'"));
+ assert.ok(ADMIN_JS.includes('managedPreviewReady'));
+});

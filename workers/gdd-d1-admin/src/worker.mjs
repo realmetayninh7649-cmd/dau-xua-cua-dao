@@ -227,6 +227,7 @@ export default {
    if(path==='/api/v1/admin/session')
      return json({authenticated:true,role:'administrator',write_enabled:false,mode:'staging',
        working_editor_enabled:env.ENABLE_WORKING_EDITOR==='enabled',
+       managed_r2_enabled:env.ENABLE_MANAGED_R2==='enabled',
        working_editor_is_separate_database:true});
    if(path==='/'||path==='/admin')
      return reply(ADMIN_HTML,200,'text/html; charset=utf-8',{

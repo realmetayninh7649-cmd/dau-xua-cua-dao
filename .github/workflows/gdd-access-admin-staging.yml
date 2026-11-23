@@ -58,7 +58,7 @@ jobs:
           assert 'handleR2Sandbox(request,env.GDD_BUCKET)' in js
           assert "handleWorkingEditor(request,env.DB,path)" in js
           assert cfg['vars']['ENABLE_WORKING_EDITOR']=='enabled'
-          assert cfg['vars']['ENABLE_MANAGED_R2']=='disabled'
+          assert cfg['vars']['ENABLE_MANAGED_R2']=='enabled'
           assert "handleManagedR2(request,env,path)" in js
           helper=(root/'src/r2-managed.mjs').read_text()
           assert 'indexAsset(env' in helper
