@@ -88,6 +88,7 @@
       let data;
       try{
         const conf=window.SITE_CONFIG||{};
+        if(conf.publicReadProvider==='d1-staging')throw Error('Read D1 only.');
         if(!conf.supabaseUrl||!conf.supabasePublishableKey)throw Error('Chưa kết nối Supabase.');
         const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
         const sb=createClient(conf.supabaseUrl,conf.supabasePublishableKey);

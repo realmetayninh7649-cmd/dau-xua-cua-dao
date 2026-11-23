@@ -43,6 +43,17 @@
   };
   async function register(kind,id,type,key){
     try{
+      if(window.SITE_CONFIG?.publicReadProvider==='d1-staging'){
+        const response=await fetch('https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/stats/content',{
+          method:'POST',cache:'no-store',credentials:'omit',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({kind,record_id:id,event_type:type,event_key:key})});
+        if(!response.ok)throw Error('D1 HTTP '+response.status);
+        const row=await response.json();
+        if(!Number.isSafeInteger(row.views)||!Number.isSafeInteger(row.downloads))
+          throw Error('D1 metrics not numeric');
+        return {views:row.views,downloads:row.downloads};
+      }
       const client=await loadClient();
       if(!client)return null;
       const {data,error}=await client.rpc('gdd_record_content_metric',{

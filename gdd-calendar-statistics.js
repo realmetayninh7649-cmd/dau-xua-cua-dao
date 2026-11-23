@@ -360,6 +360,46 @@
     const online=$('#gdd-online-count'),total=$('#gdd-total-visits'),note=$('#gdd-visitor-note');
     if(!online||!total||!note)return;
     const cfg=window.SITE_CONFIG||{};
+    if(cfg.publicReadProvider==='d1-staging'){
+      const api='https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/stats';
+      let sessionId='';
+      try{sessionId=sessionStorage.getItem('gdd-visit-id-2026')||''}catch{}
+      if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(sessionId)){
+        sessionId=globalThis.crypto?.randomUUID?.()||'';
+        try{if(sessionId)sessionStorage.setItem('gdd-visit-id-2026',sessionId)}catch{}
+      }
+      if(!sessionId){note.textContent='Không tạo được mã phiên truy cập ẩn danh.';return}
+      let loading=false;
+      const ping=async()=>{
+        if(loading||document.visibilityState==='hidden')return;
+        loading=true;
+        try{
+          const response=await fetch(api+'/visit',{
+            method:'POST',cache:'no-store',credentials:'omit',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({session_id:sessionId})});
+          if(!response.ok)throw Error('HTTP '+response.status);
+          const data=await response.json();
+          if(!Number.isSafeInteger(data.online_count)||!Number.isSafeInteger(data.total_visits)||
+             data.online_count<0||data.total_visits<0||data.source!=='cloudflare-d1')
+            throw Error('Số liệu D1 không hợp lệ');
+          online.textContent=data.online_count.toLocaleString('vi-VN');
+          total.textContent=data.total_visits.toLocaleString('vi-VN');
+          note.textContent='Dữ liệu Cloudflare D1 · Tự cập nhật khi trang hoạt động · Không thu thập IP hoặc email.';
+          const downloads=document.getElementById('gdd-total-downloads');
+          if(downloads&&Number.isSafeInteger(data.total_downloads))
+            downloads.textContent=data.total_downloads.toLocaleString('vi-VN');
+        }catch(e){
+          note.textContent='Tạm thời không đọc được thống kê D1. Số liệu lịch sử vẫn được lưu giữ.';
+          console.warn('[GDD D1 Statistics]',e?.message||e);
+        }finally{loading=false}
+      };
+      ping();
+      setInterval(ping,90_000);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping()});
+      window.addEventListener('pageshow',()=>{if(!document.hidden)ping()});
+      return;
+    }
     if(!cfg.supabaseUrl||!cfg.supabasePublishableKey){note.textContent='Chưa kết nối dữ liệu thống kê Supabase.';return;}
     let sessionId='';
     try{sessionId=sessionStorage.getItem('gdd-visit-id-2026')||''}catch{}
