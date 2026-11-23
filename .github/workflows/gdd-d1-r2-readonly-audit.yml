@@ -1,0 +1,50 @@
+name: "GDD D1 + R2 - Doi chieu kho CHI DOC"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-r2-readonly-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: "Read-only R2 list and 21 D1 count queries; no source writes"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Review source for safe-only API calls"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/gdd_d1_r2_readonly_audit.py
+          python3 - <<'PY'
+          import pathlib
+          src=pathlib.Path('scripts/gdd_d1_r2_readonly_audit.py').read_text()
+          assert 'client.list_objects_v2(**args)' in src
+          assert 'SELECT ' in src and 'COUNT(*)' in src
+          for forbidden in ('client.put_object(', 'client.delete_object(',
+                            'client.get_object(', 'UPDATE "', 'DELETE FROM "',
+                            'INSERT INTO "', 'execute_statement('):
+              if forbidden in src:
+                  raise SystemExit('Forbidden database or R2 write/read binary primitive: '+forbidden)
+          print('D1_R2_AUDIT_ONLY_AGGREGATE_READS=PASS')
+          PY
+      - name: "Install pinned read-only R2 S3 client"
+        run: python3 -m pip install boto3==1.40.61
+      - name: "Query D1 SELECT counts and list existing R2 objects (no writes)"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -euo pipefail
+          python3 scripts/gdd_d1_r2_readonly_audit.py
