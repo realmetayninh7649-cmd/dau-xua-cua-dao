@@ -231,7 +231,7 @@ export default {
        working_editor_is_separate_database:true});
    if(path==='/'||path==='/admin')
      return reply(ADMIN_HTML,200,'text/html; charset=utf-8',{
-       'Content-Security-Policy':"default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+       'Content-Security-Policy':"default-src 'none'; style-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/; connect-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/; worker-src 'self' blob:; img-src 'self' blob: data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
        'X-Frame-Options':'DENY'
      });
    if(path==='/admin/style.css')return reply(ADMIN_CSS,200,'text/css; charset=utf-8');

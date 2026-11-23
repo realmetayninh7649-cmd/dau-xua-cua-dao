@@ -32,7 +32,8 @@ export const ADMIN_HTML=`<!doctype html>
 <button id="r2-managed-upload" type="button">Bảo tồn bản gốc vào R2</button></div>
 <p id="r2-managed-status" role="status" aria-live="polite">Chưa chọn tệp để lưu.</p>
 <div id="r2-managed-actions" hidden>
-<div class="controls"><button id="r2-managed-derivative" type="button">Tạo bản xem và bản in JPEG của ảnh</button></div>
+<div class="controls"><button id="r2-managed-derivative" type="button">Tạo bản xem và bản in JPEG của ảnh</button>
+<button id="r2-managed-pdf-pages" type="button">Tạo bản đọc PDF từng trang</button></div>
 <div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-public-confirm" type="checkbox"> Tôi đã kiểm tra hình ảnh và đồng ý công bố bản xem</label></div>
 <div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-download-confirm" type="checkbox"> Cho phép tải bản JPEG tối ưu (không phải bản gốc)</label>
 <button id="r2-managed-publish" type="button">Công bố bản xem</button></div>
@@ -298,7 +299,7 @@ $('r2-sandbox-refresh').addEventListener('click',sandboxR2Refresh);
 
 // Cloudflare Access R2 originals: use the already tested private R2 gateway.
 const managedBase='/api/v1/admin/r2/managed';
-let managedFile=null,managedAsset=null,managedPreviewReady=false;
+let managedFile=null,managedAsset=null,managedPreviewReady=false,managedPdfPageCount=0;
 function managedStatus(message){$('r2-managed-status').textContent=message}
 async function managedRequest(path,{method='GET',data=null,type='application/json'}={}){
  const h={};
@@ -313,7 +314,7 @@ async function managedUpload(){
  const file=$('r2-managed-file').files[0],button=$('r2-managed-upload');
  if(!file){managedStatus('Hãy chọn ảnh/PDF/Word cần lưu.');return}
  if(file.size<1||file.size>1024*1024*1024){managedStatus('Chỉ nhận tệp tối đa 1 GiB trong lần tải này.');return}
- button.disabled=true;managedFile=null;managedAsset=null;managedPreviewReady=false;
+ button.disabled=true;managedFile=null;managedAsset=null;managedPreviewReady=false;managedPdfPageCount=0;
  $('r2-managed-actions').hidden=true;
  try{
   let info;
@@ -347,6 +348,7 @@ async function managedUpload(){
   $('r2-managed-public-confirm').checked=false;$('r2-managed-download-confirm').checked=false;
   const isImage=file.type.startsWith('image/');
   $('r2-managed-derivative').disabled=!isImage;
+  $('r2-managed-pdf-pages').disabled=file.type!=='application/pdf';
   $('r2-managed-actions').hidden=false;
   managedStatus('Đã bảo tồn nguyên mẫu riêng tư ('+(file.size/1048576).toFixed(1)+
     ' MB). Mã R2: '+info.id+'. '+(isImage?'Tạo bản xem trước khi công bố.':'Tài liệu vẫn riêng tư; cần bản đọc PDF/DOCX từng trang.'));
@@ -400,6 +402,55 @@ async function managedDerivatives(){
  }catch(e){managedStatus('Chưa tạo xong bản xem: '+e.message)}
  finally{btn.disabled=false;URL.revokeObjectURL(src)}
 }
+async function managedPdfPages(){
+ if(!managedFile||!managedAsset||managedFile.type!=='application/pdf'){
+   managedStatus('Chức năng này chỉ dành cho PDF, không tác động DOCX gốc.');return
+ }
+ if(managedFile.size>45*1024*1024){
+   managedStatus('PDF trên 45 MB cần chia tài liệu thành tập nhỏ trước khi tạo bản đọc trên điện thoại.');return
+ }
+ const button=$('r2-managed-pdf-pages');button.disabled=true;
+ let pdf=null;
+ try{
+  managedStatus('Đang mở PDF bằng bộ đọc tài liệu trên máy, không gửi bản gốc đến CDN…');
+  const url='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.mjs';
+  const lib=await import(url);
+  lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.mjs';
+  const source=new Uint8Array(await managedFile.arrayBuffer());
+  pdf=await lib.getDocument({data:source}).promise;
+  if(!Number.isInteger(pdf.numPages)||pdf.numPages<1||pdf.numPages>120)
+    throw Error('Bản đọc chỉ hỗ trợ tối đa 120 trang mỗi tập.');
+  for(let n=1;n<=pdf.numPages;n++){
+   managedStatus('Đang tạo bản xem trang '+n+'/'+pdf.numPages+'…');
+   const page=await pdf.getPage(n);
+   const initial=page.getViewport({scale:1});
+   const scale=Math.min(2.2,1800/Math.max(initial.width,initial.height));
+   const viewport=page.getViewport({scale});
+   const canvas=document.createElement('canvas');
+   canvas.width=Math.max(1,Math.round(viewport.width));
+   canvas.height=Math.max(1,Math.round(viewport.height));
+   const ctx=canvas.getContext('2d',{alpha:false});
+   if(!ctx)throw Error('Thiết bị không tạo được ảnh trang');
+   await page.render({canvasContext:ctx,viewport}).promise;
+   let jpeg=await new Promise((resolve,reject)=>canvas.toBlob(
+     blob=>blob?resolve(blob):reject(Error('Không tạo được JPEG trang '+n)),
+     'image/jpeg',0.84));
+   if(jpeg.size>3*1024*1024)jpeg=await new Promise((resolve,reject)=>canvas.toBlob(
+     blob=>blob?resolve(blob):reject(Error('Không nén được trang '+n)),
+     'image/jpeg',0.65));
+   if(jpeg.size<32||jpeg.size>3*1024*1024)
+     throw Error('Trang '+n+' không đạt dung lượng bản xem');
+   await managedRequest('/v1/assets/'+managedAsset+'/page/'+n,
+     {method:'PUT',data:jpeg,type:'image/jpeg'});
+   canvas.width=0;canvas.height=0;
+   page.cleanup();
+  }
+  managedPdfPageCount=pdf.numPages;managedPreviewReady=true;
+  managedStatus('Đã lưu đủ '+pdf.numPages+' trang JPEG vào R2. Xin kiểm tra chất lượng rồi xác nhận công bố bản đọc.');
+ }catch(e){managedPdfPageCount=0;managedPreviewReady=false;
+   managedStatus('Chưa tạo xong bản đọc PDF: '+e.message)}
+ finally{button.disabled=false;try{await pdf?.destroy()}catch{}}
+}
 async function managedPublish(){
  const btn=$('r2-managed-publish');
  if(!managedAsset||!managedPreviewReady){managedStatus('Cần tạo bản xem hợp lệ trước khi công bố.');return}
@@ -407,9 +458,12 @@ async function managedPublish(){
  if(!confirm('Công bố ảnh xem tối ưu, không phải bản gốc R2?'))return;
  btn.disabled=true;
  try{
+  const isPdf=managedFile?.type==='application/pdf';
+  const payload=isPdf
+    ?{publish:true,pageCount:managedPdfPageCount,viewSource:'pdf'}
+    :{publish:true,allowDownload:$('r2-managed-download-confirm').checked};
   const out=await managedRequest('/v1/assets/'+managedAsset+'/publication',
-    {method:'POST',data:JSON.stringify({publish:true,
-      allowDownload:$('r2-managed-download-confirm').checked})});
+    {method:'POST',data:JSON.stringify(payload)});
   if(out.published!==true||out.originalPrivate!==true)throw Error('R2 chưa xác minh công bố');
   managedStatus('Đã công bố bản xem an toàn. Độc giả có thể mở từ trình đọc khi bài đã liên kết mã tài sản '+managedAsset+'.');
  }catch(e){managedStatus('Chưa công bố được bản xem: '+e.message)}
@@ -417,6 +471,7 @@ async function managedPublish(){
 }
 $('r2-managed-upload').addEventListener('click',managedUpload);
 $('r2-managed-derivative').addEventListener('click',managedDerivatives);
+$('r2-managed-pdf-pages').addEventListener('click',managedPdfPages);
 $('r2-managed-publish').addEventListener('click',managedPublish);
 
 sandboxR2Refresh();

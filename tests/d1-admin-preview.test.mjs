@@ -181,3 +181,11 @@ test('managed R2 production original flow is correctly exposed only in Access ad
  assert.ok(ADMIN_JS.includes("managedBase='/api/v1/admin/r2/managed'"));
  assert.ok(ADMIN_JS.includes('managedPreviewReady'));
 });
+
+test('PDF per-page reader is pinned and private-original-safe',()=>{
+ assert.doesNotThrow(()=>new Script(ADMIN_JS,{filename:'admin-pdf-uploader.js'}));
+ assert.ok(ADMIN_JS.includes('pdfjs-dist@4.10.38'));
+ assert.ok(ADMIN_JS.includes('managedPdfPages'));
+ assert.ok(ADMIN_JS.includes("viewSource:'pdf'"));
+ assert.ok(ADMIN_HTML.includes('id="r2-managed-pdf-pages"'));
+});
