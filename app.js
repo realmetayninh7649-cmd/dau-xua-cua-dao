@@ -1011,11 +1011,13 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     // Read-only emergency fallback: only use published records when all public API lists fail.
     // This keeps public archive texts available if the free-tier service is temporarily restricted.
     // Never use the fallback for authenticated administration or editorial writes.
-    if(errors.length===kinds.length&&!state.admin){
+    const restricted=results.some(r=>r.error && /(?:\b402\b|exceed_egress|exceed_cached_egress|restricted)/i.test(
+      [r.error.code,r.error.message,r.error.details].filter(Boolean).join(' ')));
+    if((errors.length===kinds.length||restricted)&&!state.admin){
       try{
-        const response=await fetch('./public-fallback.json?v=20261119-01',{cache:'no-store'});
-        if(!response.ok)throw Error('Không tải được bản sao công khai');
-        const backup=await response.json();
+        const backup=window.GDDPublicReadOnly
+          ? await window.GDDPublicReadOnly.load()
+          : await (await fetch('./public-fallback.json?v=20261123-recovery-01',{cache:'no-store'})).json();
         if(backup.source!=='public-published-read-only-backup'||
            !kinds.every(k=>Array.isArray(backup[k])&&backup[k].every(row=>row.published===true)))throw Error('Bản sao không hợp lệ');
         kinds.forEach(k=>{state.data[k]=backup[k]});
@@ -1024,7 +1026,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         state.usingFallback=true;
         const banner=$('#mode-banner');
         if(banner){
-          banner.textContent='CHẾ ĐỘ DỰ PHÒNG · Đang đọc bản sao tư liệu công khai. Dữ liệu mới và ảnh lưu trên Supabase có thể tạm thời chưa hiển thị.';
+          banner.textContent='CHẾ ĐỘ DỰ PHÒNG · Đang xem tư liệu công khai từ bản sao an toàn. Những cập nhật mới sẽ hiển thị sau khi kết nối Supabase phục hồi.';
           banner.hidden=false;
         }
         updateSubgroupFilter();render();syncHash();
