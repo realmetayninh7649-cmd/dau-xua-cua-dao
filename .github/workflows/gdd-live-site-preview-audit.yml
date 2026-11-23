@@ -1,0 +1,33 @@
+name: "GDD - E2E staging LIVE website desktop & iPhone, no production changes"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-live-site-preview-audit.yml"
+      - "tests/gdd-live-preview-browser-smoke.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Live real D1 public snapshot and deep link smoke in Chrome desktop/iPhone"
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright-core@1.56.1
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/gdd-live-preview-browser-smoke.mjs
+      - name: "Temporary PUBLIC-site browser screenshots (no private admin content)"
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-site-staging-e2e-public
+          path: /tmp/gdd-public-site-smoke/*.png
+          if-no-files-found: error
+          retention-days: 1
