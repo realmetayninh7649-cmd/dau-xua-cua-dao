@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/gdd-access-admin-staging.yml"
       - "workers/gdd-d1-admin/src/**"
+      - "tests/d1-working-code-assignment.test.mjs"
       - "workers/gdd-d1-admin/wrangler.jsonc"
       - "workers/gdd-d1/source-row-counts-20261123.json"
       - "tests/d1-admin-preview.test.mjs"
@@ -37,6 +38,7 @@ jobs:
           node --check workers/gdd-d1-admin/src/editor-sandbox.mjs
           node --check workers/gdd-d1-admin/src/r2-sandbox.mjs
           node --check workers/gdd-d1-admin/src/working-editor.mjs
+          node --check workers/gdd-d1-admin/src/working-codes.mjs
           node --check workers/gdd-d1-admin/src/r2-managed.mjs
           node --check workers/gdd-d1-admin/src/admin-ui.mjs
           python3 - <<'PY'
@@ -78,6 +80,11 @@ jobs:
           assert "if(env.ENABLE_WORKING_EDITOR!=='enabled')" in js
           working=(root/'src/working-editor.mjs').read_text()
           assert 'gdd_v2_editor_revisions' in working and 'gdd_version=gdd_version+1' in working
+          allocator=(root/'src/working-codes.mjs').read_text()
+          assert 'archive_code IS NULL' in allocator
+          assert 'NOT EXISTS(SELECT 1' in allocator
+          assert 'confirmed!==true' in allocator
+          assert 'gdd_version=gdd_version+1' in allocator
           assert 'DELETE FROM' not in working
           assert len(cfg['d1_databases'])==2
           assert cfg['d1_databases'][1]=={
@@ -113,7 +120,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs tests/d1-r2-managed.test.mjs tests/d1-admin-inbox.test.mjs
+          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs tests/d1-r2-managed.test.mjs tests/d1-admin-inbox.test.mjs tests/d1-working-code-assignment.test.mjs
           echo "D1_ADMIN_UNIT_TESTS=PASS"
       - name: "Deploy ONLY isolated Access-protected admin worker"
         env:

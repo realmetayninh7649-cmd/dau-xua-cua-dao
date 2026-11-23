@@ -31,6 +31,11 @@ export const ADMIN_HTML=`<!doctype html>
 <ul class="records" id="work-list"></ul>
 <div class="pagination"><button id="work-prev" type="button">Trang trước</button><span id="work-page">Trang 1</span><button id="work-next" type="button">Trang sau</button></div>
 <div id="work-edit-area" hidden><h3 id="work-edit-heading">Chi tiết</h3><p id="work-identity" class="audit-caution"></p>
+<div id="work-code-area" class="audit-caution" hidden>
+<p id="work-code-preview">Mã định danh sẽ được xác định sau khi lưu bản nháp và thông tin phân loại.</p>
+<div class="controls"><label class="sandbox-checkbox"><input id="work-code-confirm" type="checkbox"> Tôi đã đối chiếu Cơ quan, Phẩm vị và xác nhận mã định danh</label>
+<button id="work-code-assign" type="button" disabled>Cấp mã cho bản nháp</button></div>
+</div>
 <div class="sandbox-form" id="work-fields"></div>
 <div class="controls"><button id="work-save" type="button">Lưu thay đổi</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div>
 <h3>Lịch sử chỉnh sửa và phục hồi</h3><ul class="records" id="work-revisions"></ul>
@@ -624,7 +629,7 @@ const workLabels={
 let workOffset=0,workCurrent=null,workFieldInputs=new Map();
 const workRoot='/api/v1/admin/work/';
 function workStatus(message){$('work-status').textContent=message;}
-function workClose(){workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();}
+function workClose(){workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
 async function workList(){
  const kind=$('work-kind').value;
  try{
@@ -656,6 +661,7 @@ function workBuild(kind,record){
    input.type='checkbox';
    input.checked=record?Boolean(record[field]):false;
    if(!record&&field==='published')input.disabled=true;
+   if(record&&field==='published'&&workCanonicalKinds.has(kind)&&!record.archive_code)input.disabled=true;
   }else if(workNums.has(field)){
    input.type='number';input.min='0';
    input.value=record?.[field]??'';
@@ -687,6 +693,49 @@ function workChanged(){
  }
  return changes;
 }
+const workCanonicalKinds=new Set(['people','posts','media','videos','obituaries','documents']);
+let workCodeCandidate=null;
+async function workCodePreview(){
+ const panel=$('work-code-area');
+ const record=workCurrent?.record;
+ workCodeCandidate=null;$('work-code-confirm').checked=false;$('work-code-assign').disabled=true;
+ if(!record||record.archive_code||!workCanonicalKinds.has(workCurrent.kind)){
+   panel.hidden=true;return;
+ }
+ panel.hidden=false;
+ $('work-code-preview').textContent='Đang kiểm tra nhóm mã và số tiếp theo trên D1…';
+ try{
+  const result=await api(workRoot+workCurrent.kind+'/'+record.id+'/code-preview');
+  if(!result?.requires_confirmation||!result?.candidate)throw Error('Không thể xác định nhóm mã');
+  workCodeCandidate={code:result.candidate,version:result.version};
+  $('work-code-preview').textContent='Mã dự kiến: '+result.candidate+' · '+result.classification+
+    ' · đường dẫn '+result.slug+
+    (result.needs_special_review?' · Nhóm đặc biệt: phải đối chiếu kỹ Cơ quan và Phẩm vị.':'')+
+    '. Cần lưu mọi thông tin phân loại trước khi bấm cấp mã.';
+ }catch(e){
+  $('work-code-preview').textContent='Chưa thể cấp mã: '+e.message+
+    '. Hãy nhập đủ thông tin phân loại, lưu bản nháp rồi thử lại.';
+ }
+}
+async function workAssignCode(){
+ const record=workCurrent?.record,kind=workCurrent?.kind;
+ if(!record||!workCodeCandidate||!$('work-code-confirm').checked)return;
+ if(!confirm('Xác nhận cấp MÃ ĐỊNH DANH '+workCodeCandidate.code+
+   ' cho bản nháp này? Mã đã cấp sẽ được giữ nguyên và ghi lịch sử.'))return;
+ const btn=$('work-code-assign');btn.disabled=true;
+ try{
+  const result=await workWrite(workRoot+kind+'/'+record.id+'/assign-code','POST',
+   {code:workCodeCandidate.code,version:workCodeCandidate.version,confirmed:true});
+  if(!result.assigned||result.code!==workCodeCandidate.code)throw Error('Chưa xác nhận cấp mã');
+  workStatus('Đã cấp mã '+result.code+' và lưu lịch sử phiên bản. Có thể tiếp tục công bố.');
+  await workOpen(kind,record.id);await workList();
+ }catch(e){workStatus('Chưa cấp được mã: '+e.message);await workCodePreview()}
+ finally{btn.disabled=false}
+}
+$('work-code-confirm').addEventListener('change',()=>{
+ $('work-code-assign').disabled=!$('work-code-confirm').checked||!workCodeCandidate;
+});
+$('work-code-assign').addEventListener('click',workAssignCode);
 async function workOpen(kind,id){
  workClose();
  try{
@@ -699,7 +748,7 @@ async function workOpen(kind,id){
   $('work-identity').textContent='Mã định danh: '+(record.archive_code||'Chưa có mã')+
    ' · phiên bản '+record.gdd_version+' · trạng thái '+(record.published?'Công bố':'Nháp');
   $('work-edit-area').hidden=false;
-  await workHistory();
+  await Promise.all([workHistory(),workCodePreview()]);
  }catch(e){workStatus('Không đọc được chi tiết: '+e.message)}
 }
 async function workNew(){
@@ -707,6 +756,7 @@ async function workNew(){
  workCurrent={kind,id:null,record:null};
  workBuild(kind,null);
  $('work-edit-heading').textContent='Tạo bản nháp '+(names[kind]||kind);
+ $('work-code-area').hidden=true;workCodeCandidate=null;
  $('work-identity').textContent='Bản nháp mới chưa được cấp mã hồ sơ. Chỉ người quản trị xem được.';
  $('work-edit-area').hidden=false;
  workStatus('Đang chuẩn bị bản nháp mới trên D1 làm việc.');

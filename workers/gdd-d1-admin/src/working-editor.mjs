@@ -2,6 +2,7 @@
  * All writes target the separated working DB. No DELETE, no R2 original writes.
  * Nine allowed content groups, version-lock on every update, and D1 audit triggers.
  */
+import {handleWorkingCode} from './working-codes.mjs';
 const ROOT='/api/v1/admin/work';
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const REVISION=/^[a-f0-9]{32}$/i;
@@ -125,6 +126,9 @@ export async function handleWorkingEditor(request,db,path){
    if(parts.length===2&&request.method==='GET'){
      const row=await db.prepare('SELECT * FROM "'+kind+'" WHERE id=? LIMIT 1').bind(id).first();
      return response(row?{data:row}:{error:'not_found'},row?200:404);
+   }
+   if(parts.length===3&&(parts[2]==='code-preview'||parts[2]==='assign-code')){
+     return handleWorkingCode(request,db,kind,id,parts[2]);
    }
    if(parts.length===3&&parts[2]==='history'){
      if(request.method!=='GET')return response({error:'method_not_allowed'},405);
