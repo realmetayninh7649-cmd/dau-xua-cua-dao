@@ -1,0 +1,50 @@
+name: "GDD PUBLIC - audit live domain after reopening"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-live-public-reopen-audit.yml"
+      - "tests/gdd-live-public-reopen-smoke.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Wait for GitHub Pages domain to publish D1 site rather than maintenance page"
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request,urllib.error,time
+          url='https://dauxuacuadao.info.vn/?gdd_production_audit=20261124'
+          for i in range(36):
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url,headers={'Cache-Control':'no-cache','User-Agent':'GDD-Public-D1-Audit'}),timeout=20) as r:
+                      content=r.read(250000)
+                  if b'gdd-public-readonly.js' in content and b'app.js' in content and b'public-fallback.json' not in content[:1000]:
+                      print('PRODUCTION_D1_HTML_PUBLISHED=TRUE')
+                      break
+              except (urllib.error.URLError,TimeoutError):
+                  pass
+              time.sleep(5)
+          else:raise SystemExit('Production Pages still maintenance or unreachable')
+          PY
+      - name: "Browse real production pages and D1 data on desktop and iPhone"
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright-core@1.56.1
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/gdd-live-public-reopen-smoke.mjs
+      - name: "Retain public-only audit screenshots for 1 day"
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-public-reopened-d1-audit
+          path: /tmp/gdd-production-site-smoke/*.png
+          retention-days: 1
+          if-no-files-found: error
