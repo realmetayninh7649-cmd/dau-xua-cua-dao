@@ -1,4 +1,4 @@
-name: "GDD Access - Quan tri D1 thu nghiem CHI DOC"
+name: "GDD Access - Quan tri D1/R2 + hop thu rieng tu"
 on:
   push:
     branches: [cloudflare-d1-migration-20261123]
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: "An toan: D1 phuc hoi + R2 chi kiem ke, khong dong Supabase"
+      - name: "An toan: D1 lam viec va R2 Access, bao ve hop thu dong gop"
         shell: bash
         run: |
           set -euo pipefail
@@ -48,8 +48,13 @@ jobs:
           assert cfg['preview_urls'] is False
           assert cfg['workers_dev'] is True
           assert cfg.get('r2_buckets')==[{'binding':'GDD_BUCKET','bucket_name':'gdd-dau-xua-cua-dao'}]
-          for banned in ('GDD_BUCKET.put(', 'GDD_BUCKET.delete(', 'GDD_BUCKET.get(', 'GDD_BUCKET.createMultipartUpload(', 'GDD_BUCKET.resumeMultipartUpload('):
+          for banned in ('GDD_BUCKET.put(', 'GDD_BUCKET.delete(', 'GDD_BUCKET.createMultipartUpload(', 'GDD_BUCKET.resumeMultipartUpload('):
               assert banned not in js, banned
+          # Private GET for reviewed staff: only a UUID-matched contributions/pending object.
+          assert js.count('env.GDD_BUCKET.get(')==1
+          assert "const prefix='contributions/pending/'+id+'/'" in js
+          assert "if(!await isAdministrator(env,ctx))" in js
+          assert "attachment; filename=" in js
           assert "if(request.method!=='GET')" in js
           assert 'r2Inventory(env)' in js
           upload=(root/'src/r2-sandbox.mjs').read_text()
