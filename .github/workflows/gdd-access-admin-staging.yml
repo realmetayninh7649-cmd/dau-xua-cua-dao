@@ -63,8 +63,8 @@ jobs:
           assert 'handleEditorSandbox(request,env.DB' not in js
           assert 'DELETE FROM' not in editor
           assert cfg['d1_databases'][0]['binding']=='DB'
-          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-restore-full-20261123'
-          assert cfg['d1_databases'][0]['database_id']=='ddce6b9f-90e1-488f-bf9b-5ddf5d170346'
+          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-editor-live-clone-20261124'
+          assert cfg['d1_databases'][0]['database_id']=='56bf9fcc-3f9a-43e5-82f7-8c521f5b370a'
           assert re.fullmatch('[a-f0-9]{64}',cfg['vars']['ACCESS_AUD'])
           assert re.fullmatch('[a-f0-9]{64}',cfg['vars']['ADMIN_EMAIL_SHA256'])
           assert 'ctx.access.aud!==env.ACCESS_AUD' in js

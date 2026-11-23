@@ -31,10 +31,10 @@ jobs:
           assert edit['database_id']=='cf3f0c4e-6cdd-4360-b421-03c87717c688'
           d=c['d1_databases'][0]
           assert d['binding']=='DB'
-          assert d['database_name']=='gdd-dao-su-restore-full-20261123'
-          assert d['database_id']=='ddce6b9f-90e1-488f-bf9b-5ddf5d170346'
+          assert d['database_name']=='gdd-dao-su-editor-live-clone-20261124'
+          assert d['database_id']=='56bf9fcc-3f9a-43e5-82f7-8c521f5b370a'
           assert d['database_id']!='bffcd3e0-e46e-4280-b8dd-82e8d3402b3d'
-          print('ISOLATED_RESTORATION_D1_BINDING=PASS')
+          print('ISOLATED_WORKING_D1_BINDING=PASS')
           PY
       - name: "Doi chieu truc tiep D1 21 bang, ban nhap khong cong khai, chi SELECT COUNT"
         env:
@@ -85,7 +85,7 @@ jobs:
               published_total+=actual
           assert published_total==118
           assert count('SELECT COUNT(*) AS n FROM "people" WHERE published=0')==2
-          print('D1_PRIVATE_RESTORATION_21_TABLES_1892_ROWS=PASS')
+          print('D1_WORKING_PRIVATE_21_TABLES_1892_ROWS=PASS')
           print('D1_PUBLISHED_118_ROWS_AND_2_PRIVATE_PEOPLE_RECORDS=PASS')
           print('ONLY_AGGREGATE_SELECT_COUNT_NO_SOURCE_MUTATION=TRUE')
           PY

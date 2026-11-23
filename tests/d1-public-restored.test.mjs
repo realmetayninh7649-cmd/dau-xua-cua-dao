@@ -4,7 +4,7 @@ import worker from '../workers/gdd-d1/src/worker.mjs';
 import {readFileSync} from 'node:fs';
 
 const config=JSON.parse(readFileSync('workers/gdd-d1/wrangler.jsonc','utf8'));
-assert.equal(config.d1_databases[0].database_name,'gdd-dao-su-restore-full-20261123');
+assert.equal(config.d1_databases[0].database_name,'gdd-dao-su-editor-live-clone-20261124');
 const published=Array.from({length:50},(_,i)=>({
  id:String(i+1).padStart(8,'0')+'-0000-4000-8000-000000000001',
  slug:'ho-so-cong-khai-'+i,full_name:'Hồ sơ công khai '+i,published:1,verified:1

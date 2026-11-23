@@ -32,8 +32,8 @@ jobs:
           assert cfg['name']=='gdd-d1-api-staging'
           assert cfg['workers_dev'] is True
           assert cfg['d1_databases'][0]['binding']=='DB'
-          assert cfg['d1_databases'][0]['database_id']=='ddce6b9f-90e1-488f-bf9b-5ddf5d170346'
-          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-restore-full-20261123'
+          assert cfg['d1_databases'][0]['database_id']=='56bf9fcc-3f9a-43e5-82f7-8c521f5b370a'
+          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-editor-live-clone-20261124'
           assert not cfg.get('r2_buckets')
           assert cfg.get('preview_urls') is False
           js=(root/'src/worker.mjs').read_text()
