@@ -4,6 +4,8 @@ on:
     branches: [cloudflare-d1-migration-20261123]
     paths:
       - ".github/workflows/gdd-d1-working-encrypted-export.yml"
+  schedule:
+    - cron: "30 0 * * *"
   workflow_dispatch:
 permissions:
   contents: read
@@ -67,10 +69,10 @@ jobs:
              echo "D1_RECIPIENT_INVALID";exit 1
           fi
           gpg --batch --yes --quiet --trust-model always --recipient "$fingerprint" \
-            --output /tmp/GDD-D1-LAM-VIEC-24-11-2026-MA-HOA.sql.gpg \
+            --output /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg \
             --encrypt /tmp/gdd-working-private.sql
-          test -s /tmp/GDD-D1-LAM-VIEC-24-11-2026-MA-HOA.sql.gpg
-          if grep -a -q 'CREATE TABLE.*people' /tmp/GDD-D1-LAM-VIEC-24-11-2026-MA-HOA.sql.gpg; then
+          test -s /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg
+          if grep -a -q 'CREATE TABLE.*people' /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg; then
              echo "ENCRYPTED_CONTENT_MARKER_FOUND";exit 1
           fi
           echo "ACTIVE_D1_OPENPGP_ENCRYPTED_NO_PLAINTEXT_ARTIFACT=TRUE"
@@ -78,13 +80,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gdd-d1-working-encrypted-${{ github.run_id }}
-          path: /tmp/GDD-D1-LAM-VIEC-24-11-2026-MA-HOA.sql.gpg
+          path: /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 7
       - name: "Erase temporary SQL and private encryption workspace, even after failed steps"
         if: always()
         run: |
           rm -f /tmp/gdd-working-private.sql /tmp/gdd-working-export-internal.log /tmp/gdd-d1-archive-recipient.asc
           find /tmp -maxdepth 1 -type d -name 'gdd-d1-encrypt-gpg.*' -exec rm -rf {} +
-          rm -f /tmp/GDD-D1-LAM-VIEC-24-11-2026-MA-HOA.sql.gpg
+          rm -f /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg
           echo "ACTIVE_D1_PLAINTEXT_AND_TEMP_FILES_ERASED=TRUE"
