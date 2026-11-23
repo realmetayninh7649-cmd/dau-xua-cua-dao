@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import worker from '../workers/gdd-d1-admin/src/worker.mjs';
@@ -165,7 +166,7 @@ test('R2 inventory refuses a truncated or repeated cursor, never gives partial s
 });
 
 test('full Access administrator client bundle syntax and editorial controls are valid',()=>{
- assert.doesNotThrow(()=>new Function(ADMIN_JS),'Admin inline JS must parse, not only the outer template module');
+ assert.doesNotThrow(()=>new Script(ADMIN_JS,{filename:'gdd-access-admin-client.js'}),'Admin inline JS must parse, not only the outer template module');
  for(const id of ['work-editor-panel','work-fields','work-save','work-kind','work-revisions','r2-sandbox-upload'])
   assert.ok(ADMIN_HTML.includes('id="'+id+'"'),id+' missing from admin HTML');
  assert.ok(ADMIN_JS.includes('gdd_version'));
@@ -173,7 +174,7 @@ test('full Access administrator client bundle syntax and editorial controls are 
 });
 
 test('managed R2 production original flow is correctly exposed only in Access admin UI',()=>{
- assert.doesNotThrow(()=>new Function(ADMIN_JS));
+ assert.doesNotThrow(()=>new Script(ADMIN_JS,{filename:'gdd-access-admin-client.js'}));
  for(const id of ['r2-managed-panel','r2-managed-upload','r2-managed-derivative','r2-managed-publish'])
   assert.ok(ADMIN_HTML.includes('id="'+id+'"'),id+' not found');
  assert.ok(ADMIN_JS.includes("managedBase='/api/v1/admin/r2/managed'"));
