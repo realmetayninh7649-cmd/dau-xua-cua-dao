@@ -35,6 +35,20 @@ Không nâng Supabase lên gói trả phí; không xóa Supabase/R2, không sử
 9. Chỉ khi tất cả kiểm thử đạt mới đổi frontend sang API D1, tắt bảo trì, theo dõi Free quota.
    Giữ nguyên dự án Supabase như bản dự phòng trong thời gian kiểm chứng.
 
+## Kết nối Cloudflare D1 (bước chủ tài khoản cần thực hiện)
+
+Lần kiểm tra Cloudflare đầu tiên bằng token Worker/R2 cũ trả về **HTTP 401**,
+vì vậy D1 CHƯA được tạo hoặc triển khai; token cũ vẫn dành riêng cho R2.
+
+- Trên Cloudflare Dashboard: **My Profile → API Tokens → Create Token → Custom Token**.
+- Chọn **Account → D1 → Edit** và giới hạn tới đúng tài khoản đang dùng R2.
+- Trên GitHub repository: **Settings → Secrets and variables → Actions → New repository secret**,
+  đặt tên chính xác `CLOUDFLARE_D1_API_TOKEN`; dán token vào ô Secret tại GitHub,
+  **không gửi vào ChatGPT, không lưu trong commit hoặc README**.
+- Sau khi GitHub có secret mới, chạy lại workflow `GDD Cloudflare D1 - Kiem tra quyen chi doc`
+  ở nhánh staging. Việc kiểm tra chỉ GET danh sách D1, tuyệt đối chưa tạo hoặc thay đổi tài nguyên.
+- Giữ nguyên `CLOUDFLARE_API_TOKEN` hiện có để R2 gateway tiếp tục an toàn.
+
 ## Yêu cầu an toàn
 
 - Tài khoản GitHub này là **public**. Không đưa khóa API, secret, email độc giả, tệp gốc,
