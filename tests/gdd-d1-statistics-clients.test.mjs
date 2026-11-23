@@ -21,5 +21,5 @@ test('download total reads D1 historical metrics and only records real clicks',(
 test('per-record downloads/views use D1 with unique event keys',()=>{
  assert.ok(source.content.includes("if(window.SITE_CONFIG?.publicReadProvider==='d1-staging')"));
  assert.ok(source.content.includes("api/v1/stats/content"));
- assert.ok(source.content.includes("p_event_type:type")==false);
+ assert.ok(source.content.includes("body:JSON.stringify({kind,record_id:id,event_type:type,event_key:key})"));
 });
