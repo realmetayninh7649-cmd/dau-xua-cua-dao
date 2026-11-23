@@ -1,0 +1,210 @@
+name: "GDD STAGING - Phuc hoi du lieu day du vao D1 RIENG"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: [".github/workflows/gdd-d1-full-restore-test.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  verify-encrypted-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CIPHER_SOURCE_URL: "https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-8420-8206-950d-3273cce37632/raw?se=2026-11-23T16%3A58%3A58Z&sp=r&sv=2026-06-06&sr=b&scid=d41bc142-fb31-5b86-ba8f-26c74090b6f9&skoid=3e273c3d-5ea1-4088-9e18-79685531b184&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-11-23T01%3A41%3A15Z&ske=2026-11-24T01%3A41%3A15Z&sks=b&skv=2026-06-06&sig=k8ouWB/vsPQTxFbQrbcDjFcPzI0be/PrdMiZdh3o3r4%3D"
+      EXPECTED_CIPHER_SHA256: "144cfb6b1f8b8bc5ec8fa8dc618913e0d622f3b7d84f4f835d8ada91d284216f"
+      EXPECTED_PLAIN_SHA256: "efb51d4e5d4a8e306b571253c39986f6d3edb590bc6f2eff184802d9bc026817"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Protect temporary ciphertext transport URL in logs"
+        shell: bash
+        run: echo "::add-mask::$CIPHER_SOURCE_URL"
+      - name: "Get PGP decryption key privately, recover JSON, verify source checksum"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install boto3==1.40.61 --quiet
+          python3 - <<'PY'
+          import os,base64,re,hashlib,json,pathlib,subprocess,urllib.request,tempfile
+          import boto3
+          from botocore.config import Config
+          u=os.getenv('CIPHER_SOURCE_URL','')
+          if not u.startswith('https://') or len(u)>2500:raise SystemExit('Encrypted document link invalid')
+          req=urllib.request.Request(u,headers={'User-Agent':'GDD-PGP-Restore-ReadOnly/1.0'})
+          with urllib.request.urlopen(req,timeout=45) as response:
+              text=response.read(2000000).decode('utf-8')
+          match=re.search(r'BEGIN_CIPHERTEXT_BASE64\s+([a-zA-Z0-9+/=\s]+)\s+END_CIPHERTEXT_BASE64',text)
+          if not match:raise SystemExit('Encrypted PGP payload missing')
+          encoded=re.sub(r'\s','',match.group(1))
+          cipher=base64.b64decode(encoded,validate=True)
+          if len(cipher)!=648268 or hashlib.sha256(cipher).hexdigest()!=os.environ['EXPECTED_CIPHER_SHA256']:
+              raise SystemExit('Encrypted Google Drive backup does not match SHA256')
+          aid=os.environ.get('CLOUDFLARE_ACCOUNT_ID','')
+          access=os.environ.get('GDD_R2_ARCHIVE_ACCESS_KEY_ID','')
+          secret=os.environ.get('GDD_R2_ARCHIVE_SECRET_ACCESS_KEY','')
+          if not re.fullmatch('[a-fA-F0-9]{32}',aid) or not re.fullmatch('[a-fA-F0-9]{32}',access) or len(secret)<15:
+              raise SystemExit('Missing R2 private recovery key access')
+          s3=boto3.client('s3',endpoint_url='https://'+aid+'.r2.cloudflarestorage.com',
+              aws_access_key_id=access,aws_secret_access_key=secret,region_name='auto',
+              config=Config(signature_version='s3v4',s3={'addressing_style':'path'},
+                request_checksum_calculation='when_required',response_checksum_validation='when_required'))
+          obj=s3.get_object(Bucket='gdd-dau-xua-cua-dao',Key='__gdd_internal__/unlisted-manifest-private-key-v2.asc')
+          key=obj['Body'].read(50000);obj['Body'].close()
+          if not 1000<len(key)<45000 or not key.startswith(b'-----BEGIN PGP PRIVATE KEY BLOCK-----'):
+              raise SystemExit('GPG recovery key invalid')
+          home=pathlib.Path('/tmp/gdd-pgp-restore-home');home.mkdir(mode=0o700)
+          env={**os.environ,'GNUPGHOME':str(home)}
+          subprocess.run(['gpg','--batch','--quiet','--import'],input=key,env=env,
+              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True,timeout=25)
+          key=b''
+          pathlib.Path('/tmp/gdd-source-encrypted.gpg').write_bytes(cipher)
+          subprocess.run(['gpg','--batch','--quiet','--yes','--pinentry-mode','loopback',
+              '--decrypt','--output','/tmp/gdd-source-private.json','/tmp/gdd-source-encrypted.gpg'],
+              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=env,check=True,timeout=60)
+          data=pathlib.Path('/tmp/gdd-source-private.json').read_bytes()
+          if len(data)!=2508499 or hashlib.sha256(data).hexdigest()!=os.environ['EXPECTED_PLAIN_SHA256']:
+              raise SystemExit('Decrypted source database SHA256 mismatch')
+          source=json.loads(data)
+          mf=json.loads(pathlib.Path('workers/gdd-d1/source-schema-manifest.json').read_text())
+          baseline=json.loads(pathlib.Path('workers/gdd-d1/source-row-counts-20261123.json').read_text())
+          if set(source['tables'])!=set(mf['tables']):raise SystemExit('21-table source schema mismatch')
+          for name,expected in baseline['table_counts'].items():
+              if len(source['tables'][name])!=expected:raise SystemExit('Unexpected table count: '+name)
+          print('GDD_ENCRYPTED_SOURCE_BACKUP_FULLY_DECRYPTED_AND_VERIFIED=TRUE')
+          print('GDD_SUPABASE_ALL_21_TABLES=1892_ROWS')
+          print('NO_PLAINTEXT_LOGGED_AND_NO_SOURCE_MUTATION=TRUE')
+          PY
+      - name: "Build complete 21-table D1 SQL import offline in private runner"
+        shell: bash
+        run: |
+          set -euo pipefail
+          node workers/gdd-d1/scripts/build-d1-import.mjs             --input /tmp/gdd-source-private.json             --output /tmp/gdd-private-restore.sql             --confirm-private-offline > /tmp/gdd-restore-checks.json
+          python3 - <<'PY'
+          import json,sqlite3,pathlib
+          report=json.load(open('/tmp/gdd-restore-checks.json'))
+          if report.get('tables')!=21 or report.get('rows')!=1892:
+              raise SystemExit('Private import row count mismatch')
+          db=sqlite3.connect(':memory:')
+          db.executescript(pathlib.Path('workers/gdd-d1/migrations/0001_supabase_21_tables.sql').read_text())
+          db.executescript(pathlib.Path('/tmp/gdd-private-restore.sql').read_text())
+          expected=json.load(open('workers/gdd-d1/source-row-counts-20261123.json'))['table_counts']
+          for name,n in expected.items():
+              actual=db.execute('SELECT COUNT(*) FROM "'+name+'"').fetchone()[0]
+              if actual!=n:raise SystemExit('SQLite private recovery mismatch: '+name)
+          print('D1_FULL_21_TABLE_PRIVATE_RESTORE_LOCAL_TEST=PASS')
+          print('D1_FULL_RECORD_COUNT=1892')
+          PY
+      - name: "Create a separate Free-tier D1 restoration test database after local full restore passes"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib,re,urllib.request,urllib.error
+          token=os.getenv('CLOUDFLARE_D1_API_TOKEN','')
+          account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          if len(token)<15 or not re.fullmatch('[0-9a-fA-F]{32}',account):
+              raise SystemExit('D1 token and account missing')
+          base='https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database'
+          headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'}
+          name='gdd-dao-su-restore-full-20261123'
+          req=urllib.request.Request(base+'?per_page=100',headers=headers)
+          try:
+              with urllib.request.urlopen(req,timeout=25) as resp:existing=json.load(resp)
+          except urllib.error.HTTPError as e:
+              raise SystemExit('D1 Free preflight list failed HTTP '+str(e.code)) from None
+          if existing.get('success') is not True or not isinstance(existing.get('result'),list):
+              raise SystemExit('Cannot verify existing D1 database count; refuse new resource')
+          all_db=existing['result']
+          if any(x.get('name')==name for x in all_db):
+              raise SystemExit('Restoration clone name already exists; refuse overwrite')
+          if len(all_db)>=10:
+              raise SystemExit('Cloudflare Free D1 limit reached (10 DB); refuse creation')
+          if len(all_db)<1 or not any(x.get('name')=='gdd-dao-su-archive' for x in all_db):
+              raise SystemExit('Expected source staging D1 missing; refuse creation')
+          req=urllib.request.Request(base,data=json.dumps({'name':name}).encode(),
+              headers=headers,method='POST')
+          try:
+              with urllib.request.urlopen(req,timeout=30) as resp:new=json.load(resp)
+          except urllib.error.HTTPError as e:
+              raise SystemExit('D1 Free restore DB creation blocked HTTP '+str(e.code)) from None
+          if new.get('success') is not True:
+              raise SystemExit('D1 backup clone creation rejected')
+          obj=new.get('result') or {}
+          uid=obj.get('uuid') or obj.get('id')
+          if not re.fullmatch('[0-9a-fA-F-]{36}',str(uid)):
+              raise SystemExit('Restore database UUID missing, refuse import')
+          pathlib.Path('/tmp/gdd-restore-target.json').write_text(json.dumps({'name':name,'uuid':uid}))
+          # Only temporary Wrangler config in Action runner; never deploy it as a Worker.
+          cfg={'name':'gdd-temp-db-restore','compatibility_date':'2026-11-23',
+               'd1_databases':[{'binding':'DB','database_name':name,'database_id':uid}]}
+          pathlib.Path('workers/gdd-d1/wrangler-restore-runtime.jsonc').write_text(json.dumps(cfg))
+          print('RESTORE_DB_CREATED_ON_CLOUDFLARE_FREE=TRUE')
+          print('RESTORE_DB_NAME='+name)
+          print('RESTORE_DB_UUID='+uid)
+          PY
+      - name: "Apply exact 21-table schema and full import to new restoration D1 ONLY"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/gdd-restore-target.json
+          test -s /tmp/gdd-private-restore.sql
+          config=workers/gdd-d1/wrangler-restore-runtime.jsonc
+          name=gdd-dao-su-restore-full-20261123
+          npx --yes wrangler@4.159.0 d1 execute "$name" --remote --yes --config "$config" --file=workers/gdd-d1/migrations/0001_supabase_21_tables.sql >/tmp/gdd-schema-remote.log 2>&1 || { echo 'D1_RESTORE_SCHEMA_FAILED_SAFE_NO_PLAINTEXT_LOGS'; exit 1; }
+          echo "D1_NEW_RESTORE_SCHEMA_READY=TRUE"
+          npx --yes wrangler@4.159.0 d1 execute "$name" --remote --yes --config "$config" --file=/tmp/gdd-private-restore.sql >/tmp/gdd-import-remote.log 2>&1 || { echo 'D1_RESTORE_PRIVATE_IMPORT_FAILED_SAFE_NO_PLAINTEXT_LOGS'; exit 1; }
+          echo "D1_NEW_RESTORE_PRIVATE_IMPORT_COMPLETED=TRUE"
+      - name: "Verify 21 private and public table record counts through fixed SELECTs"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib,urllib.request,urllib.error
+          db=json.loads(pathlib.Path('/tmp/gdd-restore-target.json').read_text())
+          base='https://api.cloudflare.com/client/v4/accounts/'+os.environ['CLOUDFLARE_ACCOUNT_ID']+'/d1/database/'+db['uuid']+'/query'
+          token=os.environ['CLOUDFLARE_D1_API_TOKEN']
+          counts=json.load(open('workers/gdd-d1/source-row-counts-20261123.json'))['table_counts']
+          total=0
+          for name,expected in sorted(counts.items()):
+              req=urllib.request.Request(base,data=json.dumps({'sql':'SELECT COUNT(*) AS n FROM "'+name+'"'}).encode(),
+                  method='POST',headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as response:data=json.load(response)
+              except urllib.error.HTTPError as e:
+                  raise SystemExit('D1 post-restore SELECT failed in '+name+' HTTP '+str(e.code)) from None
+              if data.get('success') is not True:raise SystemExit('D1 validation failed for '+name)
+              n=data['result'][0]['results'][0]['n']
+              if n!=expected:raise SystemExit('Restore count mismatch in '+name)
+              total+=n
+          if len(counts)!=21 or total!=1892:raise SystemExit('Restoration total incorrect')
+          print('D1_FULL_RESTORE_VERIFIED_21_TABLES=TRUE')
+          print('D1_FULL_RESTORE_VERIFIED_RECORDS=1892')
+          print('NO_PUBLIC_WORKER_OR_ORIGINAL_D1_CHANGED=TRUE')
+          PY
+      - name: "Erase all decrypted temporary data"
+        if: always()
+        shell: bash
+        run: |
+          rm -rf /tmp/gdd-source-private.json /tmp/gdd-private-restore.sql /tmp/gdd-source-encrypted.gpg /tmp/gdd-pgp-restore-home /tmp/gdd-restore-checks.json
+          echo "LOCAL_PRIVATE_RESTORE_FILES_CLEARED=TRUE"
