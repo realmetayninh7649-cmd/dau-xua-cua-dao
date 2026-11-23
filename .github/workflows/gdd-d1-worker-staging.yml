@@ -1,4 +1,4 @@
-name: "GDD D1 - Trien khai Worker thu nghiem CHI DOC"
+name: "GDD D1 - Public archive and visitor statistics"
 on:
   push:
     branches: [cloudflare-d1-migration-20261123]
@@ -9,6 +9,8 @@ on:
       - "workers/gdd-d1/src/public-contributions.mjs"
       - "tests/d1-public-contributions.test.mjs"
       - "tests/d1-public-restored.test.mjs"
+      - "workers/gdd-d1/src/public-statistics.mjs"
+      - "tests/d1-public-statistics.test.mjs"
   workflow_dispatch:
 
 permissions:
@@ -28,6 +30,7 @@ jobs:
           set -euo pipefail
           node --check workers/gdd-d1/src/worker.mjs
           node --check workers/gdd-d1/src/public-contributions.mjs
+          node --check workers/gdd-d1/src/public-statistics.mjs
           python3 - <<'PY'
           import json,pathlib
           root=pathlib.Path('workers/gdd-d1')
@@ -41,6 +44,13 @@ jobs:
             'binding':'SUBMISSIONS_BUCKET','bucket_name':'gdd-dau-xua-cua-dao'}]
           assert cfg.get('ratelimits')[0]['name']=='CONTRIBUTION_RATE'
           assert cfg['ratelimits'][0]['simple']=={'limit':2,'period':60}
+          assert cfg['ratelimits'][1]=={
+            'name':'STATS_RATE','namespace_id':'26001128',
+            'simple':{'limit':12,'period':60}}
+          stats=(root/'src/public-statistics.mjs').read_text()
+          assert 'gdd_visit_totals' in stats and 'gdd_site_download_totals' in stats
+          assert 'gdd_content_metrics' in stats and 'WHERE id=? AND published=1' in stats
+          assert 'DELETE FROM' not in stats and 'DROP TABLE' not in stats
           contribution=(root/'src/public-contributions.mjs').read_text()
           assert "contributions/pending/" in contribution
           assert 'SUBMISSIONS_BUCKET.put(' in contribution
@@ -58,7 +68,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/d1-public-restored.test.mjs tests/d1-public-contributions.test.mjs
+          node --test tests/d1-public-restored.test.mjs tests/d1-public-contributions.test.mjs tests/d1-public-statistics.test.mjs
           echo "D1_PUBLISHED_DRAFT_ISOLATION=PASS"
       - name: "Chi deploy Worker API cong khai va hop thu dong gop rieng tu; khong sua R2 goc"
         env:
@@ -140,6 +150,12 @@ jobs:
               if len(all_rows)!=expected:
                   raise SystemExit('Published-only '+kind+' count mismatch')
               print('PUBLIC_'+kind.upper()+'_COUNT='+str(len(all_rows)))
+          with urllib.request.urlopen(urllib.request.Request(base+'/api/v1/stats',headers=headers),timeout=20) as response:
+              counters=json.load(response)
+          if not all(isinstance(counters.get(k),int) and counters[k]>=0 for k in
+              ['online_count','total_visits','total_downloads']):
+              raise SystemExit('D1 statistics aggregate invalid')
+          print('D1_HISTORIC_STATS_GET=PASS')
           print('PUBLIC_READ_ONLY_API_OK=True')
           print('ADMIN_AND_WRITES_DENIED=True')
           print('SUPABASE_R2_UNCHANGED=True')
