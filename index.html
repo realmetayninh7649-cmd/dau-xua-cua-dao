@@ -70,7 +70,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261123-mobile-banner-01">
   <link rel="stylesheet" href="gdd-festival-binh-ngo-2026.css?v=20261118-01">
   <link rel="stylesheet" href="gdd-document-folders.css?v=20261119-first-page-webp-01">
   <link rel="stylesheet" href="brand.css">
@@ -92,7 +92,7 @@
 <script defer src="gdd-document-router.js?v=20261119-r2-pdf-privacy-02"></script>
 <script defer src="gdd-legacy-r2-images.js?v=20261119-privacy-cutover-01"></script>
 <script defer src="gdd-public-readonly.js?v=20261123-recovery-01"></script>
-<script defer src="app.js?v=20261123-recovery-01"></script>
+<script defer src="app.js?v=20261123-mobile-banner-01"></script>
 <script defer src="gdd-section-mastheads.js?v=20261118-01"></script>
 <script defer src="gdd-content-metrics.js?v=20261119-download-total-01"></script>
 <script defer src="gdd-archive-qr.js?v=20261118-compact-01"></script>
@@ -287,6 +287,7 @@
   </section>
 
   <main>
+    <div id="mode-banner" class="mode-banner" hidden>Đang xem <strong>dữ liệu mẫu</strong>. Muốn lưu bài và ảnh trực tuyến, hãy kết nối Supabase theo tệp HƯỚNG-DẪN.</div>
     <section class="hero section-anchor" id="trang-chu">
       <div class="wrap hero-grid">
         <div class="hero-copy">
@@ -474,7 +475,6 @@
 
   <footer class="footer"><div class="wrap footer-grid"><div class="footer-brand"><img src="logo.png" alt="" width="48" height="48"><div><strong>GIỮ ĐẠO GIỮA ĐỜI</strong><small>DẤU XƯA CỬA ĐẠO – KHO TƯ LIỆU ĐẠO SỬ</small></div></div><div>Gìn giữ Đạo sử bằng tấm lòng kính cẩn và tinh thần khảo chứng.</div><div>© <span id="year"></span> · Lưu dấu cho mai sau<div class="gdd-facebook-pair"><a class="gdd-facebook-link" href="https://www.facebook.com/share/19pnfQd7p1/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Mở Facebook Page CAO DAI – LA MÉMOIRE trong tab mới"><span class="gdd-facebook-mark" aria-hidden="true">f</span><span>CAO DAI – LA MÉMOIRE</span></a><a class="gdd-facebook-link" href="https://www.facebook.com/share/1Ds5YZxDwq/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Mở Facebook Page Tiệm Phục Chế Ảnh trong tab mới"><span class="gdd-facebook-mark" aria-hidden="true">f</span><span>TIỆM PHỤC CHẾ ẢNH</span></a></div></div></div><nav class="wrap gdd-seo-public-links" aria-label="Danh mục tư liệu công khai" style="padding:10px 0 15px;font-size:13px;display:flex;gap:16px;flex-wrap:wrap"><a href="/ho-so/">Danh mục hồ sơ Chức sắc</a><a href="/bien-khao/">Danh mục bài biên khảo</a></nav><div class="gdd-festival-footer-controls"><button type="button" class="gdd-festival-restore" id="gdd-festival-restore" hidden>Hiện lại chủ đề mùa lễ</button></div></footer>
 
-  <div id="mode-banner" class="mode-banner" hidden>Đang xem <strong>dữ liệu mẫu</strong>. Muốn lưu bài và ảnh trực tuyến, hãy kết nối Supabase theo tệp HƯỚNG-DẪN.</div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <div class="overlay" id="detail-overlay" hidden><div class="backdrop" data-close="detail"></div><section class="detail-panel" role="dialog" aria-modal="true" aria-label="Chi tiết tư liệu"><button class="close-button" type="button" data-close="detail" aria-label="Đóng">×</button><div id="detail-content"></div></section></div>
