@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright-core';
 import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from '../workers/gdd-d1-admin/src/admin-ui.mjs';
+import {PHOTO_JS} from '../workers/gdd-d1-admin/src/photo-album-ui.mjs';
 const summary={
  source_total:1892,total_records:1892,remaining_records:0,table_count:21,
  published_records:118,gallery_images:615,r2_asset_records:269,row_counts_match_snapshot:true,
@@ -16,13 +17,15 @@ const session={
  managed_r2_enabled:true,mode:'staging',role:'administrator'
 };
 const requests=[];
-const server=createServer((req,res)=>{
+const album=[];let uploaded=0, previews=0, approvals=0;const postId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://127.0.0.1').pathname;
  requests.push(pathname);
  let body='',type='application/json; charset=utf-8',status=200;
  if(pathname==='/admin') {type='text/html; charset=utf-8';body=ADMIN_HTML}
  else if(pathname==='/admin/style.css'){type='text/css';body=ADMIN_CSS}
  else if(pathname==='/admin/app.js'){type='text/javascript';body=ADMIN_JS}
+ else if(pathname==='/admin/photo-album.js'){type='text/javascript';body=PHOTO_JS}
  else if(pathname==='/api/v1/admin/session')body=JSON.stringify(session);
  else if(pathname==='/api/v1/admin/summary')body=JSON.stringify(summary);
  else if(pathname==='/api/v1/admin/work/people'){
@@ -39,6 +42,36 @@ const server=createServer((req,res)=>{
   const person={id,title:'HỒ SƠ SỐ 2',full_name:'HỒ SƠ SỐ 2',published:1,
     archive_code:'CS-CTD.GS-00002',gdd_version:1};
   body=JSON.stringify({data:id==='history'?[]:person});
+ }
+ else if(pathname==='/api/v1/admin/work/posts'){
+  body=JSON.stringify({data:[{id:postId,title:'BÀI KIỂM TRA ẢNH',published:1,
+   gdd_version:1,archive_code:'DXCD-BK-00001'}],kind:'posts'});
+ }
+ else if(pathname==='/api/v1/admin/work/posts/'+postId+'/photos'){
+  if(req.method==='POST'){
+   let text='';for await(const chunk of req)text+=chunk;
+   const item=JSON.parse(text);
+   assert.equal(typeof item.caption,'string');
+   assert.match(item.asset_id,/^[a-f0-9-]{36}$/i);
+   const image={image_url:'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+item.asset_id+'/preview',
+    caption:item.caption,sort_order:album.length+1};
+   album.push(image);status=201;body=JSON.stringify({data:image,attached:true});
+  }else body=JSON.stringify({data:album});
+ }
+ else if(pathname==='/api/v1/admin/work/posts/'+postId){
+  body=JSON.stringify({data:{id:postId,title:'BÀI KIỂM TRA ẢNH',published:1,
+   archive_code:'DXCD-BK-00001',gdd_version:1,body:'Bài viết có nhiều ảnh'}});
+ }
+ else if(pathname==='/api/v1/admin/work/posts/'+postId+'/history')body=JSON.stringify({data:[]});
+ else if(pathname.startsWith('/api/v1/admin/r2/managed/')){
+  if(pathname.endsWith('/v1/uploads/small')){
+   uploaded++;const id='cccccccc-cccc-4ccc-8ccc-'+String(uploaded).padStart(12,'0');
+   status=201;body=JSON.stringify({id,originalPreserved:true,publiclyAccessible:false});
+  }else if(pathname.endsWith('/preview')){
+   previews++;status=201;body=JSON.stringify({id:'fake',originalUnchanged:true});
+  }else if(pathname.endsWith('/publication')){
+   approvals++;status=200;body=JSON.stringify({published:true,originalPrivate:true});
+  }else{status=404;body=JSON.stringify({error:'not_found'})}
  }
  else if(pathname.startsWith('/api/v1/admin/work/'))body=JSON.stringify({data:[],kind:'posts'});
  else if(pathname==='/api/v1/admin/records')body=JSON.stringify({data:[],has_next:false});
@@ -109,6 +142,29 @@ try{
   assert.equal(await page.locator('#work-fields label').count()>0,true,'draft form must be populated');
   console.log('ADMIN_COMPACT_COMPOSE_FIRST_'+label.toUpperCase()+'=PASS',
     JSON.stringify({editorBeforeList:order,tenRowsPerPage:10,searchFilters:true,editAutoOpensForm:true,draftOnTop:true}));
+  await page.locator('#work-kind').selectOption('posts');
+  await page.waitForTimeout(120);
+  await page.locator('#work-list-details summary').click();
+  await page.locator('#work-list button').first().click();
+  await page.waitForFunction(()=>!document.getElementById('work-photo-panel').hidden);
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6e5F8AAAAASUVORK5CYII=','base64');
+  await page.locator('#work-photo-files').setInputFiles([
+   {name:'anh-mot.png',mimeType:'image/png',buffer:png},
+   {name:'anh-hai.png',mimeType:'image/png',buffer:png}
+  ]);
+  assert.equal(await page.locator('#work-photo-queue li').count(),2);
+  await page.locator('#work-photo-queue input').first().fill('Hình ảnh 01 – tư liệu');
+  await page.locator('#work-photo-confirm').check();
+  page.on('dialog',dialog=>dialog.accept());
+  await page.locator('#work-photo-upload').click();
+  await page.waitForFunction(()=>document.getElementById('work-photo-count')?.textContent.includes('2 ảnh'),null,{timeout:17000});
+  assert.equal(await page.locator('#work-photo-album figure').count(),2);
+  assert.equal(await page.locator('#work-photo-album figcaption').first().textContent(),'Hình ảnh 01 – tư liệu');
+  assert.equal(errors.length,0,errors.join('; '));
+  console.log('ADMIN_MULTIPHOTO_IPHONE_DESKTOP_'+label.toUpperCase()+'=PASS',
+   JSON.stringify({selected:2,albumVisible:2,storageOriginalsPrivate:true,attachments:album.length}));
+  if(label==='iphone'){assert.equal(uploaded,2);assert.equal(previews,2);assert.equal(approvals,2)}
+  album.length=0;
   await page.close();
  }
  assert.equal(requests.some(x=>x.includes('/sandbox')),false,'synthetic sandbox API must not auto-fetch');
