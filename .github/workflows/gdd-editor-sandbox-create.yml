@@ -58,7 +58,15 @@ jobs:
               if not result or result[0].get('success') is False:
                   raise SystemExit('D1 sandbox query failure')
               return result[0].get('results') or []
-          schemas=[
+          sqlfile=open('workers/gdd-d1-admin/migrations/editor-sandbox.sql',encoding='utf8').read()
+          schemas=[part.strip() for part in sqlfile.split('-- STATEMENT') if part.strip()]
+          assert len(schemas)==3
+          assert 'CREATE TRIGGER IF NOT EXISTS sandbox_record_audit' in schemas[2]
+          assert 'DELETE FROM' not in sqlfile
+          # Statements deliberately scoped to dedicated sandbox database only.
+          # This is a separate Free-tier DB; none of the original 21 tables exist here.
+          # Schema is committed and unit tested for reproducible recovery.
+          legacy_schemas=[
               """CREATE TABLE IF NOT EXISTS sandbox_items(
                   id TEXT PRIMARY KEY,
                   kind TEXT NOT NULL CHECK(kind IN ('people','posts','documents','media')),
@@ -80,6 +88,7 @@ jobs:
               )"""
           ]
           for sql in schemas:query(sql)
+          assert len(legacy_schemas)==2
           sample='11111111-2222-4333-8444-555555555555'
           query("INSERT OR IGNORE INTO sandbox_items(id,kind,title,summary,body,published,version,updated_at) "+
                 "VALUES('"+sample+"','people','HO SO THU NGHIEM','Khong co du lieu nguon','',0,1,'2026-11-24T00:00:00Z')")
@@ -88,6 +97,9 @@ jobs:
               raise SystemExit('Sandbox seed unsuccessful')
           print('D1_EDITOR_SANDBOX_CREATED_OR_REUSED=TRUE')
           print('D1_EDITOR_SANDBOX_UUID='+dbid)
+          trigger=query("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='trigger' AND name='sandbox_record_audit'")
+          if len(trigger)!=1 or trigger[0].get('n')!=1:raise SystemExit('Audit trigger missing')
+          print('D1_EDITOR_SANDBOX_AUDIT_TRIGGER=PASS')
           print('D1_EDITOR_SANDBOX_SAMPLE_ONLY=TRUE')
           print('SUPABASE_D1_ARCHIVE_R2_ORIGINALS_UNCHANGED=TRUE')
           PY

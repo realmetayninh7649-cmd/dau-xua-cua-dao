@@ -8,6 +8,8 @@ on:
       - "workers/gdd-d1-admin/wrangler.jsonc"
       - "workers/gdd-d1/source-row-counts-20261123.json"
       - "tests/d1-admin-preview.test.mjs"
+      - "tests/d1-editor-sandbox.test.mjs"
+      - "workers/gdd-d1-admin/migrations/**"
   workflow_dispatch:
 
 permissions:
@@ -27,6 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check workers/gdd-d1-admin/src/worker.mjs
+          node --check workers/gdd-d1-admin/src/editor-sandbox.mjs
           node --check workers/gdd-d1-admin/src/admin-ui.mjs
           python3 - <<'PY'
           import json,pathlib,re
@@ -41,7 +44,17 @@ jobs:
               assert banned not in js, banned
           assert "if(request.method!=='GET')" in js
           assert 'r2Inventory(env)' in js
-          assert len(cfg['d1_databases'])==1
+          assert len(cfg['d1_databases'])==2
+          assert cfg['d1_databases'][1]=={
+              'binding':'EDIT_DB',
+              'database_name':'gdd-editor-sandbox-20261124',
+              'database_id':'cf3f0c4e-6cdd-4360-b421-03c87717c688'}
+          assert cfg['d1_databases'][0]['database_id']!=cfg['d1_databases'][1]['database_id']
+          editor=(root/'src/editor-sandbox.mjs').read_text()
+          assert 'sandbox_items' in editor and 'sandbox_revisions' in editor
+          assert 'env.EDIT_DB' in js and 'handleEditorSandbox(request,env.EDIT_DB,path)' in js
+          assert 'handleEditorSandbox(request,env.DB' not in js
+          assert 'DELETE FROM' not in editor
           assert cfg['d1_databases'][0]['binding']=='DB'
           assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-restore-full-20261123'
           assert cfg['d1_databases'][0]['database_id']=='ddce6b9f-90e1-488f-bf9b-5ddf5d170346'
@@ -65,7 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/d1-admin-preview.test.mjs
+          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs
           echo "D1_ADMIN_UNIT_TESTS=PASS"
       - name: "Deploy ONLY isolated Access-protected admin worker"
         env:
@@ -87,7 +100,7 @@ jobs:
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self,req,fp,code,msg,headers,newurl):return None
           opener=urllib.request.build_opener(NoRedirect())
-          for path in ['/','/admin','/admin/app.js','/api/v1/admin/session','/api/v1/admin/summary','/api/v1/admin/r2/inventory']:
+          for path in ['/','/admin','/admin/app.js','/api/v1/admin/session','/api/v1/admin/summary','/api/v1/admin/r2/inventory','/api/v1/admin/sandbox']:
               status=0
               for attempt in range(6):
                   req=urllib.request.Request(base+path,

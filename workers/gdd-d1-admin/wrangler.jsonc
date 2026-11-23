@@ -16,6 +16,11 @@
       "binding": "DB",
       "database_name": "gdd-dao-su-restore-full-20261123",
       "database_id": "ddce6b9f-90e1-488f-bf9b-5ddf5d170346"
+    },
+    {
+      "binding": "EDIT_DB",
+      "database_name": "gdd-editor-sandbox-20261124",
+      "database_id": "cf3f0c4e-6cdd-4360-b421-03c87717c688"
     }
   ],
   "r2_buckets": [

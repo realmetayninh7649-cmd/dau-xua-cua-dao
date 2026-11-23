@@ -4,6 +4,7 @@
  * Admin UI is intentionally separate from production R2 and public API Workers.
  */
 import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from './admin-ui.mjs';
+import {handleEditorSandbox} from './editor-sandbox.mjs';
 import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 import SOURCE_AUDIT from '../../gdd-d1/source-integrity-audit-20261123.json' with {type:'json'};
 import R2_BASELINE from '../../gdd-d1/r2-object-inventory-snapshot-20261123.json' with {type:'json'};
@@ -140,9 +141,24 @@ async function inventory(env){
 }
 export default {
  async fetch(request,env,ctx){
+   const url=new URL(request.url),path=url.pathname;
+   // Dedicated synthetic editor: validated Cloudflare Access plus same-origin CSRF.
+   // The canonical restored D1 binding env.DB is NEVER sent into this handler.
+   if(path==='/api/v1/admin/sandbox'||path.startsWith('/api/v1/admin/sandbox/')){
+     if(!await isAdministrator(env,ctx))
+       return json({authenticated:false,error:'unauthorized'},403);
+     if(request.method!=='GET'){
+       const origin=request.headers.get('Origin');
+       const site=request.headers.get('Sec-Fetch-Site');
+       if(origin!=='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'
+           || (site&&site!=='same-origin')
+           || !/^application\/json(?:;|$)/i.test(request.headers.get('Content-Type')||''))
+         return json({error:'csrf_or_content_type_rejected'},403);
+     }
+     return handleEditorSandbox(request,env.EDIT_DB,path);
+   }
    if(request.method!=='GET')
      return json({error:'read_only',write_enabled:false},405);
-   const url=new URL(request.url),path=url.pathname;
    // Health shows no data and no identity. External Access guards the hostname.
    if(path==='/health')
      return json({status:'ok',mode:'admin-staging-read-only',
