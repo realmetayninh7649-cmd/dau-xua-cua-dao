@@ -44,6 +44,24 @@ try{
   assert.ok(result.publishedOnly);
   assert.ok(result.cards>0,'public cards missing');
   assert.ok(result.docWidth<=result.viewport+3,'page overflows viewport');
+  await page.waitForFunction(()=>['gdd-online-count','gdd-total-visits','gdd-total-downloads']
+    .every(id=>{const el=document.getElementById(id);
+      return el&&/^[0-9.]+$/.test(el.textContent.trim())}),null,{timeout:28000});
+  const live=await page.evaluate(async()=>{
+    const imgs=[...document.querySelectorAll('#gdd-directory .gdd-preview-thumb img')];
+    imgs.forEach(img=>{img.loading='eager'});
+    const loaded=await Promise.all(imgs.map(img=>Promise.race([
+      img.decode().then(()=>img.naturalWidth>0).catch(()=>false),
+      new Promise(resolve=>setTimeout(()=>resolve(false),10000))
+    ])));
+    const counters=Object.fromEntries(['gdd-online-count','gdd-total-visits','gdd-total-downloads']
+      .map(id=>[id,document.getElementById(id)?.textContent.trim()]));
+    return {images:imgs.length,loaded:loaded.filter(Boolean).length,
+      broken:loaded.filter(x=>!x).length,counters};
+  });
+  assert.ok(live.images>=10,'Insufficient public preview images');
+  assert.ok(live.loaded>=10,'Most public R2 images must render');
+  console.log('PRODUCTION_R2_COVERS_D1_STATS_'+name.toUpperCase()+'=PASS '+JSON.stringify(live));
   await page.screenshot({path:'/tmp/gdd-production-site-smoke/'+name+'.png',fullPage:false});
   console.log('PRODUCTION_D1_WEBSITE_UI_'+name.toUpperCase()+'=PASS',JSON.stringify(result));
   await page.route('https://gdd-d1-admin-staging.realmetayninh7649.workers.dev/**',
