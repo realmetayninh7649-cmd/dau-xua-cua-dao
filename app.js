@@ -370,6 +370,27 @@ function videoSource(raw){
       kind==='documents'?[documentSubfolderTitle(record.subfolder_code),record.document_number,record.document_date].filter(Boolean).join(' · '):
       kind==='posts'?[record.category,date(record.created_at)].filter(Boolean).join(' · '):sectionNames[kind]||'';
     const body=kind==='people'?record.biography:kind==='media'?record.caption:record.body;
+    // Published gallery entries are already filtered by public D1 on the parent.
+    // Display only optimized previews, never R2 originals or raw HTML from captions.
+    const attachedPhotos=record.published?state.galleryImages.filter(photo=>
+      photo.owner_kind===kind&&photo.owner_id===record.id&&photo.image_url)
+      .sort((a,b)=>(a.sort_order??0)-(b.sort_order??0))
+      .slice(0,200):[];
+    const galleryMarkup=attachedPhotos.length
+      ?'<section class="gdd-detail-photo-album" aria-label="Bộ ảnh tư liệu kèm bài">'+
+        '<h3>HÌNH ẢNH KÈM THEO · '+attachedPhotos.length+' ảnh</h3>'+
+        '<div class="gdd-detail-photo-grid">'+attachedPhotos.map((photo,i)=>{
+          const url=displayImageUrl(photo.image_url);
+          if(!url)return '';
+          const caption=String(photo.caption||photo.photo_code||'Ảnh tư liệu '+(i+1));
+          const note=photo.photo_code&&photo.caption
+            ?caption+' · '+photo.photo_code:caption;
+          return '<figure><a href="'+escape(url)+'" target="_blank" rel="noopener noreferrer" '+
+            'aria-label="Xem ảnh tư liệu '+(i+1)+'">'+
+            '<img src="'+escape(url)+'" alt="'+escape(caption)+'" loading="lazy" decoding="async"></a>'+
+            '<figcaption>'+escape(note)+'</figcaption></figure>';
+        }).join('')+'</div></section>'
+      :'';
     const summary=record.summary||'';
     const person=kind!=='people'&&record.person_id?linkedPerson(record.person_id):null;
     const dateNotes=kind==='people'&&record.date_notes?`<p class="detail-meta">Ngày tháng: ${escape(record.date_notes)}</p>`:'';
@@ -397,7 +418,7 @@ function videoSource(raw){
       <button class="btn btn-primary" type="button" data-gdd-qr-download>Tải mã QR PNG</button>
       <button class="btn btn-outline" type="button" data-gdd-qr-copy>Sao chép liên kết</button>
       <small class="gdd-archive-qr-status" data-gdd-qr-status></small></div></div></section>`:'';
-    $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${archivePanel}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${pdfFileLink}${seoLink}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
+    $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${archivePanel}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${galleryMarkup}${pdfFileLink}${seoLink}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
     // Chỉ tải ảnh có dấu đối với hồ sơ Chức sắc; không đổi dữ liệu hoặc file gốc.
     if(seoHref){
       const seoRow=$('.detail-seo-link',$('#detail-content'));
