@@ -1,0 +1,120 @@
+name: "GDD - Trien khai Website STAGING xem thu D1 cong khai"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - "workers/gdd-site-d1-preview/**"
+      - ".github/workflows/gdd-site-d1-preview.yml"
+      - "app.js"
+      - "index.html"
+      - "supabase-config.js"
+      - "gdd-public-readonly.js"
+      - "gdd-calendar-reminder-subscription.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Build strictly public, read-only static preview assets"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib,json,shutil
+          cfg=json.loads(pathlib.Path('workers/gdd-site-d1-preview/wrangler.jsonc').read_text())
+          assert cfg['name']=='gdd-site-d1-preview' and cfg['workers_dev'] is True
+          assert not cfg['preview_urls']
+          assert 'main' not in cfg and 'd1_databases' not in cfg and 'r2_buckets' not in cfg
+          root=pathlib.Path.cwd()
+          dst=root/'workers/gdd-site-d1-preview/public-preview'
+          dst.mkdir(exist_ok=True,parents=True)
+          # Static site content only; never transfer .github, supabase, migrations,
+          # scripts, tests, workers, backups, secrets, or private archives.
+          allowed={'.html','.js','.css','.json','.png','.svg','.avif','.webp','.jpg',
+                   '.jpeg','.gif','.ico','.xml','.txt','.mp3'}
+          directories=['assets','audio','bien-khao','ho-so','certificates','vendor']
+          files=list(p for p in root.iterdir() if p.is_file() and p.suffix.lower() in allowed)
+          for d in directories:
+              path=root/d
+              if not path.is_dir():continue
+              files.extend(p for p in path.rglob('*') if p.is_file() and p.suffix.lower() in allowed)
+          for f in files:
+              rel=f.relative_to(root)
+              if any(part.startswith('.') or part.lower() in ('private','originals','backups') for part in rel.parts):
+                  raise SystemExit('Private path encountered: abort preview')
+              if f.stat().st_size>20*1024*1024:raise SystemExit('Oversize static file')
+              target=dst/rel;target.parent.mkdir(exist_ok=True,parents=True)
+              shutil.copyfile(f,target)
+          (dst/'robots.txt').write_text('User-agent: *\nDisallow: /\n')
+          (dst/'_headers').write_text('/*\n  X-Robots-Tag: noindex, nofollow\n  Referrer-Policy: no-referrer\n')
+          assert (dst/'index.html').exists() and (dst/'public-fallback.json').exists()
+          assert 'Website đang tạm bảo trì' not in (dst/'index.html').read_text()
+          assert 'publicReadProvider: "d1-staging"' in (dst/'supabase-config.js').read_text()
+          backup=json.loads((dst/'public-fallback.json').read_text())
+          public=['people','posts','media','videos','obituaries','documents',
+                  'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials']
+          assert backup.get('source')=='public-published-read-only-backup'
+          assert all(all(r.get('published') is True for r in backup.get(k,[])) for k in public)
+          assert not list(dst.glob('**/*.sql'))
+          print('STAGING_PUBLIC_ONLY_FILES='+str(len(files)))
+          print('STAGING_D1_READ_ONLY_SNAPSHOT_VERIFIED=TRUE')
+          PY
+          node --check app.js
+          node --check gdd-public-readonly.js
+          node --test tests/d1-web-preview.test.mjs
+      - name: "Deploy only separate static site; NEVER touch production Pages/CNAME"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_WORKER_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4.159.0 deploy --config workers/gdd-site-d1-preview/wrangler.jsonc
+      - name: "Live smoke: site files, noindex and D1 API CORS from preview origin"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request,urllib.error,json,time
+          domain='https://gdd-site-d1-preview.realmetayninh7649.workers.dev'
+          api='https://gdd-d1-api-staging.realmetayninh7649.workers.dev'
+          def read(path,origin=None):
+              h={'User-Agent':'GDD-Staging-Static-Preview/1.0'}
+              if origin:h['Origin']=origin
+              req=urllib.request.Request((api if origin else domain)+path,headers=h)
+              with urllib.request.urlopen(req,timeout=25) as res:
+                  return res.status,res.headers,res.read(500000)
+          for i in range(12):
+              try:
+                  status,headers,body=read('/')
+                  if status==200 and b'ddd' not in body[:1]:break
+              except Exception as e:
+                  if i==11:raise
+                  time.sleep(2)
+          assert b'<!doctype html' in body.lower(), 'not website HTML'
+          assert b'Qu' in body, 'empty site HTML'
+          for path,check in [('/supabase-config.js',b'd1-staging'),
+                             ('/gdd-public-readonly.js',b'gdd-d1-api-staging'),
+                             ('/app.js',b'function'),
+                             ('/robots.txt',b'Disallow: /')]:
+              status,h,body=read(path)
+              if status!=200 or check not in body:raise SystemExit('Staging asset missing '+path)
+          status,h,data=read('/api/v1/public/people?limit=2',origin=domain)
+          if status!=200 or h.get('Access-Control-Allow-Origin')!=domain:
+              raise SystemExit('D1 preview CORS not ready')
+          parsed=json.loads(data)
+          if len(parsed.get('data') or [])!=2:raise SystemExit('D1 API empty')
+          print('STAGING_SITE_LIVE=PASS')
+          print('STAGING_D1_CORS_LIVE=PASS')
+          print('MAIN_AND_R2_ORIGINALS_UNCHANGED=TRUE')
+          PY

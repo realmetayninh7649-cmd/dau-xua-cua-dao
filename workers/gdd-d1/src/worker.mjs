@@ -24,7 +24,8 @@ const PUBLIC_PLACEMENTS_SQL='SELECT x.* FROM gdd_content_placements x WHERE ('+
   publicOwnerPredicate('x')+') ORDER BY x.updated_at DESC LIMIT ? OFFSET ?';
 const ALLOWED_ORIGINS = new Set([
   'https://dauxuacuadao.info.vn',
-  'https://www.dauxuacuadao.info.vn'
+  'https://www.dauxuacuadao.info.vn',
+  'https://gdd-site-d1-preview.realmetayninh7649.workers.dev'
 ]);
 function castRecord(row) {
   if(!row)return row;
