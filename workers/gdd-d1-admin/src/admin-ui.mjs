@@ -16,21 +16,18 @@ export const ADMIN_HTML=`<!doctype html>
 <section class="notice" role="status"><strong>Website công khai đã hoạt động.</strong> Nội dung được biên tập trên cơ sở D1 làm việc, có lưu lịch sử phiên bản. Tư liệu nguyên mẫu trong R2 được giữ riêng tư. Không có chức năng xóa vĩnh viễn; bản sao phục hồi chuẩn được bảo toàn.</section>
  <nav class="quick-links" aria-label="Liên kết"><a href="https://dauxuacuadao.info.vn/" target="_blank" rel="noopener noreferrer">Mở website công khai</a></nav>
 <section aria-labelledby="work-title" id="work-editor-panel" hidden>
-<div class="heading"><h2 id="work-title">Biên tập tư liệu trên D1 làm việc</h2><small>Cloudflare Access · Có lưu lịch sử sửa</small></div>
-<p class="audit-caution">Dữ liệu có mã hồ sơ được giữ nguyên. Hồ sơ mới chỉ tạo bản nháp; không tự cấp mã định danh. Có thể phục hồi phiên bản cũ; không có thao tác xóa vĩnh viễn. Bản sao lưu D1 chuẩn không bị tác động.</p>
-<div class="controls"><label for="work-kind">Chuyên mục</label>
+<div class="heading"><h2 id="work-title">Soạn bài và quản lý tư liệu</h2><small>D1 làm việc · Có lưu lịch sử chỉnh sửa</small></div>
+<p class="work-help">Chọn chuyên mục rồi nhấn <strong>Soạn bài mới</strong> để viết ngay. Danh sách bài và hồ sơ được thu gọn phía dưới, chỉ mở khi cần sửa nội dung đã có.</p>
+<div class="controls work-actions"><label for="work-kind">Chuyên mục</label>
 <select id="work-kind">
 <option value="people">Chức sắc</option><option value="posts">Biên khảo</option>
 <option value="media">Hình ảnh</option><option value="videos">Video</option>
 <option value="obituaries">Ai tín</option><option value="documents">Tài liệu số</option>
 <option value="gdd_memorials">Tưởng niệm</option><option value="gdd_audio_programs">Âm thanh Đại Đạo</option>
 <option value="gdd_calendar_memorials">Lịch tưởng niệm</option></select>
-<button id="work-list-refresh" type="button">Tải danh sách</button>
-<button id="work-new" type="button">Tạo bản nháp mới</button></div>
-<p id="work-status" role="status" aria-live="polite">Chưa mở dữ liệu biên tập.</p>
-<ul class="records" id="work-list"></ul>
-<div class="pagination"><button id="work-prev" type="button">Trang trước</button><span id="work-page">Trang 1</span><button id="work-next" type="button">Trang sau</button></div>
-<div id="work-edit-area" hidden><h3 id="work-edit-heading">Chi tiết</h3><p id="work-identity" class="audit-caution"></p>
+<button id="work-new" class="work-primary" type="button">Soạn bài mới</button></div>
+<p id="work-status" role="status" aria-live="polite">Đang kết nối D1 làm việc…</p>
+<div id="work-edit-area" class="work-editor-form" hidden><h3 id="work-edit-heading">Chi tiết</h3><p id="work-identity" class="audit-caution"></p>
 <div id="work-code-area" class="audit-caution" hidden>
 <p id="work-code-preview">Mã định danh sẽ được xác định sau khi lưu bản nháp và thông tin phân loại.</p>
 <div class="controls"><label class="sandbox-checkbox"><input id="work-code-confirm" type="checkbox"> Tôi đã đối chiếu Cơ quan, Phẩm vị và xác nhận mã định danh</label>
@@ -38,8 +35,18 @@ export const ADMIN_HTML=`<!doctype html>
 </div>
 <div class="sandbox-form" id="work-fields"></div>
 <div class="controls"><button id="work-save" type="button">Lưu thay đổi</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div>
-<h3>Lịch sử chỉnh sửa và phục hồi</h3><ul class="records" id="work-revisions"></ul>
+<details class="work-history"><summary>Lịch sử chỉnh sửa và phục hồi</summary><ul class="records" id="work-revisions"></ul></details>
 </div>
+<details id="work-list-details" class="work-record-panel">
+<summary>Danh sách bài viết và hồ sơ <span id="work-list-count" class="work-muted">· Đang tải</span></summary>
+<div class="work-record-inner">
+<p class="work-list-note">Tìm trong 10 kết quả của trang hiện tại. Mở trang tiếp theo để xem thêm.</p>
+<div class="controls work-list-controls"><label for="work-search">Tìm nhanh</label><input id="work-search" type="search" placeholder="Nhập tên hồ sơ hoặc nhan đề" autocomplete="off" />
+<button id="work-list-refresh" type="button">Làm mới danh sách</button></div>
+<ul class="records work-compact-records" id="work-list"></ul>
+<div class="pagination"><button id="work-prev" type="button">Trang trước</button><span id="work-page">Trang 1</span><button id="work-next" type="button">Trang sau</button></div>
+</div>
+</details>
 </section>
 <section aria-labelledby="r2-managed-title" id="r2-managed-panel" hidden>
 <div class="heading"><h2 id="r2-managed-title">Bảo tồn ảnh / PDF / Word vào kho R2</h2><small>Cloudflare Access · Nguyên mẫu riêng tư</small></div>
@@ -63,6 +70,7 @@ export const ADMIN_HTML=`<!doctype html>
 <p id="contribution-status" role="status" aria-live="polite">Chưa tải hộp thư.</p>
 <ul class="records" id="contribution-list"></ul>
 </section>
+<details class="admin-technical work-archive-lookup"><summary>Tra cứu bản công bố và bản nháp (chế độ xem)</summary>
 <section aria-labelledby="records-title"><div class="heading"><h2 id="records-title">Xem tư liệu đã công bố và bản nháp</h2><small>Bản nháp chỉ mở cho người quản trị đã xác thực; không hiển thị hồ sơ tài khoản hoặc tư liệu độc giả gửi về</small></div>
 <div class="controls"><label for="kind">Chuyên mục</label><select id="kind">
 <option value="people">Hồ sơ Chức sắc</option>
@@ -80,7 +88,7 @@ export const ADMIN_HTML=`<!doctype html>
 </select></div>
 <ul id="record-list" class="records"></ul>
 <div class="pagination"><button id="previous" type="button">Trang trước</button><span id="page">Trang 1</span><button id="next" type="button">Trang sau</button></div>
-</section>
+</section></details>
 <details class="admin-technical"><summary>Kiểm kê dữ liệu và kiểm tra bảo toàn tư liệu</summary><div class="technical-content">
 <section aria-labelledby="state-title"><div class="heading"><h2 id="state-title">Thống kê và đối chiếu dữ liệu</h2><button id="refresh" type="button">Làm mới</button></div>
 <p id="status" role="status" aria-live="polite">Đang kiểm tra phiên quản trị và dữ liệu D1…</p>
@@ -100,6 +108,36 @@ export const ADMIN_HTML=`<!doctype html>
 <footer>Quản trị tư liệu · D1 làm việc · R2 riêng tư · Lưu lịch sử thay đổi · Bảo toàn bản sao phục hồi</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
+.work-help{margin:0 0 15px;color:var(--muted);font-size:.94rem}
+.work-actions{align-items:center;margin:10px 0 4px}
+.work-actions select{max-width:100%;min-width:145px;flex:1}
+button.work-primary{background:#1e5648;color:#fff;font-weight:700;border-color:#1e5648;padding:11px 17px}
+button.work-primary:hover{background:#164237}
+.work-editor-form{border:1px solid #c6d8ca;background:#fbfdfb;padding:14px;border-radius:12px;margin:14px 0}
+.work-editor-form h3{margin:0 0 10px}
+.work-record-panel{margin-top:14px;border:1px solid #d5ddd4;border-radius:11px;background:#fafbf8}
+.work-record-panel>summary{padding:15px 13px;cursor:pointer;font-weight:700;list-style:revert}
+.work-record-inner{padding:0 12px 14px}
+.work-muted{font-weight:400;color:var(--muted);font-size:.9rem}
+.work-list-note{font-size:.82rem;color:var(--muted);margin:3px 0 10px}
+.work-list-controls input{flex:1;min-width:160px;max-width:100%;padding:10px;border:1px solid #aeb9b1;border-radius:8px;font:inherit;color:var(--ink);background:#fff}
+.work-compact-records li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 3px}
+.work-row-text{min-width:0;flex:1}
+.work-row-title{display:block;overflow-wrap:anywhere;line-height:1.35;font-weight:650}
+.work-row-meta{display:block;font-size:.8rem;color:var(--muted);margin-top:3px}
+.work-compact-records li button{flex-shrink:0;font-size:.88rem;padding:7px 10px;min-height:38px}
+.work-history{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+.work-history summary{cursor:pointer;font-weight:650;padding:6px 0}
+@media(max-width:540px){
+ .work-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+ .work-actions select,.work-actions .work-primary{width:100%}
+ .work-editor-form{padding:10px}
+ .work-record-inner{padding:0 9px 11px}
+ .work-compact-records li button{padding:7px 9px}
+ .work-list-controls{display:grid;grid-template-columns:1fr}
+ .work-list-controls input{width:100%}
+}
+
 :root{color-scheme:light;--ink:#233e35;--gold:#ac8548;--muted:#637168;--line:#deddd3;--bg:#f6f5ef}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55}
@@ -648,27 +686,41 @@ const workLabels={
  solar_day:'Ngày dương',solar_month:'Tháng dương',death_year:'Năm qui vị',date_notes:'Ghi chú niên đại'
 };
 let workOffset=0,workCurrent=null,workFieldInputs=new Map();
+let workCachedPage=[];
+const workPageSize=10;
 const workRoot='/api/v1/admin/work/';
+function workRenderList(){
+ const query=$('work-search').value.trim().toLocaleLowerCase('vi');
+ const items=workCachedPage.filter(row=>String(row.title||'').toLocaleLowerCase('vi').includes(query));
+ const list=$('work-list');list.replaceChildren();
+ for(const record of items){
+  const item=document.createElement('li'),texts=document.createElement('div');
+  texts.className='work-row-text';
+  appendText(texts,'span',record.title||'(Chưa có nhan đề)').className='work-row-title';
+  appendText(texts,'span',(record.published===1?'Đã công bố':'Bản nháp')+' · v'+record.gdd_version).className='work-row-meta';
+  const button=document.createElement('button');
+  button.type='button';button.textContent='Sửa';
+  button.addEventListener('click',()=>workOpen($('work-kind').value,record.id));
+  item.append(texts,button);list.append(item);
+ }
+ if(!items.length)appendText(list,'li',query?'Không có kết quả trong trang này.':'Chưa có bản ghi.');
+ $('work-list-count').textContent=' · '+workCachedPage.length+' bản ghi ở trang '+(Math.floor(workOffset/workPageSize)+1);
+}
+
 function workStatus(message){$('work-status').textContent=message;}
 function workClose(){workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
 async function workList(){
  const kind=$('work-kind').value;
  try{
-  const data=await api(workRoot+kind+'?limit=20&offset='+workOffset);
-  const list=$('work-list');list.replaceChildren();
-  const records=Array.isArray(data.data)?data.data:[];
-  for(const record of records){
-   const item=document.createElement('li');item.className='sandbox-line';
-   appendText(item,'span',(record.title||'(Chưa có nhan đề)')+' · '+(record.published===1?'Đã công bố':'Bản nháp')+' · phiên bản '+record.gdd_version);
-   const button=document.createElement('button');button.type='button';button.textContent='Biên tập';
-   button.addEventListener('click',()=>workOpen(kind,record.id));
-   item.append(button);list.append(item);
-  }
-  if(!records.length)appendText(list,'li','Không còn bản ghi ở trang này.');
+  const data=await api(workRoot+kind+'?limit='+workPageSize+'&offset='+workOffset);
+  // Discard delayed responses when the category is changed while loading.
+  if(kind!==$('work-kind').value)return;
+  workCachedPage=Array.isArray(data.data)?data.data:[];
+  workRenderList();
   $('work-prev').disabled=workOffset===0;
-  $('work-next').disabled=records.length<20;
-  $('work-page').textContent='Trang '+(Math.floor(workOffset/20)+1);
-  workStatus('D1 làm việc: '+records.length+' bản ghi được tải. Có lưu lịch sử chỉnh sửa.');
+  $('work-next').disabled=workCachedPage.length<workPageSize;
+  $('work-page').textContent='Trang '+(Math.floor(workOffset/workPageSize)+1);
+  workStatus('Đã kết nối D1 làm việc · Chọn Soạn bài mới để viết hoặc mở danh sách để sửa.');
  }catch(e){workStatus('Lỗi tải danh sách D1: '+e.message)}
 }
 function workBuild(kind,record){
@@ -769,6 +821,8 @@ async function workOpen(kind,id){
   $('work-identity').textContent='Mã định danh: '+(record.archive_code||'Chưa có mã')+
    ' · phiên bản '+record.gdd_version+' · trạng thái '+(record.published?'Công bố':'Nháp');
   $('work-edit-area').hidden=false;
+  $('work-list-details').open=false;
+  $('work-edit-area').scrollIntoView({behavior:'smooth',block:'start'});
   await Promise.all([workHistory(),workCodePreview()]);
  }catch(e){workStatus('Không đọc được chi tiết: '+e.message)}
 }
@@ -780,7 +834,9 @@ async function workNew(){
  $('work-code-area').hidden=true;workCodeCandidate=null;
  $('work-identity').textContent='Bản nháp mới chưa được cấp mã hồ sơ. Chỉ người quản trị xem được.';
  $('work-edit-area').hidden=false;
- workStatus('Đang chuẩn bị bản nháp mới trên D1 làm việc.');
+ $('work-list-details').open=false;
+ $('work-edit-area').scrollIntoView({behavior:'smooth',block:'start'});
+ workStatus('Biểu mẫu đã mở · Nhập thông tin rồi nhấn Lưu thay đổi.');
 }
 async function workHistory(){
  const list=$('work-revisions');list.replaceChildren();
@@ -827,13 +883,17 @@ async function workSave(){
  }catch(e){workStatus('Không thể lưu: '+e.message)}
  finally{submit.disabled=false}
 }
-$('work-kind').addEventListener('change',()=>{workOffset=0;workClose();workList()});
+$('work-kind').addEventListener('change',()=>{
+ workOffset=0;$('work-search').value='';workCachedPage=[];
+ workClose();workList()
+});
+$('work-search').addEventListener('input',workRenderList);
 $('work-list-refresh').addEventListener('click',workList);
 $('work-new').addEventListener('click',workNew);
 $('work-save').addEventListener('click',workSave);
 $('work-cancel').addEventListener('click',workClose);
-$('work-prev').addEventListener('click',()=>{workOffset=Math.max(0,workOffset-20);workList()});
-$('work-next').addEventListener('click',()=>{workOffset+=20;workList()});
+$('work-prev').addEventListener('click',()=>{workOffset=Math.max(0,workOffset-workPageSize);$('work-search').value='';workList()});
+$('work-next').addEventListener('click',()=>{workOffset+=workPageSize;$('work-search').value='';workList()});
 
 
 $('kind').addEventListener('change',()=>{offset=0;loadRecords()});
