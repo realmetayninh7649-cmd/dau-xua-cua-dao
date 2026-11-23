@@ -61,6 +61,19 @@
   else selected.insertAdjacentElement('afterend',box);
   const message=$('#gdd-remind-status',box),list=$('#gdd-remind-coming ul',box);
   function status(text){message.textContent=text}
+  // Staging D1 public preview must not contact the Supabase Edge Function.
+  // Disable subscription actions instead of exposing a stale feed URL.
+  if(cfg.publicReadProvider==='d1-staging'){
+    for(const id of ['gdd-remind-subscribe','gdd-remind-download','gdd-remind-copy']){
+      const button=$('#'+id,box);if(button)button.disabled=true;
+    }
+    status('Tính năng nhắc lịch tạm khóa trong bản xem thử Cloudflare D1.');
+    list.replaceChildren();
+    const item=document.createElement('li');
+    item.textContent='Chức năng đăng ký nhắc lịch sẽ được kiểm tra trước khi mở website.';
+    list.append(item);
+    return;
+  }
   async function copyLink(){
     try{
       if(!navigator.clipboard?.writeText)throw Error('Clipboard not available');

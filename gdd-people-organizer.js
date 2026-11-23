@@ -9,10 +9,15 @@
   const $=(s,root=document)=>root.querySelector(s);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/[._\-/]+/g,' ').replace(/\s+/g,' ').trim();
-  const safeURL=v=>{try{const u=new URL(String(v));return /^https?:$/.test(u.protocol)?u.href:'';}catch{return '';}};
+  const safeURL=v=>{try{
+    const input=window.GDDLegacyImages?.displayUrl?.(v)||v;
+    const u=new URL(String(input));return /^https?:$/.test(u.protocol)?u.href:'';
+  }catch{return '';}};
   const cfg=window.SITE_CONFIG||{};
+  const readD1=cfg.publicReadProvider==='d1-staging';
   const root=$('#chuc-sac'),grid=$('#people-grid'),filters=root?.querySelector('.filter-panel');
-  if(!root||!grid||!filters||!cfg.supabaseUrl||!cfg.supabasePublishableKey) return;
+  const editorList=$('#editor-record-list'),adminArea=$('#admin-editor-area');
+  if(!root||!grid||!filters||(!readD1&&(!cfg.supabaseUrl||!cfg.supabasePublishableKey))) return;
 
   const css=document.createElement('style');css.id='gdd-people-organizer-styles';css.textContent=`
   #gdd-sex-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0 20px;align-items:center}
@@ -279,11 +284,20 @@
   }
   // Đường dẫn chung TẤT CẢ cơ quan: Nam/Nữ cũng có thể được chọn trên thanh lọc.
 
-  async function fetchRows(){if(!s.client)return;
-    const rows=[];for(let from=0;from<10000;from+=1000){
-      const {data,error}=await s.client.from('people').select('*')
-        .order('created_at',{ascending:false}).order('id',{ascending:true}).range(from,from+999);
-      if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break;
+  async function fetchRows(){
+    let rows=[];
+    if(readD1){
+      const data=await window.GDDPublicReadOnly?.load();
+      if(!Array.isArray(data?.people)||data.people.some(p=>p.published!==true))
+        throw Error('D1 public People list is unavailable');
+      rows=data.people;
+    }else{
+      if(!s.client)return;
+      for(let from=0;from<10000;from+=1000){
+        const {data,error}=await s.client.from('people').select('*')
+          .order('created_at',{ascending:false}).order('id',{ascending:true}).range(from,from+999);
+        if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)break;
+      }
     }
     s.rows=rows;s.ready=true;
     if(s.selectedSex==='Nam' && !rows.some(p=>p.gender==='Nam') && !rows.some(p=>p.gender==='Nữ')
@@ -353,6 +367,7 @@
     },15000);
   }
   async function init(){try{
+    if(readD1){await fetchRows();return}
     const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
     s.client=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{autoRefreshToken:true,persistSession:true}});
     await fetchRows();s.client.auth.onAuthStateChange(()=>setTimeout(()=>fetchRows().catch(()=>{}),250));

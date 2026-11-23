@@ -500,6 +500,11 @@ function videoSource(raw){
     if(navigate&&history.state?.__gddLayer==='admin')history.back();
   }
   async function openAdmin(){
+    // All editorial operations now use Access-protected working D1, not old Supabase login.
+    if(config.publicReadProvider==='d1-staging'){
+      window.location.href='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev/admin';
+      return;
+    }
     if($('#admin-overlay').hidden){
       history.pushState({...history.state,__gddLayer:'admin'},'',location.href);
     }
@@ -1049,6 +1054,40 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
   }
 
   async function initSupabase(){
+    // Explicit STAGING feature flag. The real website's main branch remains in maintenance.
+    // Public browsing reads only Cloudflare D1; no Supabase auth/session/editor is initialized.
+    if(config.publicReadProvider==='d1-staging'){
+      try{
+        if(!window.GDDPublicReadOnly)throw Error('Thiếu bộ kết nối tư liệu công khai');
+        const archive=await window.GDDPublicReadOnly.load();
+        const kinds=['people','posts','media','videos','obituaries','documents'];
+        if(archive.source!=='public-published-read-only-backup'||
+            !kinds.every(k=>Array.isArray(archive[k])&&archive[k].every(r=>r.published===true)))
+          throw Error('Dữ liệu nguồn D1 không hợp lệ');
+        for(const kind of kinds)state.data[kind]=archive[kind];
+        state.data.submissions=[];
+        state.placements=Array.isArray(archive.placements)?archive.placements:[];
+        state.admin=false;state.user=null;state.supabase=null;state.usingFallback=true;
+        $('#admin-login-area').hidden=true;
+        $('#admin-editor-area').hidden=true;
+        const banner=$('#mode-banner');
+        if(banner){
+          const liveDomain=/^(?:www\.)?dauxuacuadao\.info\.vn$/.test(location.hostname);
+          banner.textContent=archive.backend==='d1'
+            ? 'Tư liệu công khai đang được phục vụ từ Cloudflare D1.'
+            : 'CHẾ ĐỘ DỰ PHÒNG · Đang xem tư liệu từ bản sao công khai đã kiểm tra. Bài mới tạm chưa cập nhật.';
+          banner.hidden=liveDomain&&archive.backend==='d1';
+        }
+        updateSubgroupFilter();render();syncHash();return;
+      }catch(error){
+        console.error('D1 staging public preview failed',String(error?.message||'unknown'));
+        state.data=demo;state.admin=false;state.supabase=null;
+        $('#admin-login-area').hidden=true;$('#admin-editor-area').hidden=true;
+        const banner=$('#mode-banner');
+        if(banner){banner.textContent='Tạm thời chưa kết nối được kho tư liệu. Xin thử lại sau.';banner.hidden=false;}
+        render();syncHash();return;
+      }
+    }
     if(!configured){state.data=demo;$('#mode-banner').hidden=false;render();syncHash();return}
     let stage='tải thư viện kết nối';
     try{
