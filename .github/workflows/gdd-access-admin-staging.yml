@@ -12,6 +12,7 @@ on:
       - "tests/d1-editor-sandbox.test.mjs"
       - "tests/d1-r2-sandbox.test.mjs"
       - "tests/d1-working-editor.test.mjs"
+      - "tests/d1-working-photo-album.test.mjs"
       - "tests/d1-r2-managed.test.mjs"
       - "tests/d1-admin-inbox.test.mjs"
       - "tests/d1-contribution-review.test.mjs"
@@ -39,6 +40,7 @@ jobs:
           node --check workers/gdd-d1-admin/src/editor-sandbox.mjs
           node --check workers/gdd-d1-admin/src/r2-sandbox.mjs
           node --check workers/gdd-d1-admin/src/working-editor.mjs
+          node --check workers/gdd-d1-admin/src/working-photo-album.mjs
           node --check workers/gdd-d1-admin/src/contribution-review.mjs
           node --check workers/gdd-d1-admin/src/working-codes.mjs
           node --check workers/gdd-d1-admin/src/r2-managed.mjs
@@ -70,6 +72,12 @@ jobs:
           assert cfg['vars']['ENABLE_WORKING_EDITOR']=='enabled'
           assert cfg['vars']['ENABLE_MANAGED_R2']=='enabled'
           assert "handleManagedR2(request,env,path)" in js
+          assert "handleAlbumPhotos(request,env,path)" in js
+          album=(root/"src/working-photo-album.mjs").read_text()
+          assert "preview_not_approved" in album
+          assert "archive_gallery_images" in album
+          assert "GDD_BUCKET.get(" not in album and "GDD_BUCKET.put(" not in album
+          assert "DELETE FROM" not in album
           helper=(root/'src/r2-managed.mjs').read_text()
           assert 'indexAsset(env' in helper
           assert 'bucket.delete(' not in helper and 'GDD_BUCKET.delete(' not in helper
@@ -122,7 +130,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs tests/d1-r2-managed.test.mjs tests/d1-admin-inbox.test.mjs tests/d1-working-code-assignment.test.mjs tests/d1-contribution-review.test.mjs
+          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs tests/d1-r2-managed.test.mjs tests/d1-admin-inbox.test.mjs tests/d1-working-code-assignment.test.mjs tests/d1-contribution-review.test.mjs tests/d1-working-photo-album.test.mjs
           echo "D1_ADMIN_UNIT_TESTS=PASS"
       - name: "Deploy ONLY isolated Access-protected admin worker"
         env:

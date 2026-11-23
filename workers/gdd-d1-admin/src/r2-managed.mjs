@@ -7,7 +7,7 @@ const PREFIX='/api/v1/admin/r2/managed';
 const ALLOWED=/^\/v1\/(?:uploads\/(?:small|start|part|complete)|assets\/[a-f0-9-]{36}(?:\/(?:preview|download|publication|page\/[1-9]\d{0,2}))?)$/i;
 const VIEW=/^\/v1\/assets\/[a-f0-9-]{36}\/(?:publication|page\/[1-9]\d{0,2})$/i;
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
-function ownerUUID(env){
+export function ownerUUID(env){
  const x=env.ADMIN_EMAIL_SHA256;
  if(typeof x!=='string'||!/^[a-f0-9]{64}$/.test(x))throw Error('missing_owner');
  const out=x.slice(0,8)+'-'+x.slice(8,12)+'-4'+x.slice(13,16)+'-a'+x.slice(17,20)+'-'+x.slice(20,32);

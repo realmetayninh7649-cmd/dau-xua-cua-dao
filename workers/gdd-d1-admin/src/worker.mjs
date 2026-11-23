@@ -9,6 +9,7 @@ import {handleR2Sandbox} from './r2-sandbox.mjs';
 import {handleWorkingEditor} from './working-editor.mjs';
 import {reviewContribution} from './contribution-review.mjs';
 import {handleManagedR2} from './r2-managed.mjs';
+import {handleAlbumPhotos} from './working-photo-album.mjs';
 import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 import SOURCE_AUDIT from '../../gdd-d1/source-integrity-audit-20261123.json' with {type:'json'};
 import R2_BASELINE from '../../gdd-d1/r2-object-inventory-snapshot-20261123.json' with {type:'json'};
@@ -175,6 +176,7 @@ export default {
          || !/^application\/json(?:;|$)/i.test(request.headers.get('Content-Type')||''))
          return json({error:'csrf_or_content_type_rejected'},403);
      }
+     if(path.endsWith('/photos'))return handleAlbumPhotos(request,env,path);
      return handleWorkingEditor(request,env.DB,path);
    }
    // Access-only private R2 test uploads. Do not expose original bodies.
