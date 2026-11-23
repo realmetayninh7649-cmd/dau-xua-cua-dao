@@ -439,8 +439,8 @@ function loadMammoth(){
 function wrapWordText(ctx,value,maxWidth){
  // Render via Canvas text only, never use raw DOCX HTML or execute macros.
  const lines=[];
- for(const para of value.replace(/\r\n?/g,'\n').split('\n')){
-  const words=para.trim().split(/\s+/).filter(Boolean);
+ for(const para of value.split(String.fromCharCode(13)).join('').split(String.fromCharCode(10))){
+  const words=para.trim().replaceAll(String.fromCharCode(9),' ').split(' ').filter(Boolean);
   if(!words.length){lines.push('');continue}
   let line='';
   for(let word of words){
@@ -473,7 +473,7 @@ async function managedDocxPages(){
   managedStatus('Đang đọc chữ trong DOCX cục bộ (không tải lên dịch vụ chuyển đổi)…');
   const reader=await loadMammoth();
   const result=await reader.extractRawText({arrayBuffer:await managedFile.arrayBuffer()});
-  const raw=String(result.value||'').replace(/\0/g,'').trim();
+  const raw=String(result.value||'').split(String.fromCharCode(0)).join('').trim();
   if(raw.length<20)throw Error('Tài liệu không có đủ chữ. Hãy xuất DOCX có hình ảnh thành PDF để giữ nguyên nội dung.');
   if(raw.length>200000)throw Error('Tài liệu quá dài; xin chia thành nhiều tập rồi tải lại.');
   const canvas=document.createElement('canvas');
@@ -564,8 +564,10 @@ async function loadContributions(){
        }
      }catch{}
    }
-   if(/^contributions\/pending\/[a-f\d-]{36}\/attachment\.(?:jpg|png|webp|pdf)$/.test(record.file_path||'')
-      &&record.file_path.includes('/'+record.id+'/')){
+   const filePath=String(record.file_path||'');
+   const prefix='contributions/pending/'+String(record.id||'')+'/attachment.';
+   const ext=filePath.startsWith(prefix)?filePath.slice(prefix.length):'';
+   if(['jpg','png','webp','pdf'].includes(ext)){
      const download=document.createElement('a');
      download.href='/api/v1/admin/contributions/'+encodeURIComponent(record.id)+'/attachment';
      download.textContent='Tải tệp đính kèm riêng tư';
