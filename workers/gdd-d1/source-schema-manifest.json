@@ -1,0 +1,1020 @@
+{
+  "generated_at": "2026-11-23",
+  "source_schema": "public",
+  "purpose": "All 21 Supabase tables; no row data or credentials",
+  "tables": {
+    "admin_users": {
+      "primary_key": [
+        "user_id"
+      ],
+      "columns": [
+        {
+          "name": "user_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "archive_gallery_images": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "owner_kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "owner_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "image_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "caption",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sort_order",
+          "postgres_type": "int4"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "photo_no",
+          "postgres_type": "int4"
+        },
+        {
+          "name": "album_archive_code",
+          "postgres_type": "text"
+        },
+        {
+          "name": "photo_code",
+          "postgres_type": "text"
+        }
+      ]
+    },
+    "documents": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "slug",
+          "postgres_type": "text"
+        },
+        {
+          "name": "title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "document_number",
+          "postgres_type": "text"
+        },
+        {
+          "name": "document_date",
+          "postgres_type": "text"
+        },
+        {
+          "name": "summary",
+          "postgres_type": "text"
+        },
+        {
+          "name": "body",
+          "postgres_type": "text"
+        },
+        {
+          "name": "file_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sources",
+          "postgres_type": "text"
+        },
+        {
+          "name": "person_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "archive_code",
+          "postgres_type": "text"
+        },
+        {
+          "name": "subfolder_code",
+          "postgres_type": "text"
+        },
+        {
+          "name": "archive_legacy_code",
+          "postgres_type": "text"
+        },
+        {
+          "name": "archive_code_aliases",
+          "postgres_type": "_text"
+        }
+      ]
+    },
+    "gdd_album_photo_counters": {
+      "primary_key": [
+        "owner_kind",
+        "owner_id"
+      ],
+      "columns": [
+        {
+          "name": "owner_kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "owner_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "last_no",
+          "postgres_type": "int4"
+        },
+        {
+          "name": "album_code",
+          "postgres_type": "text"
+        }
+      ]
+    },
+    "gdd_audio_programs": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "slug",
+          "postgres_type": "text"
+        },
+        {
+          "name": "category",
+          "postgres_type": "text"
+        },
+        {
+          "name": "title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "summary",
+          "postgres_type": "text"
+        },
+        {
+          "name": "body",
+          "postgres_type": "text"
+        },
+        {
+          "name": "cover_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "audio_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "episode_number",
+          "postgres_type": "int4"
+        },
+        {
+          "name": "published_date",
+          "postgres_type": "date"
+        },
+        {
+          "name": "duration_seconds",
+          "postgres_type": "int4"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "published_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "gdd_calendar_memorials": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "full_name",
+          "postgres_type": "text"
+        },
+        {
+          "name": "rank",
+          "postgres_type": "text"
+        },
+        {
+          "name": "calendar_system",
+          "postgres_type": "text"
+        },
+        {
+          "name": "lunar_day",
+          "postgres_type": "int2"
+        },
+        {
+          "name": "lunar_month",
+          "postgres_type": "int2"
+        },
+        {
+          "name": "lunar_leap",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "solar_day",
+          "postgres_type": "int2"
+        },
+        {
+          "name": "solar_month",
+          "postgres_type": "int2"
+        },
+        {
+          "name": "death_year",
+          "postgres_type": "int2"
+        },
+        {
+          "name": "image_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "source_note",
+          "postgres_type": "text"
+        },
+        {
+          "name": "description",
+          "postgres_type": "text"
+        },
+        {
+          "name": "linked_person_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "created_by",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "gdd_content_metric_events": {
+      "primary_key": [
+        "kind",
+        "record_id",
+        "event_type",
+        "event_key"
+      ],
+      "columns": [
+        {
+          "name": "kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "record_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "event_type",
+          "postgres_type": "text"
+        },
+        {
+          "name": "event_key",
+          "postgres_type": "text"
+        },
+        {
+          "name": "recorded_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "gdd_content_metrics": {
+      "primary_key": [
+        "kind",
+        "record_id"
+      ],
+      "columns": [
+        {
+          "name": "kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "record_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "view_count",
+          "postgres_type": "int8"
+        },
+        {
+          "name": "download_count",
+          "postgres_type": "int8"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "gdd_content_placements": {
+      "primary_key": [
+        "owner_kind",
+        "owner_id"
+      ],
+      "columns": [
+        {
+          "name": "owner_kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "owner_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "target_kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "target_category",
+          "postgres_type": "text"
+        }
+      ]
+    },
+    "gdd_memorials": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "slug",
+          "postgres_type": "text"
+        },
+        {
+          "name": "title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "person_name",
+          "postgres_type": "text"
+        },
+        {
+          "name": "rank_title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "death_date",
+          "postgres_type": "text"
+        },
+        {
+          "name": "anniversary_date",
+          "postgres_type": "text"
+        },
+        {
+          "name": "summary",
+          "postgres_type": "text"
+        },
+        {
+          "name": "body",
+          "postgres_type": "text"
+        },
+        {
+          "name": "portrait_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sources",
+          "postgres_type": "text"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "published_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "gdd_r2_assets": {
+      "primary_key": [
+        "asset_id"
+      ],
+      "columns": [
+        {
+          "name": "asset_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "owner_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "record_kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "record_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "role",
+          "postgres_type": "text"
+        },
+        {
+          "name": "original_name",
+          "postgres_type": "text"
+        },
+        {
+          "name": "original_bytes",
+          "postgres_type": "int8"
+        },
+        {
+          "name": "media_kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "preview_ready",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "download_ready",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "view_page_count",
+          "postgres_type": "int4"
+        },
+        {
+          "name": "view_source",
+          "postgres_type": "text"
+        },
+        {
+          "name": "public_view",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "allow_download",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "view_updated_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "gdd_site_download_events": {
+      "primary_key": [
+        "event_id"
+      ],
+      "columns": [
+        {
+          "name": "event_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "session_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "download_kind",
+          "postgres_type": "text"
+        },
+        {
+          "name": "recorded_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "gdd_site_download_totals": {
+      "primary_key": [
+        "singleton"
+      ],
+      "columns": [
+        {
+          "name": "singleton",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "total_unlinked",
+          "postgres_type": "int8"
+        }
+      ]
+    },
+    "gdd_visit_sessions": {
+      "primary_key": [
+        "session_id"
+      ],
+      "columns": [
+        {
+          "name": "session_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "first_seen",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "last_seen",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "gdd_visit_totals": {
+      "primary_key": [
+        "singleton"
+      ],
+      "columns": [
+        {
+          "name": "singleton",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "total_visits",
+          "postgres_type": "int8"
+        },
+        {
+          "name": "last_cleanup",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "media": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "slug",
+          "postgres_type": "text"
+        },
+        {
+          "name": "title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "caption",
+          "postgres_type": "text"
+        },
+        {
+          "name": "person_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "sources",
+          "postgres_type": "text"
+        },
+        {
+          "name": "image_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "archive_code",
+          "postgres_type": "text"
+        },
+        {
+          "name": "category",
+          "postgres_type": "text"
+        }
+      ]
+    },
+    "obituaries": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "slug",
+          "postgres_type": "text"
+        },
+        {
+          "name": "title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "deceased_name",
+          "postgres_type": "text"
+        },
+        {
+          "name": "memorial_date",
+          "postgres_type": "text"
+        },
+        {
+          "name": "summary",
+          "postgres_type": "text"
+        },
+        {
+          "name": "body",
+          "postgres_type": "text"
+        },
+        {
+          "name": "cover_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sources",
+          "postgres_type": "text"
+        },
+        {
+          "name": "person_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "archive_code",
+          "postgres_type": "text"
+        }
+      ]
+    },
+    "people": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "slug",
+          "postgres_type": "text"
+        },
+        {
+          "name": "full_name",
+          "postgres_type": "text"
+        },
+        {
+          "name": "secular_name",
+          "postgres_type": "text"
+        },
+        {
+          "name": "rank",
+          "postgres_type": "text"
+        },
+        {
+          "name": "branch",
+          "postgres_type": "text"
+        },
+        {
+          "name": "years",
+          "postgres_type": "text"
+        },
+        {
+          "name": "birthplace",
+          "postgres_type": "text"
+        },
+        {
+          "name": "summary",
+          "postgres_type": "text"
+        },
+        {
+          "name": "biography",
+          "postgres_type": "text"
+        },
+        {
+          "name": "date_notes",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sources",
+          "postgres_type": "text"
+        },
+        {
+          "name": "image_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "verified",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "subgroup",
+          "postgres_type": "text"
+        },
+        {
+          "name": "gender",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sort_order",
+          "postgres_type": "int4"
+        },
+        {
+          "name": "death_lunar_day",
+          "postgres_type": "int2"
+        },
+        {
+          "name": "death_lunar_month",
+          "postgres_type": "int2"
+        },
+        {
+          "name": "death_lunar_leap",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "death_solar_date",
+          "postgres_type": "date"
+        },
+        {
+          "name": "archive_code",
+          "postgres_type": "text"
+        },
+        {
+          "name": "archive_legacy_code",
+          "postgres_type": "text"
+        },
+        {
+          "name": "archive_code_aliases",
+          "postgres_type": "_text"
+        }
+      ]
+    },
+    "posts": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "slug",
+          "postgres_type": "text"
+        },
+        {
+          "name": "title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "category",
+          "postgres_type": "text"
+        },
+        {
+          "name": "summary",
+          "postgres_type": "text"
+        },
+        {
+          "name": "body",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sources",
+          "postgres_type": "text"
+        },
+        {
+          "name": "person_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "cover_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "verified",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "archive_code",
+          "postgres_type": "text"
+        }
+      ]
+    },
+    "submissions": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "sender_name",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sender_email",
+          "postgres_type": "text"
+        },
+        {
+          "name": "category",
+          "postgres_type": "text"
+        },
+        {
+          "name": "title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "description",
+          "postgres_type": "text"
+        },
+        {
+          "name": "source",
+          "postgres_type": "text"
+        },
+        {
+          "name": "source_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "file_path",
+          "postgres_type": "text"
+        },
+        {
+          "name": "status",
+          "postgres_type": "text"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        }
+      ]
+    },
+    "videos": {
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "slug",
+          "postgres_type": "text"
+        },
+        {
+          "name": "title",
+          "postgres_type": "text"
+        },
+        {
+          "name": "summary",
+          "postgres_type": "text"
+        },
+        {
+          "name": "body",
+          "postgres_type": "text"
+        },
+        {
+          "name": "video_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "cover_url",
+          "postgres_type": "text"
+        },
+        {
+          "name": "sources",
+          "postgres_type": "text"
+        },
+        {
+          "name": "person_id",
+          "postgres_type": "uuid"
+        },
+        {
+          "name": "published",
+          "postgres_type": "bool"
+        },
+        {
+          "name": "created_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "postgres_type": "timestamptz"
+        },
+        {
+          "name": "archive_code",
+          "postgres_type": "text"
+        }
+      ]
+    }
+  }
+}
