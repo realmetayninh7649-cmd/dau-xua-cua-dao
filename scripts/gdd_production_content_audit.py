@@ -9,7 +9,7 @@ def req(url,method='GET',additional=None):
  request=urllib.request.Request(url,headers=h,method=method)
  try:
   with urllib.request.urlopen(request,timeout=35) as resp:
-   return resp.status,resp.headers,resp.read(1200000)
+   return resp.status,resp.headers,resp.read(10000000)
  except urllib.error.HTTPError as e:
   return e.code,e.headers,e.read(1200000)
 status,head,ics=req(LIVE+'/lich-ky-niem-qui-vi.ics')
