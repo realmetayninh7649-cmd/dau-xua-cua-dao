@@ -7,6 +7,7 @@ on:
       - "gdd-public-readonly.js"
       - "supabase-config.js"
       - "tests/d1-web-preview.test.mjs"
+      - "tests/d1-web-preview-browser-smoke.mjs"
       - ".github/workflows/gdd-d1-web-preview-test.yml"
   workflow_dispatch:
 
@@ -35,3 +36,10 @@ jobs:
           assert text.index('gdd-public-readonly.js')<text.index('app.js')
           print('PUBLIC_UI_PREVIEW_TEST_ONLY=PASS')
           PY
+      - name: "Smoke test giao dien desktop iPhone bang du lieu D1 gia lap cong khai"
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright-core@1.56.1
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/gdd-d1-web-preview.log 2>&1 &
+          sleep 2
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/d1-web-preview-browser-smoke.mjs
