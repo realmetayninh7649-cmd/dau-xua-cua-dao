@@ -166,7 +166,8 @@ test('R2 inventory refuses a truncated or repeated cursor, never gives partial s
 });
 
 test('full Access administrator client bundle syntax and editorial controls are valid',()=>{
- assert.doesNotThrow(()=>new Script(ADMIN_JS,{filename:'gdd-access-admin-client.js'}),'Admin inline JS must parse, not only the outer template module');
+ try{new Script(ADMIN_JS,{filename:'gdd-access-admin-client.js'});}
+ catch(error){console.error('ADMIN_JS_SCRIPT_POSITION:',String(error.stack||error).slice(0,900));throw error;}
  for(const id of ['work-editor-panel','work-fields','work-save','work-kind','work-revisions','r2-sandbox-upload'])
   assert.ok(ADMIN_HTML.includes('id="'+id+'"'),id+' missing from admin HTML');
  assert.ok(ADMIN_JS.includes('gdd_version'));
