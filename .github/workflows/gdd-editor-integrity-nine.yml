@@ -1,0 +1,28 @@
+name: "GDD D1 editor - local real-schema integration 9 content groups"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - "tests/d1-working-editor-integration.test.mjs"
+      - ".github/workflows/gdd-editor-integrity-nine.yml"
+      - "workers/gdd-d1-admin/src/working-editor.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Test against disposable local SQLite clone only"
+        run: |
+          set -euo pipefail
+          node --test tests/d1-working-editor-integration.test.mjs
+          echo "NO_REAL_D1_R2_SUPABASE_WRITE=TRUE"
