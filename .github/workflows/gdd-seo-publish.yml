@@ -1,5 +1,11 @@
 name: "GDD SEO - Dong bo tai lieu da cong bo tu D1"
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/gdd-seo-build.mjs"
+      - "tests/gdd-seo-d1.test.mjs"
+      - ".github/workflows/gdd-seo-publish.yml"
   schedule:
     - cron: "45 19 * * *"
   workflow_dispatch:
