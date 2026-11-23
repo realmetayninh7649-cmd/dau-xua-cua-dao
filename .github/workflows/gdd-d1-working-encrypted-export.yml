@@ -1,4 +1,5 @@
 name: "GDD - Encrypted ACTIVE D1 working database export, no plaintext artifact"
+# Fresh encrypted backup after submission-review audit and archive-code functionality passed.
 on:
   push:
     branches: [cloudflare-d1-migration-20261123]
