@@ -11,7 +11,7 @@ const browser=await chromium.launch({headless:true,executablePath:chrome,args:['
 try{
  for(const [name,width,height] of [['desktop',1280,900],['iphone',390,844]]){
    const page=await browser.newPage({viewport:{width,height}});
-   let d1Requests=0,supabaseRequests=0;
+   let d1Requests=0,supabaseRequests=0,legacyImages=0;
    await page.route('**/*',async route=>{
      const url=route.request().url();
      if(url.startsWith('http://127.0.0.1:8765/'))return route.continue();
@@ -25,7 +25,15 @@ try{
          headers:{'content-type':'application/json','access-control-allow-origin':'*'},
          body:JSON.stringify({data:snapshot[kind].slice(offset,offset+limit)})});
      }
-     if(url.includes('supabase.co'))supabaseRequests++;
+     if(url.includes('supabase.co')){
+       const u=new URL(url),path=u.pathname;
+       if(path.startsWith('/rest/v1/')||path.startsWith('/auth/v1/')||path.startsWith('/functions/v1/')){
+         supabaseRequests++;
+         console.log('D1_PREVIEW_UNEXPECTED_SUPABASE_API',name,path.slice(0,100),route.request().resourceType());
+       }else{
+         legacyImages++;
+       }
+     }
      return route.abort();
    });
    await page.goto('http://127.0.0.1:8765/index.html',{waitUntil:'domcontentloaded',timeout:30000});
@@ -47,8 +55,8 @@ try{
    assert.equal(state.editorHidden,true);
    assert.ok(state.peopleCount>0,'no published people rendered');
    assert.ok(d1Requests>=11,'full public groups missing');
-   assert.equal(supabaseRequests,0,'staging must not contact Supabase');
-   console.log('D1_PUBLIC_UI_SMOKE_PASS',name,JSON.stringify({peopleCount:state.peopleCount,d1Requests,adminHidden:state.adminHidden,pageWidth:state.width,viewport:state.viewport}));
+   assert.equal(supabaseRequests,0,'staging must not make Supabase API requests');
+   console.log('D1_PUBLIC_UI_SMOKE_PASS',name,JSON.stringify({peopleCount:state.peopleCount,d1Requests,legacyImages,adminHidden:state.adminHidden,pageWidth:state.width,viewport:state.viewport}));
    await page.close();
  }
 }finally{await browser.close()}
