@@ -187,8 +187,20 @@
        loaded=true;decorate();
      }
    }catch(err){
-     console.warn('[GDD Qui Vi]',err?.message||err);
-     if(!loaded){loaded=true;records=[];decorate();monthNote.textContent='Chưa tải được các ngày kỷ niệm. Xin kiểm tra lại kết nối.'}
+     console.warn('[GDD Qui Vi] Supabase chưa đọc được, thử bản công khai:',err?.message||err);
+     try{
+       const backup=await window.GDDPublicReadOnly?.load();
+       if(!backup)throw Error('Không có bản sao công khai');
+       if(task===run){
+         allPeople=(backup.people||[]).filter(x=>x.published===true&&x.verified===true);
+         records=allPeople.filter(x=>validDate(x)||/^\d{4}-\d{2}-\d{2}$/.test(x.death_solar_date||''));
+         manual=(backup.gdd_calendar_memorials||[]).filter(x=>x.published===true);
+         loaded=true;decorate();
+       }
+     }catch(fallbackError){
+       console.warn('[GDD Qui Vi] Bản sao chưa dùng được:',fallbackError);
+       if(!loaded){loaded=true;records=[];decorate();monthNote.textContent='Chưa tải được các ngày kỷ niệm. Xin kiểm tra lại kết nối.'}
+     }
    }finally{
      requesting=false;
      if(pendingReload){pendingReload=false;reload()}
