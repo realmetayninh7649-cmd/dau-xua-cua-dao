@@ -6,6 +6,7 @@ export const ADMIN_HTML=`<!doctype html>
 <title>Quản trị tư liệu — Dấu Xưa Cửa Đạo </title>
 <link rel="stylesheet" href="/admin/style.css">
 <script src="/admin/app.js" defer></script>
+<script src="/admin/photo-album.js" defer></script>
 </head><body>
 <header class="masthead"><div class="wrap">
 <p class="eyebrow">ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ · KHO TƯ LIỆU ĐẠO SỬ</p>
@@ -34,6 +35,18 @@ export const ADMIN_HTML=`<!doctype html>
 <button id="work-code-assign" type="button" disabled>Cấp mã cho bản nháp</button></div>
 </div>
 <div class="sandbox-form" id="work-fields"></div>
+<div id="work-photo-panel" class="work-photo-panel" hidden>
+<h4>Thêm nhiều ảnh vào bài</h4>
+<p class="work-photo-explain">Chọn tối đa 12 ảnh một lượt, nhập chú thích và sắp xếp thứ tự. Ảnh gốc giữ riêng trong R2; chỉ bản xem được công bố sau khi bạn xác nhận. Bộ ảnh sẽ hiện dưới nội dung khi bài công bố.</p>
+<label for="work-photo-files"><strong>Chọn nhiều ảnh từ điện thoại hoặc máy tính</strong></label>
+<input id="work-photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+<small>JPEG/PNG/WebP, tối đa 24 MB/ảnh và 120 MB/lượt. Lưu bản nháp trước khi tải.</small>
+<ol id="work-photo-queue" class="work-photo-queue"></ol>
+<label class="sandbox-checkbox work-photo-consent"><input id="work-photo-confirm" type="checkbox"> Tôi đồng ý công bố bản xem của ảnh đã chọn (không phải bản gốc)</label>
+<button id="work-photo-upload" class="work-primary" type="button" disabled>Tải ảnh lên R2 và gắn vào bài</button>
+<p id="work-photo-status" role="status" aria-live="polite">Lưu bản nháp trước khi thêm ảnh.</p>
+<details id="work-photo-existing"><summary>Bộ ảnh đã gắn vào bài <span id="work-photo-count">· 0 ảnh</span></summary><div id="work-photo-album" class="work-photo-grid"></div></details>
+</div>
 <div class="controls"><button id="work-save" type="button">Lưu thay đổi</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div>
 <details class="work-history"><summary>Lịch sử chỉnh sửa và phục hồi</summary><ul class="records" id="work-revisions"></ul></details>
 </div>
@@ -108,6 +121,29 @@ export const ADMIN_HTML=`<!doctype html>
 <footer>Quản trị tư liệu · D1 làm việc · R2 riêng tư · Lưu lịch sử thay đổi · Bảo toàn bản sao phục hồi</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
+.work-photo-panel{margin:16px 0;padding:13px;background:#f8fbf6;border:1px solid #cddccf;border-radius:12px}
+.work-photo-panel h4{margin:0 0 7px;font:600 1.15rem Georgia,serif}
+.work-photo-explain{font-size:.89rem;color:#53695b;margin:0 0 10px}
+.work-photo-panel>label:not(.sandbox-checkbox){display:block;margin:8px 0 4px}
+.work-photo-panel input[type=file]{display:block;max-width:100%;width:100%;font:inherit;margin:6px 0}
+.work-photo-panel small{color:var(--muted)}
+.work-photo-queue{list-style:none;padding:0;margin:10px 0;display:grid;gap:8px}
+.work-photo-queue li{display:grid;grid-template-columns:65px minmax(0,1fr);gap:10px;padding:8px;border:1px solid #d4e0d5;border-radius:8px;background:#fff}
+.work-photo-queue img{width:65px;height:65px;object-fit:cover;border-radius:5px}
+.work-photo-queue label{display:block;min-width:0;font-size:.85rem;font-weight:600}
+.work-photo-queue input{display:block;width:100%;min-width:0;padding:6px;border:1px solid #b3c1b4;border-radius:6px;font:inherit}
+.work-photo-queue .photo-filename{font-size:.8rem;overflow-wrap:anywhere}
+.work-photo-queue .photo-buttons{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.work-photo-queue .photo-buttons button{min-height:29px;padding:2px 8px;font-size:.78rem}
+.work-photo-consent{margin:12px 0;font-size:.88rem}
+#work-photo-upload{width:100%;margin:6px 0}
+#work-photo-status{font-size:.85rem;overflow-wrap:anywhere}
+.work-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:8px 0}
+.work-photo-grid figure{margin:0;min-width:0}
+.work-photo-grid img{width:100%;height:125px;object-fit:cover;border-radius:6px}
+.work-photo-grid figcaption{font-size:.79rem;overflow-wrap:anywhere}
+@media(max-width:500px){.work-photo-panel{padding:10px}.work-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 .work-help{margin:0 0 15px;color:var(--muted);font-size:.94rem}
 .work-actions{align-items:center;margin:10px 0 4px}
 .work-actions select{max-width:100%;min-width:145px;flex:1}
@@ -708,7 +744,7 @@ function workRenderList(){
 }
 
 function workStatus(message){$('work-status').textContent=message;}
-function workClose(){workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
+function workClose(){window.GDDPhotoAlbum?.reset();workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
 async function workList(){
  const kind=$('work-kind').value;
  try{
@@ -824,6 +860,7 @@ async function workOpen(kind,id){
   $('work-list-details').open=false;
   $('work-edit-area').scrollIntoView({behavior:'smooth',block:'start'});
   await Promise.all([workHistory(),workCodePreview()]);
+  window.GDDPhotoAlbum?.show(workCurrent);
  }catch(e){workStatus('Không đọc được chi tiết: '+e.message)}
 }
 async function workNew(){
@@ -837,6 +874,7 @@ async function workNew(){
  $('work-list-details').open=false;
  $('work-edit-area').scrollIntoView({behavior:'smooth',block:'start'});
  workStatus('Biểu mẫu đã mở · Nhập thông tin rồi nhấn Lưu thay đổi.');
+ window.GDDPhotoAlbum?.show(workCurrent);
 }
 async function workHistory(){
  const list=$('work-revisions');list.replaceChildren();

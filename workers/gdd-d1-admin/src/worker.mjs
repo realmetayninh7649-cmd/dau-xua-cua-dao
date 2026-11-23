@@ -4,6 +4,7 @@
  * Admin UI is intentionally separate from production R2 and public API Workers.
  */
 import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from './admin-ui.mjs';
+import {PHOTO_JS} from './photo-album-ui.mjs';
 import {handleEditorSandbox} from './editor-sandbox.mjs';
 import {handleR2Sandbox} from './r2-sandbox.mjs';
 import {handleWorkingEditor} from './working-editor.mjs';
@@ -286,6 +287,7 @@ export default {
      });
    if(path==='/admin/style.css')return reply(ADMIN_CSS,200,'text/css; charset=utf-8');
    if(path==='/admin/app.js')return reply(ADMIN_JS,200,'application/javascript; charset=utf-8');
+   if(path==='/admin/photo-album.js')return reply(PHOTO_JS,200,'application/javascript; charset=utf-8');
    if(path==='/api/v1/admin/summary'||path==='/api/v1/admin/records'){
      if(!env.DB)return json({error:'database_unconfigured'},503);
      try{

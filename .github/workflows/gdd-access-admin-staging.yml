@@ -45,6 +45,7 @@ jobs:
           node --check workers/gdd-d1-admin/src/working-codes.mjs
           node --check workers/gdd-d1-admin/src/r2-managed.mjs
           node --check workers/gdd-d1-admin/src/admin-ui.mjs
+          node --check workers/gdd-d1-admin/src/photo-album-ui.mjs
           python3 - <<'PY'
           import json,pathlib,re
           root=pathlib.Path('workers/gdd-d1-admin')
@@ -73,6 +74,8 @@ jobs:
           assert cfg['vars']['ENABLE_MANAGED_R2']=='enabled'
           assert "handleManagedR2(request,env,path)" in js
           assert "handleAlbumPhotos(request,env,path)" in js
+          assert "PHOTO_JS" in js
+          assert "/admin/photo-album.js" in js
           album=(root/"src/working-photo-album.mjs").read_text()
           assert "preview_not_approved" in album
           assert "archive_gallery_images" in album
