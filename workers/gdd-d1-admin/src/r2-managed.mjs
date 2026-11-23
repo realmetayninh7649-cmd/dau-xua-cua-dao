@@ -1,3 +1,4 @@
+import {handleR2AccessApi,handleR2AccessView} from '../../gdd-r2-gateway/src/index.mjs';
 /* Cloudflare Access verified original/derivative R2 routing.
  * Reuses existing gateway core; does NOT authenticate with Supabase.
  * Identical R2 original paths; no public endpoint for original bytes.

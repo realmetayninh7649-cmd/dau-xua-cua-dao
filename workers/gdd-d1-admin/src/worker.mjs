@@ -7,7 +7,6 @@ import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from './admin-ui.mjs';
 import {handleEditorSandbox} from './editor-sandbox.mjs';
 import {handleR2Sandbox} from './r2-sandbox.mjs';
 import {handleWorkingEditor} from './working-editor.mjs';
-import {handleR2AccessApi,handleR2AccessView} from '../../gdd-r2-gateway/src/index.mjs';
 import {handleManagedR2} from './r2-managed.mjs';
 import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 import SOURCE_AUDIT from '../../gdd-d1/source-integrity-audit-20261123.json' with {type:'json'};

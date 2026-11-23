@@ -18,7 +18,7 @@ const bucket={
  async head(key){const value=objects.get(key);return value?{size:value.size,etag:value.etag,
     customMetadata:value.customMetadata,httpMetadata:value.httpMetadata}:null},
  async put(key,data,options){
-  if(objects.has(key))throw Error('object collision');
+  if(objects.has(key)&&!key.startsWith('meta/'))throw Error('object collision');
   const size=typeof data==='string'?new TextEncoder().encode(data).length:data.byteLength;
   const obj={data,size,etag:'f'.repeat(32),...options};
   objects.set(key,obj);return {size,etag:obj.etag};
