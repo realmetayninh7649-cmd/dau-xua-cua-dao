@@ -6,6 +6,8 @@ on:
       - ".github/workflows/gdd-d1-worker-staging.yml"
       - "workers/gdd-d1/wrangler.jsonc"
       - "workers/gdd-d1/src/worker.mjs"
+      - "workers/gdd-d1/src/public-contributions.mjs"
+      - "tests/d1-public-contributions.test.mjs"
       - "tests/d1-public-restored.test.mjs"
   workflow_dispatch:
 
@@ -25,6 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check workers/gdd-d1/src/worker.mjs
+          node --check workers/gdd-d1/src/public-contributions.mjs
           python3 - <<'PY'
           import json,pathlib
           root=pathlib.Path('workers/gdd-d1')
@@ -34,7 +37,15 @@ jobs:
           assert cfg['d1_databases'][0]['binding']=='DB'
           assert cfg['d1_databases'][0]['database_id']=='56bf9fcc-3f9a-43e5-82f7-8c521f5b370a'
           assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-editor-live-clone-20261124'
-          assert not cfg.get('r2_buckets')
+          assert cfg.get('r2_buckets')==[{
+            'binding':'SUBMISSIONS_BUCKET','bucket_name':'gdd-dau-xua-cua-dao'}]
+          assert cfg.get('ratelimits')[0]['name']=='CONTRIBUTION_RATE'
+          assert cfg['ratelimits'][0]['simple']=={'limit':2,'period':60}
+          contribution=(root/'src/public-contributions.mjs').read_text()
+          assert "contributions/pending/" in contribution
+          assert 'SUBMISSIONS_BUCKET.put(' in contribution
+          assert 'SUBMISSIONS_BUCKET.get(' not in contribution
+          assert '.delete(' not in contribution
           assert cfg.get('preview_urls') is False
           js=(root/'src/worker.mjs').read_text()
           assert "if(request.method!=='GET')" in js
@@ -47,9 +58,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/d1-public-restored.test.mjs
+          node --test tests/d1-public-restored.test.mjs tests/d1-public-contributions.test.mjs
           echo "D1_PUBLISHED_DRAFT_ISOLATION=PASS"
-      - name: "Chi deploy Worker staging rieng khong sua R2"
+      - name: "Chi deploy Worker API cong khai va hop thu dong gop rieng tu; khong sua R2 goc"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_WORKER_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
@@ -92,6 +103,7 @@ jobs:
           if len(posts)!=3 or not all(r.get('published') is True for r in posts):
               raise SystemExit('Published posts API failed')
           for url,method,expected in [
+              ('/api/v1/contributions','POST',403),
               ('/api/v1/admin/session','GET',403),
               ('/api/v1/public/admin_users','GET',404),
               ('/api/v1/public/people','POST',405)

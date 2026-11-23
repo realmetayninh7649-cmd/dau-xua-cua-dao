@@ -14,5 +14,21 @@
   ],
   "observability": {
     "enabled": false
-  }
+  },
+  "r2_buckets": [
+    {
+      "binding": "SUBMISSIONS_BUCKET",
+      "bucket_name": "gdd-dau-xua-cua-dao"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "CONTRIBUTION_RATE",
+      "namespace_id": "26001127",
+      "simple": {
+        "limit": 2,
+        "period": 60
+      }
+    }
+  ]
 }

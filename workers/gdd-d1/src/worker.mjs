@@ -1,6 +1,7 @@
 /* Dấu Xưa Cửa Đạo — Cloudflare D1 public API (STAGING ONLY).
  * No Supabase keys. Never deploy admin writes until Access and restore tests pass.
  * The original data remains unchanged in Supabase and R2. */
+import {handleContribution} from './public-contributions.mjs';
 const PUBLIC_TABLES = Object.freeze(new Set([
   'people','posts','media','videos','obituaries','documents',
   'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials'
@@ -69,6 +70,10 @@ function parsePage(url){
 }
 export default {
   async fetch(request,env,ctx){
+    const incomingPath=new URL(request.url).pathname;
+    if(incomingPath==='/api/v1/contributions'){
+      return handleContribution(request,env);
+    }
     if(request.method==='OPTIONS'){
       const origin=request.headers.get('Origin');
       if(!origin||!ALLOWED_ORIGINS.has(origin))return respond(request,{error:'forbidden'},403,{private:true});
