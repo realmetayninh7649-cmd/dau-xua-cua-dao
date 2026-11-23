@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 const js=readFileSync(new URL('../gdd-festival-binh-ngo-2026.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 function smoke(now,hash='',storageValue=''){
- const shell={hidden:true,scrollIntoView:()=>{}},restore={hidden:true},dismiss={};
+ const shell={hidden:true,scrollIntoView:()=>{}},restore={hidden:true,addEventListener:()=>{}},dismiss={addEventListener:()=>{}};
  const elements={'gdd-festival-2026':shell,'gdd-festival-restore':restore,
  'gdd-festival-dismiss':dismiss};
  let active=false,timers=[];
