@@ -4,6 +4,7 @@ on:
     branches: [cloudflare-d1-migration-20261123]
     paths:
       - ".github/workflows/gdd-d1-r2-readonly-audit.yml"
+      - "scripts/gdd_d1_r2_readonly_audit.py"
   workflow_dispatch:
 
 permissions:
