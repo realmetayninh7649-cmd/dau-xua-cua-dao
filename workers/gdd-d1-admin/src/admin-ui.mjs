@@ -22,7 +22,9 @@ export const ADMIN_HTML=`<!doctype html>
 <ul class="safe-list" id="safety-report">
 <li>Đang tải kết quả kiểm tra…</li>
 </ul>
-<p class="audit-caution">Đã kiểm kê danh sách đối tượng R2 ngày 23/11/2026. Đây chỉ là dấu kiểm kê tệp, chưa phải xác minh nội dung từng tệp hay bản sao lưu độc lập có thể phục hồi.</p></section>
+<p class="audit-caution">Đã kiểm kê danh sách đối tượng R2 ngày 23/11/2026. Đây chỉ là dấu kiểm kê tệp, chưa phải xác minh nội dung từng tệp hay bản sao lưu độc lập có thể phục hồi.</p>
+<div class="controls"><button id="r2-audit" type="button">Kiểm kê R2 trực tiếp (chỉ đọc)</button></div>
+<p id="r2-live-status" role="status" aria-live="polite">Chưa quét kho R2 trong phiên này.</p></section>
 <section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Đối chiếu với số liệu Supabase ngày 23/11/2026 (bản chụp)</small></div>
 <div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
 </section>
@@ -155,6 +157,21 @@ async function overview(){
      : 'CẢNH BÁO: Số lượng D1 không khớp bản chụp Supabase; chưa được phép mở website.');
  }catch(err){setStatus('Không thể đối chiếu D1: '+err.message)}
 }
+async function auditR2(){
+ const button=$('r2-audit'),status=$('r2-live-status');
+ button.disabled=true;status.textContent='Đang kiểm kê trực tiếp từ Cloudflare R2…';
+ try{
+   const result=await api('/api/v1/admin/r2/inventory');
+   if(result.coverage!=='complete_listing_metadata_only'||result.original_bytes_read!==false||
+       result.write_enabled!==false)throw Error('Kết quả không hợp lệ');
+   const count=Number(result.objects).toLocaleString('vi-VN');
+   const size=(Number(result.total_bytes)/1073741824).toFixed(2)+' GiB';
+   status.textContent='R2 trực tiếp: '+count+' đối tượng, '+size+
+     '. '+(result.matches_baseline?'Khớp bản chụp ngày 23/11/2026.':'Khác bản chụp ngày 23/11/2026; cần đối chiếu thay đổi.')+
+     ' Không đọc nội dung hay sửa tệp gốc.';
+ }catch(e){status.textContent='Chưa xác minh được kho R2: '+e.message;}
+ finally{button.disabled=false;}
+}
 async function loadRecords(){
  const kind=$('kind').value,view=$('view').value,records=$('record-list');
  records.replaceChildren();appendText(records,'li','Đang tải tư liệu…');
@@ -178,6 +195,7 @@ async function loadRecords(){
  }
 }
 $('refresh').addEventListener('click',()=>{overview();loadRecords()});
+$('r2-audit').addEventListener('click',auditR2);
 $('kind').addEventListener('change',()=>{offset=0;loadRecords()});
 $('view').addEventListener('change',()=>{offset=0;loadRecords()});
 $('previous').addEventListener('click',()=>{if(offset>=pageSize){offset-=pageSize;loadRecords()}});

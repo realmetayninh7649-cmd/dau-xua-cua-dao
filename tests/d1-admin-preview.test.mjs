@@ -31,6 +31,13 @@ const db={prepare(sql){
   }};
  throw Error('Unexpected SQL '+sql);
 }};
+const r2History=[];
+const mockR2={async list(options){
+ r2History.push(options);
+ if(!options.cursor)return {objects:[{size:100,key:'originals/private-original.jpg'},{size:200,key:'meta/private.json'}],truncated:true,cursor:'page-2'};
+ if(options.cursor==='page-2')return {objects:[{size:300,key:'view/public.webp'}],truncated:false};
+ throw Error('Unexpected pagination');
+}};
 const good={access:{aud:vars.ACCESS_AUD,getIdentity:async()=>({email:auditEmail})}};
 const unapproved={access:{aud:vars.ACCESS_AUD,getIdentity:async()=>({email:'not-authorized@example.invalid'})}};
 const badAud={access:{aud:'f'.repeat(64),getIdentity:async()=>({email:auditEmail})}};
@@ -130,4 +137,29 @@ test('draft records only on Access-protected allowlisted admin route',async()=>{
  assert.equal((await call('/api/v1/admin/records?kind=people&view=draft',{ctx:{}})).res.status,403);
  assert.equal((await call('/api/v1/admin/records?kind=submissions&view=draft')).res.status,404);
  assert.equal((await call('/api/v1/admin/records?kind=people&view=all')).res.status,400);
+});
+
+test('R2 inventory: Access-only, metadata-only, no original bytes or private keys',async()=>{
+ r2History.length=0;
+ const {res,body}=await call('/api/v1/admin/r2/inventory',{env:{...vars,DB:db,GDD_BUCKET:mockR2}});
+ assert.equal(res.status,200);
+ assert.equal(body.objects,3);
+ assert.equal(body.total_bytes,600);
+ assert.equal(body.matches_baseline,false);
+ assert.equal(body.original_bytes_read,false);
+ assert.equal(body.write_enabled,false);
+ assert.equal(body.coverage,'complete_listing_metadata_only');
+ assert.ok(!JSON.stringify(body).includes('originals/'));
+ assert.equal(r2History.length,2);
+ const denied=await call('/api/v1/admin/r2/inventory',{ctx:{},env:{...vars,DB:db,GDD_BUCKET:mockR2}});
+ assert.equal(denied.res.status,403);
+ assert.equal(r2History.length,2,'unauthorized requests must not access bucket');
+ assert.equal((await call('/api/v1/admin/r2/inventory')).res.status,503);
+ assert.equal((await call('/api/v1/admin/r2/inventory',{method:'POST',env:{...vars,DB:db,GDD_BUCKET:mockR2}})).res.status,405);
+});
+test('R2 inventory refuses a truncated or repeated cursor, never gives partial success',async()=>{
+ const broken={list:async()=>({objects:[{size:1}],truncated:true,cursor:'loop'})};
+ const response=await call('/api/v1/admin/r2/inventory',{env:{...vars,DB:db,GDD_BUCKET:broken}});
+ assert.equal(response.res.status,503);
+ assert.equal(response.body.error,'r2_inventory_unavailable');
 });

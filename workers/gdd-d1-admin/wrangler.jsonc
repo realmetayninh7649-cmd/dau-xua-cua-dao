@@ -17,5 +17,11 @@
       "database_name": "gdd-dao-su-restore-full-20261123",
       "database_id": "ddce6b9f-90e1-488f-bf9b-5ddf5d170346"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "GDD_BUCKET",
+      "bucket_name": "gdd-dau-xua-cua-dao"
+    }
   ]
 }

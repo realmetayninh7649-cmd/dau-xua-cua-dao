@@ -74,6 +74,31 @@ function pageParams(url){
     ||!Number.isInteger(offset)||offset<0||offset>5000)return null;
  return {limit,offset};
 }
+
+async function r2Inventory(env){
+ if(!env.GDD_BUCKET||typeof env.GDD_BUCKET.list!=='function')return null;
+ // Keys and ETags are never returned; only aggregate R2 object metadata.
+ // Paginate at most 8 requests, stop rather than claiming incomplete data.
+ let count=0, bytes=0, cursor;
+ const seen=new Set();
+ for(let page=0;page<8;page++){
+   const response=await env.GDD_BUCKET.list(cursor?{limit:1000,cursor}:{limit:1000});
+   if(!response||!Array.isArray(response.objects))throw new Error('invalid_r2_list');
+   for(const item of response.objects){
+     if(!Number.isSafeInteger(item.size)||item.size<0)throw new Error('invalid_r2_size');
+     bytes+=item.size;count++;
+   }
+   if(!response.truncated){
+     return {verified_at_utc:new Date().toISOString(),objects:count,total_bytes:bytes,
+       baseline_objects:R2_BASELINE.object_count,baseline_bytes:R2_BASELINE.total_bytes,
+       matches_baseline:count===R2_BASELINE.object_count && bytes===R2_BASELINE.total_bytes,
+       coverage:'complete_listing_metadata_only',original_bytes_read:false,write_enabled:false};
+   }
+   if(!response.cursor||response.cursor===cursor||seen.has(response.cursor))throw new Error('r2_cursor_invalid');
+   seen.add(response.cursor);cursor=response.cursor;
+ }
+ throw new Error('r2_listing_incomplete');
+}
 async function inventory(env){
  const rows=[];
  // Sequential queries avoid opening many simultaneous D1 connections on the Free tier.
@@ -126,6 +151,16 @@ export default {
    // Validate runtime identity on EVERY admin page and data endpoint.
    if(!await isAdministrator(env,ctx))
      return json({authenticated:false,error:'unauthorized'},403);
+   if(path==='/api/v1/admin/r2/inventory'){
+     if(!env.GDD_BUCKET)return json({error:'r2_binding_unconfigured'},503);
+     try {
+       const result=await r2Inventory(env);
+       return result?json(result):json({error:'r2_binding_unconfigured'},503);
+     }catch(e){
+       console.error('R2 inventory unavailable',String(e?.name||'unknown'));
+       return json({error:'r2_inventory_unavailable'},503);
+     }
+   }
    if(path==='/api/v1/admin/session')
      return json({authenticated:true,role:'administrator',write_enabled:false,mode:'staging-read-only'});
    if(path==='/'||path==='/admin')

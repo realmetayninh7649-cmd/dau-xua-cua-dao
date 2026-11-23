@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: "An toan: D1 dung database rieng, khong dong R2/Supabase"
+      - name: "An toan: D1 phuc hoi + R2 chi kiem ke, khong dong Supabase"
         shell: bash
         run: |
           set -euo pipefail
@@ -36,7 +36,11 @@ jobs:
           assert cfg['name']=='gdd-d1-admin-staging'
           assert cfg['preview_urls'] is False
           assert cfg['workers_dev'] is True
-          assert 'r2_buckets' not in cfg
+          assert cfg.get('r2_buckets')==[{'binding':'GDD_BUCKET','bucket_name':'gdd-dau-xua-cua-dao'}]
+          for banned in ('GDD_BUCKET.put(', 'GDD_BUCKET.delete(', 'GDD_BUCKET.get(', 'GDD_BUCKET.createMultipartUpload(', 'GDD_BUCKET.resumeMultipartUpload('):
+              assert banned not in js, banned
+          assert "if(request.method!=='GET')" in js
+          assert 'r2Inventory(env)' in js
           assert len(cfg['d1_databases'])==1
           assert cfg['d1_databases'][0]['binding']=='DB'
           assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-restore-full-20261123'
@@ -83,7 +87,7 @@ jobs:
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self,req,fp,code,msg,headers,newurl):return None
           opener=urllib.request.build_opener(NoRedirect())
-          for path in ['/','/admin','/admin/app.js','/api/v1/admin/session','/api/v1/admin/summary']:
+          for path in ['/','/admin','/admin/app.js','/api/v1/admin/session','/api/v1/admin/summary','/api/v1/admin/r2/inventory']:
               status=0
               for attempt in range(6):
                   req=urllib.request.Request(base+path,
