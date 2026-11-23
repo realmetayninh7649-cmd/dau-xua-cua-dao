@@ -6,6 +6,7 @@
 import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from './admin-ui.mjs';
 import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 import SOURCE_AUDIT from '../../gdd-d1/source-integrity-audit-20261123.json' with {type:'json'};
+import R2_BASELINE from '../../gdd-d1/r2-object-inventory-snapshot-20261123.json' with {type:'json'};
 const INVENTORY=Object.freeze([
  'admin_users','archive_gallery_images','documents','gdd_album_photo_counters',
  'gdd_audio_programs','gdd_calendar_memorials','gdd_content_metric_events',
@@ -84,6 +85,12 @@ async function inventory(env){
    mode:'staging-read-only',write_enabled:false,table_count:INVENTORY.length,
    source_snapshot_date:SOURCE_BASELINE.snapshot_date,
    source_integrity_snapshot:SOURCE_AUDIT,
+   r2_object_inventory_snapshot:{
+     verified_at_utc:R2_BASELINE.verified_at_utc,
+     object_count:R2_BASELINE.object_count,
+     total_bytes:R2_BASELINE.total_bytes,
+     fingerprint_algorithm:'sha256-of-object-list'
+   },
    source_total:SOURCE_BASELINE.expected_total,
    total_records:rows.reduce((s,x)=>s+x.count,0),
    remaining_records:enriched.reduce((s,x)=>s+x.remaining,0),
