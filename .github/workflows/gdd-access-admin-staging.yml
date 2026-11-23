@@ -2,7 +2,12 @@ name: "GDD Access - Quan tri D1 thu nghiem CHI DOC"
 on:
   push:
     branches: [cloudflare-d1-migration-20261123]
-    paths: [".github/workflows/gdd-access-admin-staging.yml"]
+    paths:
+      - ".github/workflows/gdd-access-admin-staging.yml"
+      - "workers/gdd-d1-admin/src/**"
+      - "workers/gdd-d1-admin/wrangler.jsonc"
+      - "workers/gdd-d1/source-row-counts-20261123.json"
+      - "tests/d1-admin-preview.test.mjs"
   workflow_dispatch:
 
 permissions:
