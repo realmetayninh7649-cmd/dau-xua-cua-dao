@@ -138,7 +138,7 @@ function saveProgress(){
  try{localStorage.setItem(progressKey(state.selected.id),String(Math.floor(player.currentTime)))}catch{}
 }
 function itemHTML(row){
- const cover=safe(row.cover_url),name=esc(row.title);
+ const cover=window.GDDLegacyImages?.displayUrl(safe(row.cover_url))||safe(row.cover_url),name=esc(row.title);
  return '<button class="gdd-radio-item" type="button" data-gdd-radio-play="'+esc(row.id)+'" data-active="'+(state.selected?.id===row.id)+'">'+
  (cover?'<img class="gdd-radio-art" src="'+esc(cover)+'" loading="lazy" alt="Ảnh bìa '+name+'">':'<span class="gdd-radio-art" aria-hidden="true">♫</span>')+
  '<span class="gdd-radio-item-copy"><small>'+esc([names[row.category],row.episode_number?'Số '+row.episode_number:'',date(row.published_date)].filter(Boolean).join(' · '))+
@@ -163,8 +163,9 @@ function selectProgram(row,autoplay=false){
   },{once:true});
  }
  const cover=$('#gdd-radio-cover');
- cover.outerHTML=safe(row.cover_url)?
-  '<img id="gdd-radio-cover" class="gdd-radio-cover" src="'+esc(safe(row.cover_url))+'" alt="Ảnh bìa '+esc(row.title)+'">':
+ const coverUrl=window.GDDLegacyImages?.displayUrl(safe(row.cover_url))||safe(row.cover_url);
+ cover.outerHTML=coverUrl?
+  '<img id="gdd-radio-cover" class="gdd-radio-cover" src="'+esc(coverUrl)+'" alt="Ảnh bìa '+esc(row.title)+'">':
   '<div id="gdd-radio-cover" class="gdd-radio-cover" aria-hidden="true">♫</div>';
  $('#gdd-radio-kind-label').textContent=names[row.category]||'Âm Thanh Đại Đạo';
  $('#gdd-radio-title').textContent=row.title;
@@ -182,12 +183,24 @@ async function fetchPublic(reset=true){
  const requestedCategory=state.category;
  if(reset){state.page=0;state.rows=[];list.textContent='Đang tải danh sách…'}
  try{
-  const supa=await getClient(),size=24,offset=state.page*size;
-  let query=supa.from(TABLE).select('*').eq('published',true);
-  if(requestedCategory!=='all')query=query.eq('category',requestedCategory);
-  const {data,error}=await query.order('published_at',{ascending:false,nullsFirst:false})
-    .order('created_at',{ascending:false}).range(offset,offset+size-1);
-  if(error)throw error;
+  const size=24,offset=state.page*size;
+  let data;
+  try{
+    const supa=await getClient();
+    let query=supa.from(TABLE).select('*').eq('published',true);
+    if(requestedCategory!=='all')query=query.eq('category',requestedCategory);
+    const response=await query.order('published_at',{ascending:false,nullsFirst:false})
+      .order('created_at',{ascending:false}).range(offset,offset+size-1);
+    if(response.error)throw response.error;
+    data=response.data;
+  }catch(readError){
+    const backup=await window.GDDPublicReadOnly?.load();
+    if(!backup)throw readError;
+    data=(backup.gdd_audio_programs||[])
+      .filter(row=>row.published===true&&(requestedCategory==='all'||row.category===requestedCategory))
+      .sort((a,b)=>String(b.published_at||b.created_at||'').localeCompare(String(a.published_at||a.created_at||'')))
+      .slice(offset,offset+size);
+  }
   if(state.category!==requestedCategory){state.refreshPending=true;return}
   state.rows.push(...(data||[]));state.page++;more.hidden=(data||[]).length<size;
   renderList();listStatus.textContent='';
@@ -220,11 +233,17 @@ window.addEventListener('gdd:search-open-audio',async event=>{
   try{
     let row=state.rows.find(item=>item.id===id);
     if(!row){
-      const supa=await getClient();
-      const {data,error}=await supa.from(TABLE).select('*')
-        .eq('id',id).eq('published',true).maybeSingle();
-      if(error||!data){playStatus.textContent='Không tìm thấy chương trình âm thanh đã công bố.';return;}
-      row=data;
+      try{
+        const supa=await getClient();
+        const response=await supa.from(TABLE).select('*')
+          .eq('id',id).eq('published',true).maybeSingle();
+        if(response.error)throw response.error;
+        row=response.data;
+      }catch(readError){
+        const backup=await window.GDDPublicReadOnly?.load();
+        row=(backup?.gdd_audio_programs||[]).find(p=>p.published===true&&p.id===id)||null;
+      }
+      if(!row){playStatus.textContent='Không tìm thấy chương trình âm thanh đã công bố.';return;}
       state.rows.push(row);
       renderList();
     }
