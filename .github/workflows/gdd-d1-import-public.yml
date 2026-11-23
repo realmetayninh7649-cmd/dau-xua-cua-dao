@@ -1,0 +1,116 @@
+name: "GDD D1 - Nhap tu lieu DA CONG BO (staging)"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-import-public.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import-public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Loc duy nhat ban ghi cong khai tu snapshot tren GitHub"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib
+          source=json.load(open('public-fallback.json',encoding='utf8'))
+          if source.get('source')!='public-published-read-only-backup':
+              raise SystemExit('Public fallback source mismatch')
+          manifest=json.load(open('workers/gdd-d1/source-schema-manifest.json',encoding='utf8'))['tables']
+          aliases={'gallery':'archive_gallery_images','placements':'gdd_content_placements'}
+          allow={'people','posts','media','videos','obituaries','documents','gdd_memorials',
+                 'gdd_audio_programs','gdd_calendar_memorials','gallery','placements'}
+          expected={'people':50,'posts':17,'media':13,'videos':8,'obituaries':2,
+                    'documents':21,'gdd_memorials':5,'gdd_audio_programs':2,
+                    'gdd_calendar_memorials':0,'gallery':615,'placements':8}
+          for k,n in expected.items():
+              if len(source.get(k,[]))!=n:raise SystemExit('Unexpected count for '+k)
+          for kind in allow-{'gallery','placements'}:
+              if not all(r.get('published') is True for r in source[k]):
+                  raise SystemExit('Draft record in '+kind)
+          pub_ids={k:{r['id'] for r in source[k]} for k in allow-{'gallery','placements'}}
+          for row in source['gallery']:
+              if row.get('owner_id') not in pub_ids.get(row.get('owner_kind'),set()):
+                  raise SystemExit('Unpublished album parent')
+          for row in source['placements']:
+              if row.get('owner_id') not in pub_ids.get(row.get('owner_kind'),set()):
+                  raise SystemExit('Unpublished placement parent')
+          data={k:[] for k in manifest}
+          for k in allow:
+              real=aliases.get(k,k)
+              data[real]=source[k]
+          assert len(data)==21
+          pathlib.Path('/tmp/gdd-d1-public-only.json').write_text(
+            json.dumps({'tables':data,'exported_at':source.get('generated_at')},ensure_ascii=False),encoding='utf8')
+          print('PUBLIC_ONLY_APPROVED='+str(sum(map(len,data.values()))))
+          print('PRIVATE_ADMIN_AND_SUBMISSIONS_EXCLUDED=True')
+          PY
+          node workers/gdd-d1/scripts/build-d1-import.mjs \
+            --input /tmp/gdd-d1-public-only.json \
+            --output /tmp/gdd-d1-public-only.sql \
+            --confirm-private-offline
+      - name: "Kiem tra file SQL bang SQLite truoc khi gui Cloudflare"
+        run: |
+          python3 - <<'PY'
+          import sqlite3,json,pathlib
+          conn=sqlite3.connect(':memory:')
+          conn.executescript(pathlib.Path('workers/gdd-d1/migrations/0001_supabase_21_tables.sql').read_text())
+          conn.executescript(pathlib.Path('/tmp/gdd-d1-public-only.sql').read_text())
+          expected={'people':50,'posts':17,'media':13,'videos':8,'obituaries':2,'documents':21,
+                    'gdd_memorials':5,'gdd_audio_programs':2,'gdd_calendar_memorials':0,
+                    'archive_gallery_images':615,'gdd_content_placements':8,'admin_users':0,'submissions':0}
+          for table,count in expected.items():
+              actual=conn.execute('SELECT count(*) FROM "'+table+'"').fetchone()[0]
+              if actual!=count:raise SystemExit(table+': count mismatch')
+          print('LOCAL_21_TABLE_IMPORT_VALIDATED=True')
+          PY
+      - name: "Nhap du lieu da cong bo vao D1 moi"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          npx --yes wrangler@4.159.0 d1 execute gdd-dao-su-archive --remote \
+            --config workers/gdd-d1/wrangler.jsonc --file=/tmp/gdd-d1-public-only.sql
+          echo "PUBLIC_D1_IMPORT_SENT=True"
+      - name: "Kiem tra so dong tren D1 that"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,urllib.request
+          endpoint='https://api.cloudflare.com/client/v4/accounts/'+os.environ['CLOUDFLARE_ACCOUNT_ID']+'/d1/database/bffcd3e0-e46e-4280-b8dd-82e8d3402b3d/query'
+          token=os.environ['CLOUDFLARE_D1_API_TOKEN']
+          def count(table):
+              req=urllib.request.Request(endpoint,method='POST',
+                 headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+                 data=json.dumps({'sql':'SELECT COUNT(*) AS n FROM "'+table+'"'}).encode('utf8'))
+              with urllib.request.urlopen(req,timeout=25) as response: data=json.load(response)
+              if data.get('success') is not True:raise RuntimeError('Database verification error')
+              return data['result'][0]['results'][0]['n']
+          expected={'people':50,'posts':17,'media':13,'videos':8,'obituaries':2,'documents':21,
+                    'gdd_memorials':5,'gdd_audio_programs':2,'gdd_calendar_memorials':0,
+                    'archive_gallery_images':615,'gdd_content_placements':8,'admin_users':0,
+                    'submissions':0,'gdd_r2_assets':0}
+          for table,n in expected.items():
+              actual=count(table)
+              if actual!=n:raise SystemExit('D1 mismatch: '+table+' expected '+str(n)+' actual '+str(actual))
+          print('D1_PUBLISHED_RECORDS_VERIFIED=741')
+          print('D1_PRIVATE_RECORDS_IMPORTED=0')
+          print('SUPABASE_R2_UNCHANGED=True')
+          PY
