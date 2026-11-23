@@ -500,6 +500,11 @@ function videoSource(raw){
     if(navigate&&history.state?.__gddLayer==='admin')history.back();
   }
   async function openAdmin(){
+    // All editorial operations now use Access-protected working D1, not old Supabase login.
+    if(config.publicReadProvider==='d1-staging'){
+      window.location.href='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev/admin';
+      return;
+    }
     if($('#admin-overlay').hidden){
       history.pushState({...history.state,__gddLayer:'admin'},'',location.href);
     }
@@ -1067,10 +1072,11 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         $('#admin-editor-area').hidden=true;
         const banner=$('#mode-banner');
         if(banner){
+          const liveDomain=/^(?:www\.)?dauxuacuadao\.info\.vn$/.test(location.hostname);
           banner.textContent=archive.backend==='d1'
-            ? 'CHẾ ĐỘ XEM THỬ · Dữ liệu công khai, album và vị trí hiển thị từ Cloudflare D1. Không cho phép đăng nhập hay chỉnh sửa.'
-            : 'CHẾ ĐỘ DỰ PHÒNG · Đang xem tư liệu từ bản sao công khai đã kiểm tra. Không cho phép đăng nhập hay chỉnh sửa.';
-          banner.hidden=false;
+            ? 'Tư liệu công khai đang được phục vụ từ Cloudflare D1.'
+            : 'CHẾ ĐỘ DỰ PHÒNG · Đang xem tư liệu từ bản sao công khai đã kiểm tra. Bài mới tạm chưa cập nhật.';
+          banner.hidden=liveDomain&&archive.backend==='d1';
         }
         updateSubgroupFilter();render();syncHash();return;
       }catch(error){
@@ -1078,7 +1084,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         state.data=demo;state.admin=false;state.supabase=null;
         $('#admin-login-area').hidden=true;$('#admin-editor-area').hidden=true;
         const banner=$('#mode-banner');
-        if(banner){banner.textContent='Không tải được bản xem thử D1. Website chính không bị thay đổi.';banner.hidden=false;}
+        if(banner){banner.textContent='Tạm thời chưa kết nối được kho tư liệu. Xin thử lại sau.';banner.hidden=false;}
         render();syncHash();return;
       }
     }
