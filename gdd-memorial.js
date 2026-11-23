@@ -143,9 +143,20 @@
     const feature=$('#gdd-memorial-feature');
     if(!feature)return;
     try{
-      const supa=await client();
-      const {data,error}=await supa.from(TABLE).select('*').eq('published',true).order('published_at',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}).limit(1);
-      if(error)throw error;
+      let data;
+      try{
+        const supa=await client();
+        const result=await supa.from(TABLE).select('*').eq('published',true)
+          .order('published_at',{ascending:false,nullsFirst:false})
+          .order('created_at',{ascending:false}).limit(1);
+        if(result.error)throw result.error;
+        data=result.data;
+      }catch(readError){
+        const backup=await window.GDDPublicReadOnly?.load();
+        if(!backup)throw readError;
+        data=[...(backup.gdd_memorials||[])].sort((a,b)=>
+          String(b.published_at||b.created_at||'').localeCompare(String(a.published_at||a.created_at||''))).slice(0,1);
+      }
       if(data?.[0])feature.innerHTML=featuredCard(data[0]);
       else feature.innerHTML=`<div class="gdd-memorial-feature-copy" style="grid-column:1/-1"><div class="gdd-memorial-label">KHO TƯ LIỆU TƯỞNG NIỆM</div><p class="gdd-memorial-summary">Chuyên mục đang sưu khảo và chuẩn bị những bài tưởng niệm đầu tiên.</p><div class="gdd-memorial-actions"><a class="gdd-memorial-more" href="#tuong-niem">Xem các bài tưởng niệm</a></div></div>`;
     }catch(e){
@@ -179,10 +190,23 @@
     const list=$('#gdd-memorial-archive-list');const status=$('#gdd-memorial-archive-status'),more=$('#gdd-memorial-archive-more');
     if(status)status.textContent='Đang tải danh sách…';
     try{
-      const supa=await client();
       const offset=openArchivePage*PAGE_SIZE;
-      const {data,error}=await supa.from(TABLE).select('slug,person_name,title,rank_title,anniversary_date,summary,portrait_url,published_at,created_at').eq('published',true).order('published_at',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}).range(offset,offset+PAGE_SIZE-1);
-      if(error)throw error;
+      let data;
+      try{
+        const supa=await client();
+        const result=await supa.from(TABLE)
+          .select('slug,person_name,title,rank_title,anniversary_date,summary,portrait_url,published_at,created_at')
+          .eq('published',true).order('published_at',{ascending:false,nullsFirst:false})
+          .order('created_at',{ascending:false}).range(offset,offset+PAGE_SIZE-1);
+        if(result.error)throw result.error;
+        data=result.data;
+      }catch(readError){
+        const backup=await window.GDDPublicReadOnly?.load();
+        if(!backup)throw readError;
+        data=[...(backup.gdd_memorials||[])].sort((a,b)=>
+          String(b.published_at||b.created_at||'').localeCompare(String(a.published_at||a.created_at||'')))
+          .slice(offset,offset+PAGE_SIZE);
+      }
       if(!list?.isConnected)return;
       (data||[]).forEach(r=>list.insertAdjacentHTML('beforeend',archiveItem(r)));
       if(!(data||[]).length && offset===0)list.innerHTML='<p class="gdd-memorial-empty">Chưa có bài tưởng niệm được công bố.</p>';
@@ -196,9 +220,17 @@
     openModal();
     dialogBody.innerHTML='<p class="gdd-memorial-empty">Đang mở bài tưởng niệm…</p>';
     try{
-      const supa=await client();
-      const {data,error}=await supa.from(TABLE).select('*').eq('published',true).eq('slug',slug).maybeSingle();
-      if(error)throw error;
+      let data;
+      try{
+        const supa=await client();
+        const result=await supa.from(TABLE).select('*').eq('published',true).eq('slug',slug).maybeSingle();
+        if(result.error)throw result.error;
+        data=result.data;
+      }catch(readError){
+        const backup=await window.GDDPublicReadOnly?.load();
+        if(!backup)throw readError;
+        data=(backup.gdd_memorials||[]).find(row=>row.published===true&&row.slug===slug)||null;
+      }
       if(!data){dialogBody.innerHTML='<p>Không tìm thấy bài tưởng niệm đã công bố.</p><a class="gdd-memorial-back" href="#tuong-niem">Xem các bài khác ↗</a>';return;}
       const originalPhoto=safeUrl(data.portrait_url);const img=window.GDDLegacyImages?.displayUrl(originalPhoto)||originalPhoto;
       dialogBody.innerHTML=`<div class="gdd-memorial-kicker">TƯỞNG NIỆM CHỨC SẮC</div><h2>${escape(data.title)}</h2>
