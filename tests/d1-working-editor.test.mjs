@@ -47,7 +47,7 @@ test('working editor Access and kill switch deny ALL unauthorized calls',async()
  assert.equal((await call('GET',path,undefined,{authorized:false})).status,403);
  assert.equal((await call('GET',path,undefined,{enabled:false})).status,403);
  assert.equal((await call('PATCH',path,{version:1,fields:{summary:'Fake'}},{authorized:false})).status,403);
- assert.equal((await call('DELETE',path,undefined)).status,405);
+ assert.equal((await call('DELETE',path,undefined)).status,403); // blocked before editor code (missing same-origin JSON)
 });
 test('field whitelist forbids modifying protected ID and archive code',async()=>{
  const p='/api/v1/admin/work/people/'+data.id;
