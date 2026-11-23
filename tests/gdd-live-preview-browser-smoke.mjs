@@ -43,6 +43,33 @@ try{
   assert.ok(result.publishedOnly);
   assert.ok(result.cards>0,'public cards missing');
   assert.ok(result.docWidth<=result.viewport+3,'page overflows viewport');
+  await page.waitForFunction(()=>{
+    const keys=['gdd-online-count','gdd-total-visits','gdd-total-downloads'];
+    return keys.every(key=>{const el=document.getElementById(key);
+      return el && /^[0-9.]+$/.test(el.textContent.trim());});
+  },null,{timeout:25000});
+  const status=await page.evaluate(async()=>{
+    const archive=await window.GDDPublicReadOnly.load();
+    const categories={};
+    for(const kind of ['people','posts','media','videos','obituaries','documents']){
+      const rows=archive[kind]||[],gallery=archive.gallery||[];
+      categories[kind]={total:rows.length,
+        direct:rows.filter(x=>x.image_url||x.cover_url).length,
+        album:rows.filter(x=>gallery.some(g=>g.owner_kind===kind&&g.owner_id===x.id&&g.image_url)).length};
+    }
+    const images=[...document.querySelectorAll('#gdd-directory .gdd-preview-thumb img')];
+    images.forEach(x=>{x.loading='eager'});
+    const outcomes=await Promise.all(images.map(img=>Promise.race([
+      img.decode().then(()=>img.naturalWidth>0).catch(()=>false),
+      new Promise(resolve=>setTimeout(()=>resolve(false),9000))
+    ])));
+    const metrics=Object.fromEntries(['gdd-online-count','gdd-total-visits','gdd-total-downloads']
+      .map(key=>[key,document.getElementById(key).textContent.trim()]));
+    return {categories,homeImages:images.length,loaded:outcomes.filter(Boolean).length,
+      broken:outcomes.filter(x=>!x).length,metrics};
+  });
+  console.log('PUBLIC_R2_D1_DISPLAY_'+name.toUpperCase()+'='+JSON.stringify(status));
+  assert.ok(status.homeImages>0,'No public homepage thumbnail elements');
   await page.screenshot({path:'/tmp/gdd-public-site-smoke/'+name+'.png',fullPage:false});
   console.log('LIVE_D1_WEBSITE_UI_'+name.toUpperCase()+'=PASS',JSON.stringify(result));
   await page.route('https://gdd-d1-admin-staging.realmetayninh7649.workers.dev/**',
