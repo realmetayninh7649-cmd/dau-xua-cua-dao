@@ -6,6 +6,7 @@
 import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from './admin-ui.mjs';
 import {handleEditorSandbox} from './editor-sandbox.mjs';
 import {handleR2Sandbox} from './r2-sandbox.mjs';
+import {handleWorkingEditor} from './working-editor.mjs';
 import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 import SOURCE_AUDIT from '../../gdd-d1/source-integrity-audit-20261123.json' with {type:'json'};
 import R2_BASELINE from '../../gdd-d1/r2-object-inventory-snapshot-20261123.json' with {type:'json'};
@@ -143,6 +144,22 @@ async function inventory(env){
 export default {
  async fetch(request,env,ctx){
    const url=new URL(request.url),path=url.pathname;
+   // Working editorial API: Access + CSRF + a server-set fail-closed feature flag.
+   if(path.startsWith('/api/v1/admin/work/')){
+     if(!await isAdministrator(env,ctx))
+       return json({authenticated:false,error:'unauthorized'},403);
+     if(env.ENABLE_WORKING_EDITOR!=='enabled')
+       return json({error:'editor_read_only',write_enabled:false},403);
+     if(request.method!=='GET'){
+       const origin=request.headers.get('Origin');
+       const site=request.headers.get('Sec-Fetch-Site');
+       if(origin!=='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'
+         || (site&&site!=='same-origin')
+         || !/^application\/json(?:;|$)/i.test(request.headers.get('Content-Type')||''))
+         return json({error:'csrf_or_content_type_rejected'},403);
+     }
+     return handleWorkingEditor(request,env.DB,path);
+   }
    // Access-only private R2 test uploads. Do not expose original bodies.
    if(path==='/api/v1/admin/r2/staging-uploads'){
      if(!await isAdministrator(env,ctx))
