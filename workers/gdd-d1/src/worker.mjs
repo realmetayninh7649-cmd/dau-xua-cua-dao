@@ -2,6 +2,7 @@
  * No Supabase keys. Never deploy admin writes until Access and restore tests pass.
  * The original data remains unchanged in Supabase and R2. */
 import {handleContribution} from './public-contributions.mjs';
+import {handleSiteStats} from './public-statistics.mjs';
 const PUBLIC_TABLES = Object.freeze(new Set([
   'people','posts','media','videos','obituaries','documents',
   'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials'
@@ -73,6 +74,9 @@ export default {
     const incomingPath=new URL(request.url).pathname;
     if(incomingPath==='/api/v1/contributions'){
       return handleContribution(request,env);
+    }
+    if(incomingPath==='/api/v1/stats'||incomingPath.startsWith('/api/v1/stats/')){
+      return handleSiteStats(request,env,incomingPath);
     }
     if(request.method==='OPTIONS'){
       const origin=request.headers.get('Origin');
