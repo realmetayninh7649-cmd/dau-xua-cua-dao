@@ -1068,7 +1068,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         const banner=$('#mode-banner');
         if(banner){
           banner.textContent=archive.backend==='d1'
-            ? 'CHẾ ĐỘ XEM THỬ · Dữ liệu công khai từ Cloudflare D1; album và vị trí hiển thị lấy từ bản sao đã kiểm tra. Không cho phép đăng nhập hay chỉnh sửa.'
+            ? 'CHẾ ĐỘ XEM THỬ · Dữ liệu công khai, album và vị trí hiển thị từ Cloudflare D1. Không cho phép đăng nhập hay chỉnh sửa.'
             : 'CHẾ ĐỘ DỰ PHÒNG · Đang xem tư liệu từ bản sao công khai đã kiểm tra. Không cho phép đăng nhập hay chỉnh sửa.';
           banner.hidden=false;
         }

@@ -9,6 +9,7 @@
     'people','posts','media','videos','obituaries','documents',
     'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials'
   ]);
+  const D1_KINDS=Object.freeze([...KINDS,'gallery','placements']);
   const API='https://gdd-d1-api-staging.realmetayninh7649.workers.dev';
   let pending=null;
   async function staticArchive(){
@@ -23,7 +24,7 @@
     return data;
   }
   async function pages(kind){
-    if(!KINDS.includes(kind))throw Error('Chuyên mục không được phép');
+    if(!D1_KINDS.includes(kind))throw Error('Chuyên mục không được phép');
     const rows=[];
     for(let offset=0;offset<=5000;offset+=100){
       const url=API+'/api/v1/public/'+kind+'?limit=100&offset='+offset;
@@ -31,7 +32,7 @@
       if(!response.ok)throw Error('API D1 không khả dụng');
       const data=await response.json();
       if(!Array.isArray(data?.data)||data.data.length>100||
-        data.data.some(row=>row?.published!==true))
+        (KINDS.includes(kind)&&data.data.some(row=>row?.published!==true)))
         throw Error('API D1 trả về dữ liệu không được công bố');
       rows.push(...data.data);
       if(data.data.length<100)return rows;
@@ -41,12 +42,12 @@
   async function load(){
     if(!pending){
       pending=(async()=>{
-        // Always keep a validated static copy available for media/placement metadata.
+        // Keep the validated static snapshot as a complete rollback fallback.
         const backup=await staticArchive();
         if(window.SITE_CONFIG?.publicReadProvider!=='d1-staging')
           return {...backup,backend:'snapshot'};
         try {
-          const contents=await Promise.all(KINDS.map(async kind=>[kind,await pages(kind)]));
+          const contents=await Promise.all(D1_KINDS.map(async kind=>[kind,await pages(kind)]));
           const combined={...backup,backend:'d1'};
           for(const [kind,rows] of contents)combined[kind]=rows;
           return combined;

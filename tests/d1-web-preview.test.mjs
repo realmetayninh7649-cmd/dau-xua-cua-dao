@@ -7,7 +7,7 @@ const code=readFileSync('gdd-public-readonly.js','utf8');
 const app=readFileSync('app.js','utf8');
 const cfg=readFileSync('supabase-config.js','utf8');
 const kinds=['people','posts','media','videos','obituaries','documents',
-  'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials'];
+  'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials','gallery','placements'];
 function fixture(){
  const backup={source:'public-published-read-only-backup',
    gallery:[{owner_kind:'people',owner_id:'p1',sort_order:1,photo_code:'IMG-1'}],
@@ -25,7 +25,7 @@ function makeEnv({d1Okay=true,privateRow=false}={}){
    if(!d1Okay)return {ok:false,status:503};
    const kind=String(url).match(/\/api\/v1\/public\/([a-z0-9_]+)/)?.[1];
    if(!kinds.includes(kind))throw Error('Unexpected remote request');
-   const data=[{id:kind+'-remote',published:!privateRow}];
+   const data=[{id:kind+'-remote',...(kind==='gallery'||kind==='placements'?{}:{published:!privateRow})}];
    return {ok:true,json:async()=>({data})};
  };
  const console={warn:()=>{}};
@@ -37,9 +37,10 @@ test('D1 adapter replaces nine public groups while keeping verified gallery snap
  const archive=await window.GDDPublicReadOnly.load();
  assert.equal(archive.backend,'d1');
  assert.equal(archive.people[0].id,'people-remote');
- assert.equal(archive.gallery[0].photo_code,'IMG-1');
+ assert.equal(archive.gallery[0].id,'gallery-remote');
+ assert.equal(archive.placements[0].id,'placements-remote');
  assert.equal(archive.source,'public-published-read-only-backup');
- assert.equal(calls.filter(x=>x.url.includes('/api/v1/public/')).length,9);
+ assert.equal(calls.filter(x=>x.url.includes('/api/v1/public/')).length,11);
  assert.equal(calls.some(x=>x.url.includes('admin')),false);
  assert.ok(calls.every(x=>x.opts.credentials==='omit'));
 });

@@ -71,3 +71,26 @@ test('without database binding no records can be served',async()=>{
  const res=await worker.fetch(new Request('https://staging.test/api/v1/public/people'),{},{});
  assert.equal(res.status,503);
 });
+
+test('gallery and placement endpoints filter by published parent, never list private orphan records',async()=>{
+ const called=[];
+ const filteredDb={prepare(sql){
+   called.push(sql);
+   assert.ok(/^SELECT /.test(sql));
+   assert.ok(sql.includes('p.published=1'),'Must check parent publication');
+   for(const kind of ['people','posts','media','videos','obituaries','documents'])
+     assert.ok(sql.includes("owner_kind='"+kind+"'"),'Missing allowed owner '+kind);
+   return {bind:(limit,offset)=>({
+     all:async()=>({results:sql.includes('archive_gallery_images')
+       ?[{id:'visible-image',owner_kind:'people',owner_id:'published-id',image_url:'https://example.invalid/preview.webp'}]
+       :[{owner_kind:'posts',owner_id:'published-id',target_kind:'homepage'}]})
+   })};
+ }};
+ for(const kind of ['gallery','placements']){
+   const res=await worker.fetch(new Request('https://staging.test/api/v1/public/'+kind+'?limit=100'),{DB:filteredDb},{});
+   assert.equal(res.status,200);
+   assert.equal((await res.json()).data.length,1);
+ }
+ assert.equal(called.length,2);
+ assert.equal((await call('/api/v1/public/gallery?limit=101')).status,400);
+});

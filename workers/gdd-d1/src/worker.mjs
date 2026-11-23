@@ -10,6 +10,18 @@ const ALBUM_OWNERS = Object.freeze(new Set([
 ]));
 const BOOL_FIELDS = new Set(['published','verified','death_lunar_leap','lunar_leap']);
 const ARRAY_FIELDS = new Set(['archive_code_aliases']);
+// Public gallery/placement records have no published flag, so protect them
+// with an EXISTS check against a published parent in an explicitly listed table.
+const publicOwnerPredicate = alias => [
+  ['people','people'],['posts','posts'],['media','media'],['videos','videos'],
+  ['obituaries','obituaries'],['documents','documents']
+].map(([kind,table]) =>
+  `(${alias}.owner_kind='${kind}' AND EXISTS(SELECT 1 FROM "${table}" p WHERE p.id=${alias}.owner_id AND p.published=1))`
+).join(' OR ');
+const PUBLIC_GALLERY_SQL='SELECT g.* FROM archive_gallery_images g WHERE ('+
+  publicOwnerPredicate('g')+') ORDER BY g.created_at DESC, g.sort_order ASC LIMIT ? OFFSET ?';
+const PUBLIC_PLACEMENTS_SQL='SELECT x.* FROM gdd_content_placements x WHERE ('+
+  publicOwnerPredicate('x')+') ORDER BY x.updated_at DESC LIMIT ? OFFSET ?';
 const ALLOWED_ORIGINS = new Set([
   'https://dauxuacuadao.info.vn',
   'https://www.dauxuacuadao.info.vn'
@@ -92,6 +104,13 @@ export default {
         const {results}=await env.DB.prepare(
           'SELECT * FROM archive_gallery_images WHERE owner_kind = ? AND owner_id = ? ORDER BY sort_order ASC, created_at ASC LIMIT ? OFFSET ?'
         ).bind(kind,id,page.limit,page.offset).all();
+        return respond(request,{data:(results||[]).map(castRecord)});
+      }
+      if(path.length===4&&(path[3]==='gallery'||path[3]==='placements')){
+        const page=parsePage(url);
+        if(!page)return respond(request,{error:'invalid_pagination'},400,{private:true});
+        const sql=path[3]==='gallery'?PUBLIC_GALLERY_SQL:PUBLIC_PLACEMENTS_SQL;
+        const {results}=await env.DB.prepare(sql).bind(page.limit,page.offset).all();
         return respond(request,{data:(results||[]).map(castRecord)});
       }
       const table=path[3];
