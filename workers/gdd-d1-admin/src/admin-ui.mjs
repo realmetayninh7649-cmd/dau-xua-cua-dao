@@ -70,7 +70,28 @@ export const ADMIN_HTML=`<!doctype html>
 <ul id="sandbox-list" class="records"></ul>
 <h3>Lịch sử phiên bản và phục hồi</h3><ul id="sandbox-history" class="records"></ul>
 </section>
-<footer>Giai đoạn thử nghiệm · Bảo toàn Supabase, Cloudflare R2 và mã định danh tư liệu · Tư liệu thật vẫn chỉ đọc</footer>
+<section aria-labelledby="work-title" id="work-editor-panel" hidden>
+<div class="heading"><h2 id="work-title">Biên tập tư liệu trên D1 làm việc</h2><small>Cloudflare Access · Có lưu lịch sử sửa</small></div>
+<p class="audit-caution">Dữ liệu có mã hồ sơ được giữ nguyên. Hồ sơ mới chỉ tạo bản nháp; không tự cấp mã định danh. Có thể phục hồi phiên bản cũ; không có thao tác xóa vĩnh viễn. Bản sao lưu D1 chuẩn không bị tác động.</p>
+<div class="controls"><label for="work-kind">Chuyên mục</label>
+<select id="work-kind">
+<option value="people">Chức sắc</option><option value="posts">Biên khảo</option>
+<option value="media">Hình ảnh</option><option value="videos">Video</option>
+<option value="obituaries">Ai tín</option><option value="documents">Tài liệu số</option>
+<option value="gdd_memorials">Tưởng niệm</option><option value="gdd_audio_programs">Âm thanh Đại Đạo</option>
+<option value="gdd_calendar_memorials">Lịch tưởng niệm</option></select>
+<button id="work-list-refresh" type="button">Tải danh sách</button>
+<button id="work-new" type="button">Tạo bản nháp mới</button></div>
+<p id="work-status" role="status" aria-live="polite">Chưa mở dữ liệu biên tập.</p>
+<ul class="records" id="work-list"></ul>
+<div class="pagination"><button id="work-prev" type="button">Trang trước</button><span id="work-page">Trang 1</span><button id="work-next" type="button">Trang sau</button></div>
+<div id="work-edit-area" hidden><h3 id="work-edit-heading">Chi tiết</h3><p id="work-identity" class="audit-caution"></p>
+<div class="sandbox-form" id="work-fields"></div>
+<div class="controls"><button id="work-save" type="button">Lưu thay đổi</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div>
+<h3>Lịch sử chỉnh sửa và phục hồi</h3><ul class="records" id="work-revisions"></ul>
+</div>
+</section>
+<footer>Giai đoạn thử nghiệm · Bảo toàn Supabase, Cloudflare R2 và mã định danh tư liệu · Chức năng biên tập chỉ dùng D1 làm việc</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
 :root{color-scheme:light;--ink:#233e35;--gold:#ac8548;--muted:#637168;--line:#deddd3;--bg:#f6f5ef}
@@ -150,7 +171,9 @@ async function overview(){
  try{
   const [session,summary]=await Promise.all([
    api('/api/v1/admin/session'),api('/api/v1/admin/summary')]);
-  if(session.authenticated!==true||session.write_enabled!==false)throw Error('Phiên chưa đạt trạng thái chỉ đọc');
+  if(session.authenticated!==true||session.write_enabled!==false)throw Error('Phiên quản trị chưa hợp lệ');
+  $('work-editor-panel').hidden=session.working_editor_enabled!==true;
+  if(session.working_editor_enabled===true)workList().catch(()=>{});
   const inventory=$('inventory'),cards=$('overview');inventory.replaceChildren();cards.replaceChildren();
   for(const [count,label] of [
     [summary.source_total,'Bản ghi nguồn Supabase'],
@@ -355,6 +378,178 @@ $('sandbox-save').addEventListener('click',sandboxSave);
 $('sandbox-new').addEventListener('click',sandboxReset);
 $('sandbox-refresh').addEventListener('click',sandboxRefresh);
 sandboxReset();sandboxRefresh();
+
+// D1 WORKING EDITOR. All fields use DOM textContent/value; no unsafe HTML insertion.
+const workFields={
+ people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','sources','image_url','verified','published','sort_order','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date'],
+ posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
+ media:['title','category','caption','person_id','sources','image_url','published'],
+ videos:['title','summary','body','video_url','cover_url','sources','person_id','published'],
+ obituaries:['title','deceased_name','memorial_date','summary','body','cover_url','sources','person_id','published'],
+ documents:['title','document_number','document_date','summary','body','file_url','sources','person_id','subfolder_code','published'],
+ gdd_memorials:['title','person_name','rank_title','death_date','anniversary_date','summary','body','portrait_url','sources','published'],
+ gdd_audio_programs:['title','category','summary','body','cover_url','audio_url','episode_number','duration_seconds','published_date','published'],
+ gdd_calendar_memorials:['full_name','rank','calendar_system','lunar_day','lunar_month','lunar_leap','solar_day','solar_month','death_year','image_url','source_note','description','linked_person_id','published']
+};
+const workBool=new Set(['verified','published','death_lunar_leap','lunar_leap']);
+const workNums=new Set(['sort_order','death_lunar_day','death_lunar_month','lunar_day','lunar_month','solar_day','solar_month','death_year','episode_number','duration_seconds']);
+const workLong=new Set(['summary','body','biography','caption','date_notes','sources','description','source_note']);
+const workLabels={
+ full_name:'Thánh danh / Họ tên',title:'Nhan đề',secular_name:'Thế danh',rank:'Phẩm vị',branch:'Cơ quan',
+ subgroup:'Phân nhóm',gender:'Nam / Nữ',years:'Niên đại',birthplace:'Nguyên quán',summary:'Tóm tắt',
+ biography:'Tiểu sử - công nghiệp',body:'Nội dung',sources:'Tư liệu tham khảo',image_url:'Ảnh đại diện (URL)',
+ cover_url:'Ảnh bìa (URL)',portrait_url:'Di ảnh (URL)',file_url:'Tài liệu (URL)',audio_url:'Âm thanh (URL)',
+ video_url:'Video (URL)',published:'Công bố nội dung',verified:'Đã kiểm chứng',sort_order:'Thứ tự',
+ caption:'Chú thích ảnh',category:'Chuyên mục',person_id:'Mã hồ sơ liên quan',
+ document_number:'Số hiệu văn kiện',document_date:'Ngày văn kiện',subfolder_code:'Thư mục số hóa',
+ death_lunar_day:'Ngày qui vị âm lịch',death_lunar_month:'Tháng qui vị âm lịch',
+ death_lunar_leap:'Tháng nhuận',death_solar_date:'Ngày qui vị dương lịch',
+ lunar_day:'Ngày âm',lunar_month:'Tháng âm',lunar_leap:'Tháng nhuận',
+ solar_day:'Ngày dương',solar_month:'Tháng dương',death_year:'Năm qui vị',date_notes:'Ghi chú niên đại'
+};
+let workOffset=0,workCurrent=null,workFieldInputs=new Map();
+const workRoot='/api/v1/admin/work/';
+function workStatus(message){$('work-status').textContent=message;}
+function workClose(){workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();}
+async function workList(){
+ const kind=$('work-kind').value;
+ try{
+  const data=await api(workRoot+kind+'?limit=20&offset='+workOffset);
+  const list=$('work-list');list.replaceChildren();
+  const records=Array.isArray(data.data)?data.data:[];
+  for(const record of records){
+   const item=document.createElement('li');item.className='sandbox-line';
+   appendText(item,'span',(record.title||'(Chưa có nhan đề)')+' · '+(record.published===1?'Đã công bố':'Bản nháp')+' · phiên bản '+record.gdd_version);
+   const button=document.createElement('button');button.type='button';button.textContent='Biên tập';
+   button.addEventListener('click',()=>workOpen(kind,record.id));
+   item.append(button);list.append(item);
+  }
+  if(!records.length)appendText(list,'li','Không còn bản ghi ở trang này.');
+  $('work-prev').disabled=workOffset===0;
+  $('work-next').disabled=records.length<20;
+  $('work-page').textContent='Trang '+(Math.floor(workOffset/20)+1);
+  workStatus('D1 làm việc: '+records.length+' bản ghi được tải. Có lưu lịch sử chỉnh sửa.');
+ }catch(e){workStatus('Lỗi tải danh sách D1: '+e.message)}
+}
+function workBuild(kind,record){
+ workFieldInputs.clear();
+ const fields=$('work-fields');fields.replaceChildren();
+ for(const field of workFields[kind]||[]){
+  const label=document.createElement('label');
+  const input=workLong.has(field)?document.createElement('textarea'):document.createElement('input');
+  input.id='work-field-'+field;
+  if(workBool.has(field)){
+   input.type='checkbox';
+   input.checked=record?Boolean(record[field]):false;
+   if(!record&&field==='published')input.disabled=true;
+  }else if(workNums.has(field)){
+   input.type='number';input.min='0';
+   input.value=record?.[field]??'';
+  }else{
+   if(input.tagName==='INPUT')input.type='text';
+   input.value=record?.[field]??'';
+   if(workLong.has(field))input.rows=field==='body'||field==='biography'?8:3;
+  }
+  label.htmlFor=input.id;label.textContent=workLabels[field]||field;
+  if(workBool.has(field)){
+   const wrapper=document.createElement('div');wrapper.className='sandbox-checkbox';
+   wrapper.append(input,label);fields.append(wrapper);
+  }else{fields.append(label,input);}
+  workFieldInputs.set(field,input);
+ }
+}
+function workChanged(){
+ const changes={};
+ for(const [field,input] of workFieldInputs){
+  const old=workCurrent.record?.[field];
+  let value;
+  if(workBool.has(field))value=Boolean(input.checked);
+  else if(workNums.has(field))value=input.value.trim()?Number(input.value):null;
+  else value=input.value;
+  const unchanged=workCurrent.record!==null && (workBool.has(field)?
+      (old===null?value===false:Boolean(old)===value):
+      workNums.has(field)?((old??null)===value):String(old??'')===value);
+  if(!unchanged && !(workCurrent.record===null&&value===''))changes[field]=value;
+ }
+ return changes;
+}
+async function workOpen(kind,id){
+ workClose();
+ try{
+  const response=await api(workRoot+kind+'/'+encodeURIComponent(id));
+  const record=response.data;
+  if(!record||record.id!==id)throw Error('Không đúng mã hồ sơ');
+  workCurrent={kind,id,record};
+  workBuild(kind,record);
+  $('work-edit-heading').textContent='Đang sửa '+(record.full_name||record.title||id);
+  $('work-identity').textContent='Mã định danh: '+(record.archive_code||'Chưa có mã')+
+   ' · phiên bản '+record.gdd_version+' · trạng thái '+(record.published?'Công bố':'Nháp');
+  $('work-edit-area').hidden=false;
+  await workHistory();
+ }catch(e){workStatus('Không đọc được chi tiết: '+e.message)}
+}
+async function workNew(){
+ workClose();const kind=$('work-kind').value;
+ workCurrent={kind,id:null,record:null};
+ workBuild(kind,null);
+ $('work-edit-heading').textContent='Tạo bản nháp '+(names[kind]||kind);
+ $('work-identity').textContent='Bản nháp mới chưa được cấp mã hồ sơ. Chỉ người quản trị xem được.';
+ $('work-edit-area').hidden=false;
+ workStatus('Đang chuẩn bị bản nháp mới trên D1 làm việc.');
+}
+async function workHistory(){
+ const list=$('work-revisions');list.replaceChildren();
+ if(!workCurrent?.id)return;
+ const snapshot={...workCurrent};
+ const data=await api(workRoot+snapshot.kind+'/'+snapshot.id+'/history');
+ for(const rev of data.data||[]){
+  const item=document.createElement('li');item.className='sandbox-line';
+  appendText(item,'span','Lưu lúc '+rev.changed_at+' · phiên bản '+rev.version_from+' → '+rev.version_to);
+  const button=document.createElement('button');button.type='button';
+  button.textContent=rev.before_json?'Khôi phục trước lần sửa':'Tạo mới';
+  button.disabled=!rev.before_json;
+  button.addEventListener('click',async()=>{
+   if(!workCurrent||workCurrent.id!==snapshot.id)return;
+   if(!confirm('Khôi phục phiên bản trong D1 làm việc? Có ghi lại lịch sử mới.'))return;
+   button.disabled=true;
+   try{
+    await sandboxWrite(workRoot+snapshot.kind+'/'+snapshot.id+'/restore','POST',
+      {version:workCurrent.record.gdd_version,revision_id:rev.revision_id});
+    workStatus('Đã khôi phục phiên bản trước và ghi lịch sử mới.');
+    await workOpen(snapshot.kind,snapshot.id);await workList();
+   }catch(e){workStatus('Không thể khôi phục: '+e.message)}
+   finally{button.disabled=false}
+  });
+  item.append(button);list.append(item);
+ }
+ if(!list.children.length)appendText(list,'li','Chưa có lịch sử sửa.');
+}
+async function workSave(){
+ if(!workCurrent)return;
+ const submit=$('work-save');submit.disabled=true;
+ const selected={...workCurrent};
+ try{
+  const fields=workChanged();
+  const isCreate=!selected.id;
+  if(!Object.keys(fields).length)throw Error('Chưa có nội dung thay đổi');
+  if(isCreate){fields.published=false;}
+  const result=await sandboxWrite(workRoot+selected.kind+(selected.id?'/'+selected.id:''),
+    isCreate?'POST':'PATCH',isCreate?{fields}:{version:selected.record.gdd_version,fields});
+  if(!result?.data?.id)throw Error('Máy chủ chưa xác nhận đã lưu');
+  workStatus(isCreate?'Đã tạo bản nháp trên D1 làm việc.':'Đã lưu thay đổi và ghi lịch sử phiên bản.');
+  await workList();
+  await workOpen(selected.kind,result.data.id);
+ }catch(e){workStatus('Không thể lưu: '+e.message)}
+ finally{submit.disabled=false}
+}
+$('work-kind').addEventListener('change',()=>{workOffset=0;workClose();workList()});
+$('work-list-refresh').addEventListener('click',workList);
+$('work-new').addEventListener('click',workNew);
+$('work-save').addEventListener('click',workSave);
+$('work-cancel').addEventListener('click',workClose);
+$('work-prev').addEventListener('click',()=>{workOffset=Math.max(0,workOffset-20);workList()});
+$('work-next').addEventListener('click',()=>{workOffset+=20;workList()});
+
 
 $('kind').addEventListener('change',()=>{offset=0;loadRecords()});
 $('view').addEventListener('change',()=>{offset=0;loadRecords()});

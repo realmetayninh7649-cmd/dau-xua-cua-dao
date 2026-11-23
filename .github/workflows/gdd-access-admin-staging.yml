@@ -54,7 +54,9 @@ jobs:
           assert 'bucket.delete(' not in upload and 'bucket.get(' not in upload
           assert 'handleR2Sandbox(request,env.GDD_BUCKET)' in js
           assert "handleWorkingEditor(request,env.DB,path)" in js
-          assert cfg['vars']['ENABLE_WORKING_EDITOR']=='disabled'
+          assert cfg['vars']['ENABLE_WORKING_EDITOR']=='enabled'
+          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-editor-live-clone-20261124'
+          assert cfg['d1_databases'][0]['database_id']=='56bf9fcc-3f9a-43e5-82f7-8c521f5b370a'
           assert "if(env.ENABLE_WORKING_EDITOR!=='enabled')" in js
           working=(root/'src/working-editor.mjs').read_text()
           assert 'gdd_v2_editor_revisions' in working and 'gdd_version=gdd_version+1' in working

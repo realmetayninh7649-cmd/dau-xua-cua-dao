@@ -209,7 +209,9 @@ export default {
      }
    }
    if(path==='/api/v1/admin/session')
-     return json({authenticated:true,role:'administrator',write_enabled:false,mode:'staging-read-only'});
+     return json({authenticated:true,role:'administrator',write_enabled:false,mode:'staging',
+       working_editor_enabled:env.ENABLE_WORKING_EDITOR==='enabled',
+       working_editor_is_separate_database:true});
    if(path==='/'||path==='/admin')
      return reply(ADMIN_HTML,200,'text/html; charset=utf-8',{
        'Content-Security-Policy':"default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
