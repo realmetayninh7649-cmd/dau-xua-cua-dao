@@ -345,7 +345,7 @@ async function managedUpload(){
    throw Error('Máy chủ chưa xác nhận bản gốc riêng tư');
   managedFile=file;managedAsset=info.id;
   $('r2-managed-public-confirm').checked=false;$('r2-managed-download-confirm').checked=false;
-  const isImage=/^image\//.test(file.type);
+  const isImage=file.type.startsWith('image/');
   $('r2-managed-derivative').disabled=!isImage;
   $('r2-managed-actions').hidden=false;
   managedStatus('Đã bảo tồn nguyên mẫu riêng tư ('+(file.size/1048576).toFixed(1)+
