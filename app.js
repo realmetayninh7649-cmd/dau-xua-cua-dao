@@ -1138,30 +1138,44 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
   }
   const fileTypes={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','application/pdf':'pdf'};
   async function submitContribution(e){
-    e.preventDefault();const form=e.currentTarget,notice=$('#submission-status'),btn=form.querySelector('[type="submit"]');
-    if(!state.supabase){notice.textContent='Chức năng gửi tư liệu cần kết nối Supabase.';return}
-    if(form.elements.website.value)return;
+    e.preventDefault();
+    const form=e.currentTarget,notice=$('#submission-status'),btn=form.querySelector('[type="submit"]');
+    if(form.elements.website.value)return; // honeypot: never contact the server
     if(!form.reportValidity())return;
-    btn.disabled=true;notice.textContent='Đang tiếp nhận tư liệu…';
+    btn.disabled=true;notice.textContent='Đang chuẩn bị tư liệu gửi riêng cho Ban Biên Tập…';
     try{
-      let file=form.elements.attachment.files[0];let filePath=null;
+      const outgoing=new FormData(form);
+      let file=form.elements.attachment.files[0]||null;
       if(file){
         if(file.type==='application/pdf'){
-          if(file.size>6*1024*1024)throw Error('Tệp PDF gửi đến tối đa 6 MB.');
+          if(file.size>6*1024*1024)throw Error('Tệp PDF tối đa 6 MB.');
         }else{
-          if(!window.GDDImageOptimizer)throw Error('Chưa có bộ tối ưu ảnh, xin tải lại trang.');
+          if(!window.GDDImageOptimizer)throw Error('Chưa tải được bộ xử lý ảnh. Xin tải lại trang.');
           file=await window.GDDImageOptimizer.prepare(file,{onStatus:msg=>{notice.textContent=msg;}});
         }
-        if(!fileTypes[file.type])throw Error('Chỉ nhận ảnh JPEG, PNG, WebP hoặc tệp PDF.');
-        filePath=`pending/${Date.now()}-${Math.random().toString(36).slice(2,12)}.${fileTypes[file.type]}`;
-        const {error}=await state.supabase.storage.from('dao-su-submissions').upload(filePath,file,{contentType:file.type,upsert:false});
-        if(error)throw error;
+        if(!fileTypes[file.type])throw Error('Chỉ nhận ảnh JPEG, PNG, WebP hoặc PDF.');
+        if(file.size>6*1024*1024)throw Error('Tệp quá 6 MB; xin gửi liên kết lưu trữ thay thế.');
+        outgoing.set('attachment',file,'tu-lieu-dong-gop.'+fileTypes[file.type]);
+      }else outgoing.delete('attachment');
+      notice.textContent='Đang chuyển tư liệu vào hộp thư riêng của Ban Biên Tập…';
+      const response=await fetch('https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/contributions',{
+        method:'POST',body:outgoing,credentials:'omit',cache:'no-store'
+      });
+      const result=await response.json().catch(()=>({error:'invalid_response'}));
+      if(!response.ok||result.accepted!==true||result.private!==true){
+        const messages={
+          too_many_requests:'Quí vị vừa gửi một tư liệu. Vui lòng thử lại sau ít phút.',
+          inbox_capacity_reached:'Hộp thư đang cần được Ban Biên Tập xử lý. Xin quay lại sau.',
+          attachment_too_large:'Tệp vượt 6 MB; vui lòng sử dụng liên kết tư liệu.',
+          invalid_attachment_signature:'Tệp đính kèm không hợp lệ. Xin chọn ảnh JPEG/PNG/WebP hoặc PDF.',
+          inbox_temporarily_unavailable:'Hộp thư tạm thời chưa kết nối. Vui lòng thử lại sau.'
+        };
+        throw Error(messages[result.error]||'Tư liệu chưa được tiếp nhận, vui lòng thử lại.');
       }
-      const data={sender_name:form.elements.sender_name.value.trim(),sender_email:form.elements.sender_email.value.trim(),category:form.elements.category.value,title:form.elements.title.value.trim(),description:form.elements.description.value.trim(),source:form.elements.source.value.trim()||null,source_url:form.elements.source_url.value.trim()||null,file_path:filePath,status:'pending'};
-      const {error}=await state.supabase.from('submissions').insert(data);
-      if(error)throw error;
-      form.reset();notice.textContent='Đã tiếp nhận tư liệu. Cảm ơn quí Huynh Tỷ Đệ Muội! Ban Biên Tập sẽ xem xét trước khi công bố.';
-    }catch(err){notice.textContent='Chưa gửi được: '+(err.message||'Vui lòng thử lại.');}
+      form.reset();
+      notice.textContent='Đã tiếp nhận tư liệu riêng tư. Mã tiếp nhận: '+String(result.reference||'').slice(0,8).toUpperCase()+
+        '. Ban Biên Tập sẽ xem xét trước khi công bố. Xin cảm ơn quí Huynh Tỷ Đệ Muội!';
+    }catch(err){notice.textContent='Chưa gửi được: '+(err.message||'Xin thử lại sau.');}
     finally{btn.disabled=false}
   }
   function renderInbox(){
