@@ -6,6 +6,7 @@ R2 client calls only ListObjectsV2; no object GET, PUT, DELETE.
 """
 import collections
 import datetime
+import hashlib
 import json
 import os
 import pathlib
@@ -80,6 +81,7 @@ def r2_counts(account, access, secret):
         )
     )
     total_count = total_bytes = pages = 0
+    inventory_fingerprint = hashlib.sha256()
     token = None
     while True:
         if pages >= 100:
@@ -92,13 +94,21 @@ def r2_counts(account, access, secret):
         for obj in data.get("Contents", []):
             total_count += 1
             total_bytes += int(obj["Size"])
+            # Content is never downloaded; this is a fingerprint of the
+            # R2 object listing (key, length, ETag), not a file SHA-256.
+            inventory_fingerprint.update(
+                (obj["Key"] + "\\0" + str(obj["Size"]) + "\\0" +
+                 obj.get("ETag", "") + "\\n").encode("utf-8")
+            )
         if not data.get("IsTruncated"):
             break
         next_token = data.get("NextContinuationToken")
         if not next_token or next_token == token:
             raise SystemExit("Unexpected R2 pagination state")
         token = next_token
-    return {"object_count": total_count, "total_bytes": total_bytes, "list_pages": pages}
+    return {"object_count": total_count, "total_bytes": total_bytes,
+            "list_pages": pages,
+            "object_list_sha256": inventory_fingerprint.hexdigest()}
 
 def main():
     base = pathlib.Path(__file__).resolve().parents[1]
@@ -141,7 +151,9 @@ def main():
         "r2_object_count": r2["object_count"],
         "r2_total_bytes": r2["total_bytes"],
         "r2_list_requests": r2["list_pages"],
+        "r2_object_list_sha256": r2["object_list_sha256"],
         "notes": [
+            "R2 object-list fingerprint includes keys, sizes and ETags; it does not hash file contents.",
             "R2 object listing does not establish every metadata reference or checksum.",
             "Supabase source totals are the saved snapshot, not a new live query.",
             "No content, filenames, credentials, sensitive rows or object URLs emitted."
