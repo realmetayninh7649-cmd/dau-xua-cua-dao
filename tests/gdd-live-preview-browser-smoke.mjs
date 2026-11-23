@@ -56,5 +56,6 @@ try{
  }
  await page.close();
  console.log('LIVE_PAGE_SCRIPT_ERRORS='+errors.length);
+ for(const issue of errors.slice(0,12))console.log('LIVE_PUBLIC_PAGEERROR_DETAIL='+JSON.stringify(issue));
  console.log('MAIN_PRODUCTION_UNCHANGED=TRUE');
 }finally{await browser.close()}
