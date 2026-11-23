@@ -7,6 +7,7 @@ import {ADMIN_HTML,ADMIN_CSS,ADMIN_JS} from './admin-ui.mjs';
 import {handleEditorSandbox} from './editor-sandbox.mjs';
 import {handleR2Sandbox} from './r2-sandbox.mjs';
 import {handleWorkingEditor} from './working-editor.mjs';
+import {reviewContribution} from './contribution-review.mjs';
 import {handleManagedR2} from './r2-managed.mjs';
 import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 import SOURCE_AUDIT from '../../gdd-d1/source-integrity-audit-20261123.json' with {type:'json'};
@@ -188,6 +189,18 @@ export default {
          return json({error:'csrf_rejected'},403);
      }
      return handleR2Sandbox(request,env.GDD_BUCKET);
+   }
+   const review=/^\/api\/v1\/admin\/contributions\/([a-f\d-]{36})\/review$/i.exec(path);
+   if(review){
+     if(!await isAdministrator(env,ctx))
+       return json({authenticated:false,error:'unauthorized'},403);
+     if(env.ENABLE_WORKING_EDITOR!=='enabled')
+       return json({error:'review_disabled'},403);
+     if(request.headers.get('Origin')!=='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'
+       ||(request.headers.get('Sec-Fetch-Site')&&request.headers.get('Sec-Fetch-Site')!=='same-origin')
+       ||!/^application\/json(?:;|$)/i.test(request.headers.get('Content-Type')||''))
+       return json({error:'csrf_rejected'},403);
+     return reviewContribution(request,env.DB,review[1]);
    }
    // Dedicated synthetic editor: validated Cloudflare Access plus same-origin CSRF.
    // The canonical restored D1 binding env.DB is NEVER sent into this handler.

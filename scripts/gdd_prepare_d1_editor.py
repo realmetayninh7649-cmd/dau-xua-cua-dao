@@ -112,6 +112,21 @@ def migrate(db):
             db.query('ALTER TABLE '+quote(kind)+' ADD COLUMN gdd_version INTEGER NOT NULL DEFAULT 1')
         for op in ('create','update'):
             db.query(trigger_sql(kind,op))
+    db.query("""CREATE TABLE IF NOT EXISTS gdd_submission_status_audit(
+      audit_id TEXT PRIMARY KEY,
+      record_id TEXT NOT NULL,
+      old_status TEXT NOT NULL,
+      new_status TEXT NOT NULL,
+      changed_at TEXT NOT NULL
+    )""")
+    db.query("""CREATE TRIGGER IF NOT EXISTS gdd_v2_contribution_status
+      AFTER UPDATE OF status ON submissions FOR EACH ROW
+      WHEN NEW.status IS NOT OLD.status
+      BEGIN
+        INSERT INTO gdd_submission_status_audit(audit_id,record_id,old_status,new_status,changed_at)
+        VALUES(lower(hex(randomblob(16))),OLD.id,OLD.status,NEW.status,
+          strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+      END""")
     for kind in EDITABLE:
         versions=db.query('PRAGMA table_info('+quote(kind)+')')
         if not any(x.get('name')=='gdd_version' for x in versions):
@@ -119,6 +134,9 @@ def migrate(db):
     n=db.query("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='trigger' AND name LIKE 'gdd_v2_%'")
     if len(n)!=1 or n[0]['n']<len(EDITABLE)*2:
         raise SystemExit('D1 editorial audit triggers incomplete')
+    audit=db.query("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='trigger' AND name='gdd_v2_contribution_status'")
+    if len(audit)!=1 or audit[0]['n']!=1:
+        raise SystemExit('Contribution review audit trigger missing')
 
 def local_test(db):
     migrate(db)

@@ -578,6 +578,27 @@ async function loadContributions(){
      download.textContent='Tải tệp đính kèm riêng tư';
      download.rel='nofollow';detail.append(download);
    }
+   const choices=document.createElement('div');choices.className='controls';
+   for(const [status,label] of [
+     ['reviewing','Đang thẩm định'],['approved','Đã tiếp nhận vào kho'],['rejected','Không tiếp nhận']
+   ]){
+     if(status===record.status)continue;
+     const button=document.createElement('button');button.type='button';
+     button.textContent=label;
+     button.addEventListener('click',async()=>{
+       if(!confirm('Chuyển tư liệu sang trạng thái: '+label+'? Tệp đính kèm vẫn được bảo tồn riêng tư.'))return;
+       button.disabled=true;
+       try{
+         const response=await workWrite('/api/v1/admin/contributions/'+encodeURIComponent(record.id)+'/review',
+           'POST',{expected_status:record.status,status});
+         if(response.status!==status||response.private!==true)throw Error('Trạng thái chưa được xác nhận');
+         await loadContributions();
+       }catch(error){$('contribution-status').textContent='Chưa thay đổi được: '+error.message}
+       finally{button.disabled=false}
+     });
+     choices.append(button);
+   }
+   detail.append(choices);
    item.append(detail);list.append(item);
   }
   if(!res.data.length)appendText(list,'li','Chưa có tư liệu mới.');

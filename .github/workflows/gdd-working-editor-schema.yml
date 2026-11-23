@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/gdd-working-editor-schema.yml"
       - "scripts/gdd_prepare_d1_editor.py"
+      - "workers/gdd-d1-admin/src/contribution-review.mjs"
   workflow_dispatch:
 permissions:
   contents: read
