@@ -29,6 +29,14 @@
         "limit": 2,
         "period": 60
       }
+    },
+    {
+      "name": "STATS_RATE",
+      "namespace_id": "26001128",
+      "simple": {
+        "limit": 12,
+        "period": 60
+      }
     }
   ]
 }
