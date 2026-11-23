@@ -163,3 +163,11 @@ test('R2 inventory refuses a truncated or repeated cursor, never gives partial s
  assert.equal(response.res.status,503);
  assert.equal(response.body.error,'r2_inventory_unavailable');
 });
+
+test('full Access administrator client bundle syntax and editorial controls are valid',()=>{
+ assert.doesNotThrow(()=>new Function(ADMIN_JS),'Admin inline JS must parse, not only the outer template module');
+ for(const id of ['work-editor-panel','work-fields','work-save','work-kind','work-revisions','r2-sandbox-upload'])
+  assert.ok(ADMIN_HTML.includes('id="'+id+'"'),id+' missing from admin HTML');
+ assert.ok(ADMIN_JS.includes('gdd_version'));
+ assert.ok(!ADMIN_JS.includes('eval('));
+});
