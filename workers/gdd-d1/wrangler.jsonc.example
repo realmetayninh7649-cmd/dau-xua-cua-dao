@@ -1,0 +1,20 @@
+{
+  // Copy to wrangler.jsonc AFTER Cloudflare has created the database.
+  // Never commit a real API token, Access credential or admin email list.
+  "name": "gdd-d1-api-staging",
+  "main": "./src/worker.mjs",
+  "compatibility_date": "2026-11-23",
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gdd-dao-su-archive",
+      "database_id": "REPLACE_WITH_CLOUDFLARE_D1_UUID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": {
+    "enabled": false
+  }
+}
