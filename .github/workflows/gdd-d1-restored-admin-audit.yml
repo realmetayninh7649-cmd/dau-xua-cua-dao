@@ -1,0 +1,87 @@
+name: "GDD D1 - Kiem tra day du 21 bang tren ban phuc hoi CHI DOC"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-d1-restored-admin-audit.yml"
+      - "workers/gdd-d1-admin/wrangler.jsonc"
+      - "workers/gdd-d1/source-row-counts-20261123.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Xac minh dung ban D1 phuc hoi rieng, KHONG dung database dang chay"
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          c=json.loads(pathlib.Path('workers/gdd-d1-admin/wrangler.jsonc').read_text())
+          assert c['name']=='gdd-d1-admin-staging'
+          assert len(c.get('d1_databases',[]))==1
+          d=c['d1_databases'][0]
+          assert d['binding']=='DB'
+          assert d['database_name']=='gdd-dao-su-restore-full-20261123'
+          assert d['database_id']=='ddce6b9f-90e1-488f-bf9b-5ddf5d170346'
+          assert d['database_id']!='bffcd3e0-e46e-4280-b8dd-82e8d3402b3d'
+          print('ISOLATED_RESTORATION_D1_BINDING=PASS')
+          PY
+      - name: "Doi chieu truc tiep D1 21 bang, ban nhap khong cong khai, chi SELECT COUNT"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib,re,urllib.request,urllib.error
+          account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          token=os.getenv('CLOUDFLARE_D1_API_TOKEN','')
+          if not re.fullmatch(r'[a-f0-9]{32}',account) or not token:
+              raise SystemExit('Missing required read-only audit credentials')
+          config=json.loads(pathlib.Path('workers/gdd-d1-admin/wrangler.jsonc').read_text())
+          db_id=config['d1_databases'][0]['database_id']
+          baseline=json.loads(pathlib.Path('workers/gdd-d1/source-row-counts-20261123.json').read_text())
+          counts=baseline['table_counts']
+          assert len(counts)==21 and baseline['expected_total']==1892
+          base='https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database/'+db_id+'/query'
+          def count(sql):
+              req=urllib.request.Request(base,
+                  data=json.dumps({'sql':sql}).encode('utf-8'),method='POST',
+                  headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as res: result=json.load(res)
+              except urllib.error.HTTPError as e:
+                  raise SystemExit('Cloudflare D1 read-only check failed (HTTP '+str(e.code)+')') from None
+              if result.get('success') is not True:
+                  raise SystemExit('Cloudflare D1 query failed')
+              rows=result['result'][0]['results']
+              if len(rows)!=1 or not isinstance(rows[0].get('n'),int):
+                  raise SystemExit('Unexpected D1 count response')
+              return rows[0]['n']
+          for table,expected in sorted(counts.items()):
+              if not re.fullmatch(r'[a-z][a-z0-9_]*',table):
+                  raise SystemExit('Bad local table identifier')
+              actual=count('SELECT COUNT(*) AS n FROM "'+table+'"')
+              if actual!=expected:
+                  raise SystemExit('Count mismatch: '+table+' (no rows displayed)')
+          public={'people':50,'posts':17,'media':13,'videos':8,
+                  'obituaries':2,'documents':21,'gdd_memorials':5,
+                  'gdd_audio_programs':2,'gdd_calendar_memorials':0}
+          published_total=0
+          for table,expected in public.items():
+              actual=count('SELECT COUNT(*) AS n FROM "'+table+'" WHERE published=1')
+              if actual!=expected:raise SystemExit('Published-only mismatch: '+table)
+              published_total+=actual
+          assert published_total==118
+          assert count('SELECT COUNT(*) AS n FROM "people" WHERE published=0')==2
+          print('D1_PRIVATE_RESTORATION_21_TABLES_1892_ROWS=PASS')
+          print('D1_PUBLISHED_118_ROWS_AND_2_PRIVATE_PEOPLE_RECORDS=PASS')
+          print('ONLY_AGGREGATE_SELECT_COUNT_NO_SOURCE_MUTATION=TRUE')
+          PY
