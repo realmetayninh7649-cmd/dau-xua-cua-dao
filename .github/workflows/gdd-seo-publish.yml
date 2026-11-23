@@ -1,14 +1,7 @@
 name: "GDD SEO - Tai lieu cong khai va sitemap"
 on:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/gdd-seo-build.mjs"
-      - ".github/workflows/gdd-seo-publish.yml"
-      - "supabase-config.js"
-      - "app.js"
-  # Tạm dừng chạy tự động khi Supabase Free đang bị giới hạn Egress (HTTP 402).
-  # Vẫn giữ nút chạy thủ công; khôi phục lịch sau khi hạn mức được đặt lại.
+  # Khóa đồng bộ SEO tự động sử dụng Supabase trong đợt chuyển dữ liệu D1.
+  # Giữ nguyên các trang SEO và sitemap hiện tại; chỉ chạy tay khi đã đối chiếu nguồn.
   workflow_dispatch:
 
 permissions:
