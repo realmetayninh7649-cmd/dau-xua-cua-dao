@@ -50,6 +50,13 @@ export const ADMIN_HTML=`<!doctype html>
 <button id="r2-managed-publish" type="button">Công bố bản xem</button></div>
 </div>
 </section>
+<section aria-labelledby="contribution-title" id="contribution-panel">
+<div class="heading"><h2 id="contribution-title">Tư liệu độc giả gửi về</h2><small>Riêng tư · Chỉ quản trị viên</small></div>
+<p class="audit-caution">Thông tin liên hệ và tệp gốc được giữ riêng, không công bố tự động. Các tệp gửi qua hệ thống mới được tải về riêng tư để Ban Biên Tập thẩm định.</p>
+<div class="controls"><button type="button" id="contribution-refresh">Kiểm tra hộp thư tư liệu</button></div>
+<p id="contribution-status" role="status" aria-live="polite">Chưa tải hộp thư.</p>
+<ul class="records" id="contribution-list"></ul>
+</section>
 <section aria-labelledby="records-title"><div class="heading"><h2 id="records-title">Xem tư liệu đã công bố và bản nháp</h2><small>Bản nháp chỉ mở cho người quản trị đã xác thực; không hiển thị hồ sơ tài khoản hoặc tư liệu độc giả gửi về</small></div>
 <div class="controls"><label for="kind">Chuyên mục</label><select id="kind">
 <option value="people">Hồ sơ Chức sắc</option>
@@ -431,6 +438,51 @@ $('r2-managed-upload').addEventListener('click',managedUpload);
 $('r2-managed-derivative').addEventListener('click',managedDerivatives);
 $('r2-managed-pdf-pages').addEventListener('click',managedPdfPages);
 $('r2-managed-publish').addEventListener('click',managedPublish);
+
+
+async function loadContributions(){
+ const label=$('contribution-status'),list=$('contribution-list');
+ label.textContent='Đang tải hộp thư riêng từ D1…';
+ try{
+  const res=await api('/api/v1/admin/contributions');
+  if(res.private!==true||!Array.isArray(res.data))throw Error('Hộp thư trả về dữ liệu không hợp lệ');
+  list.replaceChildren();
+  for(const record of res.data){
+   const item=document.createElement('li');
+   item.className='sandbox-line';
+   const detail=document.createElement('div');
+   appendText(detail,'strong',String(record.title||'(Không có tiêu đề)'));
+   appendText(detail,'p','Người gửi: '+String(record.sender_name||'')+' · '+String(record.sender_email||''));
+   appendText(detail,'p',[record.category,record.status,record.created_at?.slice(0,10)].filter(Boolean).join(' · '));
+   appendText(detail,'p',String(record.description||''));
+   if(record.source)appendText(detail,'p','Xuất xứ: '+String(record.source));
+   if(record.source_url){
+     try{
+       const url=new URL(record.source_url);
+       if(url.protocol==='https:'&&!url.username&&!url.password){
+         const link=document.createElement('a');link.href=url.href;
+         link.target='_blank';link.rel='noopener noreferrer';
+         link.textContent='Mở liên kết tư liệu';detail.append(link);
+       }
+     }catch{}
+   }
+   if(/^contributions\/pending\/[a-f\d-]{36}\/attachment\.(?:jpg|png|webp|pdf)$/.test(record.file_path||'')
+      &&record.file_path.includes('/'+record.id+'/')){
+     const download=document.createElement('a');
+     download.href='/api/v1/admin/contributions/'+encodeURIComponent(record.id)+'/attachment';
+     download.textContent='Tải tệp đính kèm riêng tư';
+     download.rel='nofollow';detail.append(download);
+   }
+   item.append(detail);list.append(item);
+  }
+  if(!res.data.length)appendText(list,'li','Chưa có tư liệu mới.');
+  label.textContent='Đang hiển thị '+res.data.length+' tư liệu đã tiếp nhận; chỉ quản trị viên có quyền truy cập.';
+ }catch(e){
+  label.textContent='Không tải được hộp thư: '+e.message;
+ }
+}
+$('contribution-refresh').addEventListener('click',loadContributions);
+loadContributions();
 
 // A single secure writer used by the real, versioned D1 editorial panel.
 async function workWrite(path,method,payload){

@@ -224,6 +224,41 @@ export default {
        return json({error:'r2_inventory_unavailable'},503);
      }
    }
+   // Private visitor contributions: only Access-authorized staff may inspect PII.
+   // Never expose inbox metadata or original attachments through public D1 API.
+   if(path==='/api/v1/admin/contributions'){
+     if(!env.DB)return json({error:'db_unconfigured'},503);
+     try{
+       const {results}=await env.DB.prepare(
+         'SELECT id,sender_name,sender_email,category,title,description,source,source_url,file_path,status,created_at FROM submissions ORDER BY created_at DESC LIMIT 50'
+       ).all();
+       return json({data:results||[],private:true});
+     }catch(e){console.error('Contribution inbox unavailable',String(e?.name||'unknown'));
+       return json({error:'inbox_unavailable'},503)}
+   }
+   const attachment=/^\/api\/v1\/admin\/contributions\/([a-f\d-]{36})\/attachment$/i.exec(path);
+   if(attachment){
+     if(!env.DB||!env.GDD_BUCKET)return json({error:'inbox_unavailable'},503);
+     try{
+       const id=attachment[1];
+       const row=await env.DB.prepare('SELECT file_path FROM submissions WHERE id=? LIMIT 1')
+         .bind(id).first();
+       const prefix='contributions/pending/'+id+'/';
+       if(!row?.file_path||!String(row.file_path).startsWith(prefix)||
+           !/^contributions\/pending\/[a-f\d-]{36}\/attachment\.(?:jpg|png|webp|pdf)$/.test(row.file_path))
+         return json({error:'attachment_not_found'},404);
+       const object=await env.GDD_BUCKET.get(row.file_path);
+       if(!object)return json({error:'attachment_not_found'},404);
+       const extension=row.file_path.split('.').pop();
+       const mime={jpg:'image/jpeg',png:'image/png',webp:'image/webp',pdf:'application/pdf'}[extension];
+       return new Response(object.body,{status:200,headers:{
+         'Content-Type':mime,'Content-Disposition':'attachment; filename="tu-lieu-tiep-nhan.'+extension+'"',
+         'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff',
+         'X-Robots-Tag':'noindex,nofollow','Referrer-Policy':'no-referrer'
+       }});
+     }catch(e){console.error('Attachment inbox unavailable',String(e?.name||'unknown'));
+       return json({error:'attachment_unavailable'},503)}
+   }
    if(path==='/api/v1/admin/session')
      return json({authenticated:true,role:'administrator',write_enabled:false,mode:'staging',
        working_editor_enabled:env.ENABLE_WORKING_EDITOR==='enabled',
