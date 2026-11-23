@@ -1,0 +1,57 @@
+name: "GDD calendar - generate public 11-year ICS from published D1 ONLY"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths:
+      - ".github/workflows/gdd-calendar-d1-generate.yml"
+      - "scripts/gdd-calendar-static-build.mjs"
+      - "workers/gdd-calendar-static/calendar-core.mjs"
+      - "tests/gdd-calendar-static.test.mjs"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gdd-calendar-static-preview
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Test original lunar-to-solar conversion and ICS generator locally"
+        run: |
+          set -euo pipefail
+          node --test tests/gdd-calendar-static.test.mjs
+      - name: "Fetch exclusively published D1 records and build feed"
+        run: |
+          set -euo pipefail
+          node scripts/gdd-calendar-static-build.mjs
+          grep -q '^BEGIN:VCALENDAR' lich-ky-niem-qui-vi.ics
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('lich-ky-niem-qui-vi.json').read_text())
+          assert d['source']=='public-published-verified-D1-only'
+          assert len(d['upcoming'])==10 and d['count']>250
+          assert Path('lich-ky-niem-qui-vi.ics').stat().st_size<1200000
+          print('PUBLIC_CALENDAR_FEED_VERIFIED=TRUE')
+          PY
+      - name: "Publish only verified PUBLIC ICS and JSON to migration branch"
+        run: |
+          set -euo pipefail
+          git config user.name "gdd-calendar-automation"
+          git config user.email "gdd-calendar-automation@users.noreply.github.com"
+          git add -- lich-ky-niem-qui-vi.ics lich-ky-niem-qui-vi.json
+          if git diff --cached --quiet; then
+            echo "GDD_PUBLIC_CALENDAR_UNCHANGED=TRUE"
+          else
+            git commit -m "Build public D1 Cao Dai anniversary subscription 11-year ICS"
+            git push origin HEAD:cloudflare-d1-migration-20261123
+            echo "GDD_PUBLIC_CALENDAR_GENERATED=TRUE"
+          fi
