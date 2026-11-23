@@ -37,7 +37,7 @@ jobs:
           for k,n in expected.items():
               if len(source.get(k,[]))!=n:raise SystemExit('Unexpected count for '+k)
           for kind in allow-{'gallery','placements'}:
-              if not all(r.get('published') is True for r in source[k]):
+              if not all(r.get('published') is True for r in source[kind]):
                   raise SystemExit('Draft record in '+kind)
           pub_ids={k:{r['id'] for r in source[k]} for k in allow-{'gallery','placements'}}
           for row in source['gallery']:
