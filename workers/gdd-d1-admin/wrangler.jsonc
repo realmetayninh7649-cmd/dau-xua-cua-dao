@@ -4,5 +4,11 @@
   "compatibility_date": "2026-11-23",
   "workers_dev": true,
   "preview_urls": false,
-  "observability": {"enabled": false}
+  "observability": {
+    "enabled": false
+  },
+  "vars": {
+    "ACCESS_AUD": "55b1e69eb0bef703fb975cd4845f409a8dc8bbe32a9a817967e8aa7d7a00be96",
+    "ADMIN_EMAIL_SHA256": "07262df2908f26092e3a18782533d98f3e89172dd41c31ae68f833cae7e04855"
+  }
 }
