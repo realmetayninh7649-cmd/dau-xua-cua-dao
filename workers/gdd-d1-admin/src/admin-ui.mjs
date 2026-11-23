@@ -25,6 +25,12 @@ export const ADMIN_HTML=`<!doctype html>
 <p class="audit-caution">Đã kiểm kê danh sách đối tượng R2 ngày 23/11/2026. Đây chỉ là dấu kiểm kê tệp, chưa phải xác minh nội dung từng tệp hay bản sao lưu độc lập có thể phục hồi.</p>
 <div class="controls"><button id="r2-audit" type="button">Kiểm kê R2 trực tiếp (chỉ đọc)</button></div>
 <p id="r2-live-status" role="status" aria-live="polite">Chưa quét kho R2 trong phiên này.</p></section>
+<section aria-labelledby="r2-sandbox-title">
+<div class="heading"><h2 id="r2-sandbox-title">Thử tải ảnh, PDF, Word lên R2 riêng tư</h2><small>Không công bố bản gốc</small></div>
+<p class="audit-caution">Chỉ dùng tệp thử nghiệm tối đa 2 MB, giới hạn 20 tệp trong kho thử. Tệp mới nằm trong thư mục nội bộ riêng của R2, không có đường dẫn tải công khai; không xóa hay ghi đè ảnh/PDF tư liệu cũ.</p>
+<div class="controls"><input id="r2-sandbox-file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.docx"><button id="r2-sandbox-upload" type="button">Tải tệp thử nghiệm</button><button id="r2-sandbox-refresh" type="button">Kiểm kê tệp thử</button></div>
+<p id="r2-sandbox-status" role="status" aria-live="polite">Chưa kiểm tra kho thử.</p>
+</section>
 <section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Đối chiếu với số liệu Supabase ngày 23/11/2026 (bản chụp)</small></div>
 <div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
 </section>
@@ -223,6 +229,36 @@ async function loadRecords(){
 }
 $('refresh').addEventListener('click',()=>{overview();loadRecords()});
 $('r2-audit').addEventListener('click',auditR2);
+async function sandboxR2Refresh(){
+ const label=$('r2-sandbox-status');
+ try{
+  const data=await api('/api/v1/admin/r2/staging-uploads');
+  if(data.mode!=='private-r2-upload-sandbox')throw Error('Kho dữ liệu không hợp lệ');
+  label.textContent='Kho tải lên thử: '+data.count+'/'+data.max_total_objects+' tệp. Bản gốc luôn riêng tư, không công bố.';
+ }catch(e){label.textContent='Chưa kiểm tra được kho thử: '+e.message;}
+}
+async function sandboxR2Upload(){
+ const file=$('r2-sandbox-file').files[0];
+ const label=$('r2-sandbox-status'),button=$('r2-sandbox-upload');
+ if(!file){label.textContent='Hãy chọn một tệp thử nghiệm.';return}
+ if(file.size<1||file.size>2*1024*1024){label.textContent='Tệp thử phải có dung lượng tối đa 2 MB.';return}
+ button.disabled=true;
+ try{
+  label.textContent='Đang lưu tệp thử trong kho R2 riêng tư…';
+  const res=await fetch('/api/v1/admin/r2/staging-uploads',
+   {method:'POST',body:file,credentials:'same-origin',cache:'no-store',
+     headers:{'Content-Type':file.type}});
+  const info=await res.json();
+  if(!res.ok||info.original_private!==true||info.published!==false)
+    throw Error(info.error||'Trạng thái riêng tư không hợp lệ');
+  label.textContent='Đã lưu tệp thử riêng tư. SHA-256: '+info.sha256.slice(0,16)+'…; không thể tải công khai.';
+  $('r2-sandbox-file').value='';
+ }catch(e){label.textContent='Không lưu được tệp thử: '+e.message}
+ finally{button.disabled=false}
+}
+$('r2-sandbox-upload').addEventListener('click',sandboxR2Upload);
+$('r2-sandbox-refresh').addEventListener('click',sandboxR2Refresh);
+sandboxR2Refresh();
 // Access-protected synthetic D1 editing sandbox; no real data write endpoints.
 let sandboxActive=null,sandboxVersion=null,sandboxRecords=[];
 const sandboxApi='/api/v1/admin/sandbox';
