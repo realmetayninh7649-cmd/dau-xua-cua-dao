@@ -1,0 +1,54 @@
+name: "GDD - Cap nhat lich cung va ky niem qui vi tu Cloudflare D1"
+on:
+  schedule:
+    - cron: "15 19 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gdd-public-calendar-feed-daily
+  cancel-in-progress: false
+jobs:
+  update-public-calendar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Test original published-only lunar calendar conversion"
+        run: node --test tests/gdd-calendar-static.test.mjs
+      - name: "Build new verified published Cloudflare D1 public calendar only"
+        run: |
+          set -euo pipefail
+          node scripts/gdd-calendar-static-build.mjs
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('lich-ky-niem-qui-vi.json')
+          obj=json.loads(p.read_text())
+          assert obj['ok'] is True and obj['source']=='public-published-verified-D1-only'
+          assert obj['people_records']>=1 and obj['count']>=250
+          assert p.stat().st_size<25000
+          txt=Path('lich-ky-niem-qui-vi.ics').read_bytes()
+          assert txt.startswith(b'BEGIN:VCALENDAR\r\n')
+          assert txt.endswith(b'END:VCALENDAR\r\n')
+          assert len(txt)<1200000
+          assert b'BEGIN:VALARM' in txt
+          print('PUBLIC_D1_CALENDAR_ICS_VALID=TRUE')
+          PY
+      - name: "Update ONLY published calendar files, never source/D1/R2"
+        run: |
+          set -euo pipefail
+          git config user.name "gdd-calendar-automation"
+          git config user.email "gdd-calendar-automation@users.noreply.github.com"
+          git add -- lich-ky-niem-qui-vi.ics lich-ky-niem-qui-vi.json
+          if git diff --cached --quiet; then
+            echo "PUBLIC_CALENDAR_UNCHANGED=TRUE"
+          else
+            git commit -m "Daily update published Cao Dai lunar calendar from D1"
+            git push origin HEAD:main
+          fi

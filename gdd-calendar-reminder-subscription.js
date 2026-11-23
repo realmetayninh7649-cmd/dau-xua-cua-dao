@@ -3,7 +3,13 @@
  if(window.__gddCalendarRemindersUI2026)return;
  window.__gddCalendarRemindersUI2026=true;
  const cfg=window.SITE_CONFIG||{};
- const endpoint=(cfg.supabaseUrl||"https://gwpdgubxoquhrfbolftq.supabase.co").replace(/\/+$/,"")+"/functions/v1/gdd-calendar-reminders";
+ const d1Calendar=cfg.publicReadProvider==='d1-staging';
+ const endpoint=d1Calendar
+   ? new URL('/lich-ky-niem-qui-vi.ics',location.origin).href
+   : (cfg.supabaseUrl||"https://gwpdgubxoquhrfbolftq.supabase.co").replace(/\/+$/,"")+"/functions/v1/gdd-calendar-reminders";
+ const upcomingEndpoint=d1Calendar
+   ? new URL('/lich-ky-niem-qui-vi.json',location.origin).href
+   : endpoint+'?format=json';
  const subscriptionURL=endpoint;
  const $=(q,root=document)=>root.querySelector(q);
  const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
@@ -45,7 +51,7 @@
      <button type="button" id="gdd-remind-download">↓ Tải lịch có lời nhắc</button>
      <button type="button" id="gdd-remind-copy">⧉ Sao chép liên kết lịch</button>
    </div>
-   <p class="gdd-remind-status" id="gdd-remind-status" role="status" aria-live="polite">Bản theo dõi sẽ nhận ngày lễ và ngày kỷ niệm mới khi ứng dụng Lịch đồng bộ.</p>
+   <p class="gdd-remind-status" id="gdd-remind-status" role="status" aria-live="polite">Ngày lễ và ngày kỷ niệm được cập nhật theo bản lịch công khai định kỳ từ D1.</p>
    <div class="gdd-remind-coming" id="gdd-remind-coming">
      <strong>Những ngày lễ cúng và kỷ niệm sắp tới (theo dương lịch)</strong>
      <ul><li>Đang tải ngày lễ và ngày tưởng niệm…</li></ul>
@@ -61,19 +67,8 @@
   else selected.insertAdjacentElement('afterend',box);
   const message=$('#gdd-remind-status',box),list=$('#gdd-remind-coming ul',box);
   function status(text){message.textContent=text}
-  // Staging D1 public preview must not contact the Supabase Edge Function.
-  // Disable subscription actions instead of exposing a stale feed URL.
-  if(cfg.publicReadProvider==='d1-staging'){
-    for(const id of ['gdd-remind-subscribe','gdd-remind-download','gdd-remind-copy']){
-      const button=$('#'+id,box);if(button)button.disabled=true;
-    }
-    status('Tính năng nhắc lịch tạm khóa trong bản xem thử Cloudflare D1.');
-    list.replaceChildren();
-    const item=document.createElement('li');
-    item.textContent='Chức năng đăng ký nhắc lịch sẽ được kiểm tra trước khi mở website.';
-    list.append(item);
-    return;
-  }
+  // The D1 edition uses a static, versioned public ICS feed generated from
+  // verified published D1 rows; neither Supabase auth nor an Edge Function is used.
   async function copyLink(){
     try{
       if(!navigator.clipboard?.writeText)throw Error('Clipboard not available');
@@ -127,7 +122,7 @@
   }
   async function upcoming(){
     try{
-      const response=await fetch(endpoint+'?format=json',{cache:'no-store'});
+      const response=await fetch(upcomingEndpoint,{cache:'no-store'});
       if(!response.ok)throw Error('HTTP '+response.status);
       const json=await response.json();
       if(!json.ok||!Array.isArray(json.upcoming))throw Error('Unexpected calendar');

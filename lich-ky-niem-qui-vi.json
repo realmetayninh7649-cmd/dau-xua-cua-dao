@@ -1,0 +1,104 @@
+{
+  "ok": true,
+  "source": "public-published-verified-D1-only",
+  "generated_at": "2026-11-23T19:20:01.085Z",
+  "years": [
+    2026,
+    2036
+  ],
+  "people_records": 49,
+  "manual_records": 0,
+  "count": 825,
+  "upcoming": [
+    {
+      "name": "QUYỀN THÁI CHÁNH PHỐI SƯ THÁI KHÝ THANH (1894 – 1967)",
+      "rank": "Quyền Chánh Phối Sư",
+      "solar": "2026-11-28",
+      "lunar": "20/10/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "person"
+    },
+    {
+      "name": "ĐẦU SƯ THÁI NƯƠNG TINH",
+      "rank": "Thái Đầu Sư",
+      "solar": "2026-12-03",
+      "lunar": "25/10/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "person"
+    },
+    {
+      "name": "Cúng Sóc (mùng 1 âm lịch)",
+      "rank": "Tiểu Đàn",
+      "solar": "2026-12-09",
+      "lunar": "01/11/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "ritual"
+    },
+    {
+      "name": "TIỂU SỬ NGÀI TIẾP DẪN ĐẠO NHƠN NGUYỄN VĂN HỢI (1911–1991)",
+      "rank": "Chức Sắc Bộ Pháp Chánh",
+      "solar": "2026-12-22",
+      "lunar": "14/11/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "person"
+    },
+    {
+      "name": "Cúng Vọng (ngày Rằm âm lịch)",
+      "rank": "Tiểu Đàn",
+      "solar": "2026-12-23",
+      "lunar": "15/11/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "ritual"
+    },
+    {
+      "name": "Vía Đức Jésus Christ",
+      "rank": "Đại Đàn",
+      "solar": "2026-12-25",
+      "lunar": "17/11/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "ritual"
+    },
+    {
+      "name": "ĐỨC NỮ ĐẦU SƯ HÀM PHONG HỒ HƯƠNG LỰ",
+      "rank": "Nữ Đầu Sư Hàm Phong",
+      "solar": "2026-12-30",
+      "lunar": "22/11/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "person"
+    },
+    {
+      "name": "Cúng Sóc (mùng 1 âm lịch)",
+      "rank": "Tiểu Đàn",
+      "solar": "2027-01-08",
+      "lunar": "01/12/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "ritual"
+    },
+    {
+      "name": "THÍCH CHƯỞNG PHÁP HÒA THƯỢNG NHƯ NHÃN",
+      "rank": "QUẢN PHÁP THIỀN SƯ THÍCH ĐẠO CHUYỂN LUẬT LỊNH DIÊU ĐẠO SĨ.",
+      "solar": "2027-01-12",
+      "lunar": "05/12/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "person"
+    },
+    {
+      "name": "Cúng Vọng (ngày Rằm âm lịch)",
+      "rank": "Tiểu Đàn",
+      "solar": "2027-01-22",
+      "lunar": "15/12/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "ritual"
+    }
+  ]
+}
