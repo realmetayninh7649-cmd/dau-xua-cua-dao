@@ -169,16 +169,30 @@
   }
   async function showPublicAlbum(target, kind, slug, ticket) {
     try {
-      const supa=await getClient();
-      const {data:parent,error:lookupError}=await supa.from(kind).select('id').eq('slug',slug).maybeSingle();
-      if (lookupError) throw lookupError;
-      if (!parent || ticket!==detailSeq || !target.isConnected) return;
-      const {data, error}=await supa.from(ALBUM_TABLE)
-        .select('id,image_url,caption,sort_order,photo_no,photo_code').eq('owner_kind',kind).eq('owner_id',parent.id)
-        .order('sort_order',{ascending:true}).order('created_at',{ascending:true}).limit(200);
-      if (error) throw error;
-      if (!data?.length || ticket!==detailSeq || !target.isConnected) return;
-      const rows=data.filter(p=>safeUrl(p.image_url));
+      let albumRows=[];
+      try{
+        const supa=await getClient();
+        const {data:parent,error:lookupError}=await supa.from(kind).select('id').eq('slug',slug).maybeSingle();
+        if(lookupError)throw lookupError;
+        if(!parent || ticket!==detailSeq || !target.isConnected)return;
+        const {data,error}=await supa.from(ALBUM_TABLE)
+          .select('id,image_url,caption,sort_order,photo_no,photo_code')
+          .eq('owner_kind',kind).eq('owner_id',parent.id)
+          .order('sort_order',{ascending:true}).order('created_at',{ascending:true}).limit(200);
+        if(error)throw error;
+        albumRows=data||[];
+      }catch(readError){
+        // Chỉ xem bộ ảnh của hồ sơ đã công bố. Không mở ảnh nháp từ kho riêng.
+        const backup=await window.GDDPublicReadOnly?.load();
+        const parent=(backup?.[kind]||[]).find(row=>row.slug===slug&&row.published===true);
+        if(!parent)throw readError;
+        albumRows=(backup.gallery||[]).filter(row=>
+          row.owner_kind===kind&&row.owner_id===parent.id)
+          .sort((a,b)=>(a.sort_order??0)-(b.sort_order??0)
+            ||String(a.created_at||'').localeCompare(String(b.created_at||''))).slice(0,200);
+      }
+      if(!albumRows.length || ticket!==detailSeq || !target.isConnected)return;
+      const rows=albumRows.filter(p=>safeUrl(p.image_url));
       if (!rows.length) return;
       const header=document.createElement('div');header.className='gdd-album-head';
       const h=document.createElement('h3');h.textContent='Hình ảnh và văn kiện đính kèm';
