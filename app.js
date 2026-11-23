@@ -25,7 +25,7 @@
     ],
     videos:[], obituaries:[], documents:[], submissions:[]
   };
-  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',documentSubfolder:'browse',placements:[],transferSelection:null,detail:null,usingFallback:false };
+  const state = { data:{people:[],posts:[],media:[],videos:[],obituaries:[],documents:[],submissions:[]},supabase:null,admin:false,user:null,editorKind:'people',editingId:null,peopleExpanded:false,editorListExpanded:false,galleryCategory:'all',documentSubfolder:'browse',placements:[],galleryImages:[],transferSelection:null,detail:null,usingFallback:false };
   const schema = {
     people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date','sources','image_url','verified','published'],
     posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
@@ -219,8 +219,17 @@ function videoSource(raw){
     const newest=e=>new Date(placementOf(e.originKind,e.record)?.updated_at||e.record.created_at||0).getTime();
     return newest(b)-newest(a);
   });
-  const imageFromRecord=x=>displayImageUrl(x.cover_url||x.image_url||
-    ((/\.(png|jpe?g|webp)(\?|$)/i.test(x.file_url||'')||window.GDDPrivatePublishing?.isPreviewURL?.(x.file_url))?x.file_url:''));
+  const imageFromRecord=(x,kind='')=>{
+    const original=x.cover_url||x.image_url||
+      ((/\.(png|jpe?g|webp)(\?|$)/i.test(x.file_url||'')||window.GDDPrivatePublishing?.isPreviewURL?.(x.file_url))?x.file_url:'');
+    if(original)return displayImageUrl(original);
+    if(!kind||!x?.id)return '';
+    // Only album pictures whose parent is already published may be public cover candidates.
+    const album=state.galleryImages.filter(item=>
+      item.owner_kind===kind&&item.owner_id===x.id&&item.image_url)
+      .sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
+    return displayImageUrl(album[0]?.image_url||'');
+  };
 
 
   // R2 public viewer: only an explicit approved page reader, never a raw PDF URL.
@@ -242,12 +251,12 @@ function videoSource(raw){
     const q=norm($('#people-search').value.trim()),branch=$('#branch-filter').value,subgroup=$('#subgroup-filter').value;
     const matching=people.filter(p=>(branch==='all'||(p.branch||'Khác')===branch)&&(subgroup==='all'||p.subgroup===subgroup)&&norm([p.archive_code,p.archive_legacy_code,...(p.archive_code_aliases||[]),p.full_name,p.secular_name,p.rank,p.branch,p.birthplace,p.summary,p.biography].join(' ')).includes(q));
     const shown=state.peopleExpanded?matching:matching.slice(0,6);
-    $('#people-grid').innerHTML=shown.length?shown.map((p,i)=>`<article class="person-card"><div class="person-media" data-gdd-trace-code="${escape(p.archive_code||'')}">${portrait(p,state.admin||i===0)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span>${p.archive_code?'<span class="gdd-person-archive-code">Mã định danh: <code>'+escape(p.archive_code)+'</code></span>':''}<p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
+    $('#people-grid').innerHTML=shown.length?shown.map((p,i)=>`<article class="person-card"><div class="person-media" data-gdd-trace-code="${escape(p.archive_code||'')}">${portrait(p,true)}<span class="card-badge">${escape(p.branch||'TƯ LIỆU ĐẠO SỬ')}</span></div><div class="person-body"><span class="person-rank">${escape(p.rank||'Chức sắc')}</span><h3>${escape(p.full_name)}</h3><span class="person-years">${escape(p.years||'Đang bổ sung niên đại')}</span>${p.archive_code?'<span class="gdd-person-archive-code">Mã định danh: <code>'+escape(p.archive_code)+'</code></span>':''}<p>${escape(p.summary||'Hồ sơ tư liệu đang được biên soạn.')}</p><div class="card-bottom"><span>${p.verified?'Đã đối chiếu':'Đang đối chiếu'}</span><button type="button" class="card-link" data-open-kind="people" data-id="${escape(p.id)}">Xem tiểu sử <span>↗</span></button></div></div></article>`).join(''):'<div class="empty-state"><b>Chưa tìm thấy hồ sơ phù hợp.</b>Thử tên khác hoặc thay đổi bộ lọc.</div>';
     $('#people-result-count').textContent=`Đang hiển thị ${shown.length} / ${matching.length} hồ sơ`;
     const more=$('#people-show-more');more.hidden=matching.length<=6;more.textContent=state.peopleExpanded?'Thu gọn hồ sơ ↑':'Xem thêm hồ sơ ↗';
     $('#article-list').innerHTML=posts.length?posts.slice(0,8).map(({record:p,originKind},i)=>{
       const linked=p.person_id?linkedPerson(p.person_id):null;
-      const image=(state.admin||i===0)?(imageFromRecord(p)||displayImageUrl(linked?.published?linked.image_url:'')):'';
+      const image=imageFromRecord(p,originKind)||displayImageUrl(linked?.published?linked.image_url:'');
       const emptyArtwork='<div class="editorial-placeholder" aria-hidden="true"><span>✦</span><strong>TƯ LIỆU ĐẠO SỬ</strong><small>BIÊN KHẢO</small></div>';
       const artwork=image
         ?emptyArtwork+`<img src="${escape(image)}" data-photo-code="${escape(imageFromRecord(p)?p.archive_code:linked?.archive_code||'')}" alt="Ảnh bìa: ${escape(p.title)}" loading="lazy" decoding="async">`
@@ -281,7 +290,7 @@ function videoSource(raw){
       :'Đang hiển thị '+visibleMedia.length+' bộ ảnh trong chuyên mục “'+activeGallery+'”.';
     $('#gallery-grid').innerHTML=visibleMedia.length?visibleMedia.map(({record:m,originKind})=>{
       // Public list: thumbnails appear on individual detail pages, not automatically on every visit.
-      const src=state.admin?imageFromRecord(m):'';
+      const src=imageFromRecord(m,originKind);
       const full=String(m.caption||m.summary||m.body||'Bấm để xem thông tin bộ ảnh.').replace(/\s+/g,' ').trim();
       const excerpt=full.length>150?full.slice(0,147).replace(/\s+\S*$/,'')+'…':full;
       return `<button type="button" class="gallery-card" data-open-kind="${originKind}" data-id="${escape(m.id)}"><div class="gallery-visual" data-gdd-trace-code="${escape(m.archive_code||'')}">${src?`<img src="${escape(src)}" alt="${escape(m.title)}" data-photo-code="${escape(m.archive_code||'')}" loading="lazy">`:'<div class="gallery-placeholder"><b>✧</b><span>ẢNH TƯ LIỆU</span></div>'}</div><div class="gdd-gallery-card-copy"><h3>${escape(m.title)}</h3><p class="gdd-gallery-excerpt">${escape(excerpt)}</p><span class="gdd-gallery-open" aria-hidden="true">Xem bộ ảnh ↗</span></div></button>`;
@@ -329,7 +338,8 @@ function videoSource(raw){
       if(kind==='documents')el.hidden=state.documentSubfolder==='browse';
       el.innerHTML=rows.length?rows.map(({record:x,originKind})=>{
         // Published digitized documents use lazy R2 WebP thumbnails; other public lists remain lightweight.
-        const src=(state.admin||(kind==='documents'&&originKind==='documents'))?imageFromRecord(x):'';
+        const src=imageFromRecord(x,originKind)||
+          (kind==='videos'?videoSource(x.video_url)?.poster||'':'');
         const meta=originKind==='obituaries'?x.memorial_date:
           originKind==='documents'?[documentSubfolderTitle(x.subfolder_code),x.document_number,x.document_date].filter(Boolean).join(' · '):
           sectionNames[originKind]||'';
@@ -1067,6 +1077,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         for(const kind of kinds)state.data[kind]=archive[kind];
         state.data.submissions=[];
         state.placements=Array.isArray(archive.placements)?archive.placements:[];
+        state.galleryImages=Array.isArray(archive.gallery)?archive.gallery:[];
         state.admin=false;state.user=null;state.supabase=null;state.usingFallback=true;
         $('#admin-login-area').hidden=true;
         $('#admin-editor-area').hidden=true;
@@ -1081,7 +1092,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         updateSubgroupFilter();render();syncHash();return;
       }catch(error){
         console.error('D1 staging public preview failed',String(error?.message||'unknown'));
-        state.data=demo;state.admin=false;state.supabase=null;
+        state.data=demo;state.galleryImages=[];state.admin=false;state.supabase=null;
         $('#admin-login-area').hidden=true;$('#admin-editor-area').hidden=true;
         const banner=$('#mode-banner');
         if(banner){banner.textContent='Tạm thời chưa kết nối được kho tư liệu. Xin thử lại sau.';banner.hidden=false;}

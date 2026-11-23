@@ -11,6 +11,7 @@ on:
       - "gdd-public-readonly.js"
       - "gdd-calendar-reminder-subscription.js"
       - "gdd-people-organizer.js"
+      - "homepage-previews.js"
   workflow_dispatch:
 
 permissions:
