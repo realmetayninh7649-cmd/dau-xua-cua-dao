@@ -1,0 +1,140 @@
+name: "GDD - Tao D1 WORKING CLONE tu ban phuc hoi 21 bang 1892 dong"
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: [".github/workflows/gdd-d1-working-clone.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gdd-working-clone-free-safe
+  cancel-in-progress: false
+jobs:
+  clone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Preflight: validate source D1, no production binding, Free database capacity"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,json,re,pathlib,urllib.request
+          account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          token=os.getenv('CLOUDFLARE_D1_API_TOKEN','')
+          assert re.fullmatch(r'[a-f0-9]{32}',account) and token
+          cfg=json.loads(pathlib.Path('workers/gdd-d1-admin/wrangler.jsonc').read_text())
+          assert cfg['d1_databases'][0]['database_name']=='gdd-dao-su-restore-full-20261123'
+          assert cfg['d1_databases'][0]['database_id']=='ddce6b9f-90e1-488f-bf9b-5ddf5d170346'
+          name='gdd-dao-su-editor-live-clone-20261124'
+          base='https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database'
+          req=urllib.request.Request(base+'?per_page=100',headers={'Authorization':'Bearer '+token})
+          with urllib.request.urlopen(req,timeout=30) as response:obj=json.load(response)
+          if obj.get('success') is not True or not isinstance(obj.get('result'),list):
+              raise SystemExit('Cloudflare D1 listing unavailable')
+          names={x.get('name') for x in obj['result']}
+          if name in names:raise SystemExit('Working clone already exists, refuse overwrite')
+          if len(names)>=10:raise SystemExit('Free database count reached, do not create')
+          if 'gdd-dao-su-restore-full-20261123' not in names:raise SystemExit('D1 archive missing')
+          print('FREE_D1_CAPACITY_AVAILABLE=TRUE')
+          print('WORKING_CLONE_SOURCE_READ_ONLY=TRUE')
+          PY
+      - name: "Export immutable complete restored D1 to temporary PRIVATE runner file"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.159.0 d1 export gdd-dao-su-restore-full-20261123 --remote \
+            --config workers/gdd-d1-admin/wrangler.jsonc \
+            --output=/tmp/gdd-private-working-clone.sql >/tmp/gdd-export-private.log 2>&1 \
+            || { echo 'PRIVATE_D1_EXPORT_FAILED_NO_DATA_LOGGED'; exit 1; }
+          test -s /tmp/gdd-private-working-clone.sql
+          python3 - <<'PY'
+          import pathlib,sqlite3,json
+          path=pathlib.Path('/tmp/gdd-private-working-clone.sql')
+          data=path.read_text()
+          if len(data)<100000 or len(data)>20000000:raise SystemExit('Unexpected private export size')
+          db=sqlite3.connect(':memory:')
+          db.executescript(data)
+          expected=json.loads(pathlib.Path('workers/gdd-d1/source-row-counts-20261123.json').read_text())['table_counts']
+          if len(expected)!=21 or sum(expected.values())!=1892:raise SystemExit('Source manifest changed')
+          for name,n in expected.items():
+              actual=db.execute('SELECT count(*) FROM "'+name+'"').fetchone()[0]
+              if actual!=n:raise SystemExit('Private SQLite export mismatch '+name)
+          print('EXPORTED_SQL_PRIVATE_SQLITE_VERIFY_21_TABLES_1892=PASS')
+          PY
+      - name: "Create a NEW empty D1 working clone on Free, not original/snapshot"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,urllib.request,json,pathlib,re
+          name='gdd-dao-su-editor-live-clone-20261124'
+          base='https://api.cloudflare.com/client/v4/accounts/'+os.environ['CLOUDFLARE_ACCOUNT_ID']+'/d1/database'
+          headers={'Authorization':'Bearer '+os.environ['CLOUDFLARE_D1_API_TOKEN'],'Content-Type':'application/json'}
+          req=urllib.request.Request(base,data=json.dumps({'name':name}).encode(),headers=headers,method='POST')
+          with urllib.request.urlopen(req,timeout=30) as response:obj=json.load(response)
+          if obj.get('success') is not True:raise SystemExit('Working D1 creation not approved')
+          uid=(obj.get('result') or {}).get('uuid')
+          if not re.fullmatch('[a-f0-9-]{36}',str(uid)):raise SystemExit('Missing D1 id')
+          cfg={'name':'gdd-temp-working-clone','compatibility_date':'2026-11-24',
+            'd1_databases':[{'binding':'DB','database_name':name,'database_id':uid}]}
+          pathlib.Path('/tmp/gdd-working-d1-config.jsonc').write_text(json.dumps(cfg))
+          pathlib.Path('/tmp/gdd-working-d1-identity.json').write_text(json.dumps({'name':name,'uuid':uid}))
+          print('NEW_D1_WORKING_CLONE_CREATED='+uid)
+          PY
+      - name: "Import existing verified private SQL to NEW D1 only"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -s /tmp/gdd-working-d1-identity.json
+          test -s /tmp/gdd-private-working-clone.sql
+          npx --yes wrangler@4.159.0 d1 execute gdd-dao-su-editor-live-clone-20261124 \
+            --remote --yes --config /tmp/gdd-working-d1-config.jsonc \
+            --file=/tmp/gdd-private-working-clone.sql >/tmp/gdd-working-import-private.log 2>&1 \
+            || { echo 'WORKING_D1_IMPORT_FAILED_NO_DATA_LOGGED'; exit 1; }
+          echo 'NEW_WORKING_D1_PRIVATE_IMPORT_FINISHED=TRUE'
+      - name: "Verify new database 21 exact counts and unchanged source, SELECT only"
+        env:
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib,urllib.request
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']
+          token=os.environ['CLOUDFLARE_D1_API_TOKEN']
+          info=json.loads(pathlib.Path('/tmp/gdd-working-d1-identity.json').read_text())
+          expected=json.loads(pathlib.Path('workers/gdd-d1/source-row-counts-20261123.json').read_text())['table_counts']
+          hdr={'Authorization':'Bearer '+token,'Content-Type':'application/json'}
+          def n(dbid,table):
+              url='https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database/'+dbid+'/query'
+              req=urllib.request.Request(url,data=json.dumps({'sql':'SELECT count(*) AS n FROM "'+table+'"'}).encode(),method='POST',headers=hdr)
+              with urllib.request.urlopen(req,timeout=30) as res:resp=json.load(res)
+              if resp.get('success') is not True:raise SystemExit('D1 query error')
+              return resp['result'][0]['results'][0]['n']
+          for dbid in (info['uuid'],'ddce6b9f-90e1-488f-bf9b-5ddf5d170346'):
+              for name,count in expected.items():
+                  if n(dbid,name)!=count:raise SystemExit('Working/source count differs: '+name)
+          print('NEW_WORKING_D1_21_TABLES_1892_ROWS=PASS')
+          print('RESTORE_SOURCE_D1_21_TABLES_1892_ROWS=STILL_UNCHANGED')
+          print('WORKING_D1_UUID='+info['uuid'])
+          PY
+      - name: "Erase sensitive temporary exports, even on failure"
+        if: always()
+        run: |
+          rm -rf /tmp/gdd-private-working-clone.sql /tmp/gdd-export-private.log /tmp/gdd-working-import-private.log /tmp/gdd-working-d1-config.jsonc /tmp/gdd-working-d1-identity.json
+          echo 'WORKING_CLONE_TEMP_PRIVATE_FILES_ERASED=TRUE'
