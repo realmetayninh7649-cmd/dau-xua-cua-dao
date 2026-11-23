@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/gdd-live-site-preview-audit.yml"
       - "tests/gdd-live-preview-browser-smoke.mjs"
+      - "gdd-people-organizer.js"
   workflow_dispatch:
 permissions:
   contents: read
