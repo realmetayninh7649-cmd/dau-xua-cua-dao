@@ -50,7 +50,7 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          npx --yes wrangler@4.159.0 d1 migrations apply gdd-dao-su-archive --remote --config workers/gdd-d1/wrangler.jsonc --yes
+          npx --yes wrangler@4.159.0 d1 migrations apply gdd-dao-su-archive --remote --config workers/gdd-d1/wrangler.jsonc
           echo "D1_SCHEMA_MIGRATION_REQUESTED=true"
       - name: "Doc kiem tra schema tu Cloudflare D1"
         env:
