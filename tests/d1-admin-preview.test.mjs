@@ -90,7 +90,7 @@ test('21-table D1 inventory counts imported published records',async()=>{
 
  assert.equal(body.published_records,118);
  assert.equal(body.gallery_images,615);
- assert.equal(body.r2_asset_records,0);
+ assert.equal(body.r2_asset_records,269);
  assert.equal(body.write_enabled,false);
  assert.equal(sqlHistory.length,30);
  assert.equal(body.row_counts_match_snapshot,true);
