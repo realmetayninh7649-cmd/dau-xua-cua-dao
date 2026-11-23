@@ -94,6 +94,6 @@ test('Approved preview derivative is separately stored, then public, never expos
  assert.equal(badOriginal.status,403,'Original must not have any public route');
 });
 test('DELETE and raw R2 key retrieval remain denied',async()=>{
- assert.equal((await go('/api/v1/admin/r2/managed/v1/assets/'+id,{method:'DELETE'})).status,403);
+ assert.equal((await go('/api/v1/admin/r2/managed/v1/assets/'+id,{method:'DELETE'})).status,405);
  assert.equal((await go('/api/v1/admin/r2/managed/originals/private.jpg')).status,404);
 });
