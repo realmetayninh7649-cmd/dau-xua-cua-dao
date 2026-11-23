@@ -27,36 +27,35 @@ def d1_counts(account, token, manifest):
         raise SystemExit("Refuse unknown table schema (expected exactly 21)")
     for name in tables:
         check(name, "D1 table name", r"[a-z][a-z0-9_]*")
-    # Read-only SELECT, no row values and no user-controlled SQL identifiers.
-    sql = " UNION ALL ".join(
-        f'SELECT \'{name}\' AS table_name, COUNT(*) AS n FROM "{name}"'
-        for name in tables
-    )
+    # Cloudflare D1 API validation accepts one short SELECT per request.
+    # Keep 21 fixed-schema counts independent to isolate errors without logging rows.
     url = (
         "https://api.cloudflare.com/client/v4/accounts/" + account +
         "/d1/database/" + D1_DATABASE + "/query"
     )
-    body = json.dumps({"sql": sql}).encode("utf-8")
-    request = urllib.request.Request(url, body, method="POST", headers={
-        "Authorization": "Bearer " + token,
-        "Content-Type": "application/json",
-        "User-Agent": "GDD-D1-R2-ReadOnly-Audit/1.0"
-    })
-    with urllib.request.urlopen(request, timeout=35) as response:
-        result = json.load(response)
-    if result.get("success") is not True or not result.get("result"):
-        raise SystemExit("D1 SELECT-only count request failed")
-    rows = result["result"][0].get("results", [])
-    if len(rows) != 21:
-        raise SystemExit("D1 count result is incomplete")
     counts = {}
-    for row in rows:
-        if row.get("table_name") not in tables:
-            raise SystemExit("Unexpected table in D1 result")
-        name = row["table_name"]
-        if name in counts:
-            raise SystemExit("Duplicate count from D1")
-        n = row.get("n")
+    for name in tables:
+        sql = 'SELECT COUNT(*) AS n FROM "' + name + '"'
+        body = json.dumps({"sql": sql}).encode("utf-8")
+        request = urllib.request.Request(url, body, method="POST", headers={
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json",
+            "User-Agent": "GDD-D1-R2-ReadOnly-Audit/1.0"
+        })
+        try:
+            with urllib.request.urlopen(request, timeout=25) as response:
+                result = json.load(response)
+        except urllib.error.HTTPError as e:
+            # Only a status and fixed table name, never request headers,
+            # tokens, query response text or personally identifiable rows.
+            raise SystemExit("D1 count failed on table " + name +
+                             ": HTTP " + str(e.code)) from None
+        if result.get("success") is not True or not result.get("result"):
+            raise SystemExit("D1 SELECT-only count request failed for " + name)
+        rows = result["result"][0].get("results", [])
+        if len(rows) != 1:
+            raise SystemExit("Unexpected D1 count result for " + name)
+        n = rows[0].get("n")
         if isinstance(n, bool) or not isinstance(n, int) or n < 0:
             raise SystemExit("Invalid D1 count for " + name)
         counts[name] = n
