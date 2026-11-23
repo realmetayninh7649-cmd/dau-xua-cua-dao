@@ -115,7 +115,13 @@
        try{return {type:t,rows:await fetchTable(client,t.key)}}
        catch(error){data.errors.push(t.label);console.warn('[GDD Search] '+t.key,error);return {type:t,rows:[]}}
      }));
-     if(data.errors.length===types.length)throw Error('Không thể đọc dữ liệu công khai. Xin kiểm tra kết nối mạng.');
+     if(data.errors.length===types.length){
+       // Supabase quota 402: chỉ dùng bản đã công bố, không đụng tới bản nháp.
+       const backup=await window.GDDPublicReadOnly?.load();
+       if(!backup)throw Error('Không thể đọc dữ liệu công khai. Xin kiểm tra kết nối mạng.');
+       for(const item of collected)item.rows=(backup[item.type.key]||[]).filter(row=>row.published===true);
+       data.errors=[];
+     }
      const people=new Map((collected.find(x=>x.type.key==='people')?.rows||[]).map(p=>[p.id,p]));
      data.rows=collected.flatMap(({type,rows})=>rows.map(row=>{
        const person=type.key==='people'?row:people.get(row.person_id)||null;
@@ -201,29 +207,44 @@
  // Truy nguyên ảnh theo mã duy nhất, chỉ trên album công khai.
  async function lookupPhotoCode(raw){
    const code=String(raw||'').trim().toUpperCase();
-   if(!/^[\p{L}A-Z0-9._-]{5,120}\/\d{3,}$/u.test(code))return null;
-   const cfg=window.SITE_CONFIG||{};
-   if(!cfg.supabaseUrl||!cfg.supabasePublishableKey)return null;
-   const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-   const client=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,
-     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
-   const {data:photo,error}=await client.from('archive_gallery_images')
-     .select('id,owner_kind,owner_id,image_url,caption,photo_no,photo_code')
-     .eq('photo_code',code).maybeSingle();
-   if(error)throw error;
-   if(!photo)return null;
+   if(!/^[\\p{L}A-Z0-9._-]{5,120}\\/\\d{3,}$/u.test(code))return null;
+   let photo=null,parent=null;
+   try{
+     const cfg=window.SITE_CONFIG||{};
+     if(!cfg.supabaseUrl||!cfg.supabasePublishableKey)throw Error('Chưa có Supabase');
+     const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+     const client=createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,
+       {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+     const result=await client.from('archive_gallery_images')
+       .select('id,owner_kind,owner_id,image_url,caption,photo_no,photo_code')
+       .eq('photo_code',code).maybeSingle();
+     if(result.error)throw result.error;
+     photo=result.data;
+     if(!photo)return null;
+     const type=types.find(t=>t.key===photo.owner_kind);
+     if(!type)return null;
+     const record=await client.from(type.key).select('*')
+       .eq('id',photo.owner_id).eq('published',true).maybeSingle();
+     if(record.error)throw record.error;
+     parent=record.data;
+   }catch(error){
+     // Chỉ tìm theo mã trong bản chụp album công khai, không đọc kho riêng.
+     const backup=await window.GDDPublicReadOnly?.load();
+     if(!backup)return null;
+     photo=(backup.gallery||[]).find(row=>String(row.photo_code||'').toUpperCase()===code)||null;
+     if(!photo)return null;
+     parent=(backup[photo.owner_kind]||[]).find(row=>row.id===photo.owner_id&&row.published===true)||null;
+   }
+   if(!photo||!parent?.slug)return null;
    const type=types.find(t=>t.key===photo.owner_kind);
    if(!type)return null;
-   const {data:parent,error:parentError}=await client.from(type.key)
-     .select('*').eq('id',photo.owner_id).eq('published',true).maybeSingle();
-   if(parentError)throw parentError;
-   if(!parent?.slug)return null;
    const title=formatName(type.key,parent)||parent.title||'Bộ tư liệu Đạo sử';
    const href=location.origin+location.pathname+'?anh='+encodeURIComponent(code)
      +'#'+type.prefix+'/'+encodeURIComponent(parent.slug);
    return {kind:type.key,label:type.label+' · Ảnh lưu trữ',row:parent,
-     name:title+' · Ảnh '+String(photo.photo_no).padStart(3,'0'),
-     rank:'',branch:'',code:photo.photo_code,image:(window.GDDLegacyImages?.displayUrl(safeUrl(photo.image_url))||safeUrl(photo.image_url)),
+     name:title+' · Ảnh '+String(photo.photo_no||0).padStart(3,'0'),
+     rank:'',branch:'',code:photo.photo_code,
+     image:(window.GDDLegacyImages?.displayUrl(safeUrl(photo.image_url))||safeUrl(photo.image_url)),
      href,searchable:norm(code)};
  }
  async function apply(){
