@@ -49,14 +49,25 @@ jobs:
           python3 - <<'PY'
           import json,time,urllib.request,urllib.error
           base='https://gdd-d1-api-staging.realmetayninh7649.workers.dev'
-          for n in range(8):
+          last_error='no_response'
+          headers={'User-Agent':'GDD-D1-Staging-Health/1.0','Accept':'application/json'}
+          for n in range(12):
               try:
-                  with urllib.request.urlopen(base+'/health',timeout=15) as response:
+                  request=urllib.request.Request(base+'/health',headers=headers)
+                  with urllib.request.urlopen(request,timeout=15) as response:
                       check=json.load(response)
-                  if check.get('status')=='ok': break
-              except Exception: pass
+                  if check.get('status')=='ok':
+                      print('D1_STAGING_HEALTH=OK')
+                      break
+                  last_error='unexpected_status:'+str(check.get('status'))
+              except urllib.error.HTTPError as exc:
+                  last_error='HTTP_'+str(exc.code)
+              except Exception as exc:
+                  last_error=type(exc).__name__+':'+str(exc)[:140]
+              if n in (0,3,7,11):
+                  print('D1_HEALTH_ATTEMPT='+str(n+1)+' '+last_error)
               time.sleep(3)
-          else:raise SystemExit('Staging Worker health check failed')
+          else:raise SystemExit('Staging Worker health check failed: '+last_error)
           with urllib.request.urlopen(base+'/api/v1/public/people?limit=5&offset=0',timeout=20) as response:
               obj=json.load(response)
           rows=obj.get('data') or []
