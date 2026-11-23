@@ -44,7 +44,7 @@ try{
   assert.ok(result.publishedOnly);
   assert.ok(result.cards>0,'public cards missing');
   assert.ok(result.docWidth<=result.viewport+3,'page overflows viewport');
-  await page.screenshot({path:'/tmp/gdd-public-site-smoke/'+name+'.png',fullPage:false});
+  await page.screenshot({path:'/tmp/gdd-production-site-smoke/'+name+'.png',fullPage:false});
   console.log('PRODUCTION_D1_WEBSITE_UI_'+name.toUpperCase()+'=PASS',JSON.stringify(result));
   await page.route('https://gdd-d1-admin-staging.realmetayninh7649.workers.dev/**',
     route=>route.fulfill({status:200,contentType:'text/html',body:'<h1>Access admin portal</h1>'}));
