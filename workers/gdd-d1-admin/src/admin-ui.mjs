@@ -18,8 +18,8 @@ export const ADMIN_HTML=`<!doctype html>
 <p id="status" role="status" aria-live="polite">Đang kiểm tra phiên quản trị và dữ liệu D1…</p>
 <div id="overview" class="summary" aria-live="polite"></div>
 </section>
-<section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Tổng số bản ghi trong từng bảng</small></div>
-<div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Số bản ghi</th></tr></thead><tbody id="inventory"></tbody></table></div>
+<section aria-labelledby="inventory-title"><div class="heading"><h2 id="inventory-title">Đối chiếu 21 bảng D1</h2><small>Đối chiếu với số liệu Supabase ngày 23/11/2026 (bản chụp)</small></div>
+<div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
 </section>
 <section aria-labelledby="records-title"><div class="heading"><h2 id="records-title">Xem trước tư liệu đã công bố</h2><small>Không hiển thị bản nháp hoặc thông tin quản trị riêng tư</small></div>
 <div class="controls"><label for="kind">Chuyên mục</label><select id="kind">
@@ -109,7 +109,9 @@ async function overview(){
   if(session.authenticated!==true||session.write_enabled!==false)throw Error('Phiên chưa đạt trạng thái chỉ đọc');
   const inventory=$('inventory'),cards=$('overview');inventory.replaceChildren();cards.replaceChildren();
   for(const [count,label] of [
-    [summary.total_records,'Tổng bản ghi trong D1'],
+    [summary.source_total,'Bản ghi nguồn Supabase'],
+    [summary.total_records,'Đã chuyển vào D1'],
+    [summary.remaining_records,'Chênh lệch còn lại'],
     [summary.table_count,'Bảng dữ liệu'],
     [summary.published_records,'Bản ghi công khai (9 nhóm)'],
     [summary.gallery_images,'Ảnh album'],
@@ -120,9 +122,11 @@ async function overview(){
    }
    for(const item of summary.inventory){
     const tr=document.createElement('tr');appendText(tr,'td',names[item.table]||item.table);
-    appendText(tr,'td',Number(item.count).toLocaleString('vi-VN'),'number');inventory.append(tr);
+    appendText(tr,'td',Number(item.source_count).toLocaleString('vi-VN'),'number');
+    appendText(tr,'td',Number(item.count).toLocaleString('vi-VN'),'number');
+    appendText(tr,'td',Number(item.remaining).toLocaleString('vi-VN'),'number');inventory.append(tr);
    }
-   setStatus('Đã xác thực quyền quản trị · Đang xem dữ liệu thực tế trên D1 · Chỉ đọc');
+   setStatus('Đã xác thực · D1 cập nhật trực tiếp, Supabase đối chiếu theo bản chụp 23/11/2026 · Chỉ đọc');
  }catch(err){setStatus('Không thể đối chiếu D1: '+err.message)}
 }
 async function loadRecords(){
