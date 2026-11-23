@@ -17,7 +17,7 @@ const history=[];
 const db={prepare(sql){
  const table=Object.keys(tables).find(x=>sql.includes('"'+x+'"'));
  if(!table)throw Error('Unexpected SQL '+sql);
- return {bind(...args){return {
+ return {all:async()=>({results:tables[table].filter(x=>x.archive_code).map(x=>({archive_code:x.archive_code}))}),bind(...args){return {
   first:async()=>{
    if(sql.startsWith('SELECT * FROM'))return tables[table].find(x=>x.id===args[0])||null;
    if(sql.startsWith('UPDATE')){
