@@ -207,7 +207,7 @@
  // Truy nguyên ảnh theo mã duy nhất, chỉ trên album công khai.
  async function lookupPhotoCode(raw){
    const code=String(raw||'').trim().toUpperCase();
-   if(!/^[\\p{L}A-Z0-9._-]{5,120}\\/\\d{3,}$/u.test(code))return null;
+   if(!/^[\p{L}A-Z0-9._-]{5,120}\/\d{3,}$/u.test(code))return null;
    let photo=null,parent=null;
    try{
      const cfg=window.SITE_CONFIG||{};
