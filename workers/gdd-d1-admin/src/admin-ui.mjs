@@ -204,7 +204,7 @@ th{color:var(--muted);font-size:.85rem}
 .controls label{font-weight:600}
 .sandbox-form{display:grid;gap:10px}
 .sandbox-form label{font-size:.91rem;font-weight:600}
-.sandbox-form input[type=text],.sandbox-form textarea{font:inherit;width:100%;border:1px solid #aeb9b1;border-radius:8px;padding:10px;background:#fff;color:var(--ink)}
+.sandbox-form input[type=text],.sandbox-form textarea,.sandbox-form select{font:inherit;width:100%;border:1px solid #aeb9b1;border-radius:8px;padding:10px;background:#fff;color:var(--ink)}
 .sandbox-form textarea{resize:vertical}
 .sandbox-checkbox{display:flex;gap:8px;align-items:center}
 .sandbox-checkbox input{width:18px;height:18px}
@@ -695,7 +695,7 @@ async function workWrite(path,method,payload){
 }
 // D1 WORKING EDITOR. All fields use DOM textContent/value; no unsafe HTML insertion.
 const workFields={
- people:['full_name','secular_name','rank','branch','subgroup','gender','years','birthplace','summary','biography','date_notes','sources','image_url','verified','published','sort_order','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date'],
+ people:['full_name','secular_name','branch','rank','subgroup','gender','years','birthplace','summary','biography','date_notes','sources','image_url','verified','published','sort_order','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date'],
  posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
  media:['title','category','caption','person_id','sources','image_url','published'],
  videos:['title','summary','body','video_url','cover_url','sources','person_id','published'],
@@ -759,14 +759,46 @@ async function workList(){
   workStatus('Đã kết nối D1 làm việc · Chọn Soạn bài mới để viết hoặc mở danh sách để sửa.');
  }catch(e){workStatus('Lỗi tải danh sách D1: '+e.message)}
 }
+const workPersonRanks={
+ 'Cửu Trùng Đài':['Giáo Tông','Quyền Giáo Tông','Chưởng Pháp','Ngọc Chưởng Pháp','Thượng Chưởng Pháp','Thái Chưởng Pháp','Đầu Sư','Quyền Đầu Sư','Nữ Đầu Sư','Chánh Phối Sư','Thượng Chánh Phối Sư','Ngọc Chánh Phối Sư','Thái Chánh Phối Sư','Quyền Chánh Phối Sư','Phối Sư','Giáo Sư','Giáo Hữu','Lễ Sanh'],
+ 'Hiệp Thiên Đài':['Hộ Pháp','Thượng Phẩm','Thượng Sanh','Bảo Pháp','Bảo Đạo','Bảo Thế','Bảo Văn Pháp Quân','Hiến Pháp','Hiến Đạo','Hiến Thế','Khai Pháp','Khai Đạo','Khai Thế','Tiếp Pháp','Tiếp Đạo','Tiếp Thế','Tiếp Sanh','Thời Quân','Chức Sắc Bộ Pháp Chánh','Chức Sắc Bộ Nhạc','Ban Thế Đạo'],
+ 'Phước Thiện':['Thánh Nhơn','Chơn Nhơn','Hiền Nhơn','Đạo Nhơn','Giáo Thiện','Chí Thiện','Thừa Sử'],
+ 'Hành chánh Đạo':['Chánh Trị Sự','Phó Trị Sự','Thông Sự','Chức Việc','Đạo Hữu'],
+ 'Khác':[]
+};
+const workPersonGroups={
+ 'Cửu Trùng Đài':['Chức Sắc Đại Thiên Phong Nam/Nữ','Chức Sắc Thiên Phong Nam/Nữ','Chức Việc và Đạo Hữu','Ban Kiến Trúc','Các Cơ Quan Hành Chánh Đạo khác'],
+ 'Hiệp Thiên Đài':['Chức Sắc Đại Thiên Phong Nam/Nữ','Bộ Pháp Chánh','Chức Sắc Bộ Nhạc','Ban Thế Đạo','Các Cơ Quan Hành Chánh Đạo khác'],
+ 'Phước Thiện':[],'Hành chánh Đạo':[],'Khác':[]
+};
+const workDocumentFolders={'HCĐ':'Tài Liệu Hành Chánh Đạo','HTĐ':'Tài Liệu Chức Sắc Hiệp Thiên Đài','CTĐ':'Tài Liệu Chức Sắc Cửu Trùng Đài','PT':'Tài Liệu Chức Sắc Phước Thiện','CQK':'Tài Liệu Các Cơ Quan Khác'};
+function workSelectFill(select,choices,current,placeholder){
+ select.replaceChildren();
+ const option=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;select.append(o);};
+ option('',placeholder);
+ for(const value of choices)option(value,select.id==='work-field-subfolder_code'?workDocumentFolders[value]||value:value);
+ if(current&&!choices.includes(current))option(current,current+' (giá trị đã lưu)');
+ select.value=current||'';
+}
+function workInvalidateCode(){
+ workCodeCandidate=null;
+ $('work-code-confirm').checked=false;$('work-code-assign').disabled=true;
+ if(!$('work-code-area').hidden)$('work-code-preview').textContent='Phân loại đã thay đổi. Lưu thay đổi để kiểm tra lại mã dự kiến.';
+}
 function workBuild(kind,record){
  workFieldInputs.clear();
  const fields=$('work-fields');fields.replaceChildren();
  for(const field of workFields[kind]||[]){
   const label=document.createElement('label');
-  const input=workLong.has(field)?document.createElement('textarea'):document.createElement('input');
+  const choices=kind==='people'&&field==='branch'?Object.keys(workPersonRanks):
+    kind==='people'&&field==='subgroup'?(workPersonGroups[record?.branch]||[]):
+    kind==='people'&&field==='gender'?['Nam','Nữ']:
+    kind==='documents'&&field==='subfolder_code'?Object.keys(workDocumentFolders):null;
+  const input=document.createElement(choices?'select':workLong.has(field)?'textarea':'input');
   input.id='work-field-'+field;
-  if(workBool.has(field)){
+  if(choices){
+   workSelectFill(input,choices,record?.[field]||'',field==='subgroup'?'Chưa phân nhóm':'Chọn '+(workLabels[field]||field));
+  }else if(workBool.has(field)){
    input.type='checkbox';
    input.checked=record?Boolean(record[field]):false;
    if(!record&&field==='published')input.disabled=true;
@@ -786,6 +818,32 @@ function workBuild(kind,record){
   }else{fields.append(label,input);}
   workFieldInputs.set(field,input);
  }
+ if(kind==='people'){
+  const branch=workFieldInputs.get('branch'),rank=workFieldInputs.get('rank'),group=workFieldInputs.get('subgroup');
+  const rankPicker=document.createElement('select');rankPicker.id='work-rank-picker';
+  rankPicker.setAttribute('aria-label','Chọn Phẩm vị');rank.before(rankPicker);
+  const rankLabel=fields.querySelector('label[for="work-field-rank"]');if(rankLabel)rankLabel.htmlFor=rankPicker.id;
+  rank.placeholder='Nhập nguyên phẩm vị theo tư liệu';
+  const CUSTOM='__gdd_custom_rank__';
+  function fillRank(value){
+   const choices=workPersonRanks[branch.value]||[];
+   workSelectFill(rankPicker,choices,'','Chọn Phẩm vị');
+   const custom=document.createElement('option');custom.value=CUSTOM;custom.textContent='Khác / Tự nhập Phẩm vị…';rankPicker.append(custom);
+   rankPicker.value=value?(choices.includes(value)?value:CUSTOM):'';
+   rank.value=value||'';rank.hidden=rankPicker.value!==CUSTOM;
+  }
+  fillRank(record?.rank||'');
+  branch.addEventListener('change',()=>{
+   fillRank('');workSelectFill(group,workPersonGroups[branch.value]||[],'','Chưa phân nhóm');workInvalidateCode();
+  });
+  rankPicker.addEventListener('change',()=>{
+   rank.hidden=rankPicker.value!==CUSTOM;rank.value=rankPicker.value===CUSTOM?'':rankPicker.value;
+   workInvalidateCode();
+  });
+  rank.addEventListener('input',workInvalidateCode);group.addEventListener('change',workInvalidateCode);
+  workFieldInputs.get('full_name').addEventListener('input',workInvalidateCode);
+ }
+ if(kind==='documents')workFieldInputs.get('subfolder_code').addEventListener('change',workInvalidateCode);
 }
 function workChanged(){
  const changes={};
@@ -829,6 +887,9 @@ async function workCodePreview(){
 async function workAssignCode(){
  const record=workCurrent?.record,kind=workCurrent?.kind;
  if(!record||!workCodeCandidate||!$('work-code-confirm').checked)return;
+ if(Object.keys(workChanged()).some(key=>['full_name','branch','rank','subgroup','subfolder_code'].includes(key))){
+  workInvalidateCode();workStatus('Lưu thông tin phân loại trước khi cấp mã.');return;
+ }
  if(!confirm('Xác nhận cấp MÃ ĐỊNH DANH '+workCodeCandidate.code+
    ' cho bản nháp này? Mã đã cấp sẽ được giữ nguyên và ghi lịch sử.'))return;
  const btn=$('work-code-assign');btn.disabled=true;
