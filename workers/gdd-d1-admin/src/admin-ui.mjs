@@ -58,6 +58,7 @@ export const ADMIN_HTML=`<!doctype html>
 </div>
 </details>
 </section>
+<details class="admin-fold" id="radio-recovery-panel"><summary>Khôi phục Radio HAI MƯƠI NĂM <small>Tệp MP3 gốc</small></summary><div class="admin-fold-body"><p>Chọn tệp Radio dai dao.mp3 đã xác minh (16.116.406 byte). Hệ thống tự kiểm tra và cập nhật bài cũ, không tạo bài mới.</p><input id="radio-recovery-file" type="file" accept=".mp3,audio/mpeg"><button class="work-primary" id="radio-recovery-submit" type="button" disabled>Khôi phục âm thanh</button><p id="radio-recovery-status" role="status" aria-live="polite"></p></div></details>
 <details class="admin-fold" id="r2-managed-panel" hidden><summary id="r2-managed-title">Kho tư liệu R2 <small>Ảnh · PDF · Word</small></summary><div class="admin-fold-body">
 <details class="admin-help"><summary>Hướng dẫn bảo tồn và công bố</summary><p class="audit-caution">Ảnh hoặc tài liệu được cất nguyên vẹn dưới dạng bản gốc riêng tư trong R2. Tệp lớn tải thành các phần 8 MB. Chỉ khi chủ động nhấn Công bố bản xem thì ảnh tối ưu mới được mở cho độc giả. PDF được chuyển thành ảnh từng trang. DOCX có thể tạo bản đọc **chữ** từng trang (không bảo toàn ảnh nhúng hoặc định dạng Word phức tạp); với DOCX chứa hình ảnh, xin xuất PDF để giữ nguyên bố cục trước khi công bố. Bản gốc luôn được giữ riêng.</p></details>
 <div class="controls"><input id="r2-managed-file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.tif,.tiff,.heic,.heif,.avif">
@@ -1258,5 +1259,19 @@ const lookupPanel=document.querySelector('.work-archive-lookup');
 lookupPanel.addEventListener('toggle',()=>{if(lookupPanel.open)loadRecords()});
 const techPanel=$('inventory').closest('details.admin-technical');
 techPanel.addEventListener('toggle',()=>{if(techPanel.open)overview()});
+const recoveryFile=$('radio-recovery-file'),recoverySubmit=$('radio-recovery-submit'),recoveryStatus=$('radio-recovery-status');
+recoveryFile.addEventListener('change',()=>{recoverySubmit.disabled=!recoveryFile.files?.[0];recoveryStatus.textContent=''});
+recoverySubmit.addEventListener('click',async()=>{
+ const file=recoveryFile.files?.[0];if(!file)return;
+ if(file.size!==16116406){recoveryStatus.textContent='Không đúng dung lượng bản gốc.';return}
+ recoverySubmit.disabled=true;recoveryFile.disabled=true;recoveryStatus.textContent='Đang lưu MP3 vào R2 và kiểm tra toàn vẹn…';
+ try{
+  const response=await fetch('/api/v1/admin/recover-radio-hai-muoi-nam',{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'audio/mpeg'},body:file});
+  const result=await response.json();if(!response.ok||!result.restored)throw Error(result.error||'Chưa khôi phục');
+  recoveryStatus.textContent='Đã khôi phục MP3, kiểm tra SHA-256 và cập nhật bài cũ. Hãy mở website để nghe.';
+  recoveryFile.value='';
+ }catch(e){recoveryStatus.textContent='Chưa hoàn tất: '+e.message+' · Có thể thử lại.'}
+ finally{recoveryFile.disabled=false;recoverySubmit.disabled=!recoveryFile.files?.[0]}
+});
 initAdmin();
 `;
