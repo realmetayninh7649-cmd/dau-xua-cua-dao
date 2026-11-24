@@ -1,3 +1,4 @@
+import {uploadAudio} from './audio-upload.mjs';
 import {recoverRadio} from './radio-recovery.mjs';
 /* DẤU XƯA CỬA ĐẠO — Cloudflare Access administrator preview (STAGING).
  * Authenticated only via trusted Cloudflare ctx.access; never trust client headers.
@@ -149,6 +150,13 @@ async function inventory(env){
 export default {
  async fetch(request,env,ctx){
    const url=new URL(request.url),path=url.pathname;
+   const audioUpload=/^\/api\/v1\/admin\/audio\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.exec(path);
+   if(audioUpload){
+     if(!await isAdministrator(env,ctx)||env.ENABLE_WORKING_EDITOR!=='enabled'||env.ENABLE_MANAGED_R2!=='enabled')return json({error:'unauthorized'},403);
+     if(request.method!=='PUT')return json({error:'method_not_allowed'},405);
+     if(request.headers.get('Origin')!=='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'||(request.headers.get('Sec-Fetch-Site')&&request.headers.get('Sec-Fetch-Site')!=='same-origin'))return json({error:'csrf_rejected'},403);
+     return uploadAudio(request,env,audioUpload[1],json);
+   }
    // One-time exact-byte recovery for the already-published Radio episode.
    if(path==='/api/v1/admin/recover-radio-hai-muoi-nam'){
      if(!await isAdministrator(env,ctx)||env.ENABLE_WORKING_EDITOR!=='enabled'||env.ENABLE_MANAGED_R2!=='enabled')return json({error:'unauthorized'},403);
