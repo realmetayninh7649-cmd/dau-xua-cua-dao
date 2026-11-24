@@ -1,0 +1,40 @@
+name: "GDD Radio - Recover only verified published MP3 and covers"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/gdd_recover_radio_media.py"
+      - ".github/workflows/gdd-radio-media-recovery.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gdd-radio-published-media-recovery
+  cancel-in-progress: false
+jobs:
+  verify-legacy-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Recover publicly published media ONLY when exact bytes verify"
+        run: python3 scripts/gdd_recover_radio_media.py
+      - name: "Commit verified copies only; source Supabase remains unchanged"
+        run: |
+          set -euo pipefail
+          git add -- audio/radio-hai-muoi-nam.mp3 audio/radio-hai-muoi-nam-cover.png audio/niem-danh-kim-mau-cover.png
+          if git diff --cached --quiet; then
+            echo "PUBLIC_RADIO_MEDIA_NOT_RECOVERABLE_OR_ALREADY_PRESENT=TRUE"
+          else
+            git config user.name "gdd-radio-recovery"
+            git config user.email "gdd-radio-recovery@users.noreply.github.com"
+            git commit -m "Restore verified published Radio MP3/cover media to stable GitHub Pages"
+            git pull --rebase origin main
+            git push origin HEAD:main
+            echo "PUBLIC_RADIO_MEDIA_RECOVERED=TRUE"
+          fi
