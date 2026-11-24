@@ -6,9 +6,9 @@ export const PHOTO_JS=String.raw`/* Multi-image editor for Access-authenticated 
 'use strict';
 const $=id=>document.getElementById(id);
 const supported=new Set(['image/jpeg','image/png','image/webp']);
-const supportedKinds=new Set(['people','posts','media','videos','obituaries','documents']);
+const supportedKinds=new Set(['people','posts','media','videos','obituaries','documents','gdd_memorials','gdd_audio_programs','gdd_calendar_memorials']);
 const limits={each:24*1048576};
-const documentKinds=new Set([...supportedKinds,'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials']);
+const documentKinds=supportedKinds;
 const documentLimit=45*1048576;
 let documents=[];
 const downloadChanges=new Map();
@@ -406,7 +406,7 @@ async function saveDownloadPermissions(record,allow,notify=()=>{}){
 }
 $('work-attachment-files').addEventListener('change',selectDocuments);
 $('work-photo-files').addEventListener('change',select);
-window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0,hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={}){
+window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0,hasPhotos:()=>queue.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={}){
  if(!supported.has(file.type)||file.size<1||file.size>limits.each)throw Error('Chọn JPEG/PNG/WebP không quá 24 MB.');
  item.file=file;
  if(!item.assetId)item.assetId=await archiveOriginal(file,notify);

@@ -73,3 +73,17 @@ test('attachment download permission defaults off and is saved by the ordinary p
  assert.ok(ADMIN_JS.includes('saveDownloadPermissions(active,false,progress)'));
  assert.ok(ADMIN_JS.includes('saveDownloadPermissions(active,true,progress)'));
 });
+
+test('uniform editor exposes all nine photo groups, independent documents cover and normalized dates',()=>{
+ assert.ok(PHOTO_JS.includes("const documentKinds=supportedKinds"));
+ assert.ok(PHOTO_JS.includes("hasPhotos:()=>queue.some"));
+ assert.ok(ADMIN_JS.includes("role:'cover'"));
+ assert.ok(ADMIN_JS.includes("workCurrent.kind==='documents'&&field==='cover_url'"));
+ const start=ADMIN_JS.indexOf('function normalizeEditorialDate('),end=ADMIN_JS.indexOf('const workLong=',start);
+ const parse=new Function(ADMIN_JS.slice(start,end)+';return normalizeEditorialDate;')();
+ assert.equal(parse('29/09/1926'),'1926-09-29');
+ assert.equal(parse('29-09-1926'),'1926-09-29');
+ assert.equal(parse('2026-11-25'),'2026-11-25');
+ assert.equal(parse(''),null);
+ assert.throws(()=>parse('31/02/1926'),/invalid_date/);
+});

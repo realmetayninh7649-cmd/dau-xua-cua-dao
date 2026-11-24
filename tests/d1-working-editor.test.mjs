@@ -84,3 +84,11 @@ test('all nine working content kinds listed but private system tables rejected',
  assert.equal((await call('GET','/api/v1/admin/work/admin_users')).status,404);
  assert.equal((await call('GET','/api/v1/admin/work/submissions')).status,404);
 });
+
+test('server date normalization accepts local historical dates and rejects impossible dates',async()=>{
+ const path='/api/v1/admin/work/people/'+data.id;
+ let res=await call('PATCH',path,{version:data.gdd_version,fields:{death_solar_date:'29/09/1926'}});
+ assert.equal(res.status,200);assert.equal(res.body.data.death_solar_date,'1926-09-29');
+ res=await call('PATCH',path,{version:data.gdd_version,fields:{death_solar_date:'31/02/1926'}});
+ assert.equal(res.status,400);
+});

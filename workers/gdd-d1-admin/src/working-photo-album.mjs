@@ -3,7 +3,7 @@
  * R2 objects. Preview links must be actively approved via R2 publication first.
  */
 import {ownerUUID} from './r2-managed.mjs';
-const ROUTE=/^\/api\/v1\/admin\/work\/(people|posts|media|videos|obituaries|documents)\/([a-f0-9-]{36})\/photos$/i;
+const ROUTE=/^\/api\/v1\/admin\/work\/(people|posts|media|videos|obituaries|documents|gdd_memorials|gdd_audio_programs|gdd_calendar_memorials)\/([a-f0-9-]{36})\/photos$/i;
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const BASE='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/';
 function reply(data,status=200){
@@ -38,12 +38,13 @@ export async function handleAlbumPhotos(request,env,path){
   if(raw.length>2500)return reply({error:'invalid_body_size'},413);
   let input;try{input=JSON.parse(raw)}catch{return reply({error:'invalid_json'},400)}
   if(!input||Array.isArray(input)||typeof input!=='object'
-    ||Object.keys(input).some(k=>!['asset_id','caption'].includes(k)))
+    ||Object.keys(input).some(k=>!['asset_id','caption','role'].includes(k)))
     return reply({error:'invalid_fields'},400);
   const id=input.asset_id;
   if(!ID.test(id||''))return reply({error:'invalid_asset_id'},400);
   if(typeof input.caption!=='string'||input.caption.length>600)
     return reply({error:'invalid_caption'},400);
+  if(input.role!==undefined&&(input.role!=='cover'||kind!=='documents'))return reply({error:'invalid_role'},400);
   const caption=input.caption.trim();
   const accessOwner=ownerUUID(env);
   const asset=await env.DB.prepare(
@@ -56,6 +57,12 @@ export async function handleAlbumPhotos(request,env,path){
   if(asset.record_id&&(asset.record_id!==recordId||asset.record_kind!==kind))
     return reply({error:'asset_already_linked_elsewhere'},409);
   const url=BASE+id+'/preview';
+  if(input.role==='cover'){
+   await env.DB.prepare("UPDATE gdd_r2_assets SET record_kind=?,record_id=?,role='cover',view_updated_at=? WHERE asset_id=? AND owner_id=? AND media_kind='image' AND public_view=1 AND preview_ready=1 AND (record_id IS NULL OR (record_id=? AND record_kind=?))").bind(kind,recordId,new Date().toISOString(),id,accessOwner,recordId,kind).run();
+   const saved=await env.DB.prepare("SELECT asset_id FROM gdd_r2_assets WHERE asset_id=? AND record_kind=? AND record_id=? AND role='cover' LIMIT 1").bind(id,kind,recordId).first();
+   if(!saved)return reply({error:'cover_not_confirmed'},409);
+   return reply({data:{image_url:url,asset_id:id},attached:true},201);
+  }
   const existing=await env.DB.prepare(
    'SELECT id,image_url,caption,sort_order FROM archive_gallery_images '+
    'WHERE owner_kind=? AND owner_id=? AND image_url=? LIMIT 1'

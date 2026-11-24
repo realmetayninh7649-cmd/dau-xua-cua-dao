@@ -8,9 +8,7 @@ const PUBLIC_TABLES = Object.freeze(new Set([
   'people','posts','media','videos','obituaries','documents',
   'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials'
 ]));
-const ALBUM_OWNERS = Object.freeze(new Set([
-  'people','posts','media','videos','obituaries','documents'
-]));
+const ALBUM_OWNERS = PUBLIC_TABLES;
 const BOOL_FIELDS = new Set(['published','verified','death_lunar_leap','lunar_leap']);
 const ARRAY_FIELDS = new Set(['archive_code_aliases']);
 // Public gallery/placement records have no published flag, so protect them
@@ -21,8 +19,9 @@ const publicOwnerPredicate = alias => [
 ].map(([kind,table]) =>
   `(${alias}.owner_kind='${kind}' AND EXISTS(SELECT 1 FROM "${table}" p WHERE p.id=${alias}.owner_id AND p.published=1))`
 ).join(' OR ');
+const galleryOwnerPredicate=alias=>[...PUBLIC_TABLES].map(kind=>`(${alias}.owner_kind='${kind}' AND EXISTS(SELECT 1 FROM "${kind}" p WHERE p.id=${alias}.owner_id AND p.published=1))`).join(' OR ');
 const PUBLIC_GALLERY_SQL='SELECT g.* FROM archive_gallery_images g WHERE ('+
-  publicOwnerPredicate('g')+') ORDER BY g.created_at DESC, g.sort_order ASC LIMIT ? OFFSET ?';
+  galleryOwnerPredicate('g')+') ORDER BY g.created_at DESC, g.sort_order ASC LIMIT ? OFFSET ?';
 const PUBLIC_PLACEMENTS_SQL='SELECT x.* FROM gdd_content_placements x WHERE ('+
   publicOwnerPredicate('x')+') ORDER BY x.updated_at DESC LIMIT ? OFFSET ?';
 const ALLOWED_ORIGINS = new Set([
@@ -190,16 +189,17 @@ export default {
       const table=path[3];
       if(!PUBLIC_TABLES.has(table)||path.length>5||path.length<4)
         return respond(request,{error:'not_found'},404,{private:true});
+      const fields=table==='documents'?`*, (SELECT 'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/' || a.asset_id || '/preview' FROM gdd_r2_assets a WHERE a.record_kind='documents' AND a.record_id=documents.id AND a.role='cover' AND a.media_kind='image' AND a.public_view=1 AND a.preview_ready=1 ORDER BY a.view_updated_at DESC,a.created_at DESC,a.asset_id DESC LIMIT 1) AS cover_url`:'*';
       if(path.length===5){
         const slug=decodeURIComponent(path[4]||'');
         if(!/^[a-z0-9][a-z0-9_-]{0,180}$/.test(slug))
           return respond(request,{error:'invalid_slug'},400,{private:true});
-        const row=await env.DB.prepare(`SELECT * FROM "${table}" WHERE published=1 AND slug=? LIMIT 1`)
+        const row=await env.DB.prepare(`SELECT ${fields} FROM "${table}" WHERE published=1 AND slug=? LIMIT 1`)
           .bind(slug).first();
         return respond(request,row?{data:castRecord(row)}:{error:'not_found'},row?200:404);
       }
       const page=parsePage(url);if(!page)return respond(request,{error:'invalid_pagination'},400,{private:true});
-      const {results}=await env.DB.prepare(`SELECT * FROM "${table}" WHERE published=1 ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      const {results}=await env.DB.prepare(`SELECT ${fields} FROM "${table}" WHERE published=1 ORDER BY created_at DESC LIMIT ? OFFSET ?`)
         .bind(page.limit,page.offset).all();
       return respond(request,{data:(results||[]).map(castRecord)});
     }catch(e){

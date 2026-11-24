@@ -39,6 +39,15 @@ async function body(req){
  if(!data||Array.isArray(data)||typeof data!=='object')throw Error('invalid_json');
  return data;
 }
+function normalizeEditorialDate(value){
+ const text=String(value??'').trim();if(!text)return null;
+ const iso=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text),local=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/.exec(text);
+ if(!iso&&!local)throw Error('invalid_date');
+ const y=Number(iso?iso[1]:local[3]),m=Number(iso?iso[2]:local[2]),d=Number(iso?iso[3]:local[1]);
+ if(y<1000||y>9999||m<1||m>12||d<1||d>31)throw Error('invalid_date');
+ const dt=new Date(Date.UTC(y,m-1,d));if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==m-1||dt.getUTCDate()!==d)throw Error('invalid_date');
+ return String(y)+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
 function normalValue(field,value){
  if(value===null)return null;
  if(BOOL.has(field)){
@@ -59,7 +68,7 @@ function normalValue(field,value){
      throw Error('invalid_url');
  }
  if(UUID_FIELDS.has(field)&&value&&!UUID.test(value))throw Error('invalid_uuid_field');
- if(DATES.has(field)&&value&&!/^\d{4}-\d{2}-\d{2}$/.test(value))throw Error('invalid_date');
+ if(DATES.has(field))return normalizeEditorialDate(value);
  return value;
 }
 function normalizeInput(kind,payload,{creation=false}={}){
@@ -125,6 +134,10 @@ export async function handleWorkingEditor(request,db,path){
    if(!UUID.test(id))return response({error:'invalid_id'},400);
    if(parts.length===2&&request.method==='GET'){
      const row=await db.prepare('SELECT * FROM "'+kind+'" WHERE id=? LIMIT 1').bind(id).first();
+     if(row&&kind==='documents'){
+       const cover=await db.prepare("SELECT asset_id FROM gdd_r2_assets WHERE record_kind='documents' AND record_id=? AND role='cover' AND media_kind='image' AND public_view=1 AND preview_ready=1 ORDER BY view_updated_at DESC,created_at DESC,asset_id DESC LIMIT 1").bind(id).first();
+       if(cover)row.cover_url='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+cover.asset_id+'/preview';
+     }
      return response(row?{data:row}:{error:'not_found'},row?200:404);
    }
    if(parts.length===3&&(parts[2]==='code-preview'||parts[2]==='assign-code')){

@@ -36,7 +36,7 @@ export const ADMIN_HTML=`<!doctype html>
 </div>
 <div class="sandbox-form" id="work-fields"></div>
 <div id="work-photo-panel" class="work-photo-panel" hidden>
-<h4>Thêm nhiều ảnh vào bài</h4>
+<h4>Ảnh đính kèm</h4>
 <p class="work-photo-explain">Chọn ảnh, thêm chú thích và sắp xếp. Bản gốc giữ riêng; chỉ công bố bản xem.</p>
 <label for="work-photo-files"><strong>Chọn nhiều ảnh từ điện thoại hoặc máy tính</strong></label>
 <input id="work-photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
@@ -46,15 +46,15 @@ export const ADMIN_HTML=`<!doctype html>
 <details id="work-photo-existing"><summary>Bộ ảnh đã gắn vào bài <span id="work-photo-count">· 0 ảnh</span></summary><div id="work-photo-album" class="work-photo-grid"></div></details>
 </div>
 <div id="work-attachment-panel" class="work-photo-panel" hidden>
-<h4>Đính kèm tài liệu PDF / Word</h4>
+<h4>Tài liệu đính kèm</h4>
 <label for="work-attachment-files"><strong>Chọn nhiều tệp tài liệu</strong></label>
 <input id="work-attachment-files" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
-<small>PDF / DOC / DOCX · Tối đa 45 MB/tệp. PDF và DOCX tự tạo bản đọc khi Đăng bài (DOCX chỉ hiển thị chữ; .doc giữ riêng, cần đổi sang PDF/DOCX để đọc công khai). Bản gốc mặc định riêng tư; bật “Cho phép khách tải tệp gốc” cho từng tài liệu nếu muốn chia sẻ.</small>
+<small>PDF, Word · tối đa 45 MB/tệp. Tự xử lý khi đăng bài.</small><details class="admin-help"><summary>Lưu ý định dạng và quyền tải</summary><small>PDF: bản đọc từng trang. DOCX: bản đọc chữ (không giữ ảnh và bố cục). DOC: chỉ tải nếu được cấp quyền. Tệp gốc mặc định riêng tư.</small></details>
 <ul id="work-attachment-queue" class="records"></ul>
 <p id="work-attachment-status" role="status" aria-live="polite"></p>
 <details><summary>Tài liệu đã gắn vào bài <span id="work-attachment-count">· 0 tệp</span></summary><ul id="work-attachment-existing" class="records"></ul></details>
 </div>
-<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Đăng bài tự tải ảnh và tài liệu, cấp mã (nếu cần), tạo và công bố bản đọc PDF/DOCX. Tệp gốc chỉ tải công khai nếu bạn bật quyền cho từng tệp.</small></div>
+<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Ảnh và tài liệu tự xử lý trong một lần đăng bài. Tệp gốc chỉ tải công khai khi được cho phép.</small></div>
 <details class="work-history"><summary>Lịch sử chỉnh sửa và phục hồi</summary><ul class="records" id="work-revisions"></ul></details>
 </div>
 <details id="work-list-details" class="work-record-panel">
@@ -219,6 +219,7 @@ th{color:var(--muted);font-size:.85rem}
 .sandbox-line{display:flex;gap:9px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .sandbox-line button{font-size:.84rem;padding:7px 9px}
 #work-attachment-panel .sandbox-line span,#work-attachment-status{min-width:0;overflow-wrap:anywhere;word-break:break-word}
+#work-attachment-panel .sandbox-line{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}#work-attachment-panel .sandbox-line button{justify-self:start}#work-attachment-panel small{font-size:.82rem;line-height:1.45}#work-attachment-panel .sandbox-line a{justify-self:start;overflow-wrap:anywhere}
 
 .safe-list{padding-left:24px;line-height:1.6}.safe-list li{padding:5px 0}.audit-caution{color:#695a41;font-size:.86rem;padding:10px;background:#fff8e8;border-radius:6px}
 .records{padding:0;margin:0;list-style:none}
@@ -711,16 +712,26 @@ async function workWrite(path,method,payload){
 const workFields={
  people:['full_name','branch','rank','subgroup','gender','date_notes','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date','summary','biography','sources','image_url','verified','published','sort_order'],
  posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
- media:['title','category','caption','person_id','sources','image_url','published'],
+ media:['title','category','caption','sources','image_url','person_id','published'],
  videos:['title','summary','body','video_url','cover_url','sources','person_id','published'],
  obituaries:['title','deceased_name','memorial_date','summary','body','cover_url','sources','person_id','published'],
- documents:['title','document_number','document_date','summary','body','file_url','sources','person_id','subfolder_code','published'],
+ documents:['title','subfolder_code','document_number','document_date','summary','body','sources','cover_url','file_url','person_id','published'],
  gdd_memorials:['title','person_name','rank_title','death_date','anniversary_date','summary','body','portrait_url','sources','published'],
  gdd_audio_programs:['title','category','summary','body','cover_url','audio_url','episode_number','duration_seconds','published_date','published'],
  gdd_calendar_memorials:['full_name','rank','calendar_system','lunar_day','lunar_month','lunar_leap','solar_day','solar_month','death_year','image_url','source_note','description','linked_person_id','published']
 };
 const workBool=new Set(['verified','published','death_lunar_leap','lunar_leap']);
 const workNums=new Set(['sort_order','death_lunar_day','death_lunar_month','lunar_day','lunar_month','solar_day','solar_month','death_year','episode_number','duration_seconds']);
+const workDateFields=new Set(['document_date','published_date','death_solar_date']);
+function normalizeEditorialDate(value){
+ const text=String(value??'').trim();if(!text)return null;
+ const iso=/^(\\d{4})-(\\d{1,2})-(\\d{1,2})$/.exec(text),local=/^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})$/.exec(text);
+ if(!iso&&!local)throw Error('invalid_date');
+ const y=Number(iso?iso[1]:local[3]),m=Number(iso?iso[2]:local[2]),d=Number(iso?iso[3]:local[1]);
+ if(y<1000||y>9999||m<1||m>12||d<1||d>31)throw Error('invalid_date');
+ const dt=new Date(Date.UTC(y,m-1,d));if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==m-1||dt.getUTCDate()!==d)throw Error('invalid_date');
+ return String(y)+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
 const workLong=new Set(['summary','body','biography','caption','date_notes','sources','description','source_note']);
 const workLabels={
  full_name:'Thánh danh / Họ tên',title:'Nhan đề',secular_name:'Thế danh',rank:'Phẩm vị',branch:'Cơ quan',
@@ -732,6 +743,7 @@ const workLabels={
  document_number:'Số hiệu văn kiện',document_date:'Ngày văn kiện',subfolder_code:'Thư mục số hóa',
  death_lunar_day:'Ngày qui vị âm lịch',death_lunar_month:'Tháng qui vị âm lịch',
  death_lunar_leap:'Tháng nhuận',death_solar_date:'Ngày qui vị dương lịch',
+ person_name:'Danh xưng',rank_title:'Phẩm vị',death_date:'Ngày qui vị',anniversary_date:'Ngày tưởng niệm',deceased_name:'Danh xưng người qui vị',memorial_date:'Ngày qui vị / ngày lễ',published_date:'Ngày phát hành',episode_number:'Số chương trình',duration_seconds:'Thời lượng (giây)',calendar_system:'Loại lịch',description:'Nội dung',source_note:'Tư liệu tham khảo',linked_person_id:'Hồ sơ Chức sắc liên quan',
  lunar_day:'Ngày âm',lunar_month:'Tháng âm',lunar_leap:'Tháng nhuận',
  solar_day:'Ngày dương',solar_month:'Tháng dương',death_year:'Năm qui vị',date_notes:'Ghi chú niên đại'
 };
@@ -945,6 +957,10 @@ function workBuild(kind,record){
    wrapper.append(input,label);fields.append(wrapper);
   }else{fields.append(label,input);}
   workFieldInputs.set(field,input);
+  if(workDateFields.has(field)){input.placeholder='DD/MM/YYYY hoặc YYYY-MM-DD';input.autocomplete='off';}
+  if(kind==='documents'&&field==='file_url'){
+   const extra=document.createElement('details');extra.className='admin-help';const heading=document.createElement('summary');heading.textContent='Liên kết tài liệu có sẵn (không bắt buộc)';extra.append(heading);label.before(extra);extra.append(label,input);
+  }
   if(field==='published')input.parentElement.hidden=true;
   if(kind==='gdd_audio_programs'&&field==='audio_url'){
    label.textContent='Tệp âm thanh (MP3)';
@@ -966,10 +982,11 @@ function workBuild(kind,record){
    upload.append(choose,msg,remove,note,license);advanced.before(upload);
   }
   if(['image_url','cover_url','portrait_url'].includes(field)){
-   label.textContent=(workLabels[field]||field).replace(' (URL)','');
+   label.textContent=kind==='people'?'Ảnh chân dung':kind==='gdd_calendar_memorials'||kind==='gdd_memorials'||kind==='obituaries'?'Di ảnh / ảnh bìa':'Ảnh bìa bài viết';
    const advanced=document.createElement('details');advanced.className='admin-help cover-url-details';
    const advancedTitle=document.createElement('summary');advancedTitle.textContent='Nhập liên kết ảnh thủ công';
    advanced.append(advancedTitle);input.before(advanced);advanced.append(input);
+   if(kind==='documents'){advanced.hidden=true;input.readOnly=true;}
    const upload=document.createElement('div');upload.className='work-cover-upload';
    const choose=document.createElement('input');choose.type='file';choose.accept='image/jpeg,image/png,image/webp';choose.id='work-cover-file-'+field;
    const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent='Chọn ảnh; hệ thống tự tải khi đăng bài.';
@@ -1071,6 +1088,7 @@ function workBuild(kind,record){
 function workChanged(){
  const changes={};
  for(const [field,input] of workFieldInputs){
+  if(workCurrent.kind==='documents'&&field==='cover_url')continue;
   const old=workCurrent.record?.[field];
   let value;
   if(workBool.has(field))value=Boolean(input.checked);
@@ -1079,7 +1097,10 @@ function workChanged(){
   const unchanged=workCurrent.record!==null && (workBool.has(field)?
       (old===null?value===false:Boolean(old)===value):
       workNums.has(field)?((old??null)===value):String(old??'')===value);
-  if(!unchanged && !(workCurrent.record===null&&value===''))changes[field]=value;
+  if(!unchanged && !(workCurrent.record===null&&value==='')){
+   if(workDateFields.has(field)){try{value=normalizeEditorialDate(value)}catch{throw Error((workLabels[field]||field)+': nhập ngày hợp lệ theo DD/MM/YYYY (ví dụ 29/09/1926).')}}
+   changes[field]=value;
+  }
  }
  return changes;
 }
@@ -1270,9 +1291,13 @@ async function workSave(mode='draft'){
   for(const [field,item] of workCoverQueue){
    progress('Đang tải ảnh đại diện…');
    const url=await window.GDDPhotoAlbum.uploadCover(item.file,progress,item);
+   if(kind==='documents'&&field==='cover_url'){
+    const result=await workWrite(workRoot+kind+'/'+active.id+'/photos','POST',{asset_id:item.assetId,caption:'Ảnh bìa bài viết',role:'cover'});
+    if(result?.data?.image_url!==url)throw Error('Chưa xác nhận ảnh bìa tài liệu');
+   }
    workFieldInputs.get(field).value=url;
   }
-  if(window.GDDPhotoAlbum?.hasPending())await window.GDDPhotoAlbum.uploadBatch(active,progress);
+  if(window.GDDPhotoAlbum?.hasPhotos())await window.GDDPhotoAlbum.uploadBatch(active,progress);
   if(window.GDDPhotoAlbum?.hasDocuments())await window.GDDPhotoAlbum.uploadDocuments(active,progress);
   await window.GDDPhotoAlbum?.saveDownloadPermissions(active,false,progress);
   const readerPlans=await window.GDDPhotoAlbum?.prepareReaders(active,progress)||[];
