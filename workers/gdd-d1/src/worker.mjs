@@ -78,6 +78,34 @@ export default {
     if(incomingPath==='/api/v1/stats'||incomingPath.startsWith('/api/v1/stats/')){
       return handleSiteStats(request,env,incomingPath);
     }
+    // Only this verified previously public MP3, never a caller-supplied R2 key.
+    if(incomingPath==='/api/v1/public/audio/radio-hai-muoi-nam.mp3'){
+      if(!['GET','HEAD'].includes(request.method))return respond(request,{error:'read_only'},405,{private:true});
+      const key='public-audio/radio-hai-muoi-nam-d19ee4f8.mp3';
+      const target='https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/public/audio/radio-hai-muoi-nam.mp3';
+      try{
+        const row=await env.DB.prepare('SELECT id FROM gdd_audio_programs WHERE id=? AND published=1 AND audio_url=? LIMIT 1').bind('51fb2d6c-8085-4e41-82c6-fc10f9da7553',target).first();
+        if(!row||!env.SUBMISSIONS_BUCKET)return respond(request,{error:'not_found'},404,{private:true});
+        const total=16116406;
+        const range=request.headers.get('Range');
+        let start=0,end=total-1,partial=false;
+        if(range){
+          const m=/^bytes=(\d*)-(\d*)$/.exec(range);
+          if(!m||(!m[1]&&!m[2]))return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+total}});
+          if(m[1]){start=Number(m[1]);if(m[2])end=Math.min(Number(m[2]),total-1);}
+          else {const suffix=Number(m[2]);if(!Number.isSafeInteger(suffix)||suffix<1)return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+total}});start=Math.max(0,total-suffix);}
+          if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=total||end<start)return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+total}});
+          partial=true;
+        }
+        const object=request.method==='HEAD'?await env.SUBMISSIONS_BUCKET.head(key):await env.SUBMISSIONS_BUCKET.get(key,partial?{range:{offset:start,length:end-start+1}}:{});
+        if(!object||object.size!==total||object.customMetadata?.sha256!=='d19ee4f882e1c24f17fda53da2e31f44ea4ea9660923778ab8630208601d9122')return respond(request,{error:'not_found'},404,{private:true});
+        const h=new Headers({'Content-Type':'audio/mpeg','Content-Length':String(end-start+1),'Accept-Ranges':'bytes','Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff','ETag':object.httpEtag});
+        if(partial)h.set('Content-Range','bytes '+start+'-'+end+'/'+total);
+        const origin=request.headers.get('Origin');if(origin&&ALLOWED_ORIGINS.has(origin))h.set('Access-Control-Allow-Origin',origin);
+        h.set('Vary','Origin');
+        return new Response(request.method==='HEAD'?null:object.body,{status:partial?206:200,headers:h});
+      }catch{return respond(request,{error:'audio_unavailable'},503,{private:true});}
+    }
     if(request.method==='OPTIONS'){
       const origin=request.headers.get('Origin');
       if(!origin||!ALLOWED_ORIGINS.has(origin))return respond(request,{error:'forbidden'},403,{private:true});
