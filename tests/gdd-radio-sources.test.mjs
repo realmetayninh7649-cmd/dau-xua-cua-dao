@@ -30,7 +30,7 @@ test('unavailable archived MP3 is reported as source storage problem, not iPhone
  assert.ok(radio.includes('Chưa có ảnh bìa khả dụng'));
 });
 test('latest radio script bypasses Safari stale cache and preserves existing GitHub MP3',()=>{
- assert.match(page,/gdd-audio-radio\.js\?v=20261124-r2-covers-restored-02/);
+ assert.match(page,/gdd-audio-radio\.js\?v=20261124-r2-covers-retry-03/);
  assert.ok(statSync('audio/niem-danh-dieu-tri-kim-mau.mp3').size>3000000);
 });
 
