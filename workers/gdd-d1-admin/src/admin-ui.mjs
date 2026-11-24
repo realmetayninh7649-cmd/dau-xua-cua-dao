@@ -725,9 +725,9 @@ const workLabels={
  solar_day:'Ngày dương',solar_month:'Tháng dương',death_year:'Năm qui vị',date_notes:'Ghi chú niên đại'
 };
 let workOffset=0,workCurrent=null,workFieldInputs=new Map();
-let workBusy=false;const workCoverQueue=new Map();
-function workClearCovers(){for(const item of workCoverQueue.values())if(item.localUrl)URL.revokeObjectURL(item.localUrl);workCoverQueue.clear()}
-function workHasLocalFiles(){return workCoverQueue.size>0||!!window.GDDPhotoAlbum?.hasPending()}
+let workBusy=false;const workCoverQueue=new Map();let workAudioFile=null;
+function workClearCovers(){for(const item of workCoverQueue.values())if(item.localUrl)URL.revokeObjectURL(item.localUrl);workCoverQueue.clear();workAudioFile=null}
+function workHasLocalFiles(){return !!workAudioFile||workCoverQueue.size>0||!!window.GDDPhotoAlbum?.hasPending()}
 let workCachedPage=[];
 const workPageSize=10;
 const workRoot='/api/v1/admin/work/';
@@ -932,6 +932,23 @@ function workBuild(kind,record){
   }else{fields.append(label,input);}
   workFieldInputs.set(field,input);
   if(field==='published')input.parentElement.hidden=true;
+  if(kind==='gdd_audio_programs'&&field==='audio_url'){
+   label.textContent='Tệp âm thanh (MP3)';
+   const advanced=document.createElement('details');advanced.className='admin-help';
+   const heading=document.createElement('summary');heading.textContent='Nhập liên kết âm thanh thủ công';
+   advanced.append(heading);input.before(advanced);advanced.append(input);
+   const upload=document.createElement('div');upload.className='work-cover-upload';
+   const choose=document.createElement('input');choose.type='file';choose.accept='.mp3,audio/mpeg';choose.id='work-audio-file';
+   const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent=input.value?'Đã có liên kết âm thanh. Chọn MP3 nếu muốn thay thế.':'Chọn MP3 từ điện thoại hoặc máy tính (tối đa 24 MB).';
+   const remove=document.createElement('button');remove.type='button';remove.textContent='Bỏ tệp đã chọn';remove.hidden=true;
+   choose.addEventListener('change',()=>{
+    if(workBusy)return;const file=choose.files?.[0];if(!file)return;
+    if(!/\\.mp3$/i.test(file.name)||file.size<4||file.size>24*1048576){choose.value='';workAudioFile=null;remove.hidden=true;msg.textContent='Chọn tệp MP3 không quá 24 MB.';return}
+    workAudioFile=file;remove.hidden=false;msg.textContent='Đã chọn '+file.name+' · '+(file.size/1000000).toFixed(2)+' MB · Tự tải khi đăng bài.';
+   });
+   remove.addEventListener('click',()=>{if(!workBusy){workAudioFile=null;choose.value='';remove.hidden=true;msg.textContent='Chọn tệp MP3.'}});
+   upload.append(choose,msg,remove);advanced.before(upload);
+  }
   if(['image_url','cover_url','portrait_url'].includes(field)){
    label.textContent=(workLabels[field]||field).replace(' (URL)','');
    const advanced=document.createElement('details');advanced.className='admin-help cover-url-details';
@@ -1118,7 +1135,7 @@ async function workOpen(kind,id){
  }catch(e){workStatus('Không đọc được chi tiết: '+e.message)}
 }
 async function workNew(){
- if(workBusy)return;if(workHasLocalFiles()&&!confirm('Ảnh đang chọn chưa được lưu. Mở bài mới?'))return;
+ if(workBusy)return;if(workHasLocalFiles()&&!confirm('Tệp đang chọn chưa được lưu. Mở bài mới?'))return;
  workClose();const kind=$('work-kind').value;
  workCurrent={kind,id:null,record:null};
  workBuild(kind,null);
@@ -1187,9 +1204,13 @@ async function workSave(mode='draft'){
   if(!title)throw Error('Nhập danh xưng hoặc nhan đề trước.');
   if(publish&&kind==='people'&&(!workFieldInputs.get('branch')?.value||!workFieldInputs.get('rank')?.value.trim()))throw Error('Chọn Cơ quan và Phẩm vị trước.');
   if(publish&&kind==='documents'&&!workFieldInputs.get('subfolder_code')?.value)throw Error('Chọn thư mục số hóa trước.');
+  if(publish&&kind==='gdd_audio_programs'){
+   if(!workFieldInputs.get('category')?.value)throw Error('Chọn chuyên mục âm thanh.');
+   if(!workAudioFile&&!workFieldInputs.get('audio_url')?.value.trim())throw Error('Chọn tệp MP3 trước khi đăng bài.');
+  }
   const changes=workChanged();delete changes.published;
   if(mode==='withdraw'){
-   if(workHasLocalFiles())throw Error('Còn ảnh đang chọn. Hãy bỏ chọn hoặc cập nhật bài trước.');
+   if(workHasLocalFiles())throw Error('Còn tệp đang chọn. Hãy bỏ chọn hoặc cập nhật bài trước.');
    await patch({published:false});completed=true;return;
   }
   progress('Đang lưu nội dung…');
@@ -1200,7 +1221,7 @@ async function workSave(mode='draft'){
    window.GDDPhotoAlbum?.bindRecord(active);workUpdateIdentity();
   }else if(!active.record.published)await patch(changes);
   if(!publish){
-   progress(workHasLocalFiles()?'Đã lưu bản nháp. Ảnh đang chọn còn ở trang này; nhấn Đăng bài để tải ảnh.':'Đã lưu bản nháp.');
+   progress(workHasLocalFiles()?'Đã lưu bản nháp. Tệp đang chọn còn ở trang này; nhấn Đăng bài để tải lên.':'Đã lưu bản nháp.');
    return;
   }
   if(workCanonicalKinds.has(kind)&&!active.record.archive_code){
@@ -1213,6 +1234,13 @@ async function workSave(mode='draft'){
    const saved=await api(workRoot+kind+'/'+active.id);
    if(saved?.data?.id!==active.id||saved.data.archive_code!==result.code)throw Error('Chưa xác nhận hồ sơ sau cấp mã');
    active.record=saved.data;workUpdateIdentity();
+  }
+  if(kind==='gdd_audio_programs'&&workAudioFile){
+   progress('Đang tải MP3 lên R2…');
+   const response=await fetch('/api/v1/admin/audio/'+active.id,{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'audio/mpeg'},body:workAudioFile});
+   const uploaded=await response.json();
+   if(!response.ok||!uploaded.uploaded||!uploaded.url)throw Error('Không tải được MP3: '+(uploaded.error||response.status));
+   workFieldInputs.get('audio_url').value=uploaded.url;
   }
   for(const [field,item] of workCoverQueue){
    progress('Đang tải ảnh đại diện…');
@@ -1237,7 +1265,7 @@ async function workSave(mode='draft'){
 }
 $('work-kind').addEventListener('change',()=>{
  if(workBusy)return;
- if(workHasLocalFiles()&&!confirm('Ảnh đang chọn chưa được lưu. Chuyển chuyên mục?')){$('work-kind').value=workCurrent.kind;return}
+ if(workHasLocalFiles()&&!confirm('Tệp đang chọn chưa được lưu. Chuyển chuyên mục?')){$('work-kind').value=workCurrent.kind;return}
  workOffset=0;$('work-search').value='';workCachedPage=[];
  workClose();workList()
 });
@@ -1246,7 +1274,7 @@ $('work-list-refresh').addEventListener('click',workList);
 $('work-new').addEventListener('click',workNew);
 $('work-save').addEventListener('click',()=>workSave('draft'));
 $('work-publish').addEventListener('click',()=>workSave('publish'));
-$('work-cancel').addEventListener('click',()=>{if(workBusy)return;if(workHasLocalFiles()&&!confirm('Ảnh đang chọn chưa được lưu. Đóng biểu mẫu?'))return;workClose()});
+$('work-cancel').addEventListener('click',()=>{if(workBusy)return;if(workHasLocalFiles()&&!confirm('Tệp đang chọn chưa được lưu. Đóng biểu mẫu?'))return;workClose()});
 $('work-prev').addEventListener('click',()=>{workOffset=Math.max(0,workOffset-workPageSize);$('work-search').value='';workList()});
 $('work-next').addEventListener('click',()=>{workOffset+=workPageSize;$('work-search').value='';workList()});
 
