@@ -1,3 +1,4 @@
+import {serveAudio} from './public-audio.mjs';
 /* Dấu Xưa Cửa Đạo — Cloudflare D1 public API (STAGING ONLY).
  * No Supabase keys. Never deploy admin writes until Access and restore tests pass.
  * The original data remains unchanged in Supabase and R2. */
@@ -78,6 +79,8 @@ export default {
     if(incomingPath==='/api/v1/stats'||incomingPath.startsWith('/api/v1/stats/')){
       return handleSiteStats(request,env,incomingPath);
     }
+    const managedAudio=/^\/api\/v1\/public\/audio\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\/([a-f0-9]{64})\.mp3$/.exec(incomingPath);
+    if(managedAudio)return serveAudio(request,env,managedAudio[1],managedAudio[2],respond,ALLOWED_ORIGINS);
     // Only this verified previously public MP3, never a caller-supplied R2 key.
     if(incomingPath==='/api/v1/public/audio/radio-hai-muoi-nam.mp3'){
       if(!['GET','HEAD'].includes(request.method))return respond(request,{error:'read_only'},405,{private:true});
