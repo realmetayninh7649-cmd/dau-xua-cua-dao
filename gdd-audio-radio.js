@@ -152,7 +152,15 @@ function publicCover(raw){
   const u=new URL(src);
   // Existing radio cover PNGs were not included in the approved R2 preview allowlist.
   if(u.origin===cfg.supabaseUrl &&
-     u.pathname.startsWith('/storage/v1/object/public/dao-su-images/radio/'))return '';
+     u.pathname.startsWith('/storage/v1/object/public/dao-su-images/radio/')){
+    const filename=u.pathname.slice('/storage/v1/object/public/dao-su-images/radio/'.length);
+    const mirrors={
+      '1794152217530-5ahjax4wdl.png':'radio-hai-muoi-nam-cover.webp',
+      '1794151538679-fo6v0inu25.png':'niem-danh-kim-mau-cover.webp'
+    };
+    const file=mirrors[filename];
+    return file?new URL('./audio/'+file,location.href).href:'';
+  }
  }catch{return ''}
  return window.GDDLegacyImages?.displayUrl(src)||src;
 }
