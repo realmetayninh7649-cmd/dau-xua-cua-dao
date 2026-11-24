@@ -247,6 +247,9 @@
         grid.appendChild(figure);
       });
       target.appendChild(grid);
+      // The richer album is ready. Remove the redundant app.js fallback only now,
+      // leaving it intact if the album read failed or returned no usable rows.
+      target.parentElement?.querySelector('.gdd-detail-photo-album')?.remove();
       // Deep-link tra cứu mã ảnh: quay về đúng album và mở đúng tấm, không đổi slug/QR.
       const wanted=new URLSearchParams(location.search).get('anh');
       if(wanted){
