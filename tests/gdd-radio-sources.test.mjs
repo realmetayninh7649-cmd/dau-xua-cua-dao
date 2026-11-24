@@ -20,17 +20,17 @@ test('two original 2026 Radio covers have pixel-optimized WebP previews',()=>{
   assert.equal(file.toString('ascii',0,4),'RIFF');
   assert.equal(file.toString('ascii',8,12),'WEBP');
   assert.equal(createHash('sha256').update(file).digest('hex'),sha);
-  assert.ok(radio.includes(path.split('/')[1]));
+  // Preserve archival covers on disk, but the public playlist no longer loads them.
  }
 });
 test('unavailable archived MP3 is reported as source storage problem, not iPhone internet',()=>{
  assert.ok(!radio.includes('Không mở được MP3. Vui lòng kiểm tra kết nối Internet.'));
  assert.ok(radio.includes('Tệp MP3 tại kho âm thanh cũ hiện không truy cập được'));
  assert.ok(radio.includes('gdd-radio-play-status'));
- assert.ok(radio.includes('Chưa có ảnh bìa khả dụng'));
+ assert.ok(radio.includes('radioIcon(row.category)'));
 });
 test('latest radio script bypasses Safari stale cache and preserves existing GitHub MP3',()=>{
- assert.match(page,/gdd-audio-radio\.js\?v=20261124-r2-covers-retry-03/);
+ assert.match(page,/gdd-audio-radio\.js\?v=20261124-compact-nhac-dao-01/);
  assert.ok(statSync('audio/niem-danh-dieu-tri-kim-mau.mp3').size>3000000);
 });
 
@@ -40,4 +40,13 @@ test('failed MP3 controls do not show broken native player on iPhone and can ret
  assert.ok(radio.includes('retry.addEventListener'));
  assert.ok(radio.includes("player.src=url;player.load()"));
  assert.ok(radio.includes('audio[hidden]{display:none!important}'));
+});
+
+test('compact audio list uses title and category icon, with Nhac Dao and hidden legacy admin entry',()=>{
+ const list=radio.slice(radio.indexOf('function itemHTML('),radio.indexOf('function renderList('));
+ assert.ok(!list.includes('<img'));
+ assert.ok(!list.includes('row.summary'));
+ assert.ok(radio.includes('data-gdd-radio-filter="nhac-dao"'));
+ assert.ok(radio.includes("'nhac-dao':'Nhạc Đạo'"));
+ assert.match(page,/id="admin-open"[^>]*hidden disabled/);
 });
