@@ -1,0 +1,26 @@
+name: "GDD Radio - verified public D1 audio and optimized covers"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gdd-audio-radio.js"
+      - "audio/*.webp"
+      - "tests/gdd-radio-sources.test.mjs"
+      - ".github/workflows/gdd-radio-regression.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  radio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Check Radio JS syntax and immutable restored WebP checksums"
+        run: |
+          set -euo pipefail
+          node --check gdd-audio-radio.js
+          node --test tests/gdd-radio-sources.test.mjs
