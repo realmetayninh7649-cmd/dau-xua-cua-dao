@@ -118,6 +118,20 @@ try{
   console.log('ADMIN_D1_REOPENED_UI_'+label.toUpperCase()+'=PASS',
     JSON.stringify({width,editorVisible:info.editorVisible,R2Visible:info.r2Visible,
       technicalCollapsed:info.technical,firstPanel:info.firstPanel,oldSandboxRemoved:!info.testR2Present&&!info.testEditorPresent}));
+  assert.equal(await page.locator('#r2-managed-panel').evaluate(el=>el.open),false);
+  assert.equal(await page.locator('#contribution-panel').evaluate(el=>el.open),false);
+  assert.equal(await page.locator('#r2-managed-file').isVisible(),false);
+  assert.equal(await page.locator('#contribution-refresh').isVisible(),false);
+  assert.equal(requests.slice(requests.lastIndexOf('/admin')).includes('/api/v1/admin/contributions'),false);
+  assert.equal(requests.slice(requests.lastIndexOf('/admin')).includes('/api/v1/admin/summary'),false);
+  await page.locator('#r2-managed-panel > summary').click();
+  assert.equal(await page.locator('#r2-managed-file').isVisible(),true);
+  await page.locator('#r2-managed-panel > summary').click();
+  await page.locator('#contribution-panel > summary').click();
+  await page.waitForFunction(()=>!document.getElementById('contribution-status').textContent.startsWith('Đang tải')&&document.getElementById('contribution-status').textContent!=='Chưa tải hộp thư.');
+  assert.equal(await page.locator('#contribution-refresh').isVisible(),true);
+  await page.locator('#contribution-panel > summary').click();
+  console.log('ADMIN_COLLAPSED_UTILITIES_'+label.toUpperCase()+'=PASS');
   // Authoring always comes BEFORE the initially collapsed (potentially long) list.
   await page.waitForFunction(()=>document.querySelector('#work-list-count')?.textContent.includes('10 bản ghi'),null,{timeout:12000});
   assert.equal(await page.locator('#work-list-details').evaluate(el=>el.open),false);
@@ -176,6 +190,14 @@ try{
   await page.waitForFunction(()=>!document.getElementById('work-photo-panel').hidden);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6e5F8AAAAASUVORK5CYII=','base64');
   assert.equal(await page.locator('#work-cover-file-cover_url').count(),1);
+  assert.equal(await page.locator('#work-field-cover_url').isVisible(),false);
+  assert.equal(await page.locator('#work-field-person_id').isVisible(),false);
+  await page.locator('.cover-url-details > summary').click();
+  assert.equal(await page.locator('#work-field-cover_url').isVisible(),true);
+  await page.locator('.cover-url-details > summary').click();
+  await page.locator('.work-extra > summary').click();
+  assert.equal(await page.locator('#work-field-person_id').isVisible(),true);
+  await page.locator('.work-extra > summary').click();
   page.on('dialog',dialog=>dialog.accept());
   await page.locator('#work-cover-file-cover_url').setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});
   await page.locator('.work-cover-upload button').click();
