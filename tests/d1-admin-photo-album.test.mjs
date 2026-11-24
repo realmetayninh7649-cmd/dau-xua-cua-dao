@@ -87,3 +87,15 @@ test('uniform editor exposes all nine photo groups, independent documents cover 
  assert.equal(parse(''),null);
  assert.throws(()=>parse('31/02/1926'),/invalid_date/);
 });
+
+test('gallery covers and albums accept images above 24 MiB without loosening other sections',()=>{
+ const start=PHOTO_JS.indexOf('const supported=new Set('),end=PHOTO_JS.indexOf('const documentKinds=',start);
+ const validate=new Function(PHOTO_JS.slice(start,end)+';return imageError;')();
+ const file={type:'image/jpeg',size:50*1048576};
+ assert.equal(validate(file,'media'),'');assert.match(validate(file,'posts'),/24 MB/);
+ assert.equal(validate({type:'image/png',size:1024*1048576},'media'),'');
+ assert.match(validate({type:'image/png',size:1024*1048576+1},'media'),/1 GiB/);
+ assert.match(validate({type:'application/pdf',size:50*1048576},'media'),/định dạng/);
+ assert.ok(ADMIN_JS.includes('imageError(file,kind)'));
+ assert.ok(ADMIN_JS.includes('uploadCover(item.file,progress,item,kind)'));
+});

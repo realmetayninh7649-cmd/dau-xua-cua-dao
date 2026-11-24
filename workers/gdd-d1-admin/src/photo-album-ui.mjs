@@ -7,7 +7,9 @@ export const PHOTO_JS=String.raw`/* Multi-image editor for Access-authenticated 
 const $=id=>document.getElementById(id);
 const supported=new Set(['image/jpeg','image/png','image/webp']);
 const supportedKinds=new Set(['people','posts','media','videos','obituaries','documents','gdd_memorials','gdd_audio_programs','gdd_calendar_memorials']);
-const limits={each:24*1048576};
+const limits={each:24*1048576,gallery:1024*1048576};
+function imageLimit(kind){return kind==='media'?limits.gallery:limits.each}
+function imageError(file,kind){if(!supported.has(file?.type))return 'Chọn ảnh định dạng JPEG, PNG hoặc WebP.';if(!Number.isSafeInteger(file.size)||file.size<1)return 'Tệp ảnh rỗng hoặc không hợp lệ.';if(file.size>imageLimit(kind))return kind==='media'?'Ảnh vượt giới hạn kỹ thuật 1 GiB/tệp.':'Ảnh vượt 24 MB/tệp.';return ''}
 const documentKinds=supportedKinds;
 const documentLimit=45*1048576;
 let documents=[];
@@ -27,6 +29,7 @@ function clear(){
 function refresh(){
  const allowed=!!context&&supportedKinds.has(context.kind);
  $('work-photo-panel').hidden=!allowed;
+ $('work-photo-size-note').textContent=context?.kind==='media'?'JPEG/PNG/WebP · Ảnh lớn tự tải theo từng phần · Không giới hạn số ảnh.':'JPEG/PNG/WebP · 24 MB/ảnh · Không giới hạn số ảnh.';
  const docsAllowed=!!context&&documentKinds.has(context.kind);
  $('work-attachment-panel').hidden=!docsAllowed;
  $('work-attachment-files').disabled=busy||workBusy;
@@ -74,7 +77,7 @@ function select(){
  if(!context||busy||workBusy)return;
  const files=Array.from($('work-photo-files').files||[]);
  if(!files.length)return;
- const valid=files.filter(file=>supported.has(file.type)&&file.size>0&&file.size<=limits.each);
+ const valid=files.filter(file=>!imageError(file,context.kind));
  const rejected=files.length-valid.length;
  const known=new Set(queue.map(item=>[item.file.name,item.file.size,item.file.lastModified].join('|')));
  const added=valid.filter(file=>{const key=[file.name,file.size,file.lastModified].join('|');if(known.has(key))return false;known.add(key);return true;});
@@ -83,7 +86,7 @@ function select(){
   previewUrl:URL.createObjectURL(file),assetId:null,published:false,done:false,error:''
  })));
  $('work-photo-files').value='';
- status('Đã thêm '+added.length+' ảnh; '+queue.filter(x=>!x.done).length+' ảnh chờ tải. '+(rejected?'Bỏ qua '+rejected+' tệp không đúng định dạng hoặc quá 24 MB. ':'')+'Có thể chọn thêm ảnh.');
+ status('Đã thêm '+added.length+' ảnh; '+queue.filter(x=>!x.done).length+' ảnh chờ tải. '+(rejected?'Bỏ qua '+rejected+' tệp: '+imageError(files.find(file=>imageError(file,context.kind)),context.kind)+' ':'')+'Có thể chọn thêm ảnh.');
  render();
 }
 async function archiveOriginal(file,notify){
@@ -406,8 +409,8 @@ async function saveDownloadPermissions(record,allow,notify=()=>{}){
 }
 $('work-attachment-files').addEventListener('change',selectDocuments);
 $('work-photo-files').addEventListener('change',select);
-window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0,hasPhotos:()=>queue.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={}){
- if(!supported.has(file.type)||file.size<1||file.size>limits.each)throw Error('Chọn JPEG/PNG/WebP không quá 24 MB.');
+window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0,imageError,hasPhotos:()=>queue.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={},kind=context?.kind){
+ const error=imageError(file,kind);if(error)throw Error(error);
  item.file=file;
  if(!item.assetId)item.assetId=await archiveOriginal(file,notify);
  if(!item.published){

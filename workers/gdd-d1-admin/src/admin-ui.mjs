@@ -40,7 +40,7 @@ export const ADMIN_HTML=`<!doctype html>
 <p class="work-photo-explain">Chọn ảnh, thêm chú thích và sắp xếp. Bản gốc giữ riêng; chỉ công bố bản xem.</p>
 <label for="work-photo-files"><strong>Chọn nhiều ảnh từ điện thoại hoặc máy tính</strong></label>
 <input id="work-photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-<small>JPEG/PNG/WebP · 24 MB/ảnh · Không giới hạn số ảnh.</small>
+<small id="work-photo-size-note">JPEG/PNG/WebP · 24 MB/ảnh · Không giới hạn số ảnh.</small>
 <ol id="work-photo-queue" class="work-photo-queue"></ol>
 <p id="work-photo-status" role="status" aria-live="polite">Chọn ảnh đính kèm, hệ thống tự tải khi đăng bài.</p>
 <details id="work-photo-existing"><summary>Bộ ảnh đã gắn vào bài <span id="work-photo-count">· 0 ảnh</span></summary><div id="work-photo-album" class="work-photo-grid"></div></details>
@@ -997,7 +997,7 @@ function workBuild(kind,record){
    choose.addEventListener('change',()=>{
     if(workBusy)return;
     const file=choose.files?.[0];if(!file)return;
-    if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size<1||file.size>24*1048576){clearSelection();msg.textContent='Chọn JPEG/PNG/WebP không quá 24 MB.';return}
+    const error=window.GDDPhotoAlbum.imageError(file,kind);if(error){clearSelection();msg.textContent=error;return}
     const previous=workCoverQueue.get(field);if(previous?.localUrl)URL.revokeObjectURL(previous.localUrl);
     const localUrl=URL.createObjectURL(file);workCoverQueue.set(field,{file,localUrl});
     preview.src=localUrl;preview.hidden=false;remove.hidden=false;msg.textContent='Đã chọn '+file.name+' · Chờ đăng bài.';
@@ -1290,7 +1290,7 @@ async function workSave(mode='draft'){
   }
   for(const [field,item] of workCoverQueue){
    progress('Đang tải ảnh đại diện…');
-   const url=await window.GDDPhotoAlbum.uploadCover(item.file,progress,item);
+   const url=await window.GDDPhotoAlbum.uploadCover(item.file,progress,item,kind);
    if(kind==='documents'&&field==='cover_url'){
     const result=await workWrite(workRoot+kind+'/'+active.id+'/photos','POST',{asset_id:item.assetId,caption:'Ảnh bìa bài viết',role:'cover'});
     if(result?.data?.image_url!==url)throw Error('Chưa xác nhận ảnh bìa tài liệu');
