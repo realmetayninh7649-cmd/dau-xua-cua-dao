@@ -42,17 +42,15 @@
   async function load(){
     if(!pending){
       pending=(async()=>{
-        // Keep the validated static snapshot as a complete rollback fallback.
-        const backup=await staticArchive();
+        // D1 is the primary source. A missing snapshot must not prevent a healthy D1 from serving the archive.
         if(window.SITE_CONFIG?.publicReadProvider!=='d1-staging')
-          return {...backup,backend:'snapshot'};
+          return {...await staticArchive(),backend:'snapshot'};
         try {
           const contents=await Promise.all(D1_KINDS.map(async kind=>[kind,await pages(kind)]));
-          const combined={...backup,backend:'d1'};
-          for(const [kind,rows] of contents)combined[kind]=rows;
-          return combined;
+          return {source:'public-published-read-only-backup',backend:'d1',...Object.fromEntries(contents)};
         }catch(e){
           console.warn('D1 staging inaccessible; using public snapshot only');
+          const backup=await staticArchive();
           return {...backup,backend:'snapshot'};
         }
       })().catch(error=>{pending=null;throw error});
