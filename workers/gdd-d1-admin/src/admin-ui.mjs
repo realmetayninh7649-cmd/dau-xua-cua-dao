@@ -904,11 +904,13 @@ function workBuild(kind,record){
   const choices=kind==='people'&&field==='branch'?Object.keys(workPersonRanks):
     kind==='people'&&field==='subgroup'?(workPersonGroups[record?.branch]||[]):
     kind==='people'&&field==='gender'?['Nam','Nữ']:
+    kind==='gdd_audio_programs'&&field==='category'?['radio-dao-su','niem-danh','thuyet-minh','nhac-dao']:
     kind==='documents'&&field==='subfolder_code'?Object.keys(workDocumentFolders):null;
   const input=document.createElement(choices?'select':workLong.has(field)?'textarea':'input');
   input.id='work-field-'+field;
   if(choices){
    workSelectFill(input,choices,record?.[field]||'',field==='subgroup'?'Chưa phân nhóm':'Chọn '+(workLabels[field]||field));
+   if(kind==='gdd_audio_programs'&&field==='category'){const labels={'radio-dao-su':'Radio Đạo Sử','niem-danh':'Niệm danh hiệu','thuyet-minh':'Bài thuyết minh','nhac-dao':'Nhạc Đạo'};for(const option of input.options)if(labels[option.value])option.textContent=labels[option.value]}
   }else if(workBool.has(field)){
    input.type='checkbox';
    input.checked=record?Boolean(record[field]):false;
