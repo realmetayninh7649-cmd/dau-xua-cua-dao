@@ -39,5 +39,5 @@ test('failed MP3 controls do not show broken native player on iPhone and can ret
  assert.ok(radio.includes('player.hidden=true;retry.hidden=false'));
  assert.ok(radio.includes('retry.addEventListener'));
  assert.ok(radio.includes("player.src=url;player.load()"));
- assert.ok(radio.includes('radio[hidden]{display:none!important}'));
+ assert.ok(radio.includes('audio[hidden]{display:none!important}'));
 });
