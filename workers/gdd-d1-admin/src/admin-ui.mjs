@@ -7,6 +7,7 @@ export const ADMIN_HTML=`<!doctype html>
 <link rel="stylesheet" href="/admin/style.css">
 <script src="/admin/app.js" defer></script>
 <script src="/admin/photo-album.js" defer></script>
+<script src="/admin/audio-optimizer.js" defer></script>
 </head><body>
 <header class="masthead"><div class="wrap">
 <p class="eyebrow">ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ · KHO TƯ LIỆU ĐẠO SỬ</p>
@@ -725,8 +726,8 @@ const workLabels={
  solar_day:'Ngày dương',solar_month:'Tháng dương',death_year:'Năm qui vị',date_notes:'Ghi chú niên đại'
 };
 let workOffset=0,workCurrent=null,workFieldInputs=new Map();
-let workBusy=false;const workCoverQueue=new Map();let workAudioFile=null;
-function workClearCovers(){for(const item of workCoverQueue.values())if(item.localUrl)URL.revokeObjectURL(item.localUrl);workCoverQueue.clear();workAudioFile=null}
+let workBusy=false;const workCoverQueue=new Map();let workAudioFile=null,workAudioPrepared=null;
+function workClearCovers(){for(const item of workCoverQueue.values())if(item.localUrl)URL.revokeObjectURL(item.localUrl);workCoverQueue.clear();workAudioFile=null;workAudioPrepared=null}
 function workHasLocalFiles(){return !!workAudioFile||workCoverQueue.size>0||!!window.GDDPhotoAlbum?.hasPending()}
 let workCachedPage=[];
 const workPageSize=10;
@@ -939,15 +940,17 @@ function workBuild(kind,record){
    advanced.append(heading);input.before(advanced);advanced.append(input);
    const upload=document.createElement('div');upload.className='work-cover-upload';
    const choose=document.createElement('input');choose.type='file';choose.accept='.mp3,audio/mpeg';choose.id='work-audio-file';
-   const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent=input.value?'Đã có liên kết âm thanh. Chọn MP3 nếu muốn thay thế.':'Chọn MP3 từ điện thoại hoặc máy tính (tối đa 24 MB).';
+   const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent=input.value?'Đã có liên kết âm thanh. Chọn MP3 nếu muốn thay thế.':'Chọn MP3 từ điện thoại hoặc máy tính. Tự nén khi đăng, chỉ lưu bản nghe (tối đa 24 MB).';
    const remove=document.createElement('button');remove.type='button';remove.textContent='Bỏ tệp đã chọn';remove.hidden=true;
    choose.addEventListener('change',()=>{
     if(workBusy)return;const file=choose.files?.[0];if(!file)return;
-    if(!/\\.mp3$/i.test(file.name)||file.size<4||file.size>24*1048576){choose.value='';workAudioFile=null;remove.hidden=true;msg.textContent='Chọn tệp MP3 không quá 24 MB.';return}
-    workAudioFile=file;remove.hidden=false;msg.textContent='Đã chọn '+file.name+' · '+(file.size/1000000).toFixed(2)+' MB · Tự tải khi đăng bài.';
+    if(!/\\.mp3$/i.test(file.name)||file.size<4||file.size>60*1048576){choose.value='';workAudioFile=null;workAudioPrepared=null;remove.hidden=true;msg.textContent='Chọn MP3 gốc không quá 60 MB.';return}
+    workAudioFile=file;workAudioPrepared=null;remove.hidden=false;msg.textContent='Đã chọn '+file.name+' · '+(file.size/1000000).toFixed(2)+' MB · Tự tối ưu khi đăng bài.';
    });
-   remove.addEventListener('click',()=>{if(!workBusy){workAudioFile=null;choose.value='';remove.hidden=true;msg.textContent='Chọn tệp MP3.'}});
-   upload.append(choose,msg,remove);advanced.before(upload);
+   remove.addEventListener('click',()=>{if(!workBusy){workAudioFile=null;workAudioPrepared=null;choose.value='';remove.hidden=true;msg.textContent='Chọn tệp MP3.'}});
+   const note=document.createElement('small');note.textContent='Không tải bản gốc lên R2. Giữ bản gốc trên thiết bị hoặc Google Drive.';
+   const license=document.createElement('a');license.href='/admin/mp3-encoder-license';license.target='_blank';license.rel='noopener';license.textContent='Giấy phép bộ nén MP3';
+   upload.append(choose,msg,remove,note,license);advanced.before(upload);
   }
   if(['image_url','cover_url','portrait_url'].includes(field)){
    label.textContent=(workLabels[field]||field).replace(' (URL)','');
@@ -1236,11 +1239,19 @@ async function workSave(mode='draft'){
    active.record=saved.data;workUpdateIdentity();
   }
   if(kind==='gdd_audio_programs'&&workAudioFile){
-   progress('Đang tải MP3 lên R2…');
-   const response=await fetch('/api/v1/admin/audio/'+active.id,{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'audio/mpeg'},body:workAudioFile});
+   const category=workFieldInputs.get('category').value;
+   if(!window.GDDAudioOptimizer)throw Error('Bộ tối ưu MP3 chưa tải. Vui lòng tải lại trang.');
+   if(!workAudioPrepared||workAudioPrepared.file!==workAudioFile||workAudioPrepared.category!==category){
+    const result=await window.GDDAudioOptimizer.optimize(workAudioFile,category,progress);
+    workAudioPrepared={file:workAudioFile,category,...result};
+   }
+   const prepared=workAudioPrepared;
+   progress('Đang tải bản nghe '+(prepared.blob.size/1000000).toFixed(2)+' MB lên R2…');
+   const response=await fetch('/api/v1/admin/audio/'+active.id,{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'audio/mpeg'},body:prepared.blob});
    const uploaded=await response.json();
    if(!response.ok||!uploaded.uploaded||!uploaded.url)throw Error('Không tải được MP3: '+(uploaded.error||response.status));
    workFieldInputs.get('audio_url').value=uploaded.url;
+   if(workFieldInputs.has('duration_seconds'))workFieldInputs.get('duration_seconds').value=String(prepared.duration);
   }
   for(const [field,item] of workCoverQueue){
    progress('Đang tải ảnh đại diện…');
