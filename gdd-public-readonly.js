@@ -69,7 +69,7 @@
     return list.filter(row=>row.owner_kind===kind&&row.owner_id===ownerId)
       .sort((a,b)=>(a.sort_order??0)-(b.sort_order??0)
         ||String(a.created_at||'').localeCompare(String(b.created_at||'')))
-      .slice(0,200);
+      ;
   }
   window.GDDPublicReadOnly=Object.freeze({load,rows,find,album});
 })();
