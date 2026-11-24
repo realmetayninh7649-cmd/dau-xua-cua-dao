@@ -3,7 +3,8 @@
 if(window.__GDDRadio2026)return;
 window.__GDDRadio2026=true;
 const cfg=window.SITE_CONFIG||{};
-if(!cfg.supabaseUrl||!cfg.supabasePublishableKey)return;
+const d1Audio=cfg.publicReadProvider==='d1-staging';
+if(!d1Audio&&(!cfg.supabaseUrl||!cfg.supabasePublishableKey))return;
 const TABLE='gdd_audio_programs',BUCKET='dao-su-audio';
 const names={'niem-danh':'Niệm danh hiệu','radio-dao-su':'Radio Đạo Sử','thuyet-minh':'Bài thuyết minh'};
 const $=(q,root=document)=>root.querySelector(q);
@@ -117,6 +118,14 @@ function getClient(){
  return clientPromise;
 }
 const state={category:'all',rows:[],page:0,fetching:false,refreshPending:false,selected:null,adminRows:[],adminPage:0,adminLoading:false,editing:null};
+section.addEventListener('error',event=>{
+ const img=event.target;
+ if(!(img instanceof HTMLImageElement))return;
+ if(!img.classList.contains('gdd-radio-art')&&!img.classList.contains('gdd-radio-cover'))return;
+ const span=document.createElement('span');span.className=img.className;
+ span.setAttribute('aria-label','Chưa có ảnh bìa khả dụng');span.textContent='♫';
+ img.replaceWith(span);
+},true);
 const player=$('#gdd-radio-audio'),list=$('#gdd-radio-list'),listStatus=$('#gdd-radio-list-status'),playStatus=$('#gdd-radio-play-status'),more=$('#gdd-radio-more');
 const previous=$('#gdd-radio-previous'),next=$('#gdd-radio-next'),repeatOne=$('#gdd-radio-repeat-one');
 const REPEAT_KEY='gdd-radio-repeat-one-v1';
@@ -137,8 +146,18 @@ function saveProgress(){
  if(!state.selected||!Number.isFinite(player.currentTime))return;
  try{localStorage.setItem(progressKey(state.selected.id),String(Math.floor(player.currentTime)))}catch{}
 }
+function publicCover(raw){
+ const src=safe(raw);if(!src)return '';
+ try{
+  const u=new URL(src);
+  // Existing radio cover PNGs were not included in the approved R2 preview allowlist.
+  if(u.origin===cfg.supabaseUrl &&
+     u.pathname.startsWith('/storage/v1/object/public/dao-su-images/radio/'))return '';
+ }catch{return ''}
+ return window.GDDLegacyImages?.displayUrl(src)||src;
+}
 function itemHTML(row){
- const cover=window.GDDLegacyImages?.displayUrl(safe(row.cover_url))||safe(row.cover_url),name=esc(row.title);
+ const cover=publicCover(row.cover_url),name=esc(row.title);
  return '<button class="gdd-radio-item" type="button" data-gdd-radio-play="'+esc(row.id)+'" data-active="'+(state.selected?.id===row.id)+'">'+
  (cover?'<img class="gdd-radio-art" src="'+esc(cover)+'" loading="lazy" alt="Ảnh bìa '+name+'">':'<span class="gdd-radio-art" aria-hidden="true">♫</span>')+
  '<span class="gdd-radio-item-copy"><small>'+esc([names[row.category],row.episode_number?'Số '+row.episode_number:'',date(row.published_date)].filter(Boolean).join(' · '))+
@@ -163,7 +182,7 @@ function selectProgram(row,autoplay=false){
   },{once:true});
  }
  const cover=$('#gdd-radio-cover');
- const coverUrl=window.GDDLegacyImages?.displayUrl(safe(row.cover_url))||safe(row.cover_url);
+ const coverUrl=publicCover(row.cover_url);
  cover.outerHTML=coverUrl?
   '<img id="gdd-radio-cover" class="gdd-radio-cover" src="'+esc(coverUrl)+'" alt="Ảnh bìa '+esc(row.title)+'">':
   '<div id="gdd-radio-cover" class="gdd-radio-cover" aria-hidden="true">♫</div>';
@@ -186,6 +205,7 @@ async function fetchPublic(reset=true){
   const size=24,offset=state.page*size;
   let data;
   try{
+    if(d1Audio)throw Error('Public radio must read Cloudflare D1');
     const supa=await getClient();
     let query=supa.from(TABLE).select('*').eq('published',true);
     if(requestedCategory!=='all')query=query.eq('category',requestedCategory);
@@ -234,6 +254,7 @@ window.addEventListener('gdd:search-open-audio',async event=>{
     let row=state.rows.find(item=>item.id===id);
     if(!row){
       try{
+        if(d1Audio)throw Error('Search radio must read Cloudflare D1');
         const supa=await getClient();
         const response=await supa.from(TABLE).select('*')
           .eq('id',id).eq('published',true).maybeSingle();
@@ -285,7 +306,14 @@ player.addEventListener('play',()=>{
  document.dispatchEvent(new Event('gdd:radio-play'));
  playStatus.textContent='Đang nghe '+(state.selected?.title||'Âm Thanh Đại Đạo');
 });
-player.addEventListener('error',()=>{playStatus.textContent='Không mở được MP3. Vui lòng kiểm tra kết nối Internet.'});
+player.addEventListener('error',()=>{
+ if(!state.selected)return;
+ const src=safe(state.selected.audio_url);
+ const oldStorage=src.startsWith(cfg.supabaseUrl+'/storage/v1/object/public/dao-su-audio/');
+ playStatus.textContent=oldStorage
+  ?'Tệp MP3 tại kho âm thanh cũ hiện không truy cập được. Ban Biên Tập đang kiểm tra nguồn; xin chọn bản âm thanh khác.'
+  :'Tệp âm thanh hiện chưa phát được. Xin thử liên kết nguồn hoặc chương trình khác.';
+});
 document.addEventListener('gdd:chant-play',()=>{if(!player.paused)player.pause()});
 document.addEventListener('play',e=>{if(e.target instanceof HTMLVideoElement&&!player.paused)player.pause()},true);
 document.addEventListener('click',e=>{if(e.target.closest?.('[data-video-play],[data-open-kind="videos"]')&&!player.paused)player.pause()},true);
