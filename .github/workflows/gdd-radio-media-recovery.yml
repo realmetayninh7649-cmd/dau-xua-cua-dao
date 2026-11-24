@@ -27,7 +27,7 @@ jobs:
       - name: "Commit verified copies only; source Supabase remains unchanged"
         run: |
           set -euo pipefail
-          git add -- audio/radio-hai-muoi-nam.mp3 audio/radio-hai-muoi-nam-cover.png audio/niem-danh-kim-mau-cover.png
+          git add -A -- audio/
           if git diff --cached --quiet; then
             echo "PUBLIC_RADIO_MEDIA_NOT_RECOVERABLE_OR_ALREADY_PRESENT=TRUE"
           else
