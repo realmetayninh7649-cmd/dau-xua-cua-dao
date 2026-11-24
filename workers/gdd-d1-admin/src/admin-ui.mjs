@@ -11,14 +11,13 @@ export const ADMIN_HTML=`<!doctype html>
 <header class="masthead"><div class="wrap">
 <p class="eyebrow">ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ · KHO TƯ LIỆU ĐẠO SỬ</p>
 <h1>Quản trị tư liệu</h1>
-<p class="lead">Bảng quản trị tư liệu · Cloudflare D1 và R2</p>
+<p class="lead">Dấu Xưa Cửa Đạo</p>
 </div></header>
 <main class="wrap">
-<section class="notice" role="status"><strong>Website công khai đã hoạt động.</strong> Nội dung được biên tập trên cơ sở D1 làm việc, có lưu lịch sử phiên bản. Tư liệu nguyên mẫu trong R2 được giữ riêng tư. Không có chức năng xóa vĩnh viễn; bản sao phục hồi chuẩn được bảo toàn.</section>
+<section class="notice" role="status"><strong>Website công khai đã hoạt động.</strong> · Bản gốc được giữ riêng.</section>
  <nav class="quick-links" aria-label="Liên kết"><a href="https://dauxuacuadao.info.vn/" target="_blank" rel="noopener noreferrer">Mở website công khai</a></nav>
 <section aria-labelledby="work-title" id="work-editor-panel" hidden>
-<div class="heading"><h2 id="work-title">Soạn bài và quản lý tư liệu</h2><small>D1 làm việc · Có lưu lịch sử chỉnh sửa</small></div>
-<p class="work-help">Chọn chuyên mục rồi nhấn <strong>Soạn bài mới</strong> để viết ngay. Danh sách bài và hồ sơ được thu gọn phía dưới, chỉ mở khi cần sửa nội dung đã có.</p>
+<div class="heading"><h2 id="work-title">Soạn bài &amp; quản lý tư liệu</h2></div>
 <div class="controls work-actions"><label for="work-kind">Chuyên mục</label>
 <select id="work-kind">
 <option value="people">Chức sắc</option><option value="posts">Biên khảo</option>
@@ -37,10 +36,10 @@ export const ADMIN_HTML=`<!doctype html>
 <div class="sandbox-form" id="work-fields"></div>
 <div id="work-photo-panel" class="work-photo-panel" hidden>
 <h4>Thêm nhiều ảnh vào bài</h4>
-<p class="work-photo-explain">Chọn nhiều ảnh tùy nhu cầu, nhập chú thích và sắp xếp thứ tự. Hệ thống tải lần lượt từng ảnh; có thể chọn thêm. Ảnh gốc giữ riêng trong R2; chỉ bản xem được công bố sau khi bạn xác nhận. Bộ ảnh sẽ hiện dưới nội dung khi bài công bố.</p>
+<p class="work-photo-explain">Chọn ảnh, thêm chú thích và sắp xếp. Bản gốc giữ riêng; chỉ công bố bản xem.</p>
 <label for="work-photo-files"><strong>Chọn nhiều ảnh từ điện thoại hoặc máy tính</strong></label>
 <input id="work-photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-<small>JPEG/PNG/WebP, tối đa 24 MB/ảnh. Không giới hạn số ảnh chọn hoặc đính kèm; lưu bản nháp trước khi tải.</small>
+<small>JPEG/PNG/WebP · 24 MB/ảnh · Không giới hạn số ảnh. Lưu nháp trước khi tải.</small>
 <ol id="work-photo-queue" class="work-photo-queue"></ol>
 <label class="sandbox-checkbox work-photo-consent"><input id="work-photo-confirm" type="checkbox"> Tôi đồng ý công bố bản xem của ảnh đã chọn (không phải bản gốc)</label>
 <button id="work-photo-upload" class="work-primary" type="button" disabled>Tải ảnh lên R2 và gắn vào bài</button>
@@ -61,9 +60,8 @@ export const ADMIN_HTML=`<!doctype html>
 </div>
 </details>
 </section>
-<section aria-labelledby="r2-managed-title" id="r2-managed-panel" hidden>
-<div class="heading"><h2 id="r2-managed-title">Bảo tồn ảnh / PDF / Word vào kho R2</h2><small>Cloudflare Access · Nguyên mẫu riêng tư</small></div>
-<p class="audit-caution">Ảnh hoặc tài liệu được cất nguyên vẹn dưới dạng bản gốc riêng tư trong R2. Tệp lớn tải thành các phần 8 MB. Chỉ khi chủ động nhấn Công bố bản xem thì ảnh tối ưu mới được mở cho độc giả. PDF được chuyển thành ảnh từng trang. DOCX có thể tạo bản đọc **chữ** từng trang (không bảo toàn ảnh nhúng hoặc định dạng Word phức tạp); với DOCX chứa hình ảnh, xin xuất PDF để giữ nguyên bố cục trước khi công bố. Bản gốc luôn được giữ riêng.</p>
+<details class="admin-fold" id="r2-managed-panel" hidden><summary id="r2-managed-title">Kho tư liệu R2 <small>Ảnh · PDF · Word</small></summary><div class="admin-fold-body">
+<details class="admin-help"><summary>Hướng dẫn bảo tồn và công bố</summary><p class="audit-caution">Ảnh hoặc tài liệu được cất nguyên vẹn dưới dạng bản gốc riêng tư trong R2. Tệp lớn tải thành các phần 8 MB. Chỉ khi chủ động nhấn Công bố bản xem thì ảnh tối ưu mới được mở cho độc giả. PDF được chuyển thành ảnh từng trang. DOCX có thể tạo bản đọc **chữ** từng trang (không bảo toàn ảnh nhúng hoặc định dạng Word phức tạp); với DOCX chứa hình ảnh, xin xuất PDF để giữ nguyên bố cục trước khi công bố. Bản gốc luôn được giữ riêng.</p></details>
 <div class="controls"><input id="r2-managed-file" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.tif,.tiff,.heic,.heif,.avif">
 <button id="r2-managed-upload" type="button">Bảo tồn bản gốc vào R2</button></div>
 <p id="r2-managed-status" role="status" aria-live="polite">Chưa chọn tệp để lưu.</p>
@@ -75,15 +73,14 @@ export const ADMIN_HTML=`<!doctype html>
 <div class="controls"><label class="sandbox-checkbox"><input id="r2-managed-download-confirm" type="checkbox"> Cho phép tải bản JPEG tối ưu (không phải bản gốc)</label>
 <button id="r2-managed-publish" type="button">Công bố bản xem</button></div>
 </div>
-</section>
-<section aria-labelledby="contribution-title" id="contribution-panel">
-<div class="heading"><h2 id="contribution-title">Tư liệu độc giả gửi về</h2><small>Riêng tư · Chỉ quản trị viên</small></div>
-<p class="audit-caution">Thông tin liên hệ và tệp gốc được giữ riêng, không công bố tự động. Các tệp gửi qua hệ thống mới được tải về riêng tư để Ban Biên Tập thẩm định.</p>
+</div></details>
+<details class="admin-fold" id="contribution-panel"><summary id="contribution-title">Hộp thư tư liệu <small>Độc giả gửi về</small></summary><div class="admin-fold-body">
+<p class="work-help">Tư liệu và thông tin liên hệ chỉ quản trị viên được xem.</p>
 <div class="controls"><button type="button" id="contribution-refresh">Kiểm tra hộp thư tư liệu</button></div>
 <p id="contribution-status" role="status" aria-live="polite">Chưa tải hộp thư.</p>
 <ul class="records" id="contribution-list"></ul>
-</section>
-<details class="admin-technical work-archive-lookup"><summary>Tra cứu bản công bố và bản nháp (chế độ xem)</summary>
+</div></details>
+<details class="admin-technical work-archive-lookup"><summary>Tra cứu tư liệu (chỉ xem)</summary>
 <section aria-labelledby="records-title"><div class="heading"><h2 id="records-title">Xem tư liệu đã công bố và bản nháp</h2><small>Bản nháp chỉ mở cho người quản trị đã xác thực; không hiển thị hồ sơ tài khoản hoặc tư liệu độc giả gửi về</small></div>
 <div class="controls"><label for="kind">Chuyên mục</label><select id="kind">
 <option value="people">Hồ sơ Chức sắc</option>
@@ -102,7 +99,7 @@ export const ADMIN_HTML=`<!doctype html>
 <ul id="record-list" class="records"></ul>
 <div class="pagination"><button id="previous" type="button">Trang trước</button><span id="page">Trang 1</span><button id="next" type="button">Trang sau</button></div>
 </section></details>
-<details class="admin-technical"><summary>Kiểm kê dữ liệu và kiểm tra bảo toàn tư liệu</summary><div class="technical-content">
+<details class="admin-technical"><summary>Kiểm kê &amp; kỹ thuật</summary><div class="technical-content">
 <section aria-labelledby="state-title"><div class="heading"><h2 id="state-title">Thống kê và đối chiếu dữ liệu</h2><button id="refresh" type="button">Làm mới</button></div>
 <p id="status" role="status" aria-live="polite">Đang kiểm tra phiên quản trị và dữ liệu D1…</p>
 <div id="overview" class="summary" aria-live="polite"></div>
@@ -118,7 +115,7 @@ export const ADMIN_HTML=`<!doctype html>
 <div class="table-scroll"><table><thead><tr><th scope="col">Bảng dữ liệu</th><th scope="col" class="number">Supabase</th><th scope="col" class="number">D1</th><th scope="col" class="number">Còn thiếu</th></tr></thead><tbody id="inventory"></tbody></table></div>
 </section>
 </div></details>
-<footer>Quản trị tư liệu · D1 làm việc · R2 riêng tư · Lưu lịch sử thay đổi · Bảo toàn bản sao phục hồi</footer>
+<footer>Dấu Xưa Cửa Đạo · Quản trị tư liệu</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
 .work-photo-panel{margin:16px 0;padding:13px;background:#f8fbf6;border:1px solid #cddccf;border-radius:12px}
@@ -231,6 +228,7 @@ footer{font-size:.83rem;color:var(--muted);text-align:center;padding:8px 0}
 .admin-technical .technical-content{padding:0 12px 15px}
 .admin-technical .technical-content>section{margin:15px 0}
 @media(max-width:500px){.admin-technical .technical-content{padding:0 7px 12px}.quick-links a{width:100%;justify-content:center}}
+.admin-fold{border:1px solid #d8dcd4;border-radius:12px;background:#fff;margin:10px 0;box-shadow:0 2px 8px #1c352508}.admin-fold>summary,.admin-technical>summary{cursor:pointer;padding:13px 15px;font-weight:650;line-height:1.4}.admin-fold>summary small{display:block;margin-left:18px;font-weight:400;font-size:.78rem}.admin-fold-body{padding:0 13px 13px}.admin-help{border:1px solid #d8dcd4;border-radius:8px;padding:8px 10px;margin:5px 0}.admin-help>summary{font-size:.86rem;cursor:pointer;font-weight:600}.admin-help[open]>summary{margin-bottom:8px}.work-extra[open]{display:grid;gap:8px}.work-extra input{max-width:100%}.cover-url-details{margin-top:-4px}.admin-technical{margin:10px 0}.masthead{padding:18px 0 15px}.masthead h1{font-size:clamp(1.7rem,5vw,2.4rem)}.eyebrow{letter-spacing:.07em;margin-bottom:4px}.lead{margin:4px 0 0;font-size:.86rem}.notice{margin:12px 0;padding:9px 11px;font-size:.82rem}.quick-links{margin:0 0 10px}.quick-links a{padding:6px 10px;font-size:.85rem}section:not(.notice){margin:12px 0}.heading{margin-bottom:8px}#work-status{font-size:.82rem;color:var(--muted);margin:6px 0}.sandbox-form{gap:8px}.sandbox-form input[type=text],.sandbox-form textarea,.sandbox-form select{font-size:16px}.work-cover-upload{padding:8px}.work-cover-upload small{font-size:.78rem}.work-photo-explain{font-size:.82rem}main{padding-bottom:20px}
 `;
 export const ADMIN_JS=`
 'use strict';
@@ -258,14 +256,18 @@ function appendText(parent,tag,value,cls){
  const node=document.createElement(tag);node.textContent=String(value??'');
  if(cls)node.className=cls;parent.append(node);return node;
 }
-async function overview(){
+async function initAdmin(){
  try{
-  const [session,summary]=await Promise.all([
-   api('/api/v1/admin/session'),api('/api/v1/admin/summary')]);
+  const session=await api('/api/v1/admin/session');
   if(session.authenticated!==true||session.write_enabled!==false)throw Error('Phiên quản trị chưa hợp lệ');
   $('work-editor-panel').hidden=session.working_editor_enabled!==true;
   $('r2-managed-panel').hidden=session.managed_r2_enabled!==true;
   if(session.working_editor_enabled===true)workList().catch(()=>{});
+ }catch(e){workStatus('Không thể kết nối quản trị: '+e.message);$('work-editor-panel').hidden=false;$('work-new').disabled=true;}
+}
+async function overview(){
+ try{
+  const summary=await api('/api/v1/admin/summary');
   const inventory=$('inventory'),cards=$('overview');inventory.replaceChildren();cards.replaceChildren();
   for(const [count,label] of [
     [summary.source_total,'Bản ghi nguồn (bản chụp 23/11)'],
@@ -342,7 +344,7 @@ async function loadRecords(){
   $('previous').disabled=true;$('next').disabled=true;
  }
 }
-$('refresh').addEventListener('click',()=>{overview();loadRecords()});
+$('refresh').addEventListener('click',overview);
 $('r2-audit').addEventListener('click',auditR2);
 // Cloudflare Access R2 originals: use the already tested private R2 gateway.
 const managedBase='/api/v1/admin/r2/managed';
@@ -684,7 +686,7 @@ async function loadContributions(){
  }
 }
 $('contribution-refresh').addEventListener('click',loadContributions);
-loadContributions();
+$('contribution-panel').addEventListener('toggle',()=>{if($('contribution-panel').open)loadContributions()});
 
 // A single secure writer used by the real, versioned D1 editorial panel.
 async function workWrite(path,method,payload){
@@ -926,13 +928,17 @@ function workBuild(kind,record){
   }else{fields.append(label,input);}
   workFieldInputs.set(field,input);
   if(['image_url','cover_url','portrait_url'].includes(field)){
+   label.textContent=(workLabels[field]||field).replace(' (URL)','');
+   const advanced=document.createElement('details');advanced.className='admin-help cover-url-details';
+   const advancedTitle=document.createElement('summary');advancedTitle.textContent='Nhập liên kết ảnh thủ công';
+   advanced.append(advancedTitle);input.before(advanced);advanced.append(input);
    const upload=document.createElement('div');upload.className='work-cover-upload';
    const choose=document.createElement('input');choose.type='file';choose.accept='image/jpeg,image/png,image/webp';choose.id='work-cover-file-'+field;
    const button=document.createElement('button');button.type='button';button.textContent='Tải ảnh lên R2';button.disabled=true;
    const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent='Chọn ảnh trực tiếp từ điện thoại hoặc máy tính. Bản gốc được giữ riêng.';
    const preview=document.createElement('img');preview.alt='Bản xem ảnh đã chọn';preview.hidden=true;
    let item={},busy=false;
-   choose.addEventListener('change',()=>{item={};button.disabled=!choose.files?.length;msg.textContent='Chọn Tải ảnh lên R2 để tạo bản xem.'});
+   choose.addEventListener('change',()=>{item={};button.textContent='Tải ảnh lên R2';button.disabled=!choose.files?.length;msg.textContent='Chọn Tải ảnh lên R2 để tạo bản xem.'});
    button.addEventListener('click',async()=>{
     const file=choose.files?.[0];if(!file||busy)return;
     if(!window.GDDPhotoAlbum?.uploadCover){msg.textContent='Chưa tải được chức năng ảnh; hãy tải lại trang.';return}
@@ -949,7 +955,7 @@ function workBuild(kind,record){
     }catch(e){msg.textContent='Chưa tải xong: '+e.message+' · Có thể thử lại.';button.disabled=false}
     finally{busy=false;choose.disabled=false}
    });
-   upload.append(choose,button,msg,preview);fields.append(upload);
+   upload.append(choose,button,msg,preview);advanced.before(upload);
   }
  }
  if(kind==='people'){
@@ -1023,6 +1029,12 @@ function workBuild(kind,record){
   workDeathValidate=recalc;recalc();
  }
  if(kind==='documents')workFieldInputs.get('subfolder_code').addEventListener('change',workInvalidateCode);
+ const optional=['verified','sort_order','person_id','linked_person_id'].filter(k=>workFieldInputs.has(k));
+ if(optional.length){
+  const extra=document.createElement('details');extra.className='admin-help work-extra';const summary=document.createElement('summary');summary.textContent='Thông tin bổ sung';extra.append(summary);
+  for(const key of optional){const input=workFieldInputs.get(key);const label=fields.querySelector('label[for="'+input.id+'"]');if(workBool.has(key))extra.append(input.parentElement);else if(label)extra.append(label,input);}
+  fields.append(extra);
+ }
 }
 function workChanged(){
  const changes={};
@@ -1179,5 +1191,9 @@ $('kind').addEventListener('change',()=>{offset=0;loadRecords()});
 $('view').addEventListener('change',()=>{offset=0;loadRecords()});
 $('previous').addEventListener('click',()=>{if(offset>=pageSize){offset-=pageSize;loadRecords()}});
 $('next').addEventListener('click',()=>{if(hasNext){offset+=pageSize;loadRecords()}});
-overview();loadRecords();
+const lookupPanel=document.querySelector('.work-archive-lookup');
+lookupPanel.addEventListener('toggle',()=>{if(lookupPanel.open)loadRecords()});
+const techPanel=$('inventory').closest('details.admin-technical');
+techPanel.addEventListener('toggle',()=>{if(techPanel.open)overview()});
+initAdmin();
 `;
