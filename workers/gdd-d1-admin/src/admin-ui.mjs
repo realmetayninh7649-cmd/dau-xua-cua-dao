@@ -39,14 +39,12 @@ export const ADMIN_HTML=`<!doctype html>
 <p class="work-photo-explain">Chọn ảnh, thêm chú thích và sắp xếp. Bản gốc giữ riêng; chỉ công bố bản xem.</p>
 <label for="work-photo-files"><strong>Chọn nhiều ảnh từ điện thoại hoặc máy tính</strong></label>
 <input id="work-photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-<small>JPEG/PNG/WebP · 24 MB/ảnh · Không giới hạn số ảnh. Lưu nháp trước khi tải.</small>
+<small>JPEG/PNG/WebP · 24 MB/ảnh · Không giới hạn số ảnh.</small>
 <ol id="work-photo-queue" class="work-photo-queue"></ol>
-<label class="sandbox-checkbox work-photo-consent"><input id="work-photo-confirm" type="checkbox"> Tôi đồng ý công bố bản xem của ảnh đã chọn (không phải bản gốc)</label>
-<button id="work-photo-upload" class="work-primary" type="button" disabled>Tải ảnh lên R2 và gắn vào bài</button>
-<p id="work-photo-status" role="status" aria-live="polite">Lưu bản nháp trước khi thêm ảnh.</p>
+<p id="work-photo-status" role="status" aria-live="polite">Chọn ảnh đính kèm, hệ thống tự tải khi đăng bài.</p>
 <details id="work-photo-existing"><summary>Bộ ảnh đã gắn vào bài <span id="work-photo-count">· 0 ảnh</span></summary><div id="work-photo-album" class="work-photo-grid"></div></details>
 </div>
-<div class="controls"><button id="work-save" type="button">Lưu thay đổi</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div>
+<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Đăng bài sẽ tự tải ảnh, cấp mã (nếu cần) và hiển thị bản xem. Bản gốc luôn được giữ riêng.</small></div>
 <details class="work-history"><summary>Lịch sử chỉnh sửa và phục hồi</summary><ul class="records" id="work-revisions"></ul></details>
 </div>
 <details id="work-list-details" class="work-record-panel">
@@ -228,7 +226,7 @@ footer{font-size:.83rem;color:var(--muted);text-align:center;padding:8px 0}
 .admin-technical .technical-content{padding:0 12px 15px}
 .admin-technical .technical-content>section{margin:15px 0}
 @media(max-width:500px){.admin-technical .technical-content{padding:0 7px 12px}.quick-links a{width:100%;justify-content:center}}
-.admin-fold{border:1px solid #d8dcd4;border-radius:12px;background:#fff;margin:10px 0;box-shadow:0 2px 8px #1c352508}.admin-fold>summary,.admin-technical>summary{cursor:pointer;padding:13px 15px;font-weight:650;line-height:1.4}.admin-fold>summary small{display:block;margin-left:18px;font-weight:400;font-size:.78rem}.admin-fold-body{padding:0 13px 13px}.admin-help{border:1px solid #d8dcd4;border-radius:8px;padding:8px 10px;margin:5px 0}.admin-help>summary{font-size:.86rem;cursor:pointer;font-weight:600}.admin-help[open]>summary{margin-bottom:8px}.work-extra[open]{display:grid;gap:8px}.work-extra input{max-width:100%}.cover-url-details{margin-top:-4px}.admin-technical{margin:10px 0}.masthead{padding:18px 0 15px}.masthead h1{font-size:clamp(1.7rem,5vw,2.4rem)}.eyebrow{letter-spacing:.07em;margin-bottom:4px}.lead{margin:4px 0 0;font-size:.86rem}.notice{margin:12px 0;padding:9px 11px;font-size:.82rem}.quick-links{margin:0 0 10px}.quick-links a{padding:6px 10px;font-size:.85rem}section:not(.notice){margin:12px 0}.heading{margin-bottom:8px}#work-status{font-size:.82rem;color:var(--muted);margin:6px 0}.sandbox-form{gap:8px}.sandbox-form input[type=text],.sandbox-form textarea,.sandbox-form select{font-size:16px}.work-cover-upload{padding:8px}.work-cover-upload small{font-size:.78rem}.work-photo-explain{font-size:.82rem}main{padding-bottom:20px}
+.admin-fold{border:1px solid #d8dcd4;border-radius:12px;background:#fff;margin:10px 0;box-shadow:0 2px 8px #1c352508}.admin-fold>summary,.admin-technical>summary{cursor:pointer;padding:13px 15px;font-weight:650;line-height:1.4}.admin-fold>summary small{display:block;margin-left:18px;font-weight:400;font-size:.78rem}.admin-fold-body{padding:0 13px 13px}.admin-help{border:1px solid #d8dcd4;border-radius:8px;padding:8px 10px;margin:5px 0}.admin-help>summary{font-size:.86rem;cursor:pointer;font-weight:600}.admin-help[open]>summary{margin-bottom:8px}.work-extra[open]{display:grid;gap:8px}.work-extra input{max-width:100%}.cover-url-details{margin-top:-4px}.admin-technical{margin:10px 0}.masthead{padding:18px 0 15px}.masthead h1{font-size:clamp(1.7rem,5vw,2.4rem)}.eyebrow{letter-spacing:.07em;margin-bottom:4px}.lead{margin:4px 0 0;font-size:.86rem}.notice{margin:12px 0;padding:9px 11px;font-size:.82rem}.quick-links{margin:0 0 10px}.quick-links a{padding:6px 10px;font-size:.85rem}section:not(.notice){margin:12px 0}.heading{margin-bottom:8px}#work-status{font-size:.82rem;color:var(--muted);margin:6px 0}.sandbox-form{gap:8px}.sandbox-form input[type=text],.sandbox-form textarea,.sandbox-form select{font-size:16px}.work-cover-upload{padding:8px}.work-cover-upload small{font-size:.78rem}.work-photo-explain{font-size:.82rem}.work-submit-actions{margin:14px 0;display:grid;gap:8px}.work-submit-actions .controls{margin:0}.work-submit-actions #work-publish{width:100%;min-height:48px}.work-submit-actions #work-submit-status{margin:0;font-size:.88rem;overflow-wrap:anywhere}.work-submit-actions #work-submit-status:empty{display:none}main{padding-bottom:20px}
 `;
 export const ADMIN_JS=`
 'use strict';
@@ -726,6 +724,9 @@ const workLabels={
  solar_day:'Ngày dương',solar_month:'Tháng dương',death_year:'Năm qui vị',date_notes:'Ghi chú niên đại'
 };
 let workOffset=0,workCurrent=null,workFieldInputs=new Map();
+let workBusy=false;const workCoverQueue=new Map();
+function workClearCovers(){for(const item of workCoverQueue.values())if(item.localUrl)URL.revokeObjectURL(item.localUrl);workCoverQueue.clear()}
+function workHasLocalFiles(){return workCoverQueue.size>0||!!window.GDDPhotoAlbum?.hasPending()}
 let workCachedPage=[];
 const workPageSize=10;
 const workRoot='/api/v1/admin/work/';
@@ -747,8 +748,8 @@ function workRenderList(){
  $('work-list-count').textContent=' · '+workCachedPage.length+' bản ghi ở trang '+(Math.floor(workOffset/workPageSize)+1);
 }
 
-function workStatus(message){$('work-status').textContent=message;}
-function workClose(){window.GDDPhotoAlbum?.reset();workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
+function workStatus(message){$('work-status').textContent=message;$('work-submit-status').textContent=message;}
+function workClose(){workClearCovers();window.GDDPhotoAlbum?.reset();workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
 async function workList(){
  const kind=$('work-kind').value;
  try{
@@ -896,7 +897,7 @@ let workDeathValidate=null;
 
 function workBuild(kind,record){
  workDeathValidate=null;
- workFieldInputs.clear();
+ workClearCovers();workFieldInputs.clear();
  const fields=$('work-fields');fields.replaceChildren();
  for(const field of workFields[kind]||[]){
   const label=document.createElement('label');
@@ -927,6 +928,7 @@ function workBuild(kind,record){
    wrapper.append(input,label);fields.append(wrapper);
   }else{fields.append(label,input);}
   workFieldInputs.set(field,input);
+  if(field==='published')input.parentElement.hidden=true;
   if(['image_url','cover_url','portrait_url'].includes(field)){
    label.textContent=(workLabels[field]||field).replace(' (URL)','');
    const advanced=document.createElement('details');advanced.className='admin-help cover-url-details';
@@ -934,28 +936,21 @@ function workBuild(kind,record){
    advanced.append(advancedTitle);input.before(advanced);advanced.append(input);
    const upload=document.createElement('div');upload.className='work-cover-upload';
    const choose=document.createElement('input');choose.type='file';choose.accept='image/jpeg,image/png,image/webp';choose.id='work-cover-file-'+field;
-   const button=document.createElement('button');button.type='button';button.textContent='Tải ảnh lên R2';button.disabled=true;
-   const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent='Chọn ảnh trực tiếp từ điện thoại hoặc máy tính. Bản gốc được giữ riêng.';
+   const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent='Chọn ảnh; hệ thống tự tải khi đăng bài.';
    const preview=document.createElement('img');preview.alt='Bản xem ảnh đã chọn';preview.hidden=true;
-   let item={},busy=false;
-   choose.addEventListener('change',()=>{item={};button.textContent='Tải ảnh lên R2';button.disabled=!choose.files?.length;msg.textContent='Chọn Tải ảnh lên R2 để tạo bản xem.'});
-   button.addEventListener('click',async()=>{
-    const file=choose.files?.[0];if(!file||busy)return;
-    if(!window.GDDPhotoAlbum?.uploadCover){msg.textContent='Chưa tải được chức năng ảnh; hãy tải lại trang.';return}
-    if(window.GDDPhotoAlbum.isBusy()){msg.textContent='Album đang tải; hãy hoàn tất album trước.';return}
-    if(!confirm('Công bố bản xem ảnh đại diện? Bản gốc vẫn giữ riêng trong R2.'))return;
-    const active=workCurrent;
-    busy=true;button.disabled=true;choose.disabled=true;
-    try{
-     const url=await window.GDDPhotoAlbum.uploadCover(file,text=>msg.textContent=text,item);
-     if(workCurrent!==active||!upload.isConnected)return;
-     input.value=url;preview.src=url;preview.hidden=false;
-     msg.textContent='Đã tải ảnh. Nhấn Lưu thay đổi để gắn ảnh đại diện vào hồ sơ.';
-     button.textContent='Đã tải ảnh';
-    }catch(e){msg.textContent='Chưa tải xong: '+e.message+' · Có thể thử lại.';button.disabled=false}
-    finally{busy=false;choose.disabled=false}
+   if(input.value){try{const u=new URL(input.value);if(u.protocol==='https:'){preview.src=u.href;preview.hidden=false}}catch{}}
+   const remove=document.createElement('button');remove.type='button';remove.textContent='Bỏ ảnh đã chọn';remove.hidden=true;
+   function clearSelection(){const previous=workCoverQueue.get(field);if(previous?.localUrl)URL.revokeObjectURL(previous.localUrl);workCoverQueue.delete(field);choose.value='';remove.hidden=true;preview.hidden=!input.value;if(input.value)preview.src=input.value;else preview.removeAttribute('src');msg.textContent='Chọn ảnh; hệ thống tự tải khi đăng bài.'}
+   choose.addEventListener('change',()=>{
+    if(workBusy)return;
+    const file=choose.files?.[0];if(!file)return;
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size<1||file.size>24*1048576){clearSelection();msg.textContent='Chọn JPEG/PNG/WebP không quá 24 MB.';return}
+    const previous=workCoverQueue.get(field);if(previous?.localUrl)URL.revokeObjectURL(previous.localUrl);
+    const localUrl=URL.createObjectURL(file);workCoverQueue.set(field,{file,localUrl});
+    preview.src=localUrl;preview.hidden=false;remove.hidden=false;msg.textContent='Đã chọn '+file.name+' · Chờ đăng bài.';
    });
-   upload.append(choose,button,msg,preview);advanced.before(upload);
+   remove.addEventListener('click',()=>{if(!workBusy)clearSelection()});
+   upload.append(choose,msg,preview,remove);advanced.before(upload);
   }
  }
  if(kind==='people'){
@@ -1033,8 +1028,9 @@ function workBuild(kind,record){
  if(optional.length){
   const extra=document.createElement('details');extra.className='admin-help work-extra';const summary=document.createElement('summary');summary.textContent='Thông tin bổ sung';extra.append(summary);
   for(const key of optional){const input=workFieldInputs.get(key);const label=fields.querySelector('label[for="'+input.id+'"]');if(workBool.has(key))extra.append(input.parentElement);else if(label)extra.append(label,input);}
+  if(record?.published){const withdraw=document.createElement('button');withdraw.type='button';withdraw.textContent='Chuyển về bản nháp';withdraw.addEventListener('click',()=>{if(confirm('Ẩn bài khỏi website và giữ lại bản nháp?'))workSave('withdraw')});extra.append(withdraw)}
   fields.append(extra);
- }
+ }else if(record?.published){const extra=document.createElement('details');extra.className='admin-help';const title=document.createElement('summary');title.textContent='Tùy chọn khác';const withdraw=document.createElement('button');withdraw.type='button';withdraw.textContent='Chuyển về bản nháp';withdraw.addEventListener('click',()=>{if(confirm('Ẩn bài khỏi website và giữ lại bản nháp?'))workSave('withdraw')});extra.append(title,withdraw);fields.append(extra)}
 }
 function workChanged(){
  const changes={};
@@ -1098,6 +1094,7 @@ $('work-code-confirm').addEventListener('change',()=>{
 });
 $('work-code-assign').addEventListener('click',workAssignCode);
 async function workOpen(kind,id){
+ if(workBusy)return;
  workClose();
  try{
   const response=await api(workRoot+kind+'/'+encodeURIComponent(id));
@@ -1111,11 +1108,14 @@ async function workOpen(kind,id){
   $('work-edit-area').hidden=false;
   $('work-list-details').open=false;
   $('work-edit-area').scrollIntoView({behavior:'smooth',block:'start'});
-  await Promise.all([workHistory(),workCodePreview()]);
+  $('work-code-area').hidden=true;
+  workUpdateIdentity();
+  await workHistory();
   window.GDDPhotoAlbum?.show(workCurrent);
  }catch(e){workStatus('Không đọc được chi tiết: '+e.message)}
 }
 async function workNew(){
+ if(workBusy)return;if(workHasLocalFiles()&&!confirm('Ảnh đang chọn chưa được lưu. Mở bài mới?'))return;
  workClose();const kind=$('work-kind').value;
  workCurrent={kind,id:null,record:null};
  workBuild(kind,null);
@@ -1125,7 +1125,8 @@ async function workNew(){
  $('work-edit-area').hidden=false;
  $('work-list-details').open=false;
  $('work-edit-area').scrollIntoView({behavior:'smooth',block:'start'});
- workStatus('Biểu mẫu đã mở · Nhập thông tin rồi nhấn Lưu thay đổi.');
+ workUpdateIdentity();
+ workStatus('Nhập nội dung, chọn ảnh rồi nhấn Đăng bài.');
  window.GDDPhotoAlbum?.show(workCurrent);
 }
 async function workHistory(){
@@ -1155,34 +1156,94 @@ async function workHistory(){
  }
  if(!list.children.length)appendText(list,'li','Chưa có lịch sử sửa.');
 }
-async function workSave(){
- if(!workCurrent)return;
- const submit=$('work-save');submit.disabled=true;
- const selected={...workCurrent};
+function workUpdateIdentity(){
+ const record=workCurrent?.record;
+ $('work-save').textContent=record?.published?'Lưu nội dung':'Lưu bản nháp';
+ $('work-save').hidden=!!record?.published;
+ $('work-publish').textContent=record?.published?'Cập nhật bài trên website':'Đăng bài lên website';
+ if(record)$('work-identity').textContent='Mã định danh: '+(record.archive_code||'Chưa có mã')+' · phiên bản '+record.gdd_version+' · '+(record.published?'Đã đăng':'Nháp');
+}
+async function workSave(mode='draft'){
+ if(!workCurrent||workBusy)return;
+ const active=workCurrent,kind=active.kind,publish=mode==='publish';
+ if(mode!=='publish'&&active.record?.published&&mode!=='withdraw')return;
+ const inputs=Array.from(document.querySelectorAll('#work-editor-panel input,#work-editor-panel select,#work-editor-panel textarea,#work-editor-panel button'));
+ const disabled=inputs.map(el=>[el,el.disabled]);
+ workBusy=true;for(const el of inputs)el.disabled=true;
+ let completed=false;
+ const progress=message=>workStatus(message);
+ async function patch(fields){
+  if(!Object.keys(fields).length)return;
+  const result=await workWrite(workRoot+kind+'/'+active.id,'PATCH',{version:active.record.gdd_version,fields});
+  if(result?.data?.id!==active.id)throw Error('Máy chủ chưa xác nhận đã lưu');
+  active.record=result.data;workUpdateIdentity();
+ }
  try{
-  if(selected.kind==='people'&&workDeathValidate&&!workDeathValidate())throw Error('Xin kiểm tra ngày qui vị trước khi lưu.');
-  const fields=workChanged();
-  const isCreate=!selected.id;
-  if(!Object.keys(fields).length)throw Error('Chưa có nội dung thay đổi');
-  if(isCreate){fields.published=false;}
-  const result=await workWrite(workRoot+selected.kind+(selected.id?'/'+selected.id:''),
-    isCreate?'POST':'PATCH',isCreate?{fields}:{version:selected.record.gdd_version,fields});
-  if(!result?.data?.id)throw Error('Máy chủ chưa xác nhận đã lưu');
-  workStatus(isCreate?'Đã tạo bản nháp trên D1 làm việc.':'Đã lưu thay đổi và ghi lịch sử phiên bản.');
-  await workList();
-  await workOpen(selected.kind,result.data.id);
- }catch(e){workStatus('Không thể lưu: '+e.message)}
- finally{submit.disabled=false}
+  if(kind==='people'&&workDeathValidate&&!workDeathValidate())throw Error('Xin kiểm tra ngày qui vị trước khi lưu.');
+  const title=workFieldInputs.get(kind==='people'||kind==='gdd_calendar_memorials'?'full_name':'title')?.value.trim();
+  if(!title)throw Error('Nhập danh xưng hoặc nhan đề trước.');
+  if(publish&&kind==='people'&&(!workFieldInputs.get('branch')?.value||!workFieldInputs.get('rank')?.value.trim()))throw Error('Chọn Cơ quan và Phẩm vị trước.');
+  if(publish&&kind==='documents'&&!workFieldInputs.get('subfolder_code')?.value)throw Error('Chọn thư mục số hóa trước.');
+  const changes=workChanged();delete changes.published;
+  if(mode==='withdraw'){
+   if(workHasLocalFiles())throw Error('Còn ảnh đang chọn. Hãy bỏ chọn hoặc cập nhật bài trước.');
+   await patch({published:false});completed=true;return;
+  }
+  progress('Đang lưu nội dung…');
+  if(!active.id){
+   const result=await workWrite(workRoot+kind,'POST',{fields:{...changes,published:false}});
+   if(!result?.data?.id)throw Error('Máy chủ chưa xác nhận bản nháp');
+   active.id=result.data.id;active.record=result.data;
+   window.GDDPhotoAlbum?.bindRecord(active);workUpdateIdentity();
+  }else if(!active.record.published)await patch(changes);
+  if(!publish){
+   progress(workHasLocalFiles()?'Đã lưu bản nháp. Ảnh đang chọn còn ở trang này; nhấn Đăng bài để tải ảnh.':'Đã lưu bản nháp.');
+   return;
+  }
+  if(workCanonicalKinds.has(kind)&&!active.record.archive_code){
+   progress('Đang cấp mã định danh…');
+   const candidate=await api(workRoot+kind+'/'+active.id+'/code-preview');
+   if(!candidate.candidate||!candidate.requires_confirmation)throw Error('Chưa xác định được mã định danh');
+   if(candidate.needs_special_review&&!confirm('Phẩm vị đặc biệt: '+candidate.classification+'. Xác nhận mã '+candidate.candidate+'?'))throw Error('Chưa xác nhận nhóm mã đặc biệt');
+   const result=await workWrite(workRoot+kind+'/'+active.id+'/assign-code','POST',{code:candidate.candidate,version:candidate.version,confirmed:true});
+   if(!result.assigned||result.code!==candidate.candidate)throw Error('Chưa cấp được mã định danh');
+   const saved=await api(workRoot+kind+'/'+active.id);
+   if(saved?.data?.id!==active.id||saved.data.archive_code!==result.code)throw Error('Chưa xác nhận hồ sơ sau cấp mã');
+   active.record=saved.data;workUpdateIdentity();
+  }
+  for(const [field,item] of workCoverQueue){
+   progress('Đang tải ảnh đại diện…');
+   const url=await window.GDDPhotoAlbum.uploadCover(item.file,progress,item);
+   workFieldInputs.get(field).value=url;
+  }
+  if(window.GDDPhotoAlbum?.hasPending())await window.GDDPhotoAlbum.uploadBatch(active,progress);
+  const finalFields=workChanged();delete finalFields.published;
+  if(!active.record.published)finalFields.published=true;
+  progress('Đang đưa bài lên website…');
+  await patch(finalFields);
+  if(!active.record.published)throw Error('Máy chủ chưa xác nhận trạng thái đã đăng');
+  completed=true;
+ }catch(e){
+  progress('Chưa hoàn tất: '+e.message+(active.id?(active.record?.published?' · Bài cũ vẫn đang hiển thị; ảnh đã gắn có thể đã xuất hiện.':' · Bản nháp đã được giữ. Có thể nhấn Đăng bài để thử tiếp.'):''));
+ }finally{
+  workBusy=false;for(const [el,was] of disabled)if(el.isConnected)el.disabled=was;
+  window.GDDPhotoAlbum?.refresh();
+  workUpdateIdentity();
+  if(completed){const id=active.id;await workOpen(kind,id);await workList();workStatus(mode==='withdraw'?'Đã chuyển về bản nháp.':'Đã đăng bài thành công lên website.');}
+ }
 }
 $('work-kind').addEventListener('change',()=>{
+ if(workBusy)return;
+ if(workHasLocalFiles()&&!confirm('Ảnh đang chọn chưa được lưu. Chuyển chuyên mục?')){$('work-kind').value=workCurrent.kind;return}
  workOffset=0;$('work-search').value='';workCachedPage=[];
  workClose();workList()
 });
 $('work-search').addEventListener('input',workRenderList);
 $('work-list-refresh').addEventListener('click',workList);
 $('work-new').addEventListener('click',workNew);
-$('work-save').addEventListener('click',workSave);
-$('work-cancel').addEventListener('click',workClose);
+$('work-save').addEventListener('click',()=>workSave('draft'));
+$('work-publish').addEventListener('click',()=>workSave('publish'));
+$('work-cancel').addEventListener('click',()=>{if(workBusy)return;if(workHasLocalFiles()&&!confirm('Ảnh đang chọn chưa được lưu. Đóng biểu mẫu?'))return;workClose()});
 $('work-prev').addEventListener('click',()=>{workOffset=Math.max(0,workOffset-workPageSize);$('work-search').value='';workList()});
 $('work-next').addEventListener('click',()=>{workOffset+=workPageSize;$('work-search').value='';workList()});
 
