@@ -22,11 +22,15 @@ export async function handleAlbumPhotos(request,env,path){
   const owner=await env.DB.prepare('SELECT id FROM "'+kind+'" WHERE id=? LIMIT 1').bind(recordId).first();
   if(!owner)return reply({error:'record_not_found'},404);
   if(request.method==='GET'){
+   const params=new URL(request.url).searchParams;
+   const limit=Number(params.get('limit')||100),offset=Number(params.get('offset')||0);
+   if(!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(offset)||offset<0)
+     return reply({error:'invalid_pagination'},400);
    const {results}=await env.DB.prepare(
     'SELECT id,image_url,caption,sort_order,photo_code FROM archive_gallery_images '+
-    'WHERE owner_kind=? AND owner_id=? ORDER BY sort_order ASC,created_at ASC LIMIT 200'
-   ).bind(kind,recordId).all();
-   return reply({data:results||[],kind,record_id:recordId,limit:200});
+    'WHERE owner_kind=? AND owner_id=? ORDER BY sort_order ASC,created_at ASC,id ASC LIMIT ? OFFSET ?'
+   ).bind(kind,recordId,limit+1,offset).all();
+   return reply({data:(results||[]).slice(0,limit),kind,record_id:recordId,limit,offset,has_next:(results||[]).length>limit});
   }
   const len=Number(request.headers.get('Content-Length')||0);
   if(!Number.isSafeInteger(len)||len>2500)return reply({error:'invalid_body_size'},413);
@@ -61,9 +65,8 @@ export async function handleAlbumPhotos(request,env,path){
    'SELECT COUNT(*) AS n,MAX(sort_order) AS last_position '+
    'FROM archive_gallery_images WHERE owner_kind=? AND owner_id=?'
   ).bind(kind,recordId).first();
-  if(Number(aggregate?.n||0)>=200)return reply({error:'album_limit_reached'},409);
   const position=Math.max(0,Number(aggregate?.last_position||0))+1;
-  if(!Number.isSafeInteger(position)||position>1000000)
+  if(!Number.isSafeInteger(position))
     return reply({error:'invalid_sort_order'},409);
   const photoId=crypto.randomUUID();
   await env.DB.prepare(
