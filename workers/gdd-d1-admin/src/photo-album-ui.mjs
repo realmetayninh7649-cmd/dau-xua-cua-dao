@@ -7,7 +7,7 @@ export const PHOTO_JS=String.raw`/* Multi-image editor for Access-authenticated 
 const $=id=>document.getElementById(id);
 const supported=new Set(['image/jpeg','image/png','image/webp']);
 const supportedKinds=new Set(['people','posts','media','videos','obituaries','documents']);
-const limits={count:12,each:24*1048576,total:120*1048576};
+const limits={each:24*1048576};
 let queue=[],context=null,busy=false,loadId=0;
 function status(message){$('work-photo-status').textContent=message}
 function clear(){
@@ -38,7 +38,7 @@ function render(){
  const list=$('work-photo-queue');list.replaceChildren();
  for(let i=0;i<queue.length;i++){
   const item=queue[i],li=document.createElement('li');
-  const picture=document.createElement('img');picture.src=item.previewUrl;picture.alt='Ảnh '+(i+1);
+  const picture=document.createElement('img');picture.loading='lazy';picture.decoding='async';picture.src=item.previewUrl;picture.alt='Ảnh '+(i+1);
   const body=document.createElement('div');
   label(body,'div',(i+1)+'. '+item.file.name+' ('+(item.file.size/1048576).toFixed(1)+' MB)','photo-filename');
   const captionLabel=label(body,'label','Chú thích ảnh '+(i+1));
@@ -69,19 +69,17 @@ function select(){
  if(!context?.id||busy){status('Hãy lưu bản nháp trước khi chọn ảnh.');return}
  const files=Array.from($('work-photo-files').files||[]);
  if(!files.length)return;
- const total=files.reduce((sum,file)=>sum+file.size,0);
- if(files.length>limits.count||total>limits.total||
-    files.some(file=>!supported.has(file.type)||file.size<1||file.size>limits.each)){
-  status('Tối đa 12 ảnh JPEG/PNG/WebP, mỗi ảnh 24 MB, tổng 120 MB; chuyển HEIC sang JPEG trước khi tải.');
-  $('work-photo-files').value='';return;
- }
- for(const item of queue)URL.revokeObjectURL(item.previewUrl);
- queue=files.map(file=>({
+ const valid=files.filter(file=>supported.has(file.type)&&file.size>0&&file.size<=limits.each);
+ const rejected=files.length-valid.length;
+ const known=new Set(queue.map(item=>[item.file.name,item.file.size,item.file.lastModified].join('|')));
+ const added=valid.filter(file=>{const key=[file.name,file.size,file.lastModified].join('|');if(known.has(key))return false;known.add(key);return true;});
+ queue.push(...added.map(file=>({
   file,caption:file.name.slice(0,file.name.lastIndexOf('.')>0?file.name.lastIndexOf('.'):file.name.length),
   previewUrl:URL.createObjectURL(file),assetId:null,published:false,done:false,error:''
- }));
+ })));
+ $('work-photo-files').value='';
  $('work-photo-confirm').checked=false;
- status('Đã chọn '+files.length+' ảnh. Bạn có thể viết chú thích, đổi thứ tự rồi xác nhận tải lên R2.');
+ status('Đã thêm '+added.length+' ảnh; '+queue.filter(x=>!x.done).length+' ảnh chờ tải. '+(rejected?'Bỏ qua '+rejected+' tệp không đúng định dạng hoặc quá 24 MB. ':'')+'Có thể chọn thêm ảnh.');
  render();
 }
 async function archiveOriginal(file,notify){
@@ -138,14 +136,18 @@ async function reloadAlbum(){
  if(!context?.id)return;
  const {kind,id}=context;
  try{
-  const res=await fetch('/api/v1/admin/work/'+kind+'/'+id+'/photos',{cache:'no-store',credentials:'same-origin'});
-  const json=await res.json();
-  if(!res.ok)throw Error(json.error||'Không tải được album');
-  if(serial!==loadId||!context||context.id!==id)return;
-  const images=Array.isArray(json.data)?json.data:[];
+  const images=[];
+  for(let offset=0;;offset+=100){
+   const res=await fetch('/api/v1/admin/work/'+kind+'/'+id+'/photos?limit=100&offset='+offset,{cache:'no-store',credentials:'same-origin'});
+   const json=await res.json();
+   if(!res.ok||!Array.isArray(json.data))throw Error(json.error||'Không tải được album');
+   if(serial!==loadId||!context||context.id!==id)return;
+   images.push(...json.data);
+   if(json.data.length<100||json.has_next===false)break;
+  }
   $('work-photo-count').textContent=' · '+images.length+' ảnh';
   const grid=$('work-photo-album');grid.replaceChildren();
-  for(const photo of images.slice(-50)){
+  for(const photo of images){
    const figure=document.createElement('figure');
    try{
     const u=new URL(photo.image_url);
@@ -165,10 +167,11 @@ async function uploadBatch(){
  if(!$('work-photo-confirm').checked){status('Xin xác nhận việc công bố bản xem ảnh.');return}
  if(!confirm('Xác nhận công bố BẢN XEM ảnh và gắn vào bài này? Bản gốc R2 vẫn riêng tư.'))return;
  busy=true;render();
- const kind=context.kind,id=context.id;
+ const kind=context.kind,id=context.id,activeContext=context;
  let doneCount=0;
  try{
   for(let i=0;i<queue.length;i++){
+   if(context!==activeContext)return;
    const photo=queue[i];if(photo.done)continue;
    const progress=message=>status('Ảnh '+(i+1)+'/'+queue.length+': '+message);
    try{
@@ -183,6 +186,7 @@ async function uploadBatch(){
         throw Error('Bản xem R2 chưa được phê duyệt');
       photo.published=true;
     }
+    if(context!==activeContext)return;
     progress('Gắn ảnh vào bộ ảnh D1…');
     const saved=await workWrite('/api/v1/admin/work/'+kind+'/'+id+'/photos','POST',
       {asset_id:photo.assetId,caption:photo.caption.trim().slice(0,600)});
@@ -199,12 +203,26 @@ async function uploadBatch(){
   if(queue.every(photo=>photo.done))
    status('Đã gắn '+queue.length+' ảnh vào bài. Bộ ảnh hiển thị khi bài công bố; bản gốc vẫn riêng tư.');
   else if(doneCount)status('Đã gắn '+doneCount+' ảnh; còn ảnh chưa xong. Có thể tải tiếp.');
- }finally{busy=false;render()}
+ }finally{if(context===activeContext){busy=false;render()}}
 }
 $('work-photo-files').addEventListener('change',select);
 $('work-photo-confirm').addEventListener('change',refresh);
 $('work-photo-upload').addEventListener('click',uploadBatch);
-window.GDDPhotoAlbum={reset:clear,show(record){
+window.GDDPhotoAlbum={reset:clear,isBusy:()=>busy,async uploadCover(file,notify,item={}){
+ if(!supported.has(file.type)||file.size<1||file.size>limits.each)throw Error('Chọn JPEG/PNG/WebP không quá 24 MB.');
+ item.file=file;
+ if(!item.assetId)item.assetId=await archiveOriginal(file,notify);
+ if(!item.published){
+  notify('Tạo bản xem nhẹ…');
+  item.previewUrl=URL.createObjectURL(file);
+  try{await uploadPreview(item)}finally{URL.revokeObjectURL(item.previewUrl);item.previewUrl=null}
+  notify('Công bố bản xem ảnh đại diện…');
+  const released=await managedRequest('/v1/assets/'+item.assetId+'/publication',{method:'POST',data:JSON.stringify({publish:true,allowDownload:false})});
+  if(released.published!==true||released.originalPrivate!==true)throw Error('R2 chưa xác nhận bản xem');
+  item.published=true;
+ }
+ return 'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+item.assetId+'/preview';
+},show(record){
  clear();
  if(!record||!supportedKinds.has(record.kind))return;
  context={kind:record.kind,id:record.id};
