@@ -50,7 +50,7 @@
     'Phước Thiện':[], 'Hành chánh Đạo':[], 'Khác':[]
   };
   const allSubgroups = [...new Set(Object.values(subgroupLabels).flat())];
-  const galleryCategories=["Tòa Thánh Tây Ninh xưa","Tang lễ Chức sắc","Hành đạo và Sinh hoạt Đạo","Dấu tích Đạo sử xưa và nay","Tư liệu hình ảnh khác"];
+  const galleryCategories=["Tòa Thánh Tây Ninh xưa","Tang lễ Chức sắc","Hành đạo và Sinh hoạt Đạo","Dấu tích Đạo sử xưa và nay","Chơn Dung Tiền Bối","Tư liệu hình ảnh khác"];
 
   const documentSubfolders=[
     {code:'HCĐ',title:'Tài Liệu Hành Chánh Đạo'},
