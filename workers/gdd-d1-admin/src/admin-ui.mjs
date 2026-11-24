@@ -779,6 +779,7 @@ const workPersonGroups={
  'Phước Thiện':[],'Hành chánh Đạo':[],'Khác':[]
 };
 const workDocumentFolders={'HCĐ':'Tài Liệu Hành Chánh Đạo','HTĐ':'Tài Liệu Chức Sắc Hiệp Thiên Đài','CTĐ':'Tài Liệu Chức Sắc Cửu Trùng Đài','PT':'Tài Liệu Chức Sắc Phước Thiện','CQK':'Tài Liệu Các Cơ Quan Khác'};
+const workGalleryCategories=['Tòa Thánh Tây Ninh xưa','Tang lễ Chức sắc','Hành đạo và Sinh hoạt Đạo','Dấu tích Đạo sử xưa và nay','Tư liệu hình ảnh khác'];
 function workSelectFill(select,choices,current,placeholder){
  select.replaceChildren();
  const option=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;select.append(o);};
@@ -906,12 +907,14 @@ function workBuild(kind,record){
   const choices=kind==='people'&&field==='branch'?Object.keys(workPersonRanks):
     kind==='people'&&field==='subgroup'?(workPersonGroups[record?.branch]||[]):
     kind==='people'&&field==='gender'?['Nam','Nữ']:
+    kind==='media'&&field==='category'?workGalleryCategories:
     kind==='gdd_audio_programs'&&field==='category'?['radio-dao-su','niem-danh','thuyet-minh','nhac-dao']:
     kind==='documents'&&field==='subfolder_code'?Object.keys(workDocumentFolders):null;
   const input=document.createElement(choices?'select':workLong.has(field)?'textarea':'input');
   input.id='work-field-'+field;
   if(choices){
    workSelectFill(input,choices,record?.[field]||'',field==='subgroup'?'Chưa phân nhóm':'Chọn '+(workLabels[field]||field));
+   if(kind==='media'&&field==='category'){input.setAttribute('aria-required','true');input.options[0].textContent='Chọn chuyên mục Hình ảnh';}
    if(kind==='gdd_audio_programs'&&field==='category'){const labels={'radio-dao-su':'Radio Đạo Sử','niem-danh':'Niệm danh hiệu','thuyet-minh':'Bài thuyết minh','nhac-dao':'Nhạc Đạo'};for(const option of input.options)if(labels[option.value])option.textContent=labels[option.value]}
   }else if(workBool.has(field)){
    input.type='checkbox';
@@ -926,7 +929,7 @@ function workBuild(kind,record){
    input.value=record?.[field]??'';
    if(workLong.has(field))input.rows=field==='body'||field==='biography'?8:3;
   }
-  label.htmlFor=input.id;label.textContent=workLabels[field]||field;
+  label.htmlFor=input.id;label.textContent=kind==='media'&&field==='category'?'Chuyên mục Hình ảnh *':(workLabels[field]||field);
   if(workBool.has(field)){
    const wrapper=document.createElement('div');wrapper.className='sandbox-checkbox';
    wrapper.append(input,label);fields.append(wrapper);
@@ -1207,6 +1210,7 @@ async function workSave(mode='draft'){
   if(!title)throw Error('Nhập danh xưng hoặc nhan đề trước.');
   if(publish&&kind==='people'&&(!workFieldInputs.get('branch')?.value||!workFieldInputs.get('rank')?.value.trim()))throw Error('Chọn Cơ quan và Phẩm vị trước.');
   if(publish&&kind==='documents'&&!workFieldInputs.get('subfolder_code')?.value)throw Error('Chọn thư mục số hóa trước.');
+  if(publish&&kind==='media'&&!workGalleryCategories.includes(workFieldInputs.get('category')?.value))throw Error('Chọn một trong 5 chuyên mục Hình ảnh trước khi đăng bài.');
   if(publish&&kind==='gdd_audio_programs'){
    if(!workFieldInputs.get('category')?.value)throw Error('Chọn chuyên mục âm thanh.');
    if(!workAudioFile&&!workFieldInputs.get('audio_url')?.value.trim())throw Error('Chọn tệp MP3 trước khi đăng bài.');
