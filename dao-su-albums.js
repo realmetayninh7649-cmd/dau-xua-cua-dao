@@ -171,6 +171,7 @@
     try {
       let albumRows=[];
       try{
+        if(window.SITE_CONFIG?.publicReadProvider==='d1-staging')throw Error('D1 public source selected');
         const supa=await getClient();
         const {data:parent,error:lookupError}=await supa.from(kind).select('id').eq('slug',slug).maybeSingle();
         if(lookupError)throw lookupError;
@@ -189,7 +190,7 @@
         albumRows=(backup.gallery||[]).filter(row=>
           row.owner_kind===kind&&row.owner_id===parent.id)
           .sort((a,b)=>(a.sort_order??0)-(b.sort_order??0)
-            ||String(a.created_at||'').localeCompare(String(b.created_at||''))).slice(0,200);
+            ||String(a.created_at||'').localeCompare(String(b.created_at||'')));
       }
       if(!albumRows.length || ticket!==detailSeq || !target.isConnected)return;
       const rows=albumRows.filter(p=>safeUrl(p.image_url));
