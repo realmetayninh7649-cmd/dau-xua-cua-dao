@@ -6,7 +6,7 @@ const cfg=window.SITE_CONFIG||{};
 const d1Audio=cfg.publicReadProvider==='d1-staging';
 if(!d1Audio&&(!cfg.supabaseUrl||!cfg.supabasePublishableKey))return;
 const TABLE='gdd_audio_programs',BUCKET='dao-su-audio';
-const names={'niem-danh':'Niệm danh hiệu','radio-dao-su':'Radio Đạo Sử','thuyet-minh':'Bài thuyết minh'};
+const names={'niem-danh':'Niệm danh hiệu','radio-dao-su':'Radio Đạo Sử','thuyet-minh':'Bài thuyết minh','nhac-dao':'Nhạc Đạo'};
 const $=(q,root=document)=>root.querySelector(q);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safe=v=>{try{const u=new URL(String(v||''),location.href);return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}};
@@ -73,6 +73,23 @@ style.textContent=`
 #admin-editor-area.gdd-radio-mode>.editor-heading,#admin-editor-area.gdd-radio-mode>#editor-form,#admin-editor-area.gdd-radio-mode>.editor-items,#admin-editor-area.gdd-radio-mode>.incoming-submissions,#admin-editor-area.gdd-radio-mode>.gdd-memorial-admin-link{display:none!important}
 @media(max-width:780px){#am-thanh-dai-dao .gdd-radio-layout{grid-template-columns:1fr}#am-thanh-dai-dao .gdd-radio-player-box{position:static;order:-1}#am-thanh-dai-dao .gdd-radio-cover{height:145px}}
 @media(max-width:520px){#am-thanh-dai-dao .gdd-radio-item{grid-template-columns:77px minmax(0,1fr)}#am-thanh-dai-dao .gdd-radio-art{width:77px;min-height:110px}#am-thanh-dai-dao .gdd-radio-item-copy strong{font-size:13px}#gdd-radio-admin form{grid-template-columns:1fr}}
+/* Compact audio playlist: no cover thumbnails or long descriptions in the list. */
+#am-thanh-dai-dao .gdd-radio-list{gap:6px}
+#am-thanh-dai-dao .gdd-radio-item{grid-template-columns:38px minmax(0,1fr) 20px;align-items:center;gap:9px;min-height:54px;padding:8px 10px;border-radius:7px}
+#am-thanh-dai-dao .gdd-radio-symbol{width:38px;height:38px;border-radius:8px;display:grid;place-items:center;color:#245448;background:#e9eee5;flex:none}
+#am-thanh-dai-dao .gdd-radio-item-copy{padding:0}
+#am-thanh-dai-dao .gdd-radio-item-copy strong{font:600 12px/1.55 'Be Vietnam Pro',sans-serif;display:block;overflow-wrap:anywhere;margin:0}
+#am-thanh-dai-dao .gdd-radio-play-icon{font-size:12px;color:#8b764d;text-align:center}
+#am-thanh-dai-dao .gdd-radio-item[data-active=true]{background:#f1f4eb;border-color:#9d895f;box-shadow:none}
+#am-thanh-dai-dao .gdd-radio-now{display:flex;align-items:center;gap:10px}
+#am-thanh-dai-dao .gdd-radio-now>div{min-width:0}
+#am-thanh-dai-dao .gdd-radio-now .gdd-radio-symbol{width:48px;height:48px}
+#am-thanh-dai-dao .gdd-radio-now h3{font-size:15px;line-height:1.5;margin:3px 0;overflow-wrap:anywhere}
+#am-thanh-dai-dao .gdd-radio-info{margin:10px 0;color:#68756c;font-size:11px}
+#am-thanh-dai-dao .gdd-radio-info summary{cursor:pointer;color:#28564a;font-weight:600}
+#am-thanh-dai-dao .gdd-radio-player-box{padding:12px}
+#am-thanh-dai-dao .gdd-radio-lead{margin-bottom:12px}
+#am-thanh-dai-dao .gdd-radio-tabs{margin-bottom:12px}
 `;
 document.head.append(style);
 const video=$('#video-dao-su'),nav=$('#main-nav');
@@ -82,24 +99,23 @@ section.innerHTML=`
  <div class="wrap">
   <div class="gdd-radio-kicker">THÁNH ÂM · GIỌNG NÓI · KÝ ỨC CỬA ĐẠO</div>
   <h2>Âm Thanh <em>Đại Đạo</em></h2>
-  <p class="gdd-radio-lead">Nơi lưu giữ những bản niệm danh hiệu, chương trình Radio Đạo Sử và bài thuyết minh để quí Huynh Tỷ Đệ Muội cùng nghe và tìm hiểu nền Đại Đạo.</p>
+  <p class="gdd-radio-lead">Nơi lưu giữ những bản niệm danh hiệu, chương trình Radio Đạo Sử, bài thuyết minh và Nhạc Đạo để quí Huynh Tỷ Đệ Muội cùng nghe và tìm hiểu nền Đại Đạo.</p>
   <div class="gdd-radio-tabs" role="group" aria-label="Lọc chuyên mục âm thanh">
    <button type="button" data-gdd-radio-filter="all" aria-pressed="true">Tất cả</button>
    <button type="button" data-gdd-radio-filter="niem-danh" aria-pressed="false">Niệm danh hiệu</button>
    <button type="button" data-gdd-radio-filter="radio-dao-su" aria-pressed="false">Radio Đạo Sử</button>
    <button type="button" data-gdd-radio-filter="thuyet-minh" aria-pressed="false">Bài thuyết minh</button>
+   <button type="button" data-gdd-radio-filter="nhac-dao" aria-pressed="false">Nhạc Đạo</button>
   </div>
   <div class="gdd-radio-layout">
    <div>
     <div id="gdd-radio-list" class="gdd-radio-list" aria-live="polite"><p>Đang tải chương trình…</p></div>
-    <button type="button" class="gdd-radio-more" id="gdd-radio-more" hidden>Xem thêm số Radio</button>
+    <button type="button" class="gdd-radio-more" id="gdd-radio-more" hidden>Xem thêm bài</button>
     <p id="gdd-radio-list-status" class="gdd-radio-status" role="status"></p>
    </div>
    <div id="gdd-radio-player-box" class="gdd-radio-player-box">
-    <div id="gdd-radio-cover" class="gdd-radio-cover" aria-hidden="true">♫</div>
-    <small id="gdd-radio-kind-label" class="gdd-radio-kicker">ĐANG CHỌN CHƯƠNG TRÌNH</small>
-    <h3 id="gdd-radio-title">Mời chọn một chương trình</h3>
-    <p id="gdd-radio-summary">Chạm vào tên số Radio hoặc bản niệm muốn nghe.</p>
+    <div class="gdd-radio-now"><span id="gdd-radio-cover" class="gdd-radio-symbol" aria-hidden="true">♫</span><div><small id="gdd-radio-kind-label" class="gdd-radio-kicker">ĐANG CHỌN</small><h3 id="gdd-radio-title">Mời chọn một bài</h3></div></div>
+    <details id="gdd-radio-info" class="gdd-radio-info"><summary>Thông tin bài</summary><p id="gdd-radio-summary"></p><div id="gdd-radio-description"></div></details>
     <audio id="gdd-radio-audio" controls preload="none" aria-label="Trình nghe Âm Thanh Đại Đạo"></audio>
     <button type="button" id="gdd-radio-retry" hidden>↻ Kiểm tra lại đường dẫn MP3</button>
     <div class="gdd-radio-transport" role="group" aria-label="Điều khiển chuyển bài và lặp lại">
@@ -108,7 +124,6 @@ section.innerHTML=`
       <button type="button" id="gdd-radio-repeat-one" aria-label="Lặp lại bài đang nghe" aria-pressed="false" title="Lặp lại bài đang nghe"><span aria-hidden="true">↻</span> Lặp bài</button>
     </div>
     <p id="gdd-radio-play-status" class="gdd-radio-status" role="status" aria-live="polite"></p>
-    <div id="gdd-radio-description"></div>
    </div>
   </div>
  </div>`;
@@ -123,14 +138,6 @@ function getClient(){
  return clientPromise;
 }
 const state={category:'all',rows:[],page:0,fetching:false,refreshPending:false,selected:null,adminRows:[],adminPage:0,adminLoading:false,editing:null};
-section.addEventListener('error',event=>{
- const img=event.target;
- if(!(img instanceof HTMLImageElement))return;
- if(!img.classList.contains('gdd-radio-art')&&!img.classList.contains('gdd-radio-cover'))return;
- const span=document.createElement('span');span.className=img.className;
- span.setAttribute('aria-label','Chưa có ảnh bìa khả dụng');span.textContent='♫';
- img.replaceWith(span);
-},true);
 const player=$('#gdd-radio-audio'),list=$('#gdd-radio-list'),listStatus=$('#gdd-radio-list-status'),playStatus=$('#gdd-radio-play-status'),more=$('#gdd-radio-more');
 const previous=$('#gdd-radio-previous'),next=$('#gdd-radio-next'),repeatOne=$('#gdd-radio-repeat-one'),retry=$('#gdd-radio-retry');
 const REPEAT_KEY='gdd-radio-repeat-one-v1';
@@ -151,30 +158,20 @@ function saveProgress(){
  if(!state.selected||!Number.isFinite(player.currentTime))return;
  try{localStorage.setItem(progressKey(state.selected.id),String(Math.floor(player.currentTime)))}catch{}
 }
-function publicCover(raw){
- const src=safe(raw);if(!src)return '';
- try{
-  const u=new URL(src);
-  // Existing radio cover PNGs were not included in the approved R2 preview allowlist.
-  if(u.origin===cfg.supabaseUrl &&
-     u.pathname.startsWith('/storage/v1/object/public/dao-su-images/radio/')){
-    const filename=u.pathname.slice('/storage/v1/object/public/dao-su-images/radio/'.length);
-    const mirrors={
-      '1794152217530-5ahjax4wdl.png':'radio-hai-muoi-nam-cover.webp',
-      '1794151538679-fo6v0inu25.png':'niem-danh-kim-mau-cover.webp'
-    };
-    const file=mirrors[filename];
-    return file?new URL('./audio/'+file,location.href).href:'';
-  }
- }catch{return ''}
- return window.GDDLegacyImages?.displayUrl(src)||src;
+function radioIcon(category){
+ const paths={
+  'radio-dao-su':'<rect x="3" y="8" width="18" height="13" rx="2"/><path d="m5 8 13-5M7 12h10M7 15h4M7 18h4"/><circle cx="16.5" cy="17" r="2.5"/>',
+  'niem-danh':'<path d="M12 20c-5 0-8-3-9-8 4 0 7 2 9 5 2-3 5-5 9-5-1 5-4 8-9 8Z"/><path d="M7 13c0-4 2-7 5-10 3 3 5 6 5 10"/>',
+  'thuyet-minh':'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>',
+  'nhac-dao':'<path d="M9 18V5l12-2v13M9 9l12-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="18" cy="16" rx="3" ry="2"/>'
+ };
+ return '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[category]||paths['nhac-dao'])+'</svg>';
 }
 function itemHTML(row){
- const cover=publicCover(row.cover_url),name=esc(row.title);
- return '<button class="gdd-radio-item" type="button" data-gdd-radio-play="'+esc(row.id)+'" data-active="'+(state.selected?.id===row.id)+'">'+
- (cover?'<img class="gdd-radio-art" src="'+esc(cover)+'" loading="lazy" alt="Ảnh bìa '+name+'">':'<span class="gdd-radio-art" aria-hidden="true">♫</span>')+
- '<span class="gdd-radio-item-copy"><small>'+esc([names[row.category],row.episode_number?'Số '+row.episode_number:'',date(row.published_date)].filter(Boolean).join(' · '))+
- '</small><strong>'+name+'</strong><em>'+esc(row.summary||'Chạm để nghe chương trình.')+'</em></span></button>';
+ const name=esc(row.title);
+ return '<button class="gdd-radio-item" type="button" data-gdd-radio-play="'+esc(row.id)+'" data-active="'+(state.selected?.id===row.id)+'" aria-label="Nghe '+name+'">'+
+ '<span class="gdd-radio-symbol" aria-hidden="true">'+radioIcon(row.category)+'</span>'+
+ '<span class="gdd-radio-item-copy"><strong>'+name+'</strong></span><span class="gdd-radio-play-icon" aria-hidden="true">▶</span></button>';
 }
 function renderList(){
  list.innerHTML=state.rows.length?state.rows.map(itemHTML).join(''):'<p class="gdd-radio-status">Chưa có chương trình công khai trong chuyên mục này.</p>';
@@ -195,11 +192,8 @@ function selectProgram(row,autoplay=false){
     try{player.currentTime=saved;playStatus.textContent='Nghe tiếp từ '+Math.floor(saved/60)+' phút.'}catch{}
   },{once:true});
  }
- const cover=$('#gdd-radio-cover');
- const coverUrl=publicCover(row.cover_url);
- cover.outerHTML=coverUrl?
-  '<img id="gdd-radio-cover" class="gdd-radio-cover" src="'+esc(coverUrl)+'" alt="Ảnh bìa '+esc(row.title)+'">':
-  '<div id="gdd-radio-cover" class="gdd-radio-cover" aria-hidden="true">♫</div>';
+ $('#gdd-radio-cover').innerHTML=radioIcon(row.category);
+ $('#gdd-radio-info').open=false;
  $('#gdd-radio-kind-label').textContent=names[row.category]||'Âm Thanh Đại Đạo';
  $('#gdd-radio-title').textContent=row.title;
  $('#gdd-radio-summary').textContent=row.summary||'';
@@ -245,6 +239,10 @@ async function fetchPublic(reset=true){
     saveProgress();player.pause();player.removeAttribute('src');player.load();state.selected=null;
     $('#gdd-radio-title').textContent='Chưa có chương trình trong mục này';
     $('#gdd-radio-summary').textContent='Xin chọn chuyên mục khác để nghe.';
+    $('#gdd-radio-cover').innerHTML=radioIcon(requestedCategory);
+    $('#gdd-radio-kind-label').textContent=names[requestedCategory]||'Âm Thanh Đại Đạo';
+    $('#gdd-radio-description').replaceChildren();$('#gdd-radio-info').open=false;
+    retry.hidden=true;player.hidden=true;
     playStatus.textContent='';syncControls();
    }
   }
@@ -342,6 +340,7 @@ document.addEventListener('gdd:chant-play',()=>{if(!player.paused)player.pause()
 document.addEventListener('play',e=>{if(e.target instanceof HTMLVideoElement&&!player.paused)player.pause()},true);
 document.addEventListener('click',e=>{if(e.target.closest?.('[data-video-play],[data-open-kind="videos"]')&&!player.paused)player.pause()},true);
 fetchPublic();
+if(d1Audio)return; // The public website has no legacy admin entry in D1 mode.
 const admin=$('#admin-editor-area'),tabs=admin?.querySelector('.editor-tabs');
 if(!admin||!tabs)return;
 const navAdmin=document.createElement('div');navAdmin.className='gdd-radio-admin-nav';
@@ -352,7 +351,7 @@ panel.innerHTML=`
 <p class="gdd-radio-note">Tải MP3 tối đa 45 MB. Có thể kèm ảnh bìa, số phát hành, ngày, lời giới thiệu. Chương trình chưa công bố sẽ không hiển thị với người đọc.</p>
 <form id="gdd-radio-form">
  <label class="gdd-radio-full">Tiêu đề chương trình *<input name="title" maxlength="240" required placeholder="Radio Đạo Sử – Số 01"></label>
- <label>Loại chương trình <select name="category"><option value="radio-dao-su">Radio Đạo Sử</option><option value="niem-danh">Niệm danh hiệu</option><option value="thuyet-minh">Bài thuyết minh</option></select></label>
+ <label>Loại chương trình <select name="category"><option value="radio-dao-su">Radio Đạo Sử</option><option value="niem-danh">Niệm danh hiệu</option><option value="thuyet-minh">Bài thuyết minh</option><option value="nhac-dao">Nhạc Đạo</option></select></label>
  <label>Số phát thanh<input name="episode_number" type="number" min="1" step="1"></label>
  <label>Ngày phát hành<input name="published_date" type="date"></label>
  <label>Ảnh bìa (ảnh gốc lớn tự tối ưu dưới 6 MB)<input name="cover_file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif"></label>
