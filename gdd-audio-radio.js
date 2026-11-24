@@ -36,6 +36,10 @@ style.textContent=`
 #am-thanh-dai-dao .gdd-radio-player-box h3{font:700 19px/1.5 'Noto Serif',Georgia,serif;color:#214e42;margin:10px 0}
 #am-thanh-dai-dao .gdd-radio-player-box p{font:400 11px/1.8 'Be Vietnam Pro',sans-serif;color:#68756c}
 #am-thanh-dai-dao .gdd-radio-player-box audio{width:100%;height:51px;margin:10px 0}
+#am-thanh-dai-dao .gdd-radio-player-box audio[hidden]{display:none!important}
+#am-thanh-dai-dao #gdd-radio-retry{padding:9px 12px;border:1px solid #bba984;border-radius:7px;
+ background:#fff9eb;color:#245343;font-weight:650;cursor:pointer;margin:10px 0}
+#am-thanh-dai-dao #gdd-radio-retry[hidden]{display:none!important}
 #am-thanh-dai-dao .gdd-radio-transport{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:2px 0 11px}
 #am-thanh-dai-dao .gdd-radio-transport button{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:39px;padding:7px 4px;border:1px solid #c9bb98;border-radius:6px;background:#fcfaf2;color:#235245;cursor:pointer;font:700 10px/1.35 'Be Vietnam Pro',Arial,sans-serif;white-space:normal;text-align:center}
 #am-thanh-dai-dao .gdd-radio-transport button span{font-size:16px;line-height:1}
@@ -97,6 +101,7 @@ section.innerHTML=`
     <h3 id="gdd-radio-title">Mời chọn một chương trình</h3>
     <p id="gdd-radio-summary">Chạm vào tên số Radio hoặc bản niệm muốn nghe.</p>
     <audio id="gdd-radio-audio" controls preload="none" aria-label="Trình nghe Âm Thanh Đại Đạo"></audio>
+    <button type="button" id="gdd-radio-retry" hidden>↻ Kiểm tra lại đường dẫn MP3</button>
     <div class="gdd-radio-transport" role="group" aria-label="Điều khiển chuyển bài và lặp lại">
       <button type="button" id="gdd-radio-previous" aria-label="Nghe bài trước" title="Nghe bài trước" disabled><span aria-hidden="true">⏮</span> Bài trước</button>
       <button type="button" id="gdd-radio-next" aria-label="Nghe bài tiếp theo" title="Nghe bài tiếp theo" disabled>Bài tiếp <span aria-hidden="true">⏭</span></button>
@@ -127,7 +132,7 @@ section.addEventListener('error',event=>{
  img.replaceWith(span);
 },true);
 const player=$('#gdd-radio-audio'),list=$('#gdd-radio-list'),listStatus=$('#gdd-radio-list-status'),playStatus=$('#gdd-radio-play-status'),more=$('#gdd-radio-more');
-const previous=$('#gdd-radio-previous'),next=$('#gdd-radio-next'),repeatOne=$('#gdd-radio-repeat-one');
+const previous=$('#gdd-radio-previous'),next=$('#gdd-radio-next'),repeatOne=$('#gdd-radio-repeat-one'),retry=$('#gdd-radio-retry');
 const REPEAT_KEY='gdd-radio-repeat-one-v1';
 let repeatEnabled=false;
 try{repeatEnabled=localStorage.getItem(REPEAT_KEY)==='on'}catch{}
@@ -180,6 +185,7 @@ function selectProgram(row,autoplay=false){
  const changed=state.selected?.id!==row.id;
  if(changed){
   saveProgress();player.pause();state.selected=row;
+  player.hidden=false;retry.hidden=true;playStatus.textContent='';
   const url=safe(row.audio_url);
   if(!url){playStatus.textContent='Không có đường dẫn MP3 hợp lệ.';return}
   player.src=url;player.load();
@@ -316,12 +322,22 @@ player.addEventListener('play',()=>{
 });
 player.addEventListener('error',()=>{
  if(!state.selected)return;
+ player.hidden=true;retry.hidden=false;
  const src=safe(state.selected.audio_url);
  const oldStorage=src.startsWith(cfg.supabaseUrl+'/storage/v1/object/public/dao-su-audio/');
  playStatus.textContent=oldStorage
   ?'Tệp MP3 tại kho âm thanh cũ hiện không truy cập được. Ban Biên Tập đang kiểm tra nguồn; xin chọn bản âm thanh khác.'
   :'Tệp âm thanh hiện chưa phát được. Xin thử liên kết nguồn hoặc chương trình khác.';
 });
+retry.addEventListener('click',()=>{
+ const url=safe(state.selected?.audio_url);
+ if(!url)return;
+ retry.hidden=true;player.hidden=false;
+ playStatus.textContent='Đang kiểm tra lại tệp MP3…';
+ player.src=url;player.load();
+ player.play().catch(()=>{});
+});
+player.addEventListener('loadeddata',()=>{retry.hidden=true;player.hidden=false});
 document.addEventListener('gdd:chant-play',()=>{if(!player.paused)player.pause()});
 document.addEventListener('play',e=>{if(e.target instanceof HTMLVideoElement&&!player.paused)player.pause()},true);
 document.addEventListener('click',e=>{if(e.target.closest?.('[data-video-play],[data-open-kind="videos"]')&&!player.paused)player.pause()},true);

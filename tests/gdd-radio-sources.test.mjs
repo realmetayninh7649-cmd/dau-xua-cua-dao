@@ -33,3 +33,11 @@ test('latest radio script bypasses Safari stale cache and preserves existing Git
  assert.match(page,/gdd-audio-radio\.js\?v=20261124-r2-covers-restored-02/);
  assert.ok(statSync('audio/niem-danh-dieu-tri-kim-mau.mp3').size>3000000);
 });
+
+test('failed MP3 controls do not show broken native player on iPhone and can retry without changing stored record',()=>{
+ assert.ok(radio.includes('id="gdd-radio-retry"'));
+ assert.ok(radio.includes('player.hidden=true;retry.hidden=false'));
+ assert.ok(radio.includes('retry.addEventListener'));
+ assert.ok(radio.includes("player.src=url;player.load()"));
+ assert.ok(radio.includes('radio[hidden]{display:none!important}'));
+});
