@@ -473,47 +473,9 @@ function videoSource(raw){
       // Mỗi lần mở hồ sơ tạo một bước lịch sử, để Back trở về đúng chuyên mục.
       history.pushState({...history.state,__gddLayer:'detail'},'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`);
     }
-    // Public attachments: readers and explicitly permitted downloads, no raw R2 keys.
-    if(record.published===true&&config.publicReadProvider==='d1-staging'){
-      const content=$('#detail-content'),bodyNode=$('.detail-body',content);
-      const attached=document.createElement('section');attached.className='detail-source gdd-attached-documents';attached.hidden=true;
-      if(bodyNode)bodyNode.before(attached);else content.append(attached);
-      (async()=>{
-        const rows=[];
-        for(let offset=0;offset<=5000;offset+=100){
-          const endpoint=new URL('https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/public/attachments');
-          endpoint.searchParams.set('owner_kind',kind);endpoint.searchParams.set('owner_id',record.id);endpoint.searchParams.set('limit','100');endpoint.searchParams.set('offset',String(offset));
-          const res=await fetch(endpoint,{cache:'no-store',credentials:'omit'});
-          if(!res.ok)throw Error('Document listing unavailable');
-          const data=await res.json();
-          if(!Array.isArray(data.data))throw Error('Invalid document listing');
-          rows.push(...data.data);
-          if(!data.has_next)break;
-        }
-        if(!attached.isConnected)return;
-        const valid=rows.filter(row=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(row.asset_id||''));
-        if(!valid.length)return;
-        const heading=document.createElement('strong');heading.textContent='TÀI LIỆU ĐÍNH KÈM ('+valid.length+')';attached.append(heading);
-        for(const row of valid){
-          const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0;';
-          const name=document.createElement('span');name.style.cssText='flex:1;min-width:120px;overflow-wrap:anywhere';name.textContent=row.original_name||'Tài liệu';
-          line.append(name);
-          if(row.has_reader===undefined||Number(row.has_reader)===1){
-            const link=document.createElement('a');link.className='btn btn-outline';link.textContent='Đọc tài liệu ↗';
-            const target=new URL('r2-xem.html',new URL('.',location.href));target.searchParams.set('asset',row.asset_id);link.href=target.href;link.target='_blank';link.rel='noopener noreferrer';
-            line.append(link);
-          }
-          if(Number(row.allow_download)===1){
-            const download=document.createElement('a');download.className='btn btn-outline';
-            const ext=String(row.original_name||'').split('.').pop().toLowerCase();
-            download.textContent=ext==='pdf'?'↓ Tải PDF':ext==='doc'||ext==='docx'?'↓ Tải Word':'↓ Tải tài liệu';
-            download.href='https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/public/attachments/'+encodeURIComponent(kind)+'/'+encodeURIComponent(record.id)+'/'+encodeURIComponent(row.asset_id)+'/download';
-            download.rel='noopener noreferrer';line.append(download);
-          }
-          attached.append(line);
-        }
-        attached.hidden=false;
-      })().catch(()=>{});
+    if(record.published===true){
+      const content=$('#detail-content');
+      window.GDDPublicAttachments?.attach(content,kind,record.id,{before:$('.detail-body',content)});
     }
     // Ghi nhận khi hồ sơ/bài đã được mở thực sự; không đếm thẻ xem trước.
     window.dispatchEvent(new CustomEvent('gdd:content-open',{

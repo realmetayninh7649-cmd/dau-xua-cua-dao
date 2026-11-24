@@ -108,7 +108,7 @@
     const actions=window.__gddCalendarQuickAdmin?
       '<div class="gdd-cal-qui-vi-actions"><button type="button" data-gdd-calendar-edit="'+esc(row.id)+'">Sửa</button>'+
       '<button type="button" data-gdd-calendar-delete="'+esc(row.id)+'">Xóa</button></div>':'';
-    return '<article class="gdd-cal-qui-vi-manual">'+card+actions+'</article>';
+    return '<article class="gdd-cal-qui-vi-manual" data-calendar-attachment-id="'+esc(row.id)+'">'+card+actions+'</article>';
   }
   function dateFromButton(button){
     return {solarDate:button.dataset.solarDate,
@@ -152,6 +152,7 @@
      '<span class="gdd-cal-qui-vi-sub">Kỷ niệm trích từ Hồ sơ Chức Sắc và những ngày do quản trị viên ghi nhận.</span>'+
      events.people.map(recordHTML).join('')+events.entered.map(manualHTML).join('');
    else list.innerHTML=heading+'<p class="gdd-cal-qui-vi-empty">Chưa có kỷ niệm qui vị được ghi nhận cho ngày này.</p>';
+   list.querySelectorAll('[data-calendar-attachment-id]').forEach(node=>window.GDDPublicAttachments?.attach(node,'gdd_calendar_memorials',node.dataset.calendarAttachmentId,{photos:true,lazy:true}));
   }
   async function reload(){
    if(requesting){pendingReload=true;return;}

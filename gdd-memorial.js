@@ -241,6 +241,7 @@
         <a class="gdd-memorial-back" href="#tuong-niem">Xem các bài tưởng niệm khác ↗</a>`;
       $('#gdd-memorial-text').textContent=data.body||data.summary||'';
       if(data.sources)$('#gdd-memorial-sources').textContent='Nguồn tư liệu: '+data.sources;
+      window.GDDPublicAttachments?.attach(dialogBody,'gdd_memorials',data.id,{before:$('#gdd-memorial-text'),photos:true});
       // Thống kê công khai sau khi đã mở đúng một bài tưởng niệm (không đếm danh sách).
       window.dispatchEvent(new CustomEvent('gdd:content-open',{
         detail:{kind:'memorial',id:data.id,published:data.published===true,
