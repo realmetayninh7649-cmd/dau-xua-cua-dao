@@ -1,0 +1,30 @@
+name: "GDD - Legacy retirement audit and private verified copy"
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gdd-legacy-retirement-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gdd-legacy-retirement-audit
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install boto3==1.40.61
+      - run: python -m py_compile scripts/gdd_legacy_retirement_audit.py
+      - name: "Audit and copy missing originals privately, fail closed"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/gdd_legacy_retirement_audit.py
