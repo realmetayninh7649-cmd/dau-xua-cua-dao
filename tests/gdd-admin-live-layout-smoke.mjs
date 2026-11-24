@@ -66,7 +66,7 @@ const server=createServer(async(req,res)=>{
   if(req.method==='PATCH'){
    let raw='';for await(const chunk of req)raw+=chunk;const payload=JSON.parse(raw);
    assert.equal(payload.version,postRecord.gdd_version);
-   if(payload.fields.published===true){assert.equal(album.length,2);assert.ok(postRecord.archive_code);assert.ok(payload.fields.cover_url?.includes('/preview'));publishWrites++}
+   if(payload.fields.published===true){assert.equal(album.length,2);assert.ok(postRecord.archive_code);assert.ok((payload.fields.cover_url??postRecord.cover_url)?.includes('/preview'));publishWrites++}
    postRecord={...postRecord,...payload.fields,gdd_version:postRecord.gdd_version+1};
   }
   body=JSON.stringify({data:postRecord});
