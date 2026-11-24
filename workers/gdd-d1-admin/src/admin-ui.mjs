@@ -206,6 +206,7 @@ th{color:var(--muted);font-size:.85rem}
 .sandbox-form label{font-size:.91rem;font-weight:600}
 .sandbox-form input[type=text],.sandbox-form textarea,.sandbox-form select{font:inherit;width:100%;border:1px solid #aeb9b1;border-radius:8px;padding:10px;background:#fff;color:var(--ink)}
 .sandbox-form textarea{resize:vertical}
+.sandbox-form [hidden]{display:none!important}.sandbox-form .work-date-help{font-size:.82rem;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}.sandbox-form select{min-width:0;max-width:100%;font-size:16px}
 .sandbox-checkbox{display:flex;gap:8px;align-items:center}
 .sandbox-checkbox input{width:18px;height:18px}
 .sandbox-line{display:flex;gap:9px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -695,7 +696,7 @@ async function workWrite(path,method,payload){
 }
 // D1 WORKING EDITOR. All fields use DOM textContent/value; no unsafe HTML insertion.
 const workFields={
- people:['full_name','secular_name','branch','rank','subgroup','gender','years','birthplace','summary','biography','date_notes','sources','image_url','verified','published','sort_order','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date'],
+ people:['full_name','branch','rank','subgroup','gender','date_notes','death_lunar_day','death_lunar_month','death_lunar_leap','death_solar_date','summary','biography','sources','image_url','verified','published','sort_order'],
  posts:['title','category','summary','body','sources','person_id','cover_url','verified','published'],
  media:['title','category','caption','person_id','sources','image_url','published'],
  videos:['title','summary','body','video_url','cover_url','sources','person_id','published'],
@@ -785,7 +786,113 @@ function workInvalidateCode(){
  $('work-code-confirm').checked=false;$('work-code-assign').disabled=true;
  if(!$('work-code-area').hidden)$('work-code-preview').textContent='Phân loại đã thay đổi. Lưu thay đổi để kiểm tra lại mã dự kiến.';
 }
+
+const workDateCalendar=(()=>{
+  const INT = Math.floor, PI=Math.PI, DR=PI/180;
+  function jdFromDate(d,m,y) {
+    const a=INT((14-m)/12),yy=y+4800-a,mm=m+12*a-3;
+    let jd=d+INT((153*mm+2)/5)+365*yy+INT(yy/4)-INT(yy/100)+INT(yy/400)-32045;
+    if(jd<2299161) jd=d+INT((153*mm+2)/5)+365*yy+INT(yy/4)-32083;
+    return jd;
+  }
+  function newMoon(k) {
+    const T=k/1236.85,T2=T*T,T3=T2*T;
+    const Jd1=2415020.75933+29.53058868*k+0.0001178*T2-0.000000155*T3;
+    const Jd2=0.00033*Math.sin((166.56+132.87*T-0.009173*T2)*DR);
+    const M=359.2242+29.10535608*k-0.0000333*T2-0.00000347*T3;
+    const Mp=306.0253+385.81691806*k+0.0107306*T2+0.00001236*T3;
+    const F=21.2964+390.67050646*k-0.0016528*T2-0.00000239*T3;
+    const C1=(0.1734-0.000393*T)*Math.sin(M*DR)+0.0021*Math.sin(2*M*DR)-0.4068*Math.sin(Mp*DR)
+      +0.0161*Math.sin(2*Mp*DR)-0.0004*Math.sin(3*Mp*DR)+0.0104*Math.sin(2*F*DR)
+      -0.0051*Math.sin((M+Mp)*DR)-0.0074*Math.sin((M-Mp)*DR)+0.0004*Math.sin((2*F+M)*DR)
+      -0.0004*Math.sin((2*F-M)*DR)-0.0006*Math.sin((2*F+Mp)*DR)+0.0010*Math.sin((2*F-Mp)*DR)
+      +0.0005*Math.sin((2*Mp+M)*DR);
+    const dt=T < -11 ? 0.001+0.000839*T+0.0002261*T2-0.00000845*T3-0.000000081*T*T3
+      : -0.000278+0.000265*T+0.000262*T2;
+    return Jd1+Jd2+C1-dt;
+  }
+  const newMoonDay=(k)=>INT(newMoon(k)+0.5+7/24);
+  function sunLongitude(jdn) {
+    const T=(jdn-2451545.0)/36525,T2=T*T;
+    const M=(357.52910+35999.05030*T-0.0001559*T2-0.00000048*T*T2)*DR;
+    const L0=280.46645+36000.76983*T+0.0003032*T2;
+    const DL=(1.914600-0.004817*T-0.000014*T2)*Math.sin(M)
+      +(0.019993-0.000101*T)*Math.sin(2*M)+0.000290*Math.sin(3*M);
+    let L=(L0+DL)*DR;
+    L-=PI*2*INT(L/(PI*2));
+    return L;
+  }
+  const sunSection=day=>INT(sunLongitude(day-0.5-7/24)/PI*6);
+  function lunarMonth11(y) {
+    const off=jdFromDate(31,12,y)-2415021.076998695;
+    const k=INT(off/29.530588853);
+    let nm=newMoonDay(k);
+    if(sunSection(nm)>=9)nm=newMoonDay(k-1);
+    return nm;
+  }
+  function leapOffset(a11) {
+    const k=INT(0.5+(a11-2415021.076998695)/29.530588853);
+    let i=1,arc=sunSection(newMoonDay(k+i)),last;
+    do{last=arc;i++;arc=sunSection(newMoonDay(k+i))}while(arc!==last&&i<14);
+    return i-1;
+  }
+  function solarToLunar(d,m,y) {
+    const jd=jdFromDate(d,m,y),k=INT((jd-2415021.076998695)/29.530588853);
+    let start=newMoonDay(k+1);if(start>jd)start=newMoonDay(k);
+    let a11=lunarMonth11(y),b11=a11,lYear;
+    if(a11>=start){lYear=y;a11=lunarMonth11(y-1)}
+    else{lYear=y+1;b11=lunarMonth11(y+1)}
+    const lDay=jd-start+1,diff=INT((start-a11)/29);
+    let leap=0,lMonth=diff+11;
+    if(b11-a11>365){const off=leapOffset(a11);if(diff>=off){lMonth=diff+10;if(diff===off)leap=1}}
+    if(lMonth>12)lMonth-=12;
+    if(lMonth>=11&&diff<4)lYear--;
+    return {day:lDay,month:lMonth,year:lYear,leap:!!leap};
+  }
+
+ return {solarToLunar};
+})();
+const workCan=['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+const workChi=['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+const workYearName=y=>workCan[(y+6)%10]+' '+workChi[(y+8)%12];
+const workDateNorm=s=>String(s||'').normalize('NFD').replace(/\\p{M}/gu,'').replace(/đ/gi,'d').toLowerCase().replace(/\\s+/g,' ').trim();
+const workISO=(y,m,d)=>String(y)+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+function workParseDeath(value,fullName){
+ let raw=value.trim(),mode='lunar';
+ if(!raw)return {clear:true};
+ if(/^(?:DL|Dương lịch)\\s*[: ]\\s*/i.test(raw)){mode='solar';raw=raw.replace(/^(?:DL|Dương lịch)\\s*[: ]\\s*/i,'')}
+ else raw=raw.replace(/^(?:AL|Âm lịch)\\s*[: ]\\s*/i,'');
+ let d,m,y,leap=false;
+ const iso=/^(\\d{4})-(\\d{1,2})-(\\d{1,2})$/.exec(raw);
+ const numeric=/^(\\d{1,2})[\\/.-](\\d{1,2})\\s*(nhuận)?[\\/ .-]\\s*(\\d{4})$/i.exec(raw);
+ const traditional=/^(\\d{1,2})[\\/.-](\\d{1,2})\\s*(nhuận\\s*)?(Giáp|Ất|Bính|Đinh|Mậu|Kỷ|Canh|Tân|Nhâm|Quý)\\s+(Tý|Sửu|Dần|Mão|Thìn|Tỵ|Ngọ|Mùi|Thân|Dậu|Tuất|Hợi)(?:\\s*\\(\\s*(\\d{4})\\s*\\))?$/i.exec(raw);
+ if(iso){mode='solar';y=+iso[1];m=+iso[2];d=+iso[3]}
+ else if(numeric){d=+numeric[1];m=+numeric[2];leap=!!numeric[3];y=+numeric[4]}
+ else if(traditional&&mode==='lunar'){
+  d=+traditional[1];m=+traditional[2];leap=!!traditional[3];
+  const yearInName=String(fullName||'').match(/\\(\\s*\\d{4}\\s*[–—-]\\s*(\\d{4})\\s*\\)\\s*$/);
+  y=+(traditional[6]||yearInName?.[1]||0);
+  if(!y)throw Error('Thêm năm vào ngoặc để xác định chính xác Âm lịch.');
+  if(workDateNorm(workYearName(y))!==workDateNorm(traditional[4]+' '+traditional[5]))throw Error('Năm và Can Chi không khớp.');
+ }else throw Error('Nhập AL: 10/12 Bính Ngọ (2026), AL: 10/12/2026 hoặc DL: 17/01/2027.');
+ if(y<1800||y>2100||m<1||m>12||d<1||d>(mode==='solar'?31:30))throw Error('Ngày hoặc năm không hợp lệ (1800–2100).');
+ const solarToLunar=workDateCalendar.solarToLunar;
+ if(mode==='solar'){
+  if(leap)throw Error('Dương lịch không có tháng nhuận kiểu Âm lịch.');
+  const dt=new Date(Date.UTC(y,m-1,d));
+  if(dt.getUTCDate()!==d||dt.getUTCMonth()!==m-1)throw Error('Ngày Dương lịch không hợp lệ.');
+  const l=solarToLunar(d,m,y);return {...l,solar:workISO(y,m,d)};
+ }
+ for(let t=Date.UTC(y,0,1);t<Date.UTC(y+1,3,1);t+=86400000){
+  const dt=new Date(t),l=solarToLunar(dt.getUTCDate(),dt.getUTCMonth()+1,dt.getUTCFullYear());
+  if(l.year===y&&l.month===m&&l.day===d&&l.leap===leap)return {...l,solar:workISO(dt.getUTCFullYear(),dt.getUTCMonth()+1,dt.getUTCDate())};
+ }
+ throw Error('Ngày Âm lịch không tồn tại; kiểm tra ngày 29/30 và tháng nhuận.');
+}
+let workDeathValidate=null;
+
 function workBuild(kind,record){
+ workDeathValidate=null;
  workFieldInputs.clear();
  const fields=$('work-fields');fields.replaceChildren();
  for(const field of workFields[kind]||[]){
@@ -820,28 +927,73 @@ function workBuild(kind,record){
  }
  if(kind==='people'){
   const branch=workFieldInputs.get('branch'),rank=workFieldInputs.get('rank'),group=workFieldInputs.get('subgroup');
-  const rankPicker=document.createElement('select');rankPicker.id='work-rank-picker';
-  rankPicker.setAttribute('aria-label','Chọn Phẩm vị');rank.before(rankPicker);
-  const rankLabel=fields.querySelector('label[for="work-field-rank"]');if(rankLabel)rankLabel.htmlFor=rankPicker.id;
-  rank.placeholder='Nhập nguyên phẩm vị theo tư liệu';
-  const CUSTOM='__gdd_custom_rank__';
-  function fillRank(value){
-   const choices=workPersonRanks[branch.value]||[];
-   workSelectFill(rankPicker,choices,'','Chọn Phẩm vị');
-   const custom=document.createElement('option');custom.value=CUSTOM;custom.textContent='Khác / Tự nhập Phẩm vị…';rankPicker.append(custom);
-   rankPicker.value=value?(choices.includes(value)?value:CUSTOM):'';
-   rank.value=value||'';rank.hidden=rankPicker.value!==CUSTOM;
+  const labelFor=field=>fields.querySelector('label[for="work-field-'+field+'"]');
+  const branchLabel=labelFor('branch'),rankLabel=labelFor('rank'),groupLabel=labelFor('subgroup');
+  const picker=document.createElement('select');picker.id='work-branch-rank-picker';
+  const label=document.createElement('label');label.htmlFor=picker.id;label.textContent='Cơ quan / Phẩm vị';
+  branchLabel.before(label,picker);
+  const add=(parent,value,title)=>{const o=document.createElement('option');o.value=value;o.textContent=title;parent.append(o);};
+  add(picker,'','Chọn Cơ quan và Phẩm vị');
+  const entries=[];
+  for(const [b,ranks] of Object.entries(workPersonRanks)){
+   if(!ranks.length)continue;
+   const optgroup=document.createElement('optgroup');optgroup.label=b;
+   for(const r of ranks){entries.push({branch:b,rank:r});add(optgroup,String(entries.length-1),b+' – '+r)}
+   picker.append(optgroup);
   }
-  fillRank(record?.rank||'');
-  branch.addEventListener('change',()=>{
-   fillRank('');workSelectFill(group,workPersonGroups[branch.value]||[],'','Chưa phân nhóm');workInvalidateCode();
+  const CUSTOM='custom';add(picker,CUSTOM,'Khác / Tự nhập Phẩm vị…');
+  const found=entries.findIndex(e=>e.branch===branch.value&&e.rank===rank.value);
+  picker.value=found>=0?String(found):(branch.value||rank.value?CUSTOM:'');
+  rank.placeholder='Nhập nguyên phẩm vị theo tư liệu';
+  function toggleCustom(){const show=picker.value===CUSTOM;branch.hidden=branchLabel.hidden=rank.hidden=rankLabel.hidden=!show}
+  function toggleGroup(){const show=(workPersonGroups[branch.value]||[]).length>0||!!group.value;group.hidden=groupLabel.hidden=!show}
+  function refreshGroup(previous){
+   const groups=workPersonGroups[branch.value]||[];
+   workSelectFill(group,groups,groups.includes(previous)?previous:'','Chưa phân nhóm');
+   toggleGroup();
+  }
+  toggleCustom();toggleGroup();
+  picker.addEventListener('change',()=>{
+   const prevBranch=branch.value,prevGroup=group.value;
+   if(picker.value!==''){
+    if(picker.value!==CUSTOM){
+     const choice=entries[Number(picker.value)];if(!choice)return;
+     branch.value=choice.branch;rank.value=choice.rank;
+    }
+   }else{branch.value='';rank.value=''}
+   if(branch.value!==prevBranch)refreshGroup(prevGroup);
+   toggleCustom();workInvalidateCode();
   });
-  rankPicker.addEventListener('change',()=>{
-   rank.hidden=rankPicker.value!==CUSTOM;rank.value=rankPicker.value===CUSTOM?'':rankPicker.value;
-   workInvalidateCode();
-  });
+  branch.addEventListener('change',()=>{refreshGroup('');workInvalidateCode()});
   rank.addEventListener('input',workInvalidateCode);group.addEventListener('change',workInvalidateCode);
   workFieldInputs.get('full_name').addEventListener('input',workInvalidateCode);
+  // Original field values remain untouched until the single date input is edited.
+  const notes=workFieldInputs.get('date_notes'),day=workFieldInputs.get('death_lunar_day'),month=workFieldInputs.get('death_lunar_month'),leap=workFieldInputs.get('death_lunar_leap'),solar=workFieldInputs.get('death_solar_date');
+  const dateInput=document.createElement('input');dateInput.type='text';dateInput.id='work-death-date';dateInput.placeholder='AL: 10/12 Bính Ngọ (2026)';dateInput.autocomplete='off';
+  const dateLabel=labelFor('date_notes');dateLabel.textContent='Ngày qui vị (Âm / Dương lịch)';dateLabel.htmlFor=dateInput.id;
+  notes.before(dateInput);notes.hidden=true;
+  for(const key of ['death_lunar_day','death_lunar_month','death_solar_date']){workFieldInputs.get(key).hidden=true;labelFor(key).hidden=true}
+  leap.parentElement.hidden=true;
+  const help=document.createElement('small');help.className='work-date-help';help.setAttribute('role','status');dateInput.after(help);
+  const initial=notes.value|| (solar.value?'DL: '+solar.value:'');
+  dateInput.value=initial;
+  const oldValues={notes:notes.value,day:day.value,month:month.value,leap:leap.checked,solar:solar.value};
+  const guide='Nhập AL: ngày/tháng năm Can Chi (năm số) hoặc DL: ngày/tháng/năm. Lịch Việt Nam UTC+7.';
+  function restoreDate(){notes.value=oldValues.notes;day.value=oldValues.day;month.value=oldValues.month;leap.checked=oldValues.leap;solar.value=oldValues.solar}
+  function savedDateText(){return [oldValues.day&&oldValues.month?'Âm lịch: '+oldValues.day+'/'+oldValues.month+(oldValues.leap?' nhuận':''):'',oldValues.solar?'Dương lịch: '+oldValues.solar.split('-').reverse().join('/'):''].filter(Boolean).join(' · ')}
+  function recalc(){
+   if(dateInput.value===initial){restoreDate();help.textContent=savedDateText()||guide;return true}
+   try{
+    const p=workParseDeath(dateInput.value,workFieldInputs.get('full_name').value);
+    if(p.clear){notes.value='';day.value='';month.value='';leap.checked=false;solar.value='';help.textContent='Đã bỏ ngày qui vị; lưu thay đổi để xác nhận.';return true}
+    notes.value=dateInput.value.trim();day.value=String(p.day);month.value=String(p.month);leap.checked=p.leap;solar.value=p.solar;
+    help.textContent='Âm lịch: '+p.day+'/'+p.month+(p.leap?' nhuận':'')+' '+workYearName(p.year)+' ('+p.year+') · Dương lịch: '+p.solar.split('-').reverse().join('/');
+    return true;
+   }catch(e){restoreDate();help.textContent='Chưa đổi được: '+e.message;return false}
+  }
+  dateInput.addEventListener('input',recalc);dateInput.addEventListener('change',recalc);
+  workFieldInputs.get('full_name').addEventListener('input',()=>{if(dateInput.value!==initial)recalc()});
+  workDeathValidate=recalc;recalc();
  }
  if(kind==='documents')workFieldInputs.get('subfolder_code').addEventListener('change',workInvalidateCode);
 }
@@ -969,6 +1121,7 @@ async function workSave(){
  const submit=$('work-save');submit.disabled=true;
  const selected={...workCurrent};
  try{
+  if(selected.kind==='people'&&workDeathValidate&&!workDeathValidate())throw Error('Xin kiểm tra ngày qui vị trước khi lưu.');
   const fields=workChanged();
   const isCreate=!selected.id;
   if(!Object.keys(fields).length)throw Error('Chưa có nội dung thay đổi');
