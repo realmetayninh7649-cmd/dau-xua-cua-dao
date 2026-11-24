@@ -35,6 +35,35 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: "Bundle exact pinned MP3 encoder and test actual encoding"
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp -d)
+          npm pack lamejs@1.2.1 --ignore-scripts --pack-destination "$tmp" --registry https://registry.npmjs.org
+          tar -xzf "$tmp/lamejs-1.2.1.tgz" -C "$tmp" package/lame.min.js package/LICENSE
+          node --input-type=module - "$tmp/package" <<'JS'
+          import fs from 'node:fs';
+          import vm from 'node:vm';
+          const dir=process.argv[2];
+          const js=fs.readFileSync(dir+'/lame.min.js','utf8');
+          const license=fs.readFileSync(dir+'/LICENSE','utf8');
+          const sandbox={console};
+          vm.runInNewContext(js,sandbox);
+          for(const [ch,rate,kbps] of [[1,32000,64],[2,44100,96],[2,44100,128]]){
+            const encoder=new sandbox.lamejs.Mp3Encoder(ch,rate,kbps);
+            let size=0;
+            for(let i=0;i<rate;i+=1152){
+              const pcm=Int16Array.from({length:Math.min(1152,rate-i)},(_,j)=>Math.round(Math.sin((i+j)*2*Math.PI*440/rate)*5000));
+              const bytes=ch===2?encoder.encodeBuffer(pcm,pcm):encoder.encodeBuffer(pcm);
+              size+=bytes.length;
+            }
+            size+=encoder.flush().length;
+            if(size<kbps*1000/8*.9||size>kbps*1000/8*1.2)throw Error('Unexpected encoder size: '+size);
+            console.log('ENCODER_PROFILE_PASS',ch,rate,kbps,size);
+          }
+          fs.writeFileSync('workers/gdd-d1-admin/src/audio-encoder-vendor.mjs','export const LAME_JS='+JSON.stringify(js)+';\nexport const LAME_LICENSE='+JSON.stringify(license)+';\n');
+          JS
       - name: "An toan: D1 lam viec va R2 Access, bao ve hop thu dong gop"
         shell: bash
         run: |
@@ -51,6 +80,8 @@ jobs:
           node --check workers/gdd-d1-admin/src/photo-album-ui.mjs
           node --check workers/gdd-d1-admin/src/radio-recovery.mjs
           node --check workers/gdd-d1-admin/src/audio-upload.mjs
+          node --check workers/gdd-d1-admin/src/audio-optimizer-ui.mjs
+          node --check workers/gdd-d1-admin/src/audio-encoder-vendor.mjs
           python3 - <<'PY'
           import json,pathlib,re
           root=pathlib.Path('workers/gdd-d1-admin')
