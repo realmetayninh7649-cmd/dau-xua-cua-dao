@@ -46,8 +46,9 @@ function render(){
  const list=$('work-photo-queue');list.replaceChildren();
  for(let i=0;i<queue.length;i++){
   const item=queue[i],li=document.createElement('li');
-  const picture=document.createElement('img');picture.loading='lazy';picture.decoding='async';picture.src=item.previewUrl;picture.alt='Ảnh '+(i+1);
+  const picture=document.createElement('img');picture.loading='lazy';picture.decoding='async';picture.alt='Ảnh '+(i+1);picture.hidden=!item.showPreview;if(item.showPreview)picture.src=item.previewUrl;
   const body=document.createElement('div');
+  if(!item.showPreview){const view=document.createElement('button');view.type='button';view.textContent='Xem ảnh đã chọn';view.addEventListener('click',()=>{item.showPreview=true;render()});body.append(view)}
   label(body,'div',(i+1)+'. '+item.file.name+' ('+(item.file.size/1048576).toFixed(1)+' MB)','photo-filename');
   const captionLabel=label(body,'label','Chú thích ảnh '+(i+1));
   const input=document.createElement('input');input.type='text';input.maxLength=600;
