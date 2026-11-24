@@ -5,7 +5,7 @@ const ROUTE=/^\/api\/v1\/admin\/work\/(people|posts|media|videos|obituaries|docu
 const MIME={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex,nofollow'};
 function reply(data,status=200){return new Response(JSON.stringify(data),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}})}
-const fields='asset_id,original_name,original_bytes,created_at,public_view,preview_ready,allow_download';
+const fields='asset_id,original_name,original_bytes,created_at,public_view,preview_ready,allow_download,view_source';
 export async function handleAttachments(request,env,path){
  const match=ROUTE.exec(path);
  if(!match||!ID.test(match[2])||(match[3]&&!ID.test(match[3])))return reply({error:'invalid_attachment_route'},404);
@@ -68,7 +68,7 @@ export async function handleAttachments(request,env,path){
   if(!asset||asset.media_kind!=='document'||!/\.(pdf|doc|docx)$/i.test(asset.original_name||''))return reply({error:'invalid_document'},409);
   if(asset.record_id===id&&asset.record_kind===kind&&asset.role==='attachment')return reply({data:{asset_id:asset.asset_id},already_attached:true});
   if(asset.record_id||asset.record_kind||asset.role!=='vault'||Number(asset.public_view)!==0)return reply({error:'asset_already_linked_or_published'},409);
-  const result=await env.DB.prepare("UPDATE gdd_r2_assets SET record_kind=?,record_id=?,role='attachment' WHERE asset_id=? AND owner_id=? AND record_id IS NULL AND record_kind IS NULL AND role='vault' AND media_kind='document' AND public_view=0").bind(kind,id,input.asset_id,owner).run();
+  const result=await env.DB.prepare("UPDATE gdd_r2_assets SET record_kind=?,record_id=?,role='attachment',view_source=CASE WHEN lower(original_name) LIKE '%.pdf' THEN 'single_pdf' ELSE view_source END WHERE asset_id=? AND owner_id=? AND record_id IS NULL AND record_kind IS NULL AND role='vault' AND media_kind='document' AND public_view=0").bind(kind,id,input.asset_id,owner).run();
   const confirmed=await env.DB.prepare('SELECT '+fields+' FROM gdd_r2_assets'+where+' AND asset_id=? LIMIT 1').bind(kind,id,owner,input.asset_id).first();
   if(!confirmed)return reply({error:'attachment_not_confirmed'},409);
   return reply({data:confirmed,attached:true},201);

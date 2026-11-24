@@ -49,7 +49,7 @@ export const ADMIN_HTML=`<!doctype html>
 <h4>Tài liệu đính kèm</h4>
 <label for="work-attachment-files"><strong>Chọn nhiều tệp tài liệu</strong></label>
 <input id="work-attachment-files" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
-<small>PDF, Word · tối đa 45 MB/tệp. Tự xử lý khi đăng bài.</small><details class="admin-help"><summary>Lưu ý định dạng và quyền tải</summary><small>PDF: bản đọc từng trang. DOCX: bản đọc chữ (không giữ ảnh và bố cục). DOC: chỉ tải nếu được cấp quyền. Tệp gốc mặc định riêng tư.</small></details>
+<small>PDF, Word · tối đa 45 MB/tệp. Tự xử lý khi đăng bài.</small><details class="admin-help"><summary>Lưu ý định dạng và quyền tải</summary><small>PDF đính kèm mới: chỉ một tệp giữ nguyên chất lượng, xem và tải cùng tệp khi bài công bố và được phép tải. DOCX: bản đọc chữ (không giữ ảnh và bố cục). DOC: chỉ tải nếu được cấp quyền. Tệp gốc mặc định riêng tư.</small></details>
 <ul id="work-attachment-queue" class="records"></ul>
 <p id="work-attachment-status" role="status" aria-live="polite"></p>
 <details><summary>Tài liệu đã gắn vào bài <span id="work-attachment-count">· 0 tệp</span></summary><ul id="work-attachment-existing" class="records"></ul></details>

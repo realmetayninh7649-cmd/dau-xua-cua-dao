@@ -218,7 +218,7 @@ function permissionChoice(li,checked,onChange,disabled=false){
  const wrap=document.createElement('label');wrap.style.cssText='display:flex;align-items:center;gap:8px;flex-basis:100%;font-size:.86rem;';
  const input=document.createElement('input');input.type='checkbox';input.checked=checked;input.disabled=disabled||busy||workBusy;input.style.cssText='width:auto;min-width:0;';
  input.addEventListener('change',()=>onChange(input.checked));
- wrap.append(input,document.createTextNode('Cho phép khách tải tệp gốc'));li.append(wrap);
+ wrap.append(input,document.createTextNode('Cho phép khách tải tệp gốc / PDF một bản (xem và tải cùng tệp)'));li.append(wrap);
 }
 function renderDocuments(){
  const list=$('work-attachment-queue');list.replaceChildren();
@@ -239,7 +239,7 @@ function selectDocuments(){
  for(const file of files){
   if(!/\.(pdf|doc|docx)$/i.test(file.name)||file.size<1||file.size>documentLimit){rejected++;continue}
   const key=[file.name,file.size,file.lastModified].join('|');if(known.has(key))continue;
-  known.add(key);documents.push({file,assetId:null,done:false,error:'',allowDownload:false});added++;
+  known.add(key);documents.push({file,assetId:null,done:false,error:'',allowDownload:/\.pdf$/i.test(file.name)});added++;
  }
  $('work-attachment-files').value='';
  docStatus('Đã chọn '+added+' tài liệu mới. '+(rejected?'Bỏ qua '+rejected+' tệp không hợp lệ. ':'')+'Tự tải khi đăng bài.');
@@ -267,9 +267,9 @@ async function reloadDocuments(){
   for(const row of rows){
    const li=document.createElement('li');li.className='sandbox-line';
    label(li,'span',row.original_name+' · '+(Number(row.original_bytes)/1048576).toFixed(1)+' MB');
-   const a=document.createElement('a');a.textContent='Tải tệp gốc (quản trị)';a.href=base+'/'+encodeURIComponent(row.asset_id)+'/download';li.append(a);
+   const a=document.createElement('a');a.textContent=row.view_source==='single_pdf'?'Tải PDF đã lưu (quản trị)':'Tải tệp gốc (quản trị)';a.href=base+'/'+encodeURIComponent(row.asset_id)+'/download';li.append(a);
    const released=Number(row.public_view)===1&&Number(row.preview_ready)===1;
-   label(li,'small',released?'Đã có bản đọc công khai':/\.doc$/i.test(row.original_name||'')?'Bản gốc riêng tư · Word .doc cần chuyển sang PDF hoặc DOCX để độc giả xem':'Chưa có bản đọc · tự xử lý khi Đăng bài / Cập nhật bài');
+   label(li,'small',row.view_source==='single_pdf'?'PDF một bản · xem và tải sau khi công bố và cho phép tải':released?'Đã có bản đọc công khai':/\.doc$/i.test(row.original_name||'')?'Bản gốc riêng tư · Word .doc cần chuyển sang PDF hoặc DOCX để độc giả xem':'Chưa có bản đọc · tự xử lý khi Đăng bài / Cập nhật bài');
    permissionChoice(li,downloadChanges.has(row.asset_id)?downloadChanges.get(row.asset_id):Number(row.allow_download)===1,value=>{downloadChanges.set(row.asset_id,value);docStatus('Quyền tải sẽ được lưu khi nhấn Cập nhật bài / Đăng bài.')});
    list.append(li);
   }
@@ -358,7 +358,8 @@ async function prepareReaders(record,notify=()=>{}){
  if(context.kind!==record.kind||context.id!==record.id)throw Error('Hồ sơ đính kèm không khớp');
  const current=context,rows=await listDocuments(current),plans=[];
  for(const row of rows){
-  if(Number(row.public_view)===1&&Number(row.preview_ready)===1)continue;
+  if(row.view_source==='single_pdf'&&/\.pdf$/i.test(row.original_name||''))continue;
+   if(Number(row.public_view)===1&&Number(row.preview_ready)===1)continue;
   if(!/\.(pdf|docx)$/i.test(row.original_name||''))continue;
   try{plans.push(await prepareDocument(row,current,message=>{const text=row.original_name+': '+message;docStatus(text);notify(text)}))}
   catch(e){throw Error(row.original_name+': '+e.message+' · Bản gốc đã lưu; nhấn Đăng bài để thử lại.')}
@@ -392,7 +393,7 @@ async function uploadDocuments(record,notify=()=>{}){
     item.done=true;item.error='';
    }catch(e){item.error=String(e.message||'Lỗi');throw Error('Tài liệu '+(i+1)+': '+item.error)}
   }
-  await reloadDocuments();docStatus('Đã gắn đủ tài liệu. Bản gốc riêng tư.');
+  await reloadDocuments();docStatus('Đã gắn đủ tài liệu. PDF mới chỉ lưu một tệp; Word vẫn xử lý như trước.');
  }finally{busy=false;renderDocuments()}
 }
 async function saveDownloadPermissions(record,allow,notify=()=>{}){
@@ -428,7 +429,7 @@ window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.s
  if(!record||!documentKinds.has(record.kind))return;
  context={kind:record.kind,id:record.id};
  refresh();
- docStatus('PDF/DOCX tự tạo bản đọc khi Đăng bài hoặc Cập nhật bài. Bản gốc giữ riêng.');
+ docStatus('PDF mới chỉ lưu một tệp, không tạo ảnh trang; DOCX giữ cơ chế bản đọc cũ. PDF giữ nguyên chất lượng.');
  if(record.id)reloadDocuments();
  if(supportedKinds.has(record.kind)){if(record.id){status('Bạn có thể chọn nhiều ảnh và thêm chú thích.');reloadAlbum()}
  else status('Chọn ảnh ngay; hệ thống sẽ tự lưu hồ sơ và gắn ảnh khi đăng bài.');}

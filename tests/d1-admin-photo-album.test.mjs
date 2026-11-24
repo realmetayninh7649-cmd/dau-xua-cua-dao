@@ -99,3 +99,9 @@ test('gallery covers and albums accept images above 24 MiB without loosening oth
  assert.ok(ADMIN_JS.includes('imageError(file,kind)'));
  assert.ok(ADMIN_JS.includes('uploadCover(item.file,progress,item,kind)'));
 });
+
+test('new single-file PDF skips page derivatives and enables download by default',()=>{
+ assert.ok(PHOTO_JS.includes("row.view_source==='single_pdf'"));
+ assert.ok(PHOTO_JS.includes("allowDownload:/\\.pdf$/i.test(file.name)"));
+ assert.ok(PHOTO_JS.includes("if(row.view_source==='single_pdf'"));
+});
