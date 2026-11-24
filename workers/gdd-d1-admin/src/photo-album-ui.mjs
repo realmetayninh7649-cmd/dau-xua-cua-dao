@@ -8,12 +8,16 @@ const $=id=>document.getElementById(id);
 const supported=new Set(['image/jpeg','image/png','image/webp']);
 const supportedKinds=new Set(['people','posts','media','videos','obituaries','documents']);
 const limits={each:24*1048576};
+const documentKinds=new Set([...supportedKinds,'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials']);
+const documentLimit=45*1048576;
+let documents=[];
 let queue=[],context=null,busy=false,loadId=0;
 function status(message){$('work-photo-status').textContent=message}
 function clear(){
  loadId++;
  for(const item of queue)if(item.previewUrl)URL.revokeObjectURL(item.previewUrl);
- queue=[];context=null;busy=false;
+ queue=[];documents=[];context=null;busy=false;
+ $('work-attachment-files').value='';$('work-attachment-queue').replaceChildren();$('work-attachment-existing').replaceChildren();$('work-attachment-count').textContent=' · 0 tệp';$('work-attachment-status').textContent='';$('work-attachment-panel').hidden=true;
  $('work-photo-files').value='';
  $('work-photo-queue').replaceChildren();$('work-photo-album').replaceChildren();
  $('work-photo-existing').open=false;$('work-photo-count').textContent=' · 0 ảnh';
@@ -22,6 +26,9 @@ function clear(){
 function refresh(){
  const allowed=!!context&&supportedKinds.has(context.kind);
  $('work-photo-panel').hidden=!allowed;
+ const docsAllowed=!!context&&documentKinds.has(context.kind);
+ $('work-attachment-panel').hidden=!docsAllowed;
+ $('work-attachment-files').disabled=busy||workBusy;
  if(!allowed)return;
  $('work-photo-files').disabled=busy||workBusy;
 }
@@ -202,8 +209,74 @@ async function uploadBatch(record,notify=()=>{}){
   else throw Error('Còn ảnh chưa tải xong');
  }finally{if(context===activeContext){busy=false;render()}}
 }
+function docStatus(message){$('work-attachment-status').textContent=message}
+function renderDocuments(){
+ const list=$('work-attachment-queue');list.replaceChildren();
+ for(const item of documents){
+  const li=document.createElement('li');li.className='sandbox-line';
+  label(li,'span',item.file.name+' · '+(item.file.size/1048576).toFixed(1)+' MB · '+(item.done?'Đã gắn':item.error||'Chờ tải'));
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Bỏ chọn';remove.disabled=busy||workBusy||item.done||!!item.assetId;
+  remove.addEventListener('click',()=>{documents=documents.filter(x=>x!==item);renderDocuments()});
+  li.append(remove);list.append(li);
+ }
+ refresh();
+}
+function selectDocuments(){
+ if(!context||busy||workBusy)return;
+ const files=Array.from($('work-attachment-files').files||[]);
+ const known=new Set(documents.map(x=>[x.file.name,x.file.size,x.file.lastModified].join('|')));
+ let added=0,rejected=0;
+ for(const file of files){
+  if(!/\.(pdf|doc|docx)$/i.test(file.name)||file.size<1||file.size>documentLimit){rejected++;continue}
+  const key=[file.name,file.size,file.lastModified].join('|');if(known.has(key))continue;
+  known.add(key);documents.push({file,assetId:null,done:false,error:''});added++;
+ }
+ $('work-attachment-files').value='';
+ docStatus('Đã chọn '+added+' tài liệu mới. '+(rejected?'Bỏ qua '+rejected+' tệp không hợp lệ. ':'')+'Tự tải khi đăng bài.');
+ renderDocuments();
+}
+async function reloadDocuments(){
+ const current=context;if(!current?.id)return;
+ const list=$('work-attachment-existing');list.replaceChildren();
+ try{
+  const base='/api/v1/admin/work/'+current.kind+'/'+current.id+'/attachments';
+  const rows=[];
+  for(let offset=0;;offset+=100){
+   const data=await api(base+'?limit=100&offset='+offset);
+   if(context!==current)return;
+   if(!Array.isArray(data.data))throw Error('Danh sách tài liệu không hợp lệ');
+   rows.push(...data.data);
+   if(!data.has_next)break;
+  }
+  $('work-attachment-count').textContent=' · '+rows.length+' tệp';
+  for(const row of rows){
+   const li=document.createElement('li');li.className='sandbox-line';
+   label(li,'span',row.original_name+' · '+(Number(row.original_bytes)/1048576).toFixed(1)+' MB');
+   const a=document.createElement('a');a.textContent='Tải tệp';a.href=base+'/'+encodeURIComponent(row.asset_id)+'/download';li.append(a);list.append(li);
+  }
+ }catch(e){if(context===current)docStatus('Chưa đọc được tài liệu: '+e.message)}
+}
+async function uploadDocuments(record,notify=()=>{}){
+ if(!context||context.kind!==record.kind||!record.id||context.id&&context.id!==record.id)throw Error('Không đúng hồ sơ để gắn tài liệu');
+ context.id=record.id;if(busy)throw Error('Đang tải tệp');busy=true;renderDocuments();
+ try{
+  for(let i=0;i<documents.length;i++){
+   const item=documents[i];if(item.done)continue;
+   const progress=message=>{const text='Tài liệu '+(i+1)+'/'+documents.length+': '+message;docStatus(text);notify(text)};
+   try{
+    if(!item.assetId)item.assetId=await archiveOriginal(item.file,progress);
+    progress('Gắn tệp vào hồ sơ...');
+    const saved=await workWrite('/api/v1/admin/work/'+record.kind+'/'+record.id+'/attachments','POST',{asset_id:item.assetId});
+    if(saved?.data?.asset_id!==item.assetId)throw Error('Chưa xác nhận liên kết tài liệu');
+    item.done=true;item.error='';
+   }catch(e){item.error=String(e.message||'Lỗi');throw Error('Tài liệu '+(i+1)+': '+item.error)}
+  }
+  await reloadDocuments();docStatus('Đã gắn đủ tài liệu. Bản gốc riêng tư.');
+ }finally{busy=false;renderDocuments()}
+}
+$('work-attachment-files').addEventListener('change',selectDocuments);
 $('work-photo-files').addEventListener('change',select);
-window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done),bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={}){
+window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={}){
  if(!supported.has(file.type)||file.size<1||file.size>limits.each)throw Error('Chọn JPEG/PNG/WebP không quá 24 MB.');
  item.file=file;
  if(!item.assetId)item.assetId=await archiveOriginal(file,notify);
@@ -219,10 +292,12 @@ window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.s
  return 'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+item.assetId+'/preview';
 },show(record){
  clear();
- if(!record||!supportedKinds.has(record.kind))return;
+ if(!record||!documentKinds.has(record.kind))return;
  context={kind:record.kind,id:record.id};
  refresh();
- if(record.id){status('Bạn có thể chọn nhiều ảnh và thêm chú thích.');reloadAlbum()}
- else status('Chọn ảnh ngay; hệ thống sẽ tự lưu hồ sơ và gắn ảnh khi đăng bài.');
+ docStatus('Chọn PDF hoặc Word; tệp sẽ được lưu riêng tư khi đăng bài.');
+ if(record.id)reloadDocuments();
+ if(supportedKinds.has(record.kind)){if(record.id){status('Bạn có thể chọn nhiều ảnh và thêm chú thích.');reloadAlbum()}
+ else status('Chọn ảnh ngay; hệ thống sẽ tự lưu hồ sơ và gắn ảnh khi đăng bài.');}
 }};
 })();`;

@@ -28,3 +28,13 @@ test('private original and explicit preview approval, no silent public writes or
  assert.ok(PHOTO_JS.includes("uploadCover"));
  assert.ok(!PHOTO_JS.includes("images.slice(-50)"));
 });
+
+test('private document attachments are integrated into all editorial types',()=>{
+ for(const id of ['work-attachment-panel','work-attachment-files','work-attachment-queue','work-attachment-existing'])assert.ok(ADMIN_HTML.includes('id="'+id+'"'),id);
+ assert.ok(ADMIN_HTML.includes('.pdf,.doc,.docx'));
+ assert.ok(PHOTO_JS.includes("'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials'"));
+ assert.ok(ADMIN_JS.includes('uploadDocuments(active,progress)'));
+ assert.ok(PHOTO_JS.includes('item.assetId=await archiveOriginal'));
+ assert.doesNotThrow(()=>new Script(ADMIN_JS));
+ assert.doesNotThrow(()=>new Script(PHOTO_JS));
+});

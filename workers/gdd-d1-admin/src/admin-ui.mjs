@@ -45,7 +45,16 @@ export const ADMIN_HTML=`<!doctype html>
 <p id="work-photo-status" role="status" aria-live="polite">Chọn ảnh đính kèm, hệ thống tự tải khi đăng bài.</p>
 <details id="work-photo-existing"><summary>Bộ ảnh đã gắn vào bài <span id="work-photo-count">· 0 ảnh</span></summary><div id="work-photo-album" class="work-photo-grid"></div></details>
 </div>
-<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Đăng bài sẽ tự tải ảnh, cấp mã (nếu cần) và hiển thị bản xem. Bản gốc luôn được giữ riêng.</small></div>
+<div id="work-attachment-panel" class="work-photo-panel" hidden>
+<h4>Đính kèm tài liệu PDF / Word</h4>
+<label for="work-attachment-files"><strong>Chọn nhiều tệp tài liệu</strong></label>
+<input id="work-attachment-files" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
+<small>PDF / DOC / DOCX · Tối đa 45 MB/tệp · Bản gốc riêng tư, chỉ quản trị viên tải được.</small>
+<ul id="work-attachment-queue" class="records"></ul>
+<p id="work-attachment-status" role="status" aria-live="polite"></p>
+<details><summary>Tài liệu đã gắn vào bài <span id="work-attachment-count">· 0 tệp</span></summary><ul id="work-attachment-existing" class="records"></ul></details>
+</div>
+<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Đăng bài sẽ tự tải ảnh và tài liệu đính kèm, cấp mã (nếu cần) và hiển thị bản xem ảnh. Tài liệu gốc chỉ dành cho quản trị viên.</small></div>
 <details class="work-history"><summary>Lịch sử chỉnh sửa và phục hồi</summary><ul class="records" id="work-revisions"></ul></details>
 </div>
 <details id="work-list-details" class="work-record-panel">
@@ -1263,6 +1272,7 @@ async function workSave(mode='draft'){
    workFieldInputs.get(field).value=url;
   }
   if(window.GDDPhotoAlbum?.hasPending())await window.GDDPhotoAlbum.uploadBatch(active,progress);
+  if(window.GDDPhotoAlbum?.hasDocuments())await window.GDDPhotoAlbum.uploadDocuments(active,progress);
   const finalFields=workChanged();delete finalFields.published;
   if(!active.record.published)finalFields.published=true;
   progress('Đang đưa bài lên website…');

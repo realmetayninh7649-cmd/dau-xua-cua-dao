@@ -15,6 +15,7 @@ import {handleWorkingEditor} from './working-editor.mjs';
 import {reviewContribution} from './contribution-review.mjs';
 import {handleManagedR2} from './r2-managed.mjs';
 import {handleAlbumPhotos} from './working-photo-album.mjs';
+import {handleAttachments} from './working-attachments.mjs';
 import SOURCE_BASELINE from '../../gdd-d1/source-row-counts-20261123.json' with {type:'json'};
 import SOURCE_AUDIT from '../../gdd-d1/source-integrity-audit-20261123.json' with {type:'json'};
 import R2_BASELINE from '../../gdd-d1/r2-object-inventory-snapshot-20261123.json' with {type:'json'};
@@ -196,6 +197,7 @@ export default {
          return json({error:'csrf_or_content_type_rejected'},403);
      }
      if(path.endsWith('/photos'))return handleAlbumPhotos(request,env,path);
+     if(path.includes('/attachments'))return handleAttachments(request,env,path);
      return handleWorkingEditor(request,env.DB,path);
    }
    // Access-only private R2 test uploads. Do not expose original bodies.
