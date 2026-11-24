@@ -1,7 +1,7 @@
 /* Access-protected document attachment associations. Originals never published. */
 import {ownerUUID} from './r2-managed.mjs';
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
-const ROUTE=/^\/api\/v1\/admin\/work\/(people|posts|media|videos|obituaries|documents|gdd_memorials|gdd_audio_programs|gdd_calendar_memorials)\/([a-f0-9-]{36})\/attachments(?:\/([a-f0-9-]{36})\/download)?$/i;
+const ROUTE=/^\/api\/v1\/admin\/work\/(people|posts|media|videos|obituaries|documents|gdd_memorials|gdd_audio_programs|gdd_calendar_memorials)\/([a-f0-9-]{36})\/attachments(?:\/([a-f0-9-]{36})\/(download|pages))?$/i;
 const MIME={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex,nofollow'};
 function reply(data,status=200){return new Response(JSON.stringify(data),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}})}
@@ -10,7 +10,7 @@ export async function handleAttachments(request,env,path){
  const match=ROUTE.exec(path);
  if(!match||!ID.test(match[2])||(match[3]&&!ID.test(match[3])))return reply({error:'invalid_attachment_route'},404);
  if(!env.DB)return reply({error:'db_unavailable'},503);
- const [,kind,id,downloadId]=match;
+ const [,kind,id,downloadId,operation]=match;
  try{
   const owner=ownerUUID(env);
   const parent=await env.DB.prepare('SELECT id FROM "'+kind+'" WHERE id=? LIMIT 1').bind(id).first();
@@ -26,6 +26,16 @@ export async function handleAttachments(request,env,path){
    const metaObject=await env.GDD_BUCKET.get('meta/'+downloadId+'.json');
    const meta=metaObject?await metaObject.json():null;
    if(!meta||meta.id!==downloadId||meta.owner!==owner||meta.kind!=='document'||meta.key!==key||meta.mime!==MIME[ext])return reply({error:'invalid_asset_metadata'},409);
+   if(operation==='pages'){
+    const q=new URL(request.url).searchParams,start=Number(q.get('start')||1),count=Number(q.get('count')||20);
+    if(!Number.isInteger(start)||!Number.isInteger(count)||start<1||count<1||count>20||start+count-1>120)return reply({error:'invalid_page_range'},400);
+    const pages=[];
+    for(let n=start;n<start+count;n++){
+     const head=await env.GDD_BUCKET.head('derivatives/'+downloadId+'/pages/'+n+'.jpg');
+     if(head&&head.size>=32&&head.size<=3*1048576&&head.httpMetadata?.contentType==='image/jpeg')pages.push(n);
+    }
+    return reply({pages});
+   }
    const file=await env.GDD_BUCKET.get(key);
    if(!file||file.size!==Number(row.original_bytes))return reply({error:'attachment_not_found'},404);
    const filename=encodeURIComponent(String(row.original_name).slice(0,160)).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16));

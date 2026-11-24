@@ -46,7 +46,23 @@ test('one-click publication prepares readers before publishing parent and releas
  assert.ok(prepare>0&&patch>prepare&&release>patch);
  assert.ok(PHOTO_JS.includes('readerPlans.has(row.asset_id)'));
  assert.ok(PHOTO_JS.includes('Number(row.public_view)===1&&Number(row.preview_ready)===1'));
- assert.ok(PHOTO_JS.includes('record.record?.published!==true'));
+ assert.ok(PHOTO_JS.includes('record.record?.published===true||record.record?.published===1'));
  assert.ok(!PHOTO_JS.includes("btn.textContent='Công bố bản đọc'"));
  assert.ok(PHOTO_JS.includes('item.assetId===row.asset_id'));
+});
+
+test('release accepts D1 integer publication flag and rejects unpublished rows',async()=>{
+ const start=PHOTO_JS.indexOf('async function releaseReaders(');
+ const end=PHOTO_JS.indexOf('async function uploadDocuments(',start);
+ const fn=PHOTO_JS.slice(start,end);
+ const record={kind:'posts',id:'id',record:{published:1}};
+ let releases=0;
+ const release=new Function('context','managedRequest','readerPlans','reloadDocuments','docStatus',fn+';return releaseReaders;')({kind:'posts',id:'id'},async()=>{releases++;return {published:true,originalPrivate:true}},new Map(),async()=>{},()=>{});
+ const plans=[{assetId:'asset',name:'PDF',total:33,source:'pdf'}];
+ await release(record,plans);
+ await release({...record,record:{published:true}},plans);
+ await assert.rejects(release({...record,record:{published:0}},plans),/Bài chưa được xác nhận công bố/);
+ await assert.rejects(release({...record,record:{published:false}},plans),/Bài chưa được xác nhận công bố/);
+ assert.equal(releases,2);
+ assert.ok(PHOTO_JS.includes('if(existing.has(n))continue;'));
 });

@@ -283,6 +283,19 @@ async function prepareDocument(row,current,notify){
   }
   if(bytes.byteLength!==Number(row.original_bytes)||bytes.byteLength>documentLimit)throw Error('Dung lượng tệp không khớp hoặc vượt giới hạn');
   let total=0;
+  async function savedPages(total){
+   const pages=new Set();
+   if(local)return pages;
+   const base='/api/v1/admin/work/'+current.kind+'/'+current.id+'/attachments/'+encodeURIComponent(row.asset_id)+'/pages';
+   for(let start=1;start<=total;start+=20){
+    const count=Math.min(20,total-start+1);
+    const data=await api(base+'?start='+start+'&count='+count);
+    if(!Array.isArray(data.pages)||data.pages.some(n=>!Number.isInteger(n)||n<start||n>=start+count))throw Error('Chưa kiểm tra được các trang đã lưu');
+    for(const n of data.pages)pages.add(n);
+   }
+   if(pages.size)notify('Tận dụng '+pages.size+'/'+total+' trang đã lưu.');
+   return pages;
+  }
   async function storePage(canvas,n){
    let blob=await new Promise((ok,fail)=>canvas.toBlob(b=>b?ok(b):fail(Error('Không tạo được JPEG')),'image/jpeg',.84));
    if(blob.size>3*1048576)blob=await new Promise((ok,fail)=>canvas.toBlob(b=>b?ok(b):fail(Error('Không nén được JPEG')),'image/jpeg',.65));
@@ -298,7 +311,9 @@ async function prepareDocument(row,current,notify){
    const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw Error('Không tạo được bản đọc');
    ctx.font='31px Georgia, serif';const lines=wrapWordText(ctx,raw,1160);
    total=Math.ceil(lines.length/38);if(total<1||total>120)throw Error('Tối đa 120 trang mỗi tập');
+   const existing=await savedPages(total);
    for(let n=1;n<=total;n++){
+    if(existing.has(n))continue;
     notify('Đang tạo bản đọc chữ '+n+'/'+total);
     ctx.fillStyle='#fff';ctx.fillRect(0,0,1400,2000);ctx.fillStyle='#202c27';ctx.font='31px Georgia, serif';ctx.textBaseline='top';
     lines.slice((n-1)*38,n*38).forEach((line,j)=>ctx.fillText(line,110,122+j*44));
@@ -311,7 +326,9 @@ async function prepareDocument(row,current,notify){
    lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.mjs';
    pdf=await lib.getDocument({data:new Uint8Array(bytes),isEvalSupported:false}).promise;
    total=pdf.numPages;if(!Number.isInteger(total)||total<1||total>120)throw Error('Tối đa 120 trang mỗi tập');
+   const existing=await savedPages(total);
    for(let n=1;n<=total;n++){
+    if(existing.has(n))continue;
     notify('Đang tạo bản đọc PDF '+n+'/'+total);
     const page=await pdf.getPage(n),initial=page.getViewport({scale:1}),viewport=page.getViewport({scale:Math.min(2.2,1800/Math.max(initial.width,initial.height))});
     const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(viewport.width));canvas.height=Math.max(1,Math.round(viewport.height));
@@ -339,7 +356,7 @@ async function prepareReaders(record,notify=()=>{}){
 }
 async function releaseReaders(record,plans,notify=()=>{}){
  if(!plans.length)return;
- if(!context||context.kind!==record.kind||context.id!==record.id||record.record?.published!==true)throw Error('Bài chưa được xác nhận công bố');
+ if(!context||context.kind!==record.kind||context.id!==record.id||!(record.record?.published===true||record.record?.published===1))throw Error('Bài chưa được xác nhận công bố');
  for(const plan of plans){
   notify('Đang công bố bản đọc '+plan.name+'…');
   const out=await managedRequest('/v1/assets/'+plan.assetId+'/publication',{method:'POST',data:JSON.stringify({publish:true,pageCount:plan.total,viewSource:plan.source})});
