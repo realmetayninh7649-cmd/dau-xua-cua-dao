@@ -14,6 +14,7 @@ on:
       - "tests/d1-working-editor.test.mjs"
       - "tests/d1-working-photo-album.test.mjs"
       - "tests/d1-admin-photo-album.test.mjs"
+      - "tests/d1-radio-recovery.test.mjs"
       - "tests/d1-r2-managed.test.mjs"
       - "tests/d1-admin-inbox.test.mjs"
       - "tests/d1-contribution-review.test.mjs"
@@ -47,6 +48,7 @@ jobs:
           node --check workers/gdd-d1-admin/src/r2-managed.mjs
           node --check workers/gdd-d1-admin/src/admin-ui.mjs
           node --check workers/gdd-d1-admin/src/photo-album-ui.mjs
+          node --check workers/gdd-d1-admin/src/radio-recovery.mjs
           python3 - <<'PY'
           import json,pathlib,re
           root=pathlib.Path('workers/gdd-d1-admin')
@@ -60,6 +62,12 @@ jobs:
               assert banned not in js, banned
           # Private GET for reviewed staff: only a UUID-matched contributions/pending object.
           assert js.count('env.GDD_BUCKET.get(')==1
+          recovery=(root/'src/radio-recovery.mjs').read_text()
+          assert 'public-audio/radio-hai-muoi-nam-d19ee4f8.mp3' in recovery
+          assert "onlyIf:{etagDoesNotMatch:'*'}" in recovery
+          assert "await digest(bytes)!==sha" in recovery
+          assert 'DELETE FROM' not in recovery and 'GDD_BUCKET.delete(' not in recovery
+          assert 'return recoverRadio(request,env,json)' in js
           assert "const prefix='contributions/pending/'+id+'/'" in js
           assert "if(!await isAdministrator(env,ctx))" in js
           assert "attachment; filename=" in js
@@ -134,7 +142,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs tests/d1-r2-managed.test.mjs tests/d1-admin-inbox.test.mjs tests/d1-working-code-assignment.test.mjs tests/d1-contribution-review.test.mjs tests/d1-working-photo-album.test.mjs tests/d1-admin-photo-album.test.mjs
+          node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs tests/d1-r2-managed.test.mjs tests/d1-admin-inbox.test.mjs tests/d1-working-code-assignment.test.mjs tests/d1-contribution-review.test.mjs tests/d1-working-photo-album.test.mjs tests/d1-admin-photo-album.test.mjs tests/d1-radio-recovery.test.mjs
           echo "D1_ADMIN_UNIT_TESTS=PASS"
       - name: "Deploy ONLY isolated Access-protected admin worker"
         env:
