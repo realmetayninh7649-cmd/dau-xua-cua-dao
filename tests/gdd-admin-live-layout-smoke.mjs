@@ -175,6 +175,16 @@ try{
   await page.locator('#work-list button').first().click();
   await page.waitForFunction(()=>!document.getElementById('work-photo-panel').hidden);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6e5F8AAAAASUVORK5CYII=','base64');
+  assert.equal(await page.locator('#work-cover-file-cover_url').count(),1);
+  page.on('dialog',dialog=>dialog.accept());
+  await page.locator('#work-cover-file-cover_url').setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});
+  await page.locator('.work-cover-upload button').click();
+  await page.waitForFunction(()=>document.getElementById('work-field-cover_url').value.includes('/preview'));
+  await page.locator('#work-photo-files').setInputFiles(Array.from({length:55},(_,i)=>({name:'test-'+i+'.png',mimeType:'image/png',buffer:png})));
+  assert.equal(await page.locator('#work-photo-queue li').count(),55);
+  await page.locator('#work-photo-files').setInputFiles({name:'additional.png',mimeType:'image/png',buffer:png});
+  assert.equal(await page.locator('#work-photo-queue li').count(),56);
+  for(let i=0;i<56;i++)await page.locator('#work-photo-queue li button').filter({hasText:'Bỏ chọn'}).first().click();
   await page.locator('#work-photo-files').setInputFiles([
    {name:'anh-mot.png',mimeType:'image/png',buffer:png},
    {name:'anh-hai.png',mimeType:'image/png',buffer:png}
@@ -182,7 +192,6 @@ try{
   assert.equal(await page.locator('#work-photo-queue li').count(),2);
   await page.locator('#work-photo-queue input').first().fill('Hình ảnh 01 – tư liệu');
   await page.locator('#work-photo-confirm').check();
-  page.on('dialog',dialog=>dialog.accept());
   await page.locator('#work-photo-upload').click();
   await page.waitForFunction(()=>document.getElementById('work-photo-count')?.textContent.includes('2 ảnh'),null,{timeout:17000});
   assert.equal(await page.locator('#work-photo-album figure').count(),2);
@@ -190,7 +199,7 @@ try{
   assert.equal(errors.length,0,errors.join('; '));
   console.log('ADMIN_MULTIPHOTO_IPHONE_DESKTOP_'+label.toUpperCase()+'=PASS',
    JSON.stringify({selected:2,albumVisible:2,storageOriginalsPrivate:true,attachments:album.length}));
-  if(label==='iphone'){assert.equal(uploaded,2);assert.equal(previews,2);assert.equal(approvals,2)}
+  if(label==='iphone'){assert.equal(uploaded,3);assert.equal(previews,3);assert.equal(approvals,3)}
   album.length=0;
   await page.close();
  }
