@@ -39,7 +39,9 @@ function attach(target,kind,id,{before=null,photos=false,lazy=false}={}){
   for(const row of docs){
    const line=el('div');line.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0;';
    const name=el('span',row.original_name||'Tài liệu');name.style.cssText='flex:1;min-width:100px;overflow-wrap:anywhere';line.append(name);
-   if(row.has_reader===undefined||Number(row.has_reader)===1){
+   if(Number(row.single_pdf)===1&&Number(row.allow_download)===1){
+    const link=el('a','Xem PDF ↗','btn btn-outline');link.href=api+'attachments/'+encodeURIComponent(kind)+'/'+encodeURIComponent(id)+'/'+encodeURIComponent(row.asset_id)+'/download?view=1';link.target='_blank';link.rel='noopener noreferrer';line.append(link);
+   }else if(row.has_reader===undefined||Number(row.has_reader)===1){
     const link=el('a','Đọc tài liệu ↗','btn btn-outline');const url=new URL('r2-xem.html',new URL('.',location.href));url.searchParams.set('asset',row.asset_id);link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';line.append(link);
    }
    if(Number(row.allow_download)===1){
