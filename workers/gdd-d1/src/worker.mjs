@@ -134,6 +134,16 @@ export default {
     if(path[0]!=='api'||path[1]!=='v1'||path[2]!=='public')
       return respond(request,{error:'not_found'},404,{private:true});
     try{
+      if(path[3]==='attachments'&&path.length===4){
+        const kind=url.searchParams.get('owner_kind'),id=url.searchParams.get('owner_id');
+        if(!PUBLIC_TABLES.has(kind)||!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id||''))
+          return respond(request,{error:'invalid_attachment_query'},400,{private:true});
+        const parent=await env.DB.prepare('SELECT id FROM "'+kind+'" WHERE id=? AND published=1 LIMIT 1').bind(id).first();
+        if(!parent)return respond(request,{data:[],has_next:false},200,{private:true});
+        const page=parsePage(url);if(!page)return respond(request,{error:'invalid_pagination'},400,{private:true});
+        const {results=[]}=await env.DB.prepare("SELECT asset_id,original_name FROM gdd_r2_assets WHERE record_kind=? AND record_id=? AND role='attachment' AND media_kind='document' AND public_view=1 AND preview_ready=1 ORDER BY created_at,asset_id LIMIT ? OFFSET ?").bind(kind,id,page.limit+1,page.offset).all();
+        return respond(request,{data:results.slice(0,page.limit),has_next:results.length>page.limit},200,{private:true});
+      }
       if(path[3]==='albums'&&path.length===4){
         const kind=url.searchParams.get('owner_kind'),id=url.searchParams.get('owner_id');
         if(!ALBUM_OWNERS.has(kind)||!id||!/^[a-f\d-]{36}$/i.test(id))

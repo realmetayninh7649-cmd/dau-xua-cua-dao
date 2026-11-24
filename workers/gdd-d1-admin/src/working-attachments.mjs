@@ -5,7 +5,7 @@ const ROUTE=/^\/api\/v1\/admin\/work\/(people|posts|media|videos|obituaries|docu
 const MIME={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex,nofollow'};
 function reply(data,status=200){return new Response(JSON.stringify(data),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}})}
-const fields='asset_id,original_name,original_bytes,created_at';
+const fields='asset_id,original_name,original_bytes,created_at,public_view,preview_ready';
 export async function handleAttachments(request,env,path){
  const match=ROUTE.exec(path);
  if(!match||!ID.test(match[2])||(match[3]&&!ID.test(match[3])))return reply({error:'invalid_attachment_route'},404);

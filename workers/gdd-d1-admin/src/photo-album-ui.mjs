@@ -252,9 +252,76 @@ async function reloadDocuments(){
   for(const row of rows){
    const li=document.createElement('li');li.className='sandbox-line';
    label(li,'span',row.original_name+' · '+(Number(row.original_bytes)/1048576).toFixed(1)+' MB');
-   const a=document.createElement('a');a.textContent='Tải tệp';a.href=base+'/'+encodeURIComponent(row.asset_id)+'/download';li.append(a);list.append(li);
+   const a=document.createElement('a');a.textContent='Tải tệp gốc (quản trị)';a.href=base+'/'+encodeURIComponent(row.asset_id)+'/download';li.append(a);
+   const released=Number(row.public_view)===1&&Number(row.preview_ready)===1;
+   label(li,'small',released?'Đã công bố bản đọc':'Bản gốc riêng tư · Chưa có bản đọc công khai');
+   if(!released&&/\.(pdf|docx)$/i.test(row.original_name||'')){
+    const btn=document.createElement('button');btn.type='button';btn.textContent='Công bố bản đọc';btn.disabled=busy||workBusy;
+    btn.addEventListener('click',()=>publishDocument(row,base,btn,current));li.append(btn);
+   }else if(!released&&/\.doc$/i.test(row.original_name||''))label(li,'small','Word .doc cần chuyển sang PDF hoặc DOCX để tạo bản đọc.');
+   list.append(li);
   }
  }catch(e){if(context===current)docStatus('Chưa đọc được tài liệu: '+e.message)}
+}
+async function publishDocument(row,base,btn,current){
+ if(busy||workBusy||context!==current)return;
+ if(!workCurrent?.record?.published){docStatus('Hãy đăng bài trước khi công bố bản đọc.');return}
+ const docx=/\.docx$/i.test(row.original_name||'');
+ if(!confirm('Công bố bản đọc '+row.original_name+' cho độc giả? '+(docx?'Bản đọc DOCX chỉ có chữ, không giữ hình ảnh và bố cục. ':'')+'Tệp gốc vẫn riêng tư.'))return;
+ busy=true;workBusy=true;
+ const controls=[...document.querySelectorAll('#work-editor-panel input,#work-editor-panel select,#work-editor-panel textarea,#work-editor-panel button')];
+ const previous=controls.map(el=>[el,el.disabled]);for(const el of controls)el.disabled=true;
+ btn.disabled=true;let pdf=null;
+ try{
+  docStatus('Đang đọc tệp đã lưu trong R2, không tải lại bản gốc...');
+  const response=await fetch(base+'/'+encodeURIComponent(row.asset_id)+'/download',{credentials:'same-origin',cache:'no-store'});
+  if(!response.ok)throw Error('Không đọc được tệp đã lưu');
+  const bytes=await response.arrayBuffer();
+  if(bytes.byteLength!==Number(row.original_bytes)||bytes.byteLength>documentLimit)throw Error('Dung lượng tệp không khớp hoặc vượt giới hạn');
+  let total=0;
+  async function storePage(canvas,n){
+   let blob=await new Promise((ok,fail)=>canvas.toBlob(b=>b?ok(b):fail(Error('Không tạo được JPEG')),'image/jpeg',.84));
+   if(blob.size>3*1048576)blob=await new Promise((ok,fail)=>canvas.toBlob(b=>b?ok(b):fail(Error('Không nén được JPEG')),'image/jpeg',.65));
+   if(blob.size<32||blob.size>3*1048576)throw Error('Trang '+n+' vượt dung lượng cho phép');
+   await managedRequest('/v1/assets/'+row.asset_id+'/page/'+n,{method:'PUT',data:blob,type:'image/jpeg'});
+  }
+  if(docx){
+   if(bytes.byteLength>35*1048576)throw Error('DOCX vượt 35 MB; nên chuyển sang PDF');
+   const reader=await loadMammoth();
+   const raw=String((await reader.extractRawText({arrayBuffer:bytes})).value||'').split(String.fromCharCode(0)).join('').trim();
+   if(raw.length<20||raw.length>200000)throw Error('Không tạo được bản đọc chữ; nên chuyển sang PDF');
+   const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=2000;
+   const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw Error('Không tạo được bản đọc');
+   ctx.font='31px Georgia, serif';const lines=wrapWordText(ctx,raw,1160);
+   total=Math.ceil(lines.length/38);if(total<1||total>120)throw Error('Tối đa 120 trang mỗi tập');
+   for(let n=1;n<=total;n++){
+    docStatus('Đang tạo bản đọc chữ '+n+'/'+total);
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,1400,2000);ctx.fillStyle='#202c27';ctx.font='31px Georgia, serif';ctx.textBaseline='top';
+    lines.slice((n-1)*38,n*38).forEach((line,j)=>ctx.fillText(line,110,122+j*44));
+    ctx.font='24px Georgia, serif';ctx.fillText('DẤU XƯA CỬA ĐẠO · BẢN ĐỌC CHỮ DOCX',110,1840);ctx.fillText('Trang '+n+' / '+total,110,1880);
+    await storePage(canvas,n);
+   }
+   canvas.width=0;canvas.height=0;
+  }else{
+   const lib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.mjs');
+   lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.mjs';
+   pdf=await lib.getDocument({data:new Uint8Array(bytes),isEvalSupported:false}).promise;
+   total=pdf.numPages;if(!Number.isInteger(total)||total<1||total>120)throw Error('Tối đa 120 trang mỗi tập');
+   for(let n=1;n<=total;n++){
+    docStatus('Đang tạo bản đọc PDF '+n+'/'+total);
+    const page=await pdf.getPage(n),initial=page.getViewport({scale:1}),viewport=page.getViewport({scale:Math.min(2.2,1800/Math.max(initial.width,initial.height))});
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(viewport.width));canvas.height=Math.max(1,Math.round(viewport.height));
+    const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw Error('Không tạo được bản đọc');
+    await page.render({canvasContext:ctx,viewport}).promise;
+    await storePage(canvas,n);canvas.width=0;canvas.height=0;page.cleanup();
+   }
+  }
+  if(context!==current)throw Error('Hồ sơ đã thay đổi; chưa công bố');
+  const released=await managedRequest('/v1/assets/'+row.asset_id+'/publication',{method:'POST',data:JSON.stringify({publish:true,pageCount:total,viewSource:docx?'docx_text':'pdf'})});
+  if(released.published!==true||released.originalPrivate!==true)throw Error('R2 chưa xác nhận bản đọc');
+  docStatus('Đã công bố '+total+' trang bản đọc; không tải lại bản gốc.');
+ }catch(e){docStatus('Chưa công bố: '+e.message+' · Tệp gốc vẫn được giữ.')}
+ finally{try{await pdf?.destroy()}catch{}busy=false;workBusy=false;for(const [el,was] of previous)if(el.isConnected)el.disabled=was;btn.disabled=false;refresh();if(context===current)await reloadDocuments()}
 }
 async function uploadDocuments(record,notify=()=>{}){
  if(!context||context.kind!==record.kind||!record.id||context.id&&context.id!==record.id)throw Error('Không đúng hồ sơ để gắn tài liệu');
