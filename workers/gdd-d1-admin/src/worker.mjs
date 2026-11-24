@@ -1,3 +1,5 @@
+import {AUDIO_OPTIMIZER_JS,AUDIO_ENCODER_WORKER} from './audio-optimizer-ui.mjs';
+import {LAME_JS,LAME_LICENSE} from './audio-encoder-vendor.mjs';
 import {uploadAudio} from './audio-upload.mjs';
 import {recoverRadio} from './radio-recovery.mjs';
 /* DẤU XƯA CỬA ĐẠO — Cloudflare Access administrator preview (STAGING).
@@ -298,12 +300,16 @@ export default {
        working_editor_is_separate_database:true});
    if(path==='/'||path==='/admin')
      return reply(ADMIN_HTML,200,'text/html; charset=utf-8',{
-       'Content-Security-Policy':"default-src 'none'; style-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/ https://cdn.jsdelivr.net/npm/mammoth@1.13.0/; connect-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/; worker-src 'self' blob:; img-src 'self' blob: data: https://gdd-r2-gateway.realmetayninh7649.workers.dev; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+       'Content-Security-Policy':"default-src 'none'; style-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/ https://cdn.jsdelivr.net/npm/mammoth@1.13.0/; connect-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/; worker-src 'self' blob:; media-src 'self' blob:; img-src 'self' blob: data: https://gdd-r2-gateway.realmetayninh7649.workers.dev; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
        'X-Frame-Options':'DENY'
      });
    if(path==='/admin/style.css')return reply(ADMIN_CSS,200,'text/css; charset=utf-8');
    if(path==='/admin/app.js')return reply(ADMIN_JS,200,'application/javascript; charset=utf-8');
    if(path==='/admin/photo-album.js')return reply(PHOTO_JS,200,'application/javascript; charset=utf-8');
+   if(path==='/admin/audio-optimizer.js')return reply(AUDIO_OPTIMIZER_JS,200,'application/javascript; charset=utf-8');
+   if(path==='/admin/audio-encoder-worker.js')return reply(AUDIO_ENCODER_WORKER,200,'application/javascript; charset=utf-8');
+   if(path==='/admin/mp3-encoder.js')return reply(LAME_JS||'throw Error("MP3 encoder unavailable")',LAME_JS?200:503,'application/javascript; charset=utf-8');
+   if(path==='/admin/mp3-encoder-license')return reply(LAME_LICENSE+'\nSource: https://github.com/zhuker/lamejs\nVersion: 1.2.1 — https://registry.npmjs.org/lamejs/-/lamejs-1.2.1.tgz',200,'text/plain; charset=utf-8');
    if(path==='/api/v1/admin/summary'||path==='/api/v1/admin/records'){
      if(!env.DB)return json({error:'database_unconfigured'},503);
      try{
