@@ -17,7 +17,7 @@ const session={
  managed_r2_enabled:true,mode:'staging',role:'administrator'
 };
 const requests=[];
-const album=[];let uploaded=0, previews=0, approvals=0;const postId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const album=[];let uploaded=0, previews=0, approvals=0,postRecord=null,creates=0,publishWrites=0,failAttach=false;const postId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://127.0.0.1').pathname;
  requests.push(pathname);
@@ -44,8 +44,11 @@ const server=createServer(async(req,res)=>{
   body=JSON.stringify({data:id==='history'?[]:person});
  }
  else if(pathname==='/api/v1/admin/work/posts'){
-  body=JSON.stringify({data:[{id:postId,title:'BÀI KIỂM TRA ẢNH',published:1,
-   gdd_version:1,archive_code:'DXCD-BK-00001'}],kind:'posts'});
+  if(req.method==='POST'){
+   let raw='';for await(const chunk of req)raw+=chunk;const payload=JSON.parse(raw);
+   assert.equal(payload.fields.published,false);creates++;
+   postRecord={...payload.fields,id:postId,published:0,gdd_version:1,archive_code:null};status=201;body=JSON.stringify({data:postRecord});
+  }else body=JSON.stringify({data:postRecord?[postRecord]:[],kind:'posts'});
  }
  else if(pathname==='/api/v1/admin/work/posts/'+postId+'/photos'){
   if(req.method==='POST'){
@@ -53,14 +56,29 @@ const server=createServer(async(req,res)=>{
    const item=JSON.parse(text);
    assert.equal(typeof item.caption,'string');
    assert.match(item.asset_id,/^[a-f0-9-]{36}$/i);
+   if(failAttach){failAttach=false;res.writeHead(503,{'content-type':type});res.end(JSON.stringify({error:'simulated_attach_failure'}));return}
    const image={image_url:'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+item.asset_id+'/preview',
     caption:item.caption,sort_order:album.length+1};
    album.push(image);status=201;body=JSON.stringify({data:image,attached:true});
   }else body=JSON.stringify({data:album});
  }
  else if(pathname==='/api/v1/admin/work/posts/'+postId){
-  body=JSON.stringify({data:{id:postId,title:'BÀI KIỂM TRA ẢNH',published:1,
-   archive_code:'DXCD-BK-00001',gdd_version:1,body:'Bài viết có nhiều ảnh'}});
+  if(req.method==='PATCH'){
+   let raw='';for await(const chunk of req)raw+=chunk;const payload=JSON.parse(raw);
+   assert.equal(payload.version,postRecord.gdd_version);
+   if(payload.fields.published===true){assert.equal(album.length,2);assert.ok(postRecord.archive_code);assert.ok(payload.fields.cover_url?.includes('/preview'));publishWrites++}
+   postRecord={...postRecord,...payload.fields,gdd_version:postRecord.gdd_version+1};
+  }
+  body=JSON.stringify({data:postRecord});
+ }
+ else if(pathname==='/api/v1/admin/work/posts/'+postId+'/code-preview'){
+  body=JSON.stringify({candidate:'DXCD-BK-00001',version:postRecord.gdd_version,requires_confirmation:true,needs_special_review:false});
+ }
+ else if(pathname==='/api/v1/admin/work/posts/'+postId+'/assign-code'){
+  let raw='';for await(const chunk of req)raw+=chunk;const p=JSON.parse(raw);
+  assert.equal(p.confirmed,true);assert.equal(p.version,postRecord.gdd_version);
+  postRecord.archive_code=p.code;postRecord.gdd_version++;
+  body=JSON.stringify({assigned:true,code:p.code,version:postRecord.gdd_version});
  }
  else if(pathname==='/api/v1/admin/work/posts/'+postId+'/history')body=JSON.stringify({data:[]});
  else if(pathname.startsWith('/api/v1/admin/r2/managed/')){
@@ -185,8 +203,8 @@ try{
     JSON.stringify({editorBeforeList:order,tenRowsPerPage:10,searchFilters:true,editAutoOpensForm:true,draftOnTop:true}));
   await page.locator('#work-kind').selectOption('posts');
   await page.waitForTimeout(120);
-  await page.locator('#work-list-details summary').click();
-  await page.locator('#work-list button').first().click();
+  await page.locator('#work-new').click();
+  await page.locator('#work-field-title').fill('BÀI KIỂM TRA ẢNH');
   await page.waitForFunction(()=>!document.getElementById('work-photo-panel').hidden);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6e5F8AAAAASUVORK5CYII=','base64');
   assert.equal(await page.locator('#work-cover-file-cover_url').count(),1);
@@ -200,8 +218,9 @@ try{
   await page.locator('.work-extra > summary').click();
   page.on('dialog',dialog=>dialog.accept());
   await page.locator('#work-cover-file-cover_url').setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});
-  await page.locator('.work-cover-upload button').click();
-  await page.waitForFunction(()=>document.getElementById('work-field-cover_url').value.includes('/preview'));
+  assert.equal(await page.locator('#work-field-cover_url').inputValue(),'');
+  assert.ok(await page.locator('.work-cover-upload img').isVisible());
+  assert.equal(await page.locator('#work-photo-files').isEnabled(),true);
   await page.locator('#work-photo-files').setInputFiles(Array.from({length:55},(_,i)=>({name:'test-'+i+'.png',mimeType:'image/png',buffer:png})));
   assert.equal(await page.locator('#work-photo-queue li').count(),55);
   await page.locator('#work-photo-files').setInputFiles({name:'additional.png',mimeType:'image/png',buffer:png});
@@ -213,17 +232,23 @@ try{
   ]);
   assert.equal(await page.locator('#work-photo-queue li').count(),2);
   await page.locator('#work-photo-queue input').first().fill('Hình ảnh 01 – tư liệu');
-  await page.locator('#work-photo-confirm').check();
-  await page.locator('#work-photo-upload').click();
+  const beforeUploads=uploaded;failAttach=true;
+  await page.locator('#work-publish').click();
+  await page.waitForFunction(()=>document.getElementById('work-submit-status').textContent.includes('simulated_attach_failure'),null,{timeout:17000});
+  assert.equal(postRecord.published,0);assert.equal(album.length,0);assert.equal(uploaded,beforeUploads+2);
+  await page.locator('#work-publish').click();
+  await page.waitForFunction(()=>document.getElementById('work-submit-status').textContent.includes('Đã đăng bài thành công'),null,{timeout:17000});
   await page.waitForFunction(()=>document.getElementById('work-photo-count')?.textContent.includes('2 ảnh'),null,{timeout:17000});
+  assert.equal(postRecord.published,true);assert.equal(uploaded,beforeUploads+3);
   assert.equal(await page.locator('#work-photo-album figure').count(),2);
   assert.equal(await page.locator('#work-photo-album figcaption').first().textContent(),'Hình ảnh 01 – tư liệu');
   assert.equal(errors.length,0,errors.join('; '));
   console.log('ADMIN_MULTIPHOTO_IPHONE_DESKTOP_'+label.toUpperCase()+'=PASS',
    JSON.stringify({selected:2,albumVisible:2,storageOriginalsPrivate:true,attachments:album.length}));
   if(label==='iphone'){assert.equal(uploaded,3);assert.equal(previews,3);assert.equal(approvals,3)}
-  album.length=0;
+  album.length=0;postRecord=null;
   await page.close();
  }
+ assert.equal(creates,2);assert.equal(publishWrites,2);
  assert.equal(requests.some(x=>x.includes('/sandbox')),false,'synthetic sandbox API must not auto-fetch');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
