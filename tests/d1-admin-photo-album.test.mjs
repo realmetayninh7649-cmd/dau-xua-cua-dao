@@ -105,3 +105,11 @@ test('new single-file PDF skips page derivatives and enables download by default
  assert.ok(PHOTO_JS.includes("allowDownload:/\\.pdf$/i.test(file.name)"));
  assert.ok(PHOTO_JS.includes("if(row.view_source==='single_pdf'"));
 });
+
+test('gallery editor supports the Chơn Dung Tiền Bối category alongside five existing categories',()=>{
+ const match=ADMIN_JS.match(/const workGalleryCategories=(\[[^\n]+\]);/);
+ assert.ok(match);
+ const categories=new Function('return '+match[1])();
+ assert.equal(categories.length,6);
+ assert.ok(categories.includes('Chơn Dung Tiền Bối'));
+});

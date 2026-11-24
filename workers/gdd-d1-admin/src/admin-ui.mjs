@@ -801,7 +801,7 @@ const workPersonGroups={
  'Phước Thiện':[],'Hành chánh Đạo':[],'Khác':[]
 };
 const workDocumentFolders={'HCĐ':'Tài Liệu Hành Chánh Đạo','HTĐ':'Tài Liệu Chức Sắc Hiệp Thiên Đài','CTĐ':'Tài Liệu Chức Sắc Cửu Trùng Đài','PT':'Tài Liệu Chức Sắc Phước Thiện','CQK':'Tài Liệu Các Cơ Quan Khác'};
-const workGalleryCategories=['Tòa Thánh Tây Ninh xưa','Tang lễ Chức sắc','Hành đạo và Sinh hoạt Đạo','Dấu tích Đạo sử xưa và nay','Tư liệu hình ảnh khác'];
+const workGalleryCategories=['Tòa Thánh Tây Ninh xưa','Tang lễ Chức sắc','Hành đạo và Sinh hoạt Đạo','Dấu tích Đạo sử xưa và nay','Chơn Dung Tiền Bối','Tư liệu hình ảnh khác'];
 function workSelectFill(select,choices,current,placeholder){
  select.replaceChildren();
  const option=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;select.append(o);};
@@ -1241,7 +1241,7 @@ async function workSave(mode='draft'){
   if(!title)throw Error('Nhập danh xưng hoặc nhan đề trước.');
   if(publish&&kind==='people'&&(!workFieldInputs.get('branch')?.value||!workFieldInputs.get('rank')?.value.trim()))throw Error('Chọn Cơ quan và Phẩm vị trước.');
   if(publish&&kind==='documents'&&!workFieldInputs.get('subfolder_code')?.value)throw Error('Chọn thư mục số hóa trước.');
-  if(publish&&kind==='media'&&!workGalleryCategories.includes(workFieldInputs.get('category')?.value))throw Error('Chọn một trong 5 chuyên mục Hình ảnh trước khi đăng bài.');
+  if(publish&&kind==='media'&&!workGalleryCategories.includes(workFieldInputs.get('category')?.value))throw Error('Chọn một trong 6 chuyên mục Hình ảnh trước khi đăng bài.');
   if(publish&&kind==='gdd_audio_programs'){
    if(!workFieldInputs.get('category')?.value)throw Error('Chọn chuyên mục âm thanh.');
    if(!workAudioFile&&!workFieldInputs.get('audio_url')?.value.trim())throw Error('Chọn tệp MP3 trước khi đăng bài.');
