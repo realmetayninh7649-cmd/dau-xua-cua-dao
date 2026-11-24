@@ -192,6 +192,8 @@
     ['gui-tu-lieu','Gửi tư liệu','Góp phần gìn giữ những dấu xưa'],
     ['gioi-thieu','Giới thiệu','Tôn chỉ và phương pháp lưu trữ']
   ];
+  // Video vẫn có chuyên mục riêng, không đưa vào khối giới thiệu Trang Chủ.
+  const homeSections=sectionList.slice(0,6).filter(([id])=>id!=='video-dao-su');
   const routeIds=new Set(['trang-chu',...sectionList.map(x=>x[0])]);
   const detailKinds={
     'nhan-vat':'chuc-sac','bai-viet':'bien-khao','hinh-anh-tu-lieu':'hinh-anh',
@@ -264,7 +266,6 @@
   // Bản đầy đủ luôn nằm ở chuyên mục gốc, không nhân đôi dữ liệu trong Supabase.
   const previewSources={
     'chuc-sac':['people-grid','.person-card','Hồ sơ Chức sắc'],
-    'video-dao-su':['video-grid','.archive-card','Video Đạo Sử'],
     'ai-tin':['obituary-grid','.archive-card','Ai Tín'],
     'tai-lieu-so-hoa':['document-grid','.archive-card','Tài liệu số hóa'],
     'bien-khao':['article-list','.editorial-article','Biên khảo'],
@@ -274,19 +275,19 @@
   const inner=document.createElement('div');inner.className='gdd-directory-inner';
   inner.innerHTML='<div class="gdd-directory-eyebrow">TƯ LIỆU MỚI CẬP NHẬT</div><h2>Dấu xưa đang được gìn giữ</h2><p class="gdd-directory-desc">Mỗi chuyên mục giới thiệu hai tư liệu mới nhất; riêng Hồ sơ Chức sắc có hai hồ sơ Hiệp Thiên Đài và hai hồ sơ Cửu Trùng Đài. Nhấn <strong>Xem thêm</strong> để đọc đầy đủ.</p>';
   const quick=document.createElement('nav');quick.className='gdd-home-quick-nav';quick.setAttribute('aria-label','Chuyển đến chuyên mục');
-  for(const [id,name] of sectionList.slice(0,6)){
+  for(const [id,name] of homeSections){
     const a=document.createElement('a');a.href='#'+id;a.textContent=name;quick.append(a);
   }
   inner.append(quick);
   const sectionViews=new Map();
-  for(const [index,[id,title,description]] of sectionList.slice(0,6).entries()){
+  for(const [index,[id,title,description]] of homeSections.entries()){
     const block=document.createElement('div');block.className='gdd-preview-section';block.dataset.previewSection=id;
     const header=document.createElement('div');header.className='gdd-preview-header';
     const nameCol=document.createElement('div');
     const heading=document.createElement('h3');heading.className='gdd-preview-heading';heading.textContent=title;
     const hint=document.createElement('p');hint.className='gdd-preview-sub';hint.textContent=description;
     nameCol.append(heading,hint);
-    const idx=document.createElement('span');idx.className='gdd-preview-index';idx.textContent=String(index+1).padStart(2,'0')+' / 06';
+    const idx=document.createElement('span');idx.className='gdd-preview-index';idx.textContent=String(index+1).padStart(2,'0')+' / '+String(homeSections.length).padStart(2,'0');
     header.append(nameCol,idx);
     const cards=document.createElement('div');cards.className='gdd-preview-cards';cards.setAttribute('aria-label','Tư liệu mới: '+title);
     const footer=document.createElement('div');footer.className='gdd-preview-footer';
