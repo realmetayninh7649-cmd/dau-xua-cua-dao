@@ -19,5 +19,8 @@ test('private original and explicit preview approval, no silent public writes or
  assert.ok(PHOTO_JS.includes("asset_id:photo.assetId"));
  assert.ok(!PHOTO_JS.includes('GDD_BUCKET.delete'));
  assert.ok(!PHOTO_JS.includes('supabase'));
- assert.ok(PHOTO_JS.includes("limits={count:12"));
+ assert.ok(!PHOTO_JS.includes("limits.count"));
+ assert.ok(PHOTO_JS.includes("queue.push(...added.map"));
+ assert.ok(PHOTO_JS.includes("uploadCover"));
+ assert.ok(!PHOTO_JS.includes("images.slice(-50)"));
 });
