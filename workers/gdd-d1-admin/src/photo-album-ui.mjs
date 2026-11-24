@@ -14,7 +14,7 @@ function clear(){
  loadId++;
  for(const item of queue)if(item.previewUrl)URL.revokeObjectURL(item.previewUrl);
  queue=[];context=null;busy=false;
- $('work-photo-files').value='';$('work-photo-confirm').checked=false;
+ $('work-photo-files').value='';
  $('work-photo-queue').replaceChildren();$('work-photo-album').replaceChildren();
  $('work-photo-existing').open=false;$('work-photo-count').textContent=' · 0 ảnh';
  $('work-photo-panel').hidden=true;
@@ -23,10 +23,7 @@ function refresh(){
  const allowed=!!context&&supportedKinds.has(context.kind);
  $('work-photo-panel').hidden=!allowed;
  if(!allowed)return;
- const active=!!context.id&&!busy;
- $('work-photo-files').disabled=!active;
- $('work-photo-confirm').disabled=!active;
- $('work-photo-upload').disabled=!active||!$('work-photo-confirm').checked||!queue.some(x=>!x.done);
+ $('work-photo-files').disabled=busy;
 }
 function label(container,tag,value,cls){
  const element=document.createElement(tag);
@@ -66,7 +63,7 @@ function render(){
  refresh();
 }
 function select(){
- if(!context?.id||busy){status('Hãy lưu bản nháp trước khi chọn ảnh.');return}
+ if(!context||busy)return;
  const files=Array.from($('work-photo-files').files||[]);
  if(!files.length)return;
  const valid=files.filter(file=>supported.has(file.type)&&file.size>0&&file.size<=limits.each);
@@ -78,7 +75,6 @@ function select(){
   previewUrl:URL.createObjectURL(file),assetId:null,published:false,done:false,error:''
  })));
  $('work-photo-files').value='';
- $('work-photo-confirm').checked=false;
  status('Đã thêm '+added.length+' ảnh; '+queue.filter(x=>!x.done).length+' ảnh chờ tải. '+(rejected?'Bỏ qua '+rejected+' tệp không đúng định dạng hoặc quá 24 MB. ':'')+'Có thể chọn thêm ảnh.');
  render();
 }
@@ -161,11 +157,12 @@ async function reloadAlbum(){
   }
  }catch(error){status('Chưa tải được ảnh đã gắn: '+error.message)}
 }
-async function uploadBatch(){
- if(!context?.id){status('Hãy lưu bản nháp trước.');return}
- if(!queue.some(photo=>!photo.done)||busy)return;
- if(!$('work-photo-confirm').checked){status('Xin xác nhận việc công bố bản xem ảnh.');return}
- if(!confirm('Xác nhận công bố BẢN XEM ảnh và gắn vào bài này? Bản gốc R2 vẫn riêng tư.'))return;
+async function uploadBatch(record,notify=()=>{}){
+ if(!context||!record?.id||context.kind!==record.kind)throw Error('Chưa có hồ sơ để gắn ảnh');
+ if(context.id&&context.id!==record.id)throw Error('Không đúng hồ sơ đang mở');
+ context.id=record.id;
+ if(!queue.some(photo=>!photo.done))return;
+ if(busy)throw Error('Ảnh đang tải');
  busy=true;render();
  const kind=context.kind,id=context.id,activeContext=context;
  let doneCount=0;
@@ -173,13 +170,13 @@ async function uploadBatch(){
   for(let i=0;i<queue.length;i++){
    if(context!==activeContext)return;
    const photo=queue[i];if(photo.done)continue;
-   const progress=message=>status('Ảnh '+(i+1)+'/'+queue.length+': '+message);
+   const progress=message=>{const text='Ảnh '+(i+1)+'/'+queue.length+': '+message;status(text);notify(text)};
    try{
     if(!photo.assetId)photo.assetId=await archiveOriginal(photo.file,progress);
     if(!photo.published){
       progress('Tạo bản xem nhẹ…');
       await uploadPreview(photo);
-      progress('Công bố bản xem đã xác nhận…');
+      progress('Hoàn thiện bản xem…');
       const released=await managedRequest('/v1/assets/'+photo.assetId+'/publication',{
        method:'POST',data:JSON.stringify({publish:true,allowDownload:false})});
       if(released.published!==true||released.originalPrivate!==true)
@@ -195,20 +192,18 @@ async function uploadBatch(){
     photo.done=true;photo.error='';doneCount++;
    }catch(error){
      photo.error=String(error.message||'Lỗi');
-     status('Ảnh '+(i+1)+' chưa xong: '+photo.error+'. Nhấn tải lại để thử tiếp, không tải lại bản gốc đã lưu.');
-     break;
+     status('Ảnh '+(i+1)+' chưa xong: '+photo.error+'. Nhấn Đăng bài để thử tiếp.');
+     throw Error('Ảnh '+(i+1)+'/'+queue.length+': '+photo.error);
    }
   }
   await reloadAlbum();
   if(queue.every(photo=>photo.done))
    status('Đã gắn '+queue.length+' ảnh vào bài. Bộ ảnh hiển thị khi bài công bố; bản gốc vẫn riêng tư.');
-  else if(doneCount)status('Đã gắn '+doneCount+' ảnh; còn ảnh chưa xong. Có thể tải tiếp.');
+  else throw Error('Còn ảnh chưa tải xong');
  }finally{if(context===activeContext){busy=false;render()}}
 }
 $('work-photo-files').addEventListener('change',select);
-$('work-photo-confirm').addEventListener('change',refresh);
-$('work-photo-upload').addEventListener('click',uploadBatch);
-window.GDDPhotoAlbum={reset:clear,isBusy:()=>busy,async uploadCover(file,notify,item={}){
+window.GDDPhotoAlbum={reset:clear,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done),bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={}){
  if(!supported.has(file.type)||file.size<1||file.size>limits.each)throw Error('Chọn JPEG/PNG/WebP không quá 24 MB.');
  item.file=file;
  if(!item.assetId)item.assetId=await archiveOriginal(file,notify);
@@ -228,6 +223,6 @@ window.GDDPhotoAlbum={reset:clear,isBusy:()=>busy,async uploadCover(file,notify,
  context={kind:record.kind,id:record.id};
  refresh();
  if(record.id){status('Bạn có thể chọn nhiều ảnh và thêm chú thích.');reloadAlbum()}
- else status('Lưu bản nháp rồi chọn nhiều ảnh để gắn đúng hồ sơ.');
+ else status('Chọn ảnh ngay; hệ thống sẽ tự lưu hồ sơ và gắn ảnh khi đăng bài.');
 }};
 })();`;
