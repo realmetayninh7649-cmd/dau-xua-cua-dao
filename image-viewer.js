@@ -454,9 +454,9 @@
           // Không loại bỏ liên kết Đọc tài liệu (PDF/Word).
           if(!link.closest('figure')?.querySelector('.gdd-album-pdf-tile')) link.remove();
         });
-        // Nếu đã render từ phiên bản trước, loại luôn nút tải ở khu ảnh bìa.
-        detail.querySelectorAll('.gdd-image-actions [data-gdd-image-save]').forEach(button=>button.remove());
       }
+      // Mọi ảnh bìa chỉ có nút xem toàn màn hình; dọn nút tải cũ ở tất cả chuyên mục.
+      detail.querySelectorAll('.gdd-image-actions [data-gdd-image-save]').forEach(button=>button.remove());
       const cover=detail.querySelector('.detail-cover');
       const img=cover?.querySelector('img');
       if(!img)return;
@@ -473,16 +473,7 @@
           detail.dataset.gddKind==='people',img,isMediaDetail()));
         bar.append(show);
       }
-      const save=bar.querySelector('[data-gdd-image-save]');
-      if(hideImageActions){
-        if(save)save.remove();
-      }else if(!save){
-        const button=document.createElement('button');
-        button.type='button';button.className='gdd-image-action';
-        button.dataset.gddImageSave='1';button.textContent='↓ Tải ảnh có lưu dấu';
-        button.addEventListener('click',()=>downloadImage(img.currentSrc||img.src,imgTitle(img),button,img.dataset.photoCode||detail.dataset.gddArchiveCode));
-        bar.append(button);
-      }
+
     };
     const observer=new MutationObserver(injectControls);
     observer.observe(detail,{childList:true,subtree:true});
