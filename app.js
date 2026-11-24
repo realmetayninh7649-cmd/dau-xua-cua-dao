@@ -473,7 +473,7 @@ function videoSource(raw){
       // Mỗi lần mở hồ sơ tạo một bước lịch sử, để Back trở về đúng chuyên mục.
       history.pushState({...history.state,__gddLayer:'detail'},'',`#${prefixNames[kind]}/${encodeURIComponent(record.slug)}`);
     }
-    // Only published document derivatives are returned; private originals stay in R2.
+    // Public attachments: readers and explicitly permitted downloads, no raw R2 keys.
     if(record.published===true&&config.publicReadProvider==='d1-staging'){
       const content=$('#detail-content'),bodyNode=$('.detail-body',content);
       const attached=document.createElement('section');attached.className='detail-source gdd-attached-documents';attached.hidden=true;
@@ -497,9 +497,20 @@ function videoSource(raw){
         for(const row of valid){
           const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0;';
           const name=document.createElement('span');name.style.cssText='flex:1;min-width:120px;overflow-wrap:anywhere';name.textContent=row.original_name||'Tài liệu';
-          const link=document.createElement('a');link.className='btn btn-outline';link.textContent='Đọc tài liệu ↗';
-          const target=new URL('r2-xem.html',new URL('.',location.href));target.searchParams.set('asset',row.asset_id);link.href=target.href;link.target='_blank';link.rel='noopener noreferrer';
-          line.append(name,link);attached.append(line);
+          line.append(name);
+          if(row.has_reader===undefined||Number(row.has_reader)===1){
+            const link=document.createElement('a');link.className='btn btn-outline';link.textContent='Đọc tài liệu ↗';
+            const target=new URL('r2-xem.html',new URL('.',location.href));target.searchParams.set('asset',row.asset_id);link.href=target.href;link.target='_blank';link.rel='noopener noreferrer';
+            line.append(link);
+          }
+          if(Number(row.allow_download)===1){
+            const download=document.createElement('a');download.className='btn btn-outline';
+            const ext=String(row.original_name||'').split('.').pop().toLowerCase();
+            download.textContent=ext==='pdf'?'↓ Tải PDF':ext==='doc'||ext==='docx'?'↓ Tải Word':'↓ Tải tài liệu';
+            download.href='https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/public/attachments/'+encodeURIComponent(kind)+'/'+encodeURIComponent(record.id)+'/'+encodeURIComponent(row.asset_id)+'/download';
+            download.rel='noopener noreferrer';line.append(download);
+          }
+          attached.append(line);
         }
         attached.hidden=false;
       })().catch(()=>{});
