@@ -49,12 +49,12 @@ export const ADMIN_HTML=`<!doctype html>
 <h4>Đính kèm tài liệu PDF / Word</h4>
 <label for="work-attachment-files"><strong>Chọn nhiều tệp tài liệu</strong></label>
 <input id="work-attachment-files" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
-<small>PDF / DOC / DOCX · Tối đa 45 MB/tệp · Bản gốc riêng tư. Sau khi đăng bài, bấm Công bố bản đọc để độc giả xem PDF/DOCX.</small>
+<small>PDF / DOC / DOCX · Tối đa 45 MB/tệp. PDF và DOCX tự tạo bản đọc khi Đăng bài (DOCX chỉ hiển thị chữ; .doc giữ riêng, cần đổi sang PDF/DOCX để đọc công khai). Bản gốc riêng tư.</small>
 <ul id="work-attachment-queue" class="records"></ul>
 <p id="work-attachment-status" role="status" aria-live="polite"></p>
 <details><summary>Tài liệu đã gắn vào bài <span id="work-attachment-count">· 0 tệp</span></summary><ul id="work-attachment-existing" class="records"></ul></details>
 </div>
-<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Đăng bài sẽ tự tải ảnh và tài liệu đính kèm, cấp mã (nếu cần) và hiển thị bản xem ảnh. Tài liệu gốc chỉ dành cho quản trị viên.</small></div>
+<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Đăng bài tự tải ảnh và tài liệu, cấp mã (nếu cần), tạo và công bố bản đọc PDF/DOCX. Tài liệu gốc chỉ dành cho quản trị viên.</small></div>
 <details class="work-history"><summary>Lịch sử chỉnh sửa và phục hồi</summary><ul class="records" id="work-revisions"></ul></details>
 </div>
 <details id="work-list-details" class="work-record-panel">
@@ -1273,11 +1273,13 @@ async function workSave(mode='draft'){
   }
   if(window.GDDPhotoAlbum?.hasPending())await window.GDDPhotoAlbum.uploadBatch(active,progress);
   if(window.GDDPhotoAlbum?.hasDocuments())await window.GDDPhotoAlbum.uploadDocuments(active,progress);
+  const readerPlans=await window.GDDPhotoAlbum?.prepareReaders(active,progress)||[];
   const finalFields=workChanged();delete finalFields.published;
   if(!active.record.published)finalFields.published=true;
   progress('Đang đưa bài lên website…');
   await patch(finalFields);
   if(!active.record.published)throw Error('Máy chủ chưa xác nhận trạng thái đã đăng');
+  await window.GDDPhotoAlbum?.releaseReaders(active,readerPlans,progress);
   completed=true;
  }catch(e){
   progress('Chưa hoàn tất: '+e.message+(active.id?(active.record?.published?' · Bài cũ vẫn đang hiển thị; ảnh đã gắn có thể đã xuất hiện.':' · Bản nháp đã được giữ. Có thể nhấn Đăng bài để thử tiếp.'):''));

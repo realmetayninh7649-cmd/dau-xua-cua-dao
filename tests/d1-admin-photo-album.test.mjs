@@ -38,3 +38,15 @@ test('private document attachments are integrated into all editorial types',()=>
  assert.doesNotThrow(()=>new Script(ADMIN_JS));
  assert.doesNotThrow(()=>new Script(PHOTO_JS));
 });
+
+test('one-click publication prepares readers before publishing parent and releases after confirmation',()=>{
+ const prepare=ADMIN_JS.indexOf('prepareReaders(active,progress)');
+ const patch=ADMIN_JS.indexOf('await patch(finalFields)',prepare);
+ const release=ADMIN_JS.indexOf('releaseReaders(active,readerPlans,progress)',patch);
+ assert.ok(prepare>0&&patch>prepare&&release>patch);
+ assert.ok(PHOTO_JS.includes('readerPlans.has(row.asset_id)'));
+ assert.ok(PHOTO_JS.includes('Number(row.public_view)===1&&Number(row.preview_ready)===1'));
+ assert.ok(PHOTO_JS.includes('record.record?.published!==true'));
+ assert.ok(!PHOTO_JS.includes("btn.textContent='Công bố bản đọc'"));
+ assert.ok(PHOTO_JS.includes('item.assetId===row.asset_id'));
+});
