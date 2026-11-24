@@ -140,7 +140,9 @@ def copy(s3,items,entry,headers,authenticated,remaining):
     items[dest]={"Size":size}
     return "copied_verified",size
 def main():
-    d1_counts()
+    try:d1_counts()
+    except urllib.error.HTTPError as e:print('D1_AUDIT_HTTP='+str(e.code),flush=True)
+    except Exception as e:print('D1_AUDIT_UNVERIFIED='+type(e).__name__,flush=True)
     s3=make_s3();items=inventory(s3);known_audit(items)
     key=os.environ.get("SUPABASE_SERVICE_ROLE_KEY","")
     auth=False
