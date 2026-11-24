@@ -115,6 +115,46 @@
 .gdd-cert-original-link span{display:block;padding:10px 12px;text-align:center;font:600 12px/1.5 'Be Vietnam Pro',system-ui,sans-serif;background:#f7f3ea}
 .gdd-cert-card .gdd-cert-original-link{flex:none}
 </style>  <link rel="stylesheet" href="gdd-phase1-layout.css?v=20261118-sidebar-01">
+<style id="gdd-audio-sidebar-compact-20261124">
+/* Audio sidebar: one compact row per track, with the play control on the same row. */
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-layout{gap:8px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-list{gap:4px!important;max-height:340px}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-item{
+  display:grid!important;grid-template-columns:28px minmax(0,1fr) 20px!important;
+  grid-auto-flow:row!important;align-items:center!important;justify-items:stretch!important;
+  gap:7px!important;min-height:44px!important;height:auto!important;
+  padding:5px 8px!important;border-radius:6px!important;text-align:left!important;
+  box-sizing:border-box!important
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-item>.gdd-radio-symbol{
+  grid-column:1!important;grid-row:1!important;width:28px!important;height:28px!important;
+  min-width:0!important;border-radius:5px!important
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-item>.gdd-radio-item-copy{
+  grid-column:2!important;grid-row:1!important;min-width:0!important;padding:0!important
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-item-copy strong{
+  font-size:12px!important;line-height:1.4!important;margin:0!important;text-align:left!important
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-item>.gdd-radio-play-icon{
+  grid-column:3!important;grid-row:1!important;align-self:center!important;
+  justify-self:center!important;font-size:11px!important;margin:0!important
+}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-symbol svg{width:17px!important;height:17px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-player-box{padding:9px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-now{gap:7px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-now .gdd-radio-symbol{width:34px!important;height:34px!important;border-radius:6px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-now h3{font-size:14px!important;line-height:1.35!important;margin:2px 0!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-info{margin:5px 0!important;padding:0!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-info summary{padding:0!important;min-height:0!important;font-size:11px!important;line-height:1.6!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-player-box audio{display:block;width:100%!important;height:40px!important;margin:5px 0!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-player-box audio[hidden]{display:none!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-transport{gap:4px!important;margin:5px 0 0!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-transport button{min-height:36px!important;padding:4px 3px!important;font-size:10px!important;gap:3px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-transport button span{font-size:13px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-status{margin:4px 0 0!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-status:empty{display:none!important}
+</style>
   <link rel="stylesheet" href="gdd-phase1-compact-original.css?v=20261113-1">
   <link rel="stylesheet" href="gdd-phase2-search.css?v=20261113-1">
   <link rel="stylesheet" href="gdd-people-search-ios.css?v=20261113-search-all-01">
