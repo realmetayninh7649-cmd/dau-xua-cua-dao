@@ -37,10 +37,10 @@ export const ADMIN_HTML=`<!doctype html>
 <div class="sandbox-form" id="work-fields"></div>
 <div id="work-photo-panel" class="work-photo-panel" hidden>
 <h4>Thêm nhiều ảnh vào bài</h4>
-<p class="work-photo-explain">Chọn tối đa 12 ảnh một lượt, nhập chú thích và sắp xếp thứ tự. Ảnh gốc giữ riêng trong R2; chỉ bản xem được công bố sau khi bạn xác nhận. Bộ ảnh sẽ hiện dưới nội dung khi bài công bố.</p>
+<p class="work-photo-explain">Chọn nhiều ảnh tùy nhu cầu, nhập chú thích và sắp xếp thứ tự. Hệ thống tải lần lượt từng ảnh; có thể chọn thêm. Ảnh gốc giữ riêng trong R2; chỉ bản xem được công bố sau khi bạn xác nhận. Bộ ảnh sẽ hiện dưới nội dung khi bài công bố.</p>
 <label for="work-photo-files"><strong>Chọn nhiều ảnh từ điện thoại hoặc máy tính</strong></label>
 <input id="work-photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-<small>JPEG/PNG/WebP, tối đa 24 MB/ảnh và 120 MB/lượt. Lưu bản nháp trước khi tải.</small>
+<small>JPEG/PNG/WebP, tối đa 24 MB/ảnh. Không giới hạn số ảnh chọn hoặc đính kèm; lưu bản nháp trước khi tải.</small>
 <ol id="work-photo-queue" class="work-photo-queue"></ol>
 <label class="sandbox-checkbox work-photo-consent"><input id="work-photo-confirm" type="checkbox"> Tôi đồng ý công bố bản xem của ảnh đã chọn (không phải bản gốc)</label>
 <button id="work-photo-upload" class="work-primary" type="button" disabled>Tải ảnh lên R2 và gắn vào bài</button>
@@ -206,6 +206,7 @@ th{color:var(--muted);font-size:.85rem}
 .sandbox-form label{font-size:.91rem;font-weight:600}
 .sandbox-form input[type=text],.sandbox-form textarea,.sandbox-form select{font:inherit;width:100%;border:1px solid #aeb9b1;border-radius:8px;padding:10px;background:#fff;color:var(--ink)}
 .sandbox-form textarea{resize:vertical}
+.work-cover-upload{display:grid;gap:8px;padding:10px;border:1px solid #cddccf;border-radius:8px;min-width:0}.work-cover-upload input{max-width:100%;width:100%;font:inherit}.work-cover-upload small{overflow-wrap:anywhere}.work-cover-upload img{width:100%;max-height:180px;object-fit:contain}
 .sandbox-form [hidden]{display:none!important}.sandbox-form .work-date-help{font-size:.82rem;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}.sandbox-form select{min-width:0;max-width:100%;font-size:16px}
 .sandbox-checkbox{display:flex;gap:8px;align-items:center}
 .sandbox-checkbox input{width:18px;height:18px}
@@ -924,6 +925,32 @@ function workBuild(kind,record){
    wrapper.append(input,label);fields.append(wrapper);
   }else{fields.append(label,input);}
   workFieldInputs.set(field,input);
+  if(['image_url','cover_url','portrait_url'].includes(field)){
+   const upload=document.createElement('div');upload.className='work-cover-upload';
+   const choose=document.createElement('input');choose.type='file';choose.accept='image/jpeg,image/png,image/webp';choose.id='work-cover-file-'+field;
+   const button=document.createElement('button');button.type='button';button.textContent='Tải ảnh lên R2';button.disabled=true;
+   const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent='Chọn ảnh trực tiếp từ điện thoại hoặc máy tính. Bản gốc được giữ riêng.';
+   const preview=document.createElement('img');preview.alt='Bản xem ảnh đã chọn';preview.hidden=true;
+   let item={},busy=false;
+   choose.addEventListener('change',()=>{item={};button.disabled=!choose.files?.length;msg.textContent='Chọn Tải ảnh lên R2 để tạo bản xem.'});
+   button.addEventListener('click',async()=>{
+    const file=choose.files?.[0];if(!file||busy)return;
+    if(!window.GDDPhotoAlbum?.uploadCover){msg.textContent='Chưa tải được chức năng ảnh; hãy tải lại trang.';return}
+    if(window.GDDPhotoAlbum.isBusy()){msg.textContent='Album đang tải; hãy hoàn tất album trước.';return}
+    if(!confirm('Công bố bản xem ảnh đại diện? Bản gốc vẫn giữ riêng trong R2.'))return;
+    const active=workCurrent;
+    busy=true;button.disabled=true;choose.disabled=true;
+    try{
+     const url=await window.GDDPhotoAlbum.uploadCover(file,text=>msg.textContent=text,item);
+     if(workCurrent!==active||!upload.isConnected)return;
+     input.value=url;preview.src=url;preview.hidden=false;
+     msg.textContent='Đã tải ảnh. Nhấn Lưu thay đổi để gắn ảnh đại diện vào hồ sơ.';
+     button.textContent='Đã tải ảnh';
+    }catch(e){msg.textContent='Chưa tải xong: '+e.message+' · Có thể thử lại.';button.disabled=false}
+    finally{busy=false;choose.disabled=false}
+   });
+   upload.append(choose,button,msg,preview);fields.append(upload);
+  }
  }
  if(kind==='people'){
   const branch=workFieldInputs.get('branch'),rank=workFieldInputs.get('rank'),group=workFieldInputs.get('subgroup');
