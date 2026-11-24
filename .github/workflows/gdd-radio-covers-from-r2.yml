@@ -1,0 +1,48 @@
+name: "GDD Radio - Restore two approved covers from private R2 to GitHub WebP"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/gdd_radio_restore_covers.py"
+      - ".github/workflows/gdd-radio-covers-from-r2.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gdd-radio-cover-restoration
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Install pinned R2 S3 reader and image decoder"
+        run: python -m pip install boto3==1.40.61 pillow==11.3.0
+      - name: "Read two exact already-published PNG originals and make lightweight WebP derivatives"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+        run: python scripts/gdd_radio_restore_covers.py
+      - name: "Commit only derived public WebP previews, never PNG originals"
+        run: |
+          set -euo pipefail
+          test -s audio/radio-hai-muoi-nam-cover.webp
+          test -s audio/niem-danh-kim-mau-cover.webp
+          git config user.name "gdd-radio-cover-restoration"
+          git config user.email "gdd-radio-cover-restoration@users.noreply.github.com"
+          git add -- audio/radio-hai-muoi-nam-cover.webp audio/niem-danh-kim-mau-cover.webp
+          if git diff --cached --quiet; then
+            echo "PUBLISHED_RADIO_COVER_DERIVATIVES_UNCHANGED=TRUE"
+          else
+            git commit -m "Restore approved optimized Radio covers from R2 backup"
+            git pull --rebase origin main
+            git push origin HEAD:main
+            echo "PUBLISHED_RADIO_COVER_DERIVATIVES_DEPLOYED=TRUE"
+          fi
