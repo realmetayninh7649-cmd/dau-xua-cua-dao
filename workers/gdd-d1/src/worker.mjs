@@ -79,6 +79,29 @@ export default {
     if(incomingPath==='/api/v1/stats'||incomingPath.startsWith('/api/v1/stats/')){
       return handleSiteStats(request,env,incomingPath);
     }
+    const docDownload=/^\/api\/v1\/public\/attachments\/([a-z_]+)\/([a-f0-9-]{36})\/([a-f0-9-]{36})\/download$/.exec(incomingPath);
+    if(docDownload){
+      if(!['GET','HEAD'].includes(request.method))return respond(request,{error:'read_only'},405,{private:true});
+      const [,kind,id,asset]=docDownload;
+      const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+      const deny=()=>respond(request,{error:'not_found'},404,{private:true});
+      if(!PUBLIC_TABLES.has(kind)||!uuid.test(id)||!uuid.test(asset)||!env.DB||!env.SUBMISSIONS_BUCKET)return deny();
+      try{
+        const row=await env.DB.prepare("SELECT a.asset_id,a.owner_id,a.original_name,a.original_bytes FROM gdd_r2_assets a WHERE a.asset_id=? AND a.record_kind=? AND a.record_id=? AND a.role='attachment' AND a.media_kind='document' AND a.allow_download=1 AND EXISTS(SELECT 1 FROM \""+kind+"\" p WHERE p.id=a.record_id AND p.published=1) LIMIT 1").bind(asset,kind,id).first();
+        if(!row||row.asset_id!==asset||!uuid.test(row.owner_id||''))return deny();
+        const ext=String(row.original_name||'').split('.').pop().toLowerCase();
+        const types={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
+        if(!Object.hasOwn(types,ext)||!Number.isSafeInteger(Number(row.original_bytes))||Number(row.original_bytes)<1||Number(row.original_bytes)>45*1048576)return deny();
+        const key='originals/'+row.owner_id+'/'+asset+'/original.'+ext;
+        const info=await env.SUBMISSIONS_BUCKET.get('meta/'+asset+'.json');
+        const meta=info?await info.json():null;
+        if(!meta||meta.id!==asset||meta.owner!==row.owner_id||meta.key!==key||meta.kind!=='document'||meta.mime!==types[ext])return deny();
+        const file=request.method==='HEAD'?await env.SUBMISSIONS_BUCKET.head(key):await env.SUBMISSIONS_BUCKET.get(key);
+        if(!file||file.size!==Number(row.original_bytes))return deny();
+        const filename=encodeURIComponent(String(row.original_name).slice(0,160)).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16));
+        return new Response(request.method==='HEAD'?null:file.body,{headers:{'Content-Type':types[ext],'Content-Length':String(file.size),'Content-Disposition':"attachment; filename=\"document."+ext+"\"; filename*=UTF-8''"+filename,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex,nofollow'}});
+      }catch{return respond(request,{error:'download_unavailable'},503,{private:true})}
+    }
     const managedAudio=/^\/api\/v1\/public\/audio\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\/([a-f0-9]{64})\.mp3$/.exec(incomingPath);
     if(managedAudio)return serveAudio(request,env,managedAudio[1],managedAudio[2],respond,ALLOWED_ORIGINS);
     // Only this verified previously public MP3, never a caller-supplied R2 key.
@@ -141,7 +164,7 @@ export default {
         const parent=await env.DB.prepare('SELECT id FROM "'+kind+'" WHERE id=? AND published=1 LIMIT 1').bind(id).first();
         if(!parent)return respond(request,{data:[],has_next:false},200,{private:true});
         const page=parsePage(url);if(!page)return respond(request,{error:'invalid_pagination'},400,{private:true});
-        const {results=[]}=await env.DB.prepare("SELECT asset_id,original_name FROM gdd_r2_assets WHERE record_kind=? AND record_id=? AND role='attachment' AND media_kind='document' AND public_view=1 AND preview_ready=1 ORDER BY created_at,asset_id LIMIT ? OFFSET ?").bind(kind,id,page.limit+1,page.offset).all();
+        const {results=[]}=await env.DB.prepare("SELECT asset_id,original_name,CASE WHEN public_view=1 AND preview_ready=1 THEN 1 ELSE 0 END AS has_reader,CASE WHEN allow_download=1 THEN 1 ELSE 0 END AS allow_download FROM gdd_r2_assets WHERE record_kind=? AND record_id=? AND role='attachment' AND media_kind='document' AND ((public_view=1 AND preview_ready=1) OR allow_download=1) ORDER BY created_at,asset_id LIMIT ? OFFSET ?").bind(kind,id,page.limit+1,page.offset).all();
         return respond(request,{data:results.slice(0,page.limit),has_next:results.length>page.limit},200,{private:true});
       }
       if(path[3]==='albums'&&path.length===4){

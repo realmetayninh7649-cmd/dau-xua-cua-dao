@@ -1,11 +1,11 @@
-/* Access-protected document attachment associations. Originals never published. */
+/* Access-protected attachments. Originals private by default; only explicit permission enables public download. */
 import {ownerUUID} from './r2-managed.mjs';
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
-const ROUTE=/^\/api\/v1\/admin\/work\/(people|posts|media|videos|obituaries|documents|gdd_memorials|gdd_audio_programs|gdd_calendar_memorials)\/([a-f0-9-]{36})\/attachments(?:\/([a-f0-9-]{36})\/(download|pages))?$/i;
+const ROUTE=/^\/api\/v1\/admin\/work\/(people|posts|media|videos|obituaries|documents|gdd_memorials|gdd_audio_programs|gdd_calendar_memorials)\/([a-f0-9-]{36})\/attachments(?:\/([a-f0-9-]{36})\/(download|pages|permission))?$/i;
 const MIME={pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex,nofollow'};
 function reply(data,status=200){return new Response(JSON.stringify(data),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}})}
-const fields='asset_id,original_name,original_bytes,created_at,public_view,preview_ready';
+const fields='asset_id,original_name,original_bytes,created_at,public_view,preview_ready,allow_download';
 export async function handleAttachments(request,env,path){
  const match=ROUTE.exec(path);
  if(!match||!ID.test(match[2])||(match[3]&&!ID.test(match[3])))return reply({error:'invalid_attachment_route'},404);
@@ -17,6 +17,18 @@ export async function handleAttachments(request,env,path){
   if(!parent)return reply({error:'record_not_found'},404);
   const where=" WHERE record_kind=? AND record_id=? AND owner_id=? AND role='attachment' AND media_kind='document'";
   if(downloadId){
+   if(operation==='permission'){
+    if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
+    const raw=await request.text();if(raw.length>200)return reply({error:'invalid_body'},400);
+    let payload;try{payload=JSON.parse(raw)}catch{return reply({error:'invalid_json'},400)}
+    if(!payload||Object.keys(payload).length!==1||typeof payload.allow_download!=='boolean')return reply({error:'invalid_permission'},400);
+    const row=await env.DB.prepare('SELECT '+fields+' FROM gdd_r2_assets'+where+' AND asset_id=? LIMIT 1').bind(kind,id,owner,downloadId).first();
+    if(!row||!/\.(pdf|doc|docx)$/i.test(row.original_name||''))return reply({error:'attachment_not_found'},404);
+    await env.DB.prepare('UPDATE gdd_r2_assets SET allow_download=?'+where+' AND asset_id=?').bind(Number(payload.allow_download),kind,id,owner,downloadId).run();
+    const saved=await env.DB.prepare('SELECT '+fields+' FROM gdd_r2_assets'+where+' AND asset_id=? LIMIT 1').bind(kind,id,owner,downloadId).first();
+    if(!saved||Number(saved.allow_download)!==Number(payload.allow_download))return reply({error:'permission_not_confirmed'},409);
+    return reply({data:saved});
+   }
    if(request.method!=='GET')return reply({error:'method_not_allowed'},405);
    const row=await env.DB.prepare('SELECT '+fields+' FROM gdd_r2_assets'+where+' AND asset_id=? LIMIT 1').bind(kind,id,owner,downloadId).first();
    if(!row||!env.GDD_BUCKET)return reply({error:'attachment_not_found'},404);

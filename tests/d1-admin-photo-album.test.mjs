@@ -66,3 +66,10 @@ test('release accepts D1 integer publication flag and rejects unpublished rows',
  assert.equal(releases,2);
  assert.ok(PHOTO_JS.includes('if(existing.has(n))continue;'));
 });
+
+test('attachment download permission defaults off and is saved by the ordinary publish action',()=>{
+ assert.ok(PHOTO_JS.includes('allowDownload:false'));
+ assert.ok(PHOTO_JS.includes('Cho phép khách tải tệp gốc'));
+ assert.ok(ADMIN_JS.includes('saveDownloadPermissions(active,false,progress)'));
+ assert.ok(ADMIN_JS.includes('saveDownloadPermissions(active,true,progress)'));
+});

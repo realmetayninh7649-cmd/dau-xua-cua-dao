@@ -49,12 +49,12 @@ export const ADMIN_HTML=`<!doctype html>
 <h4>Đính kèm tài liệu PDF / Word</h4>
 <label for="work-attachment-files"><strong>Chọn nhiều tệp tài liệu</strong></label>
 <input id="work-attachment-files" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
-<small>PDF / DOC / DOCX · Tối đa 45 MB/tệp. PDF và DOCX tự tạo bản đọc khi Đăng bài (DOCX chỉ hiển thị chữ; .doc giữ riêng, cần đổi sang PDF/DOCX để đọc công khai). Bản gốc riêng tư.</small>
+<small>PDF / DOC / DOCX · Tối đa 45 MB/tệp. PDF và DOCX tự tạo bản đọc khi Đăng bài (DOCX chỉ hiển thị chữ; .doc giữ riêng, cần đổi sang PDF/DOCX để đọc công khai). Bản gốc mặc định riêng tư; bật “Cho phép khách tải tệp gốc” cho từng tài liệu nếu muốn chia sẻ.</small>
 <ul id="work-attachment-queue" class="records"></ul>
 <p id="work-attachment-status" role="status" aria-live="polite"></p>
 <details><summary>Tài liệu đã gắn vào bài <span id="work-attachment-count">· 0 tệp</span></summary><ul id="work-attachment-existing" class="records"></ul></details>
 </div>
-<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Đăng bài tự tải ảnh và tài liệu, cấp mã (nếu cần), tạo và công bố bản đọc PDF/DOCX. Tài liệu gốc chỉ dành cho quản trị viên.</small></div>
+<div class="work-submit-actions"><p id="work-submit-status" role="status" aria-live="polite"></p><button id="work-publish" class="work-primary" type="button">Đăng bài lên website</button><div class="controls"><button id="work-save" type="button">Lưu bản nháp</button><button id="work-cancel" type="button">Đóng biểu mẫu</button></div><small>Đăng bài tự tải ảnh và tài liệu, cấp mã (nếu cần), tạo và công bố bản đọc PDF/DOCX. Tệp gốc chỉ tải công khai nếu bạn bật quyền cho từng tệp.</small></div>
 <details class="work-history"><summary>Lịch sử chỉnh sửa và phục hồi</summary><ul class="records" id="work-revisions"></ul></details>
 </div>
 <details id="work-list-details" class="work-record-panel">
@@ -218,6 +218,7 @@ th{color:var(--muted);font-size:.85rem}
 .sandbox-checkbox input{width:18px;height:18px}
 .sandbox-line{display:flex;gap:9px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .sandbox-line button{font-size:.84rem;padding:7px 9px}
+#work-attachment-panel .sandbox-line span,#work-attachment-status{min-width:0;overflow-wrap:anywhere;word-break:break-word}
 
 .safe-list{padding-left:24px;line-height:1.6}.safe-list li{padding:5px 0}.audit-caution{color:#695a41;font-size:.86rem;padding:10px;background:#fff8e8;border-radius:6px}
 .records{padding:0;margin:0;list-style:none}
@@ -1273,6 +1274,7 @@ async function workSave(mode='draft'){
   }
   if(window.GDDPhotoAlbum?.hasPending())await window.GDDPhotoAlbum.uploadBatch(active,progress);
   if(window.GDDPhotoAlbum?.hasDocuments())await window.GDDPhotoAlbum.uploadDocuments(active,progress);
+  await window.GDDPhotoAlbum?.saveDownloadPermissions(active,false,progress);
   const readerPlans=await window.GDDPhotoAlbum?.prepareReaders(active,progress)||[];
   const finalFields=workChanged();delete finalFields.published;
   if(!active.record.published)finalFields.published=true;
@@ -1280,6 +1282,7 @@ async function workSave(mode='draft'){
   await patch(finalFields);
   if(!active.record.published)throw Error('Máy chủ chưa xác nhận trạng thái đã đăng');
   await window.GDDPhotoAlbum?.releaseReaders(active,readerPlans,progress);
+  await window.GDDPhotoAlbum?.saveDownloadPermissions(active,true,progress);
   completed=true;
  }catch(e){
   progress('Chưa hoàn tất: '+e.message+(active.id?(active.record?.published?' · Bài cũ vẫn đang hiển thị; ảnh đã gắn có thể đã xuất hiện.':' · Bản nháp đã được giữ. Có thể nhấn Đăng bài để thử tiếp.'):''));

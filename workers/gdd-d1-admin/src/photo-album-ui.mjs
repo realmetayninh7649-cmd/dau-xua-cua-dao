@@ -11,12 +11,13 @@ const limits={each:24*1048576};
 const documentKinds=new Set([...supportedKinds,'gdd_memorials','gdd_audio_programs','gdd_calendar_memorials']);
 const documentLimit=45*1048576;
 let documents=[];
+const downloadChanges=new Map();
 let queue=[],context=null,busy=false,loadId=0;
 function status(message){$('work-photo-status').textContent=message}
 function clear(){
  loadId++;
  for(const item of queue)if(item.previewUrl)URL.revokeObjectURL(item.previewUrl);
- queue=[];documents=[];readerPlans.clear();context=null;busy=false;
+ queue=[];documents=[];readerPlans.clear();downloadChanges.clear();context=null;busy=false;
  $('work-attachment-files').value='';$('work-attachment-queue').replaceChildren();$('work-attachment-existing').replaceChildren();$('work-attachment-count').textContent=' · 0 tệp';$('work-attachment-status').textContent='';$('work-attachment-panel').hidden=true;
  $('work-photo-files').value='';
  $('work-photo-queue').replaceChildren();$('work-photo-album').replaceChildren();
@@ -210,6 +211,12 @@ async function uploadBatch(record,notify=()=>{}){
  }finally{if(context===activeContext){busy=false;render()}}
 }
 function docStatus(message){$('work-attachment-status').textContent=message}
+function permissionChoice(li,checked,onChange,disabled=false){
+ const wrap=document.createElement('label');wrap.style.cssText='display:flex;align-items:center;gap:8px;flex-basis:100%;font-size:.86rem;';
+ const input=document.createElement('input');input.type='checkbox';input.checked=checked;input.disabled=disabled||busy||workBusy;input.style.cssText='width:auto;min-width:0;';
+ input.addEventListener('change',()=>onChange(input.checked));
+ wrap.append(input,document.createTextNode('Cho phép khách tải tệp gốc'));li.append(wrap);
+}
 function renderDocuments(){
  const list=$('work-attachment-queue');list.replaceChildren();
  for(const item of documents){
@@ -217,7 +224,7 @@ function renderDocuments(){
   label(li,'span',item.file.name+' · '+(item.file.size/1048576).toFixed(1)+' MB · '+(item.done?'Đã gắn':item.error||'Chờ tải'));
   const remove=document.createElement('button');remove.type='button';remove.textContent='Bỏ chọn';remove.disabled=busy||workBusy||item.done||!!item.assetId;
   remove.addEventListener('click',()=>{documents=documents.filter(x=>x!==item);renderDocuments()});
-  li.append(remove);list.append(li);
+  li.append(remove);permissionChoice(li,item.allowDownload===true,value=>{item.allowDownload=value;if(item.assetId)downloadChanges.set(item.assetId,value)},item.done);list.append(li);
  }
  refresh();
 }
@@ -229,7 +236,7 @@ function selectDocuments(){
  for(const file of files){
   if(!/\.(pdf|doc|docx)$/i.test(file.name)||file.size<1||file.size>documentLimit){rejected++;continue}
   const key=[file.name,file.size,file.lastModified].join('|');if(known.has(key))continue;
-  known.add(key);documents.push({file,assetId:null,done:false,error:''});added++;
+  known.add(key);documents.push({file,assetId:null,done:false,error:'',allowDownload:false});added++;
  }
  $('work-attachment-files').value='';
  docStatus('Đã chọn '+added+' tài liệu mới. '+(rejected?'Bỏ qua '+rejected+' tệp không hợp lệ. ':'')+'Tự tải khi đăng bài.');
@@ -260,6 +267,7 @@ async function reloadDocuments(){
    const a=document.createElement('a');a.textContent='Tải tệp gốc (quản trị)';a.href=base+'/'+encodeURIComponent(row.asset_id)+'/download';li.append(a);
    const released=Number(row.public_view)===1&&Number(row.preview_ready)===1;
    label(li,'small',released?'Đã có bản đọc công khai':/\.doc$/i.test(row.original_name||'')?'Bản gốc riêng tư · Word .doc cần chuyển sang PDF hoặc DOCX để độc giả xem':'Chưa có bản đọc · tự xử lý khi Đăng bài / Cập nhật bài');
+   permissionChoice(li,downloadChanges.has(row.asset_id)?downloadChanges.get(row.asset_id):Number(row.allow_download)===1,value=>{downloadChanges.set(row.asset_id,value);docStatus('Quyền tải sẽ được lưu khi nhấn Cập nhật bài / Đăng bài.')});
    list.append(li);
   }
  }catch(e){if(context===current)docStatus('Chưa đọc được tài liệu: '+e.message)}
@@ -377,15 +385,28 @@ async function uploadDocuments(record,notify=()=>{}){
     progress('Gắn tệp vào hồ sơ...');
     const saved=await workWrite('/api/v1/admin/work/'+record.kind+'/'+record.id+'/attachments','POST',{asset_id:item.assetId});
     if(saved?.data?.asset_id!==item.assetId)throw Error('Chưa xác nhận liên kết tài liệu');
+    downloadChanges.set(item.assetId,item.allowDownload===true);
     item.done=true;item.error='';
    }catch(e){item.error=String(e.message||'Lỗi');throw Error('Tài liệu '+(i+1)+': '+item.error)}
   }
   await reloadDocuments();docStatus('Đã gắn đủ tài liệu. Bản gốc riêng tư.');
  }finally{busy=false;renderDocuments()}
 }
+async function saveDownloadPermissions(record,allow,notify=()=>{}){
+ if(!downloadChanges.size)return;
+ if(!context||context.kind!==record.kind||context.id!==record.id)throw Error('Hồ sơ đính kèm không khớp');
+ if(allow&&!(record.record?.published===true||record.record?.published===1))throw Error('Bài chưa được đăng');
+ for(const [assetId,value] of [...downloadChanges]){
+  if(value!==allow)continue;
+  notify(value?'Đang lưu quyền tải tài liệu…':'Đang khóa tải tài liệu…');
+  const result=await workWrite('/api/v1/admin/work/'+record.kind+'/'+record.id+'/attachments/'+assetId+'/permission','POST',{allow_download:value});
+  if(result?.data?.asset_id!==assetId||Number(result.data.allow_download)!==Number(value))throw Error('Chưa lưu được quyền tải');
+  downloadChanges.delete(assetId);
+ }
+}
 $('work-attachment-files').addEventListener('change',selectDocuments);
 $('work-photo-files').addEventListener('change',select);
-window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={}){
+window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0,hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={}){
  if(!supported.has(file.type)||file.size<1||file.size>limits.each)throw Error('Chọn JPEG/PNG/WebP không quá 24 MB.');
  item.file=file;
  if(!item.assetId)item.assetId=await archiveOriginal(file,notify);

@@ -94,3 +94,18 @@ test('gallery and placement endpoints filter by published parent, never list pri
  assert.equal(called.length,2);
  assert.equal((await call('/api/v1/public/gallery?limit=101')).status,400);
 });
+
+test('attachment download requires explicit permission and published owning record',async()=>{
+ const owner='33333333-3333-4333-a333-333333333333',id='11111111-1111-4111-a111-111111111111',asset='22222222-2222-4222-a222-222222222222';
+ const key='originals/'+owner+'/'+asset+'/original.pdf',path='/api/v1/public/attachments/posts/'+id+'/'+asset+'/download';
+ let allowed=false,publishedParent=true,reads=0;
+ const env={DB:{prepare(sql){
+   assert.match(sql,/a\.allow_download=1/);assert.match(sql,/p\.published=1/);assert.match(sql,/a\.role='attachment'/);
+   return {bind:(a,k,i)=>({first:async()=>allowed&&publishedParent&&a===asset&&k==='posts'&&i===id?{asset_id:asset,owner_id:owner,original_name:'document.pdf',original_bytes:5}:null})};
+ }},SUBMISSIONS_BUCKET:{get:async k=>{reads++;if(k==='meta/'+asset+'.json')return {json:async()=>({id:asset,owner,key,kind:'document',mime:'application/pdf'})};if(k===key)return{size:5,body:'%PDF-'};throw Error('unexpected key')}}};
+ const go=(p=path,method='GET')=>worker.fetch(new Request('https://staging.test'+p,{method}),env,{});
+ assert.equal((await go()).status,404);assert.equal(reads,0);
+ allowed=true;publishedParent=false;assert.equal((await go()).status,404);assert.equal(reads,0);
+ publishedParent=true;const r=await go();assert.equal(r.status,200);assert.equal(await r.text(),'%PDF-');assert.match(r.headers.get('Content-Disposition'),/^attachment/);assert.equal(r.headers.get('Cache-Control'),'private, no-store');
+ allowed=false;assert.equal((await go()).status,404);assert.equal((await go(path,'POST')).status,405);
+});

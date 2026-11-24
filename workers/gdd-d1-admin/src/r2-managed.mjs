@@ -66,7 +66,7 @@ export async function handleManagedR2(request,env,path){
     if(metaObject){
       const m=await metaObject.json();
       if(m.owner===owner){
-        await env.DB.prepare('UPDATE gdd_r2_assets SET public_view=?,allow_download=?,preview_ready=?,download_ready=? WHERE asset_id=? AND owner_id=?')
+        await env.DB.prepare("UPDATE gdd_r2_assets SET public_view=?,allow_download=CASE WHEN role='attachment' AND media_kind='document' THEN allow_download ELSE ? END,preview_ready=?,download_ready=? WHERE asset_id=? AND owner_id=?")
           .bind(Number(view),Number(m.allowDownload===true),
             Number(m.preview===true||m.pageCount>0),Number(m.download===true),
             id,owner).run();
