@@ -227,11 +227,15 @@ try{
   assert.equal(await page.locator('#work-field-title').inputValue(),'BÀI KIỂM TRA ẢNH');
   assert.equal(await page.evaluate(()=>workCoverQueue.get('cover_url')?.file?.name),'cover.png');
   assert.equal(uploaded,beforeRecovery);
+  await page.locator('#admin-app-refresh').click();
+  assert.match(await page.locator('#admin-app-refresh-status').textContent(),/Còn ảnh hoặc tệp chưa lưu/);
+  assert.equal(await page.locator('#work-field-title').inputValue(),'BÀI KIỂM TRA ẢNH');
   console.log('COVER_RECOVERY_AFTER_RELOAD_'+label.toUpperCase()+'=PASS');
   await page.getByRole('button',{name:'Xem ảnh đã chọn',exact:true}).first().click();
   await page.locator('.work-cover-upload img').waitFor({state:'visible',timeout:10000});
   assert.equal(await page.locator('#work-photo-files').isEnabled(),true);
   await page.locator('#work-photo-files').setInputFiles(Array.from({length:55},(_,i)=>({name:'test-'+i+'.png',mimeType:'image/png',buffer:png})));
+  await page.waitForFunction(()=>document.querySelectorAll('#work-photo-queue li').length===55,null,{timeout:10000});
   assert.equal(await page.locator('#work-photo-queue li').count(),55);
   await page.locator('#work-photo-files').setInputFiles({name:'additional.png',mimeType:'image/png',buffer:png});
   assert.equal(await page.locator('#work-photo-queue li').count(),56);
