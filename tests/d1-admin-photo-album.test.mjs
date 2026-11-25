@@ -121,3 +121,15 @@ test('photo editor keeps text in session storage and defers local image decoding
  assert.ok(ADMIN_JS.includes("showPreview.hidden=false"));
  assert.ok(PHOTO_JS.includes("if(item.showPreview)picture.src=item.previewUrl"));
 });
+
+test('all nine editors recover text and small cover files without forced scrolling after publish',()=>{
+ assert.ok(ADMIN_JS.includes('Object.hasOwn(workFields,draft.kind)'));
+ assert.ok(ADMIN_JS.includes("indexedDB.open('gdd-admin-cover-recovery-v1'"));
+ assert.ok(ADMIN_JS.includes("await workKeepCoverFiles()"));
+ assert.ok(ADMIN_JS.includes('await workOpen(kind,id,{scroll:false})'));
+ assert.ok(ADMIN_JS.includes('canvas.width=1;canvas.height=1'));
+ assert.ok(PHOTO_JS.includes('if(!item.previewReady)'));
+ assert.ok(PHOTO_JS.includes('await item.checkpoint?.()'));
+ assert.doesNotThrow(()=>new Script(ADMIN_JS));
+ assert.doesNotThrow(()=>new Script(PHOTO_JS));
+});

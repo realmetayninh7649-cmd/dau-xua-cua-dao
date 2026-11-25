@@ -126,18 +126,20 @@ async function uploadPreview(item){
   image.onload=resolve;image.onerror=()=>reject(Error('Điện thoại không đọc được ảnh'));
   image.src=item.previewUrl;
  });
- let optimized=await managedImageBlob(image,'image/webp',1800,.83);
+ try{
+ let optimized=await managedImageBlob(image,'image/webp',item.cover?1440:1800,.83);
  let mime='image/webp';
  const bytes=new Uint8Array(await optimized.slice(0,12).arrayBuffer());
  if(bytes[0]!==82||bytes[1]!==73||bytes[2]!==70||bytes[3]!==70||
     bytes[8]!==87||bytes[9]!==69||bytes[10]!==66||bytes[11]!==80){
-   optimized=await managedImageBlob(image,'image/jpeg',1800,.84);
+   optimized=await managedImageBlob(image,'image/jpeg',item.cover?1440:1800,.84);
    mime='image/jpeg';
  }
  if(optimized.size<16||optimized.size>8*1048576)
    throw Error('Ảnh xem vượt 8 MB; cần thu nhỏ ảnh');
  await managedRequest('/v1/assets/'+item.assetId+'/preview',{
    method:'PUT',data:optimized,type:mime});
+ }finally{image.onload=null;image.onerror=null;image.removeAttribute('src')}
 }
 async function reloadAlbum(){
  const serial=++loadId;
@@ -413,16 +415,19 @@ $('work-attachment-files').addEventListener('change',selectDocuments);
 $('work-photo-files').addEventListener('change',select);
 window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0,imageError,hasPhotos:()=>queue.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={},kind=context?.kind){
  const error=imageError(file,kind);if(error)throw Error(error);
- item.file=file;
- if(!item.assetId)item.assetId=await archiveOriginal(file,notify);
+ item.file=file;item.cover=true;
+ if(!item.assetId){item.assetId=await archiveOriginal(file,notify);await item.checkpoint?.()}
  if(!item.published){
-  notify('Tạo bản xem nhẹ…');
-  item.previewUrl=URL.createObjectURL(file);
-  try{await uploadPreview(item)}finally{URL.revokeObjectURL(item.previewUrl);item.previewUrl=null}
+  if(!item.previewReady){
+   notify('Tạo bản xem nhẹ…');
+   item.previewUrl=URL.createObjectURL(file);
+   try{await uploadPreview(item);item.previewReady=true}finally{URL.revokeObjectURL(item.previewUrl);item.previewUrl=null}
+   await item.checkpoint?.();
+  }
   notify('Công bố bản xem ảnh đại diện…');
   const released=await managedRequest('/v1/assets/'+item.assetId+'/publication',{method:'POST',data:JSON.stringify({publish:true,allowDownload:false})});
   if(released.published!==true||released.originalPrivate!==true)throw Error('R2 chưa xác nhận bản xem');
-  item.published=true;
+  item.published=true;await item.checkpoint?.();
  }
  return 'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+item.assetId+'/preview';
 },show(record){
