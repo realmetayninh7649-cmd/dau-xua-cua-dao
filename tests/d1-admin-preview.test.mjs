@@ -212,3 +212,17 @@ test('DOCX originals remain private and only text-only pages may be published',(
  assert.ok(!ADMIN_JS.includes('convertToHtml('));
  assert.doesNotThrow(()=>new Script(ADMIN_JS,{filename:'gdd-admin-docx-client.js'}));
 });
+
+test('admin home-screen app uses stable URL, same-origin protected icons, and no private offline cache',async()=>{
+ const {res}=await call('/admin/manifest.webmanifest');
+ assert.equal(res.status,200);
+ assert.match(res.headers.get('Content-Type'),/manifest/);
+ const m=JSON.parse((await call('/admin/manifest.webmanifest')).body);
+ assert.equal(m.start_url,'/admin');assert.equal(m.display,'standalone');
+ assert.equal((await call('/admin/manifest.webmanifest',{ctx:{}})).res.status,403);
+ assert.equal((await call('/admin/icon.png',{ctx:{}})).res.status,403);
+ assert.ok(ADMIN_HTML.includes('apple-touch-icon'));
+ assert.ok(ADMIN_HTML.includes('admin-home-grid'));
+ assert.ok(!ADMIN_JS.includes('serviceWorker.register'));
+ assert.match((await call('/admin')).res.headers.get('Content-Security-Policy'),/manifest-src 'self'/);
+});

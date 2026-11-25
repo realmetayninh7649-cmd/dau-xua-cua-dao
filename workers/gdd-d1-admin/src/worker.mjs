@@ -1,3 +1,4 @@
+import {MANIFEST,ICON_SVG,iconPng} from './admin-app.mjs';
 import {AUDIO_OPTIMIZER_JS,AUDIO_ENCODER_WORKER} from './audio-optimizer-ui.mjs';
 import {LAME_JS,LAME_LICENSE} from './audio-encoder-vendor.mjs';
 import {uploadAudio} from './audio-upload.mjs';
@@ -302,9 +303,15 @@ export default {
        working_editor_is_separate_database:true});
    if(path==='/'||path==='/admin')
      return reply(ADMIN_HTML,200,'text/html; charset=utf-8',{
-       'Content-Security-Policy':"default-src 'none'; style-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/ https://cdn.jsdelivr.net/npm/mammoth@1.13.0/; connect-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/; worker-src 'self' blob:; media-src 'self' blob:; img-src 'self' blob: data: https://gdd-r2-gateway.realmetayninh7649.workers.dev; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+       'Content-Security-Policy':"default-src 'none'; manifest-src 'self'; style-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/ https://cdn.jsdelivr.net/npm/mammoth@1.13.0/; connect-src 'self' https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/; worker-src 'self' blob:; media-src 'self' blob:; img-src 'self' blob: data: https://gdd-r2-gateway.realmetayninh7649.workers.dev; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
        'X-Frame-Options':'DENY'
      });
+   if(path==='/admin/manifest.webmanifest')return reply(JSON.stringify(MANIFEST),200,'application/manifest+json; charset=utf-8');
+   if(path==='/admin/icon.svg')return reply(ICON_SVG,200,'image/svg+xml');
+   if(['/admin/icon.png','/admin/icon-192.png','/admin/icon-512.png'].includes(path)){
+     const size=path.includes('512')?512:path.includes('192')?192:180;
+     return reply(iconPng(size),200,'image/png');
+   }
    if(path==='/admin/style.css')return reply(ADMIN_CSS,200,'text/css; charset=utf-8');
    if(path==='/admin/app.js')return reply(ADMIN_JS,200,'application/javascript; charset=utf-8');
    if(path==='/admin/photo-album.js')return reply(PHOTO_JS,200,'application/javascript; charset=utf-8');
