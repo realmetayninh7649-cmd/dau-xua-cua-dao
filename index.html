@@ -99,7 +99,7 @@
 <script defer src="gdd-public-readonly.js?v=20261124-large-albums-01"></script>
 <script defer src="gdd-public-attachments.js?v=20261125-cover-slots-01"></script>
 <script defer src="/gdd-text-links.js?v=20261125-01"></script>
-<script defer src="app.js?v=20261126-van-kho-01"></script>
+<script defer src="app.js?v=20261126-van-kho-02"></script>
 <script defer src="gdd-section-mastheads.js?v=20261118-01"></script>
 <script defer src="gdd-content-metrics.js?v=20261124-d1-covers-stats-02"></script>
 <script defer src="gdd-archive-qr.js?v=20261118-compact-01"></script>
@@ -255,7 +255,8 @@ body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-status:empty{displa
 #tai-lieu-so-hoa .vk-search-line{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px;margin-bottom:14px}
 #tai-lieu-so-hoa .vk-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;gap:12px}
 #tai-lieu-so-hoa .vk-note{font-size:12px;line-height:1.6;color:#65746b;margin:12px 0 0}
-#tai-lieu-so-hoa .vk-results{font-weight:600;color:#25483d;font-size:14px;scroll-margin-top:120px}
+#tai-lieu-so-hoa .vk-source-shelf{border-style:dashed;border-color:#9d8659;background:#f7f2e5}
+#tai-lieu-so-hoa .vk-results{margin:8px 0 12px;font-weight:600;color:#25483d;font-size:14px;scroll-margin-top:120px}
 #tai-lieu-so-hoa .vk-pages{display:flex;align-items:center;justify-content:center;gap:14px;margin:22px 0}
 #tai-lieu-so-hoa .vk-pages[hidden]{display:none!important}
 #tai-lieu-so-hoa .vk-pages button:disabled{opacity:.42;cursor:default}
@@ -430,10 +431,24 @@ body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-status:empty{displa
     <section class="section section-anchor" id="tai-lieu-so-hoa"><div class="wrap">
       <div class="section-top"><div><div class="eyebrow">SƯU TẦM · SỐ HÓA · GÌN GIỮ</div><h2>Văn khố <em>Đạo Sử</em></h2><p>Tra cứu văn kiện, thủ bút, bản đồ và hồ sơ lịch sử theo nhan đề, niên đại, số hiệu và nguồn lưu trữ.</p></div></div>
 
+      <form id="vk-controls" class="vk-controls" role="search" aria-label="Tra cứu văn khố Đạo Sử">
+        <div class="vk-search-line"><label for="vk-query">TRA CỨU VĂN KIỆN<input type="search" id="vk-query" placeholder="Nhan đề, số hiệu, nhân vật, nguồn…" autocomplete="off"></label><button type="submit">Tìm kiếm</button></div>
+        <div class="vk-filter-grid">
+          <label>Loại văn kiện (gợi ý)<select id="vk-type"><option value="">Tất cả loại</option></select></label>
+          <label>Nguồn lưu trữ (gợi ý)<select id="vk-source"><option value="">Tất cả nguồn</option><option value="foreign">Văn khố ngoại quốc</option><option value="vietnam">Văn khố Việt Nam</option><option value="other">Khác / chưa nhận diện</option></select></label>
+          <label>Từ năm<input id="vk-from" type="number" inputmode="numeric" min="1800" max="2100" placeholder="1926"></label>
+          <label>Đến năm<input id="vk-to" type="number" inputmode="numeric" min="1800" max="2100" placeholder="1955"></label>
+          <label>Sắp xếp<select id="vk-sort"><option value="new">Mới cập nhật</option><option value="oldyear">Niên đại tăng dần</option><option value="newyear">Niên đại giảm dần</option><option value="title">Nhan đề A–Z</option></select></label>
+          <label>Hiển thị<select id="vk-view"><option value="grid">Lưới tư liệu</option><option value="list">Danh sách</option></select></label>
+          <label>Mỗi trang<select id="vk-size"><option>12</option><option>24</option><option>48</option></select></label>
+          <button type="button" id="vk-reset">Xóa bộ lọc</button>
+        </div>
+        <p class="vk-note">Tìm kiếm không dấu. Loại văn kiện và nguồn là gợi ý từ thông tin đã ghi; lọc năm dựa trên ngày văn kiện có năm Dương lịch. Hai ngăn văn khố theo nguồn không thay đổi mã hồ sơ.</p>
+      </form>
       <div id="document-subfolder-filters" class="gdd-document-folder-panel" role="group" aria-label="Chọn thư mục con Tài liệu được số hóa">
         <div class="gdd-document-folder-intro">
           <div><span class="gdd-document-folder-eyebrow">KHO TƯ LIỆU ĐƯỢC SỐ HÓA</span><h3>Danh mục lưu trữ</h3></div>
-          <button type="button" data-document-subfolder="all" aria-pressed="true" class="gdd-document-folder-all is-selected">Xem tất cả <span data-document-folder-count>0</span></button>
+          <button type="button" data-document-subfolder="all" aria-pressed="false" class="gdd-document-folder-all">Xem tất cả <span data-document-folder-count>0</span></button>
         </div>
         <div id="document-folder-active" class="gdd-document-folder-active" hidden>
           <div class="gdd-document-folder-active-info">
@@ -450,23 +465,11 @@ body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-status:empty{displa
           <button type="button" class="gdd-document-folder" data-document-subfolder="CTĐ" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Tài Liệu Chức Sắc Cửu Trùng Đài</span><small>DXCD-SH.CTĐ</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
           <button type="button" class="gdd-document-folder" data-document-subfolder="PT" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Tài Liệu Chức Sắc Phước Thiện</span><small>DXCD-SH.PT</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
           <button type="button" class="gdd-document-folder" data-document-subfolder="CQK" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Tài Liệu Các Cơ Quan Khác</span><small>DXCD-SH.CQK</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
+          <button type="button" class="gdd-document-folder vk-source-shelf" data-document-subfolder="VKNN" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Văn Khố Ngoại Quốc</span><small>Tra cứu theo nguồn</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
+          <button type="button" class="gdd-document-folder vk-source-shelf" data-document-subfolder="VKVN" aria-pressed="false"><span class="gdd-document-folder-icon" aria-hidden="true">▤</span><span class="gdd-document-folder-title">Văn Khố Việt Nam</span><small>Tra cứu theo nguồn</small><span class="gdd-document-folder-amount"><b data-document-folder-count>0</b> tư liệu</span></button>
         </div>
         <p id="document-subfolder-count" class="gdd-document-folder-result" role="status" aria-live="polite">Đang tải danh mục tư liệu…</p>
       </div>
-      <form id="vk-controls" class="vk-controls" role="search" aria-label="Tra cứu văn khố Đạo Sử">
-        <div class="vk-search-line"><label for="vk-query">TRA CỨU VĂN KIỆN<input type="search" id="vk-query" placeholder="Nhan đề, số hiệu, nhân vật, nguồn…" autocomplete="off"></label><button type="submit">Tìm kiếm</button></div>
-        <div class="vk-filter-grid">
-          <label>Loại văn kiện (gợi ý)<select id="vk-type"><option value="">Tất cả loại</option></select></label>
-          <label>Nguồn lưu trữ (gợi ý)<select id="vk-source"><option value="">Tất cả nguồn</option><option value="foreign">Văn khố ngoại quốc</option><option value="vietnam">Văn khố Việt Nam</option><option value="other">Khác / chưa nhận diện</option></select></label>
-          <label>Từ năm<input id="vk-from" type="number" inputmode="numeric" min="1800" max="2100" placeholder="1926"></label>
-          <label>Đến năm<input id="vk-to" type="number" inputmode="numeric" min="1800" max="2100" placeholder="1955"></label>
-          <label>Sắp xếp<select id="vk-sort"><option value="new">Mới cập nhật</option><option value="oldyear">Niên đại tăng dần</option><option value="newyear">Niên đại giảm dần</option><option value="title">Nhan đề A–Z</option></select></label>
-          <label>Hiển thị<select id="vk-view"><option value="grid">Lưới tư liệu</option><option value="list">Danh sách</option></select></label>
-          <label>Mỗi trang<select id="vk-size"><option>12</option><option>24</option><option>48</option></select></label>
-          <button type="button" id="vk-reset">Xóa bộ lọc</button>
-        </div>
-        <p class="vk-note">Loại và nguồn được gợi ý từ thông tin đã ghi; bộ lọc năm dùng ngày văn kiện có năm Dương lịch. Tìm kiếm không dấu được hỗ trợ.</p>
-      </form>
       <p id="vk-results" role="status" aria-live="polite" class="vk-results"></p>
       <div class="archive-grid" id="document-grid" aria-live="polite"></div>
       <div id="vk-pages" class="vk-pages" hidden><button type="button" id="vk-prev">← Trang trước</button><span id="vk-page-label"></span><button type="button" id="vk-next">Trang sau →</button></div>

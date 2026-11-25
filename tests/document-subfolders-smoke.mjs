@@ -16,6 +16,7 @@ const documents=[
  id:'00000000-0000-4000-8000-'+String(i+1).padStart(12,'0'),
  slug:'doc-test-'+i,title,subfolder_code,archive_code,archive_legacy_code,
  archive_code_aliases:[archive_legacy_code],published:true,
+ sources:i===1?'[VKNN] CIA Reading Room':i===4?'[VKVN] Trung tâm Lưu trữ Quốc gia II':'Hội Thánh',
  created_at:'2026-11-10T00:00:00Z',summary:'Bản thử nghiệm không ghi dữ liệu thật.'
 }));
 const people=[{id:'00000000-0000-4000-8000-000000000050',slug:'qa-phoi-su',full_name:'PHỐI SƯ THƯỢNG HÓA THANH',rank:'Phối Sư',branch:'Cửu Trùng Đài',archive_code:'CS-CTD.PS-00025',published:true,created_at:'2026-11-10T00:00:00Z'}];
@@ -72,7 +73,7 @@ try{
       console.error('DOCUMENT DIAGNOSTICS',label,JSON.stringify(diag),errors.slice(-12));
       throw err;
     }
-    assert.equal(await page.locator('#document-subfolder-filters [data-document-subfolder]').count(),6,label+' 5 folders + all');
+    assert.equal(await page.locator('#document-subfolder-filters [data-document-subfolder]').count(),8,label+' 5 folders + 2 source shelves + all');
     assert.equal(await page.locator('#document-grid .archive-card').count(),5,label+' total document dataset');
     assert.equal(await page.locator('#document-grid').isVisible(),false,label+' no long document list beneath folder menu initially');
     assert.equal(await page.locator('#document-folder-active').isVisible(),false,label+' selected folder panel is hidden before choosing');
@@ -116,7 +117,7 @@ try{
       const section=document.getElementById('tai-lieu-so-hoa');
       return Boolean(section&&!section.hidden&&getComputedStyle(section).display!=='none');
     },null,{timeout:8000});
-    for(const [group,total] of Object.entries({HCĐ:1,HTĐ:2,CTĐ:0,PT:1,CQK:1})){
+    for(const [group,total] of Object.entries({HCĐ:1,HTĐ:2,CTĐ:0,PT:1,CQK:1,VKNN:1,VKVN:1})){
       const selector='#document-subfolder-filters [data-document-subfolder="'+group+'"]';
       await page.evaluate(selector=>document.querySelector(selector).click(),selector);
       assert.equal(await page.locator(selector).getAttribute('aria-pressed'),'true',label+' selected '+group);
@@ -159,7 +160,7 @@ try{
       assert.ok(metrics.scrollWidth-metrics.viewport<=20,label+' no horizontal overflow');
       await page.evaluate(()=>document.querySelector('[data-document-folder-back]').click());
       assert.equal(await page.locator('.gdd-document-folder-grid').isVisible(),true,label+' back displays folders '+group);
-      assert.equal(await page.locator('#document-grid').isVisible(),false,label+' back hides long document list '+group);
+      assert.equal(await page.locator('#document-grid').isVisible(),true,label+' back shows paginated recent documents '+group);
     }
     await page.evaluate(()=>document.querySelector('[data-document-subfolder="all"]').click());
     assert.equal(await page.locator('#document-grid .archive-card').count(),5,label+' view all');
