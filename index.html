@@ -237,6 +237,12 @@ body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-status:empty{displa
 #gdd-transfer-confirm:disabled{opacity:.6}
 @media(max-width:520px){.admin-panel .editor-item{gap:6px}.admin-panel .editor-item .gdd-record-actions{gap:2px}.gdd-transfer-box{padding:24px 18px}}
 </style>
+<style id="gdd-app-refresh-style">
+.portal-brand-row .gdd-app-refresh{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex:none;min-width:38px;min-height:40px;padding:7px 9px;border:1px solid #b9c5b7;border-radius:8px;background:#fffef9;color:#214c3d;font-size:12px;font-weight:650;line-height:1}
+.portal-brand-row .gdd-app-refresh:focus-visible{outline:2px solid #ac8548;outline-offset:2px}
+@media(max-width:600px){.portal-brand-row .gdd-app-refresh span{display:none}.portal-brand-row .gdd-app-refresh{padding:7px;min-width:38px;min-height:40px}.portal-brand-row .nav-actions{gap:4px}}
+</style>
+<script defer src="/gdd-app-refresh.js?v=20261125-01"></script>
 </head>
 <body>
   <div class="thin-bar"><div class="wrap top-bar-inner"><span>ĐẠI ĐẠO TAM KỲ PHỔ ĐỘ</span><span>TƯ LIỆU · BIÊN KHẢO · DI SẢN</span></div></div>
@@ -249,6 +255,7 @@ body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-status:empty{displa
         </a>
         <div class="nav-actions">
           <button class="text-button" id="admin-open" type="button" hidden disabled aria-hidden="true" tabindex="-1" style="display:none!important" aria-label="Mở trang quản trị"><span class="admin-icon">✧</span> Quản trị</button>
+          <button class="gdd-app-refresh" id="gdd-app-refresh" type="button" title="Làm mới website" aria-label="Làm mới website"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.2 6.1M20 4v7h-7"/></svg><span>Làm mới</span></button>
           <button class="menu-button" id="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Mở trình đơn"><span></span><span></span><span></span></button>
         </div>
       </div>
