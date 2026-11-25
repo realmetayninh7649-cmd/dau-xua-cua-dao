@@ -182,6 +182,7 @@ function savedPhotoTools(figure,photo,index,total){
  const replaceLabel=label(details,'label','Chọn ảnh thay thế');
  const chooser=document.createElement('input');chooser.type='file';chooser.accept='image/jpeg,image/png,image/webp';replaceLabel.append(chooser);
  const retry=button('Thử thay ảnh lại',()=>changeSavedPhoto(photo,'replace',{},msg));retry.hidden=!replacements.has(photo.id);
+ const cancel=button('Bỏ ảnh thay thế',()=>{if(busy||workBusy)return;const item=replacements.get(photo.id);if(item?.previewUrl)URL.revokeObjectURL(item.previewUrl);replacements.delete(photo.id);retry.hidden=true;cancel.hidden=true;msg.textContent='Giữ nguyên ảnh đang hiển thị.'});cancel.hidden=retry.hidden;
  chooser.addEventListener('change',()=>{
   if(busy||workBusy)return;
   const file=chooser.files?.[0];chooser.value='';if(!file)return;
@@ -189,7 +190,7 @@ function savedPhotoTools(figure,photo,index,total){
   if(!confirm('Thay ảnh số '+(index+1)+'? Giữ nguyên chú thích, thứ tự và bản gốc cũ.'))return;
   const previous=replacements.get(photo.id);if(previous?.previewUrl)URL.revokeObjectURL(previous.previewUrl);
   replacements.set(photo.id,{file,previewUrl:URL.createObjectURL(file)});
-  retry.hidden=false;changeSavedPhoto(photo,'replace',{},msg);
+  retry.hidden=false;cancel.hidden=false;changeSavedPhoto(photo,'replace',{},msg);
  });
  button('↑ Lên',()=>changeSavedPhoto(photo,'move',{direction:-1},msg),index===0);
  button('↓ Xuống',()=>changeSavedPhoto(photo,'move',{direction:1},msg),index===total-1);

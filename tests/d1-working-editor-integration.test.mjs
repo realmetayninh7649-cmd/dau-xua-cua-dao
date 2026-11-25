@@ -8,6 +8,8 @@ import {join} from 'node:path';
 import {readFileSync} from 'node:fs';
 import {webcrypto} from 'node:crypto';
 import {handleWorkingEditor} from '../workers/gdd-d1-admin/src/working-editor.mjs';
+import {handleAlbumPhotos} from '../workers/gdd-d1-admin/src/working-photo-album.mjs';
+import {ownerUUID} from '../workers/gdd-d1-admin/src/r2-managed.mjs';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 const temp=mkdtempSync(join(tmpdir(),'gdd-editor-all-nine-'));
 const dbPath=join(temp,'clone.sqlite');
@@ -153,5 +155,36 @@ test('document dates preserve historical wording without Gregorian coercion',asy
  assert.equal(person.status,400);
  const audio=await call('POST','gdd_audio_programs',{fields:{title:'Kiểm tra ngày phát',published_date:'29/02/1935'}});
  assert.equal(audio.status,400);
+});
+test('saved album actions preserve photo IDs, caption, position and archived asset rows across all nine kinds',async()=>{
+ const env={DB:db,ADMIN_EMAIL_SHA256:'a'.repeat(64)},owner=ownerUUID(env);
+ const base='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/';
+ for(const kind of kinds){
+  const name=kind==='people'||kind==='gdd_calendar_memorials'?'full_name':'title';
+  const created=await call('POST',kind,{fields:{[name]:'Kiểm tra sửa album '+kind}});
+  assert.equal(created.status,201);
+  const record=created.body.data.id,ids=[crypto.randomUUID(),crypto.randomUUID(),crypto.randomUUID()];
+  const urls=ids.map(id=>'https://example.invalid/'+id+'.jpg');
+  for(let i=0;i<3;i++)database.prepare('INSERT INTO archive_gallery_images(id,owner_kind,owner_id,image_url,caption,sort_order,created_at,photo_code) VALUES(?,?,?,?,?,?,?,?)').run(ids[i],kind,record,urls[i],'Ảnh '+i,i===0?null:2,'2026-11-25T00:00:0'+i,'PHOTO-'+i);
+  const asset=crypto.randomUUID();
+  database.prepare('INSERT INTO gdd_r2_assets(asset_id,owner_id,media_kind,preview_ready,public_view) VALUES(?,?,?,?,?)').run(asset,owner,'image',1,1);
+  const original=crypto.randomUUID();
+  database.prepare('INSERT INTO gdd_r2_assets(asset_id,owner_id,media_kind,preview_ready,public_view,record_kind,record_id,role) VALUES(?,?,?,?,?,?,?,?)').run(original,owner,'image',1,1,kind,record,'album');
+  async function photoAction(action,photo_id,expected_url,extra={}){
+   const req=new Request(ROOT+kind+'/'+record+'/photos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,photo_id,expected_url,...extra})});
+   const r=await handleAlbumPhotos(req,env,new URL(req.url).pathname);
+   return {status:r.status,body:await r.json()};
+  }
+  const list=()=>database.prepare('SELECT * FROM archive_gallery_images WHERE owner_kind=? AND owner_id=? ORDER BY sort_order,created_at,id').all(kind,record);
+  let r=await photoAction('caption',ids[1],urls[1],{caption:'Chú thích mới'});assert.equal(r.status,200,JSON.stringify(r.body));
+  r=await photoAction('move',ids[1],urls[1],{direction:-1});assert.equal(r.status,200,JSON.stringify(r.body));assert.deepEqual(list().map(x=>x.id),[ids[1],ids[0],ids[2]]);
+  r=await photoAction('replace',ids[1],urls[1],{asset_id:asset});assert.equal(r.status,200,JSON.stringify(r.body));
+  assert.equal(list()[0].image_url,base+asset+'/preview');assert.equal(list()[0].caption,'Chú thích mới');assert.equal(list()[0].photo_code,'PHOTO-1');
+  assert.equal((await photoAction('replace',ids[1],urls[1],{asset_id:asset})).status,200);
+  assert.equal((await photoAction('remove',ids[1],urls[1])).status,409);
+  assert.equal((await photoAction('remove',ids[1],base+asset+'/preview')).status,200);
+  assert.deepEqual(list().map(x=>x.id),[ids[0],ids[2]]);
+  assert.equal(database.prepare('SELECT COUNT(*) AS n FROM gdd_r2_assets WHERE asset_id IN (?,?)').get(asset,original).n,2);
+ }
 });
 process.on('exit',()=>{try{database.close()}catch{}try{rmSync(temp,{recursive:true,force:true})}catch{}});
