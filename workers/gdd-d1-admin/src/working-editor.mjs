@@ -22,7 +22,8 @@ const BOOL=new Set(['verified','published','death_lunar_leap','lunar_leap']);
 const NUMERIC=new Set(['sort_order','death_lunar_day','death_lunar_month','lunar_day','lunar_month','solar_day','solar_month','death_year','episode_number','duration_seconds']);
 const URLS=new Set(['image_url','cover_url','video_url','file_url','portrait_url','audio_url']);
 const UUID_FIELDS=new Set(['person_id','linked_person_id']);
-const DATES=new Set(['death_solar_date','document_date','published_date']);
+// Historical document dates are verbatim text, not Gregorian timestamps.
+const DATES=new Set(['death_solar_date','published_date']);
 const LENGTHS={full_name:180,title:220,rank:120,branch:100,subgroup:120,gender:40,
   secular_name:160,years:80,birthplace:200,category:120,
   summary:6000,caption:15000,biography:65000,body:65000,description:14000,

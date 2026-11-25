@@ -767,7 +767,7 @@ const workFields={
 };
 const workBool=new Set(['verified','published','death_lunar_leap','lunar_leap']);
 const workNums=new Set(['sort_order','death_lunar_day','death_lunar_month','lunar_day','lunar_month','solar_day','solar_month','death_year','episode_number','duration_seconds']);
-const workDateFields=new Set(['document_date','published_date','death_solar_date']);
+const workDateFields=new Set(['published_date','death_solar_date']);
 function normalizeEditorialDate(value){
  const text=String(value??'').trim();if(!text)return null;
  const iso=/^(\\d{4})-(\\d{1,2})-(\\d{1,2})$/.exec(text),local=/^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})$/.exec(text);
@@ -1120,6 +1120,7 @@ function workBuild(kind,record){
   }else{fields.append(label,input);}
   workFieldInputs.set(field,input);
   if(workDateFields.has(field)){input.placeholder='DD/MM/YYYY hoặc YYYY-MM-DD';input.autocomplete='off';}
+  if(kind==='documents'&&field==='document_date'){input.placeholder='Ví dụ: 15 tháng 10 năm Bính Dần (1926)';input.maxLength=1500;input.autocomplete='off';}
   if(kind==='documents'&&field==='file_url'){
    const extra=document.createElement('details');extra.className='admin-help';const heading=document.createElement('summary');heading.textContent='Liên kết tài liệu có sẵn (không bắt buộc)';extra.append(heading);label.before(extra);extra.append(label,input);
   }

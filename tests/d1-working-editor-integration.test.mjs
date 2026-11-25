@@ -137,4 +137,21 @@ test('trash and restore all nine kinds without removing content or changing IDs'
   assert.ok((await call('GET',kind+'?limit=50')).body.data.some(r=>r.id===id));
  }
 });
+test('document dates preserve historical wording without Gregorian coercion',async()=>{
+ const created=await call('POST','documents',{fields:{title:'Văn kiện thử niên đại',document_date:'Rằm tháng 10 năm Bính Dần (1926)'}});
+ assert.equal(created.status,201,JSON.stringify(created.body));
+ const id=created.body.data.id;
+ assert.equal(created.body.data.document_date,'Rằm tháng 10 năm Bính Dần (1926)');
+ let version=created.body.data.gdd_version;
+ for(const value of ['Ngày 15 tháng 10 năm Bính Dần','Tháng 12 năm 1950','Khoảng năm 1935','29/02/1935 (theo nguyên bản)','18/05/1965','Không rõ ngày tháng','']){
+  const edited=await call('PATCH','documents/'+id,{version,fields:{document_date:value}});
+  assert.equal(edited.status,200,JSON.stringify(edited.body));
+  assert.equal(edited.body.data.document_date,value);
+  version=edited.body.data.gdd_version;
+ }
+ const person=await call('POST','people',{fields:{full_name:'Kiểm tra ngày qui vị',death_solar_date:'29/02/1935'}});
+ assert.equal(person.status,400);
+ const audio=await call('POST','gdd_audio_programs',{fields:{title:'Kiểm tra ngày phát',published_date:'29/02/1935'}});
+ assert.equal(audio.status,400);
+});
 process.on('exit',()=>{try{database.close()}catch{}try{rmSync(temp,{recursive:true,force:true})}catch{}});
