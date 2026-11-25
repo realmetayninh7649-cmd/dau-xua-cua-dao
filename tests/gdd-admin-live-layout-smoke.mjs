@@ -164,7 +164,7 @@ try{
   assert.equal(await page.locator('#work-list .work-row-title').count(),10);
   await page.locator('#work-search').fill('HỒ SƠ SỐ 2');
   assert.equal(await page.locator('#work-list .work-row-title').count(),1,'title filter should reduce visible list');
-  await page.locator('#work-list button').click();
+  await page.locator('#work-list').getByRole('button',{name:'Sửa',exact:true}).click();
   await page.waitForFunction(()=>!document.getElementById('work-edit-area').hidden);
   assert.equal(await page.locator('#work-list-details').evaluate(el=>el.open),false,'edit closes old list');
   assert.equal(await page.locator('#work-edit-heading').textContent(),'Đang sửa HỒ SƠ SỐ 2');
