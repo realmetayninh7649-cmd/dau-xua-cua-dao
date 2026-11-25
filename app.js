@@ -269,10 +269,22 @@ function videoSource(raw){
     return archiveTypes.some(([name,rx])=>name===type&&rx.test(t));
   };
   const archiveSourceMatches=(r,source)=>{
-    const t=norm([r.sources,r.document_number,r.title].filter(Boolean).join(' '));
-    if(source==='other')return !archiveSourceGroups.some(([,rx])=>rx.test(t));
-    return archiveSourceGroups.some(([name,rx])=>name===source&&rx.test(t));
+    // Explicit provenance in the existing source field takes precedence; no database mutation.
+    const provenance=norm(r.sources);
+    const taggedForeign=/(?:\[vknn\]|\bvan kho ngoai quoc\b)/.test(provenance);
+    const taggedVietnam=/(?:\[vkvn\]|\bvan kho viet nam\b)/.test(provenance);
+    const t=norm([r.sources,r.document_number].filter(Boolean).join(' '));
+    const title=norm(r.title);
+    const foreign=taggedForeign||(!taggedVietnam&&(archiveSourceGroups[0][1].test(t)||/\b(?:cia|pentagon papers|anom|gallica|frus|nara)\b/.test(title)));
+    const vietnam=taggedVietnam||(!taggedForeign&&archiveSourceGroups[1][1].test(t));
+    return source==='foreign'?foreign:source==='vietnam'?vietnam:!foreign&&!vietnam;
   };
+  const archiveShelves={VKNN:{title:'Văn Khố Ngoại Quốc',source:'foreign'},VKVN:{title:'Văn Khố Việt Nam',source:'vietnam'}};
+  const archiveShelf=group=>Object.prototype.hasOwnProperty.call(archiveShelves,group)?archiveShelves[group]:null;
+  const archiveFolderTitle=group=>archiveShelf(group)?.title||documentSubfolderTitle(group);
+  const archiveGroupMatches=(entry,group)=>['all','browse'].includes(group)||
+    (archiveShelf(group)?archiveSourceMatches(entry.record,archiveShelf(group).source):documentSubfolderOf(entry.originKind,entry.record)===group);
+
   const archiveText=r=>norm([r.title,r.document_number,r.document_date,r.archive_code,r.archive_legacy_code,
     ...(Array.isArray(r.archive_code_aliases)?r.archive_code_aliases:[]),r.summary,r.body,r.caption,r.sources,
     r.subfolder_code,documentSubfolderTitle(r.subfolder_code),linkedPerson(r.person_id)?.full_name,
@@ -295,7 +307,7 @@ function videoSource(raw){
     });
   }
   function archiveSorted(entries,sort){
-    if(sort==='new')return entries;
+    if(sort==='new')return [...entries].sort((a,b)=>{const stamp=e=>Date.parse(e.record.updated_at||e.record.created_at||'')||0;return stamp(b)-stamp(a)});
     return [...entries].sort((a,b)=>{
       if(sort==='title')return String(a.record.title||'').localeCompare(String(b.record.title||''),'vi');
       const y=archiveYear(a.record),z=archiveYear(b.record);
@@ -365,12 +377,12 @@ function videoSource(raw){
       const activeAll=state.documentSubfolder==='all';
       const activeCount=activeAll?docEntries.length:
         docEntries.filter(({record,originKind})=>
-          documentSubfolderOf(originKind,record)===state.documentSubfolder).length;
+          archiveGroupMatches({record,originKind},state.documentSubfolder)).length;
       const activeTitle=$('#document-folder-active-title');
       if(activeTitle)activeTitle.textContent=activeAll?'Tất cả tài liệu Số hóa':
-        documentSubfolderTitle(state.documentSubfolder);
+        archiveFolderTitle(state.documentSubfolder);
       const activeCode=$('#document-folder-active-code');
-      if(activeCode)activeCode.textContent=activeAll?'Toàn bộ văn khố':'DXCD-SH.'+state.documentSubfolder;
+      if(activeCode)activeCode.textContent=activeAll?'Toàn bộ văn khố':archiveShelf(state.documentSubfolder)?'Ngăn tra cứu theo nguồn · giữ nguyên mã gốc':'DXCD-SH.'+state.documentSubfolder;
       const activeTotal=$('#document-folder-active-total');
       if(activeTotal)activeTotal.textContent=activeCount+' tư liệu';
       $$('#document-subfolder-filters [data-document-subfolder]').forEach(button=>{
@@ -379,16 +391,16 @@ function videoSource(raw){
         button.setAttribute('aria-pressed',String(selected));
         const amount=button.querySelector('[data-document-folder-count]');
         if(amount)amount.textContent=String(group==='all'?docEntries.length:
-          docEntries.filter(({record,originKind})=>documentSubfolderOf(originKind,record)===group).length);
+          docEntries.filter(entry=>archiveGroupMatches(entry,group)).length);
       });
       const info=$('#document-subfolder-count');
       if(info)info.textContent=browsing
-        ?'Chọn thư mục, tra cứu toàn kho hoặc xem các tài liệu mới cập nhật.'
+        ?'Chọn một thư mục hoặc ngăn tra cứu theo nguồn. Một tư liệu có thể thuộc nhiều ngăn.'
         :activeAll?'Đang xem '+docEntries.length+' tài liệu trong cả 5 thư mục con.'
-        :'Đang xem '+activeCount+' tài liệu thuộc '+documentSubfolderTitle(state.documentSubfolder)+'.';
+        :'Đang xem '+activeCount+' tài liệu thuộc '+archiveFolderTitle(state.documentSubfolder)+'.';
     }
     const opts=archiveControls();
-    const scopedDocs=docEntries.filter(({record,originKind})=>['all','browse'].includes(state.documentSubfolder)||documentSubfolderOf(originKind,record)===state.documentSubfolder);
+    const scopedDocs=docEntries.filter(entry=>archiveGroupMatches(entry,state.documentSubfolder));
     const invalidYears=opts.from&&opts.to&&Number(opts.from)>Number(opts.to);
     const foundDocs=invalidYears?[]:archiveSorted(archiveMatches(scopedDocs,opts),opts.sort);
     const pageSize=[12,24,48].includes(opts.size)?opts.size:12;
@@ -1321,10 +1333,11 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       const button=event.target.closest('[data-document-subfolder]');
       if(!event.currentTarget.contains(back||button))return;
       const group=back?'browse':button?.dataset.documentSubfolder;
-      if(group!=='browse'&&group!=='all'&&!documentSubfolders.some(f=>f.code===group))return;
+      if(group!=='browse'&&group!=='all'&&!archiveShelf(group)&&!documentSubfolders.some(f=>f.code===group))return;
       // Sau khi mở thư mục, các thư mục khác thu gọn và tài liệu hiện trực tiếp ngay dưới.
       // Không sửa URL hay khởi động lại trang nên giữ nguyên phóng to/thu nhỏ của iPhone.
       state.documentSubfolder=group;archivePage=1;
+      if($('#vk-source'))$('#vk-source').value='';
       render();
       requestAnimationFrame(()=>{
         const folder=$('#document-subfolder-filters');
@@ -1345,7 +1358,8 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       $('#vk-query').addEventListener('input',()=>{clearTimeout(archiveTimer);archiveTimer=setTimeout(refresh,180)});
       vk.addEventListener('change',refresh);
       vk.addEventListener('submit',e=>{e.preventDefault();clearTimeout(archiveTimer);refresh()});
-      $('#vk-reset').addEventListener('click',()=>{vk.reset();refresh()});
+      $('#vk-reset').addEventListener('click',()=>{vk.reset();state.documentSubfolder='browse';refresh()});
+      $('#vk-source').addEventListener('change',()=>{if(archiveShelf(state.documentSubfolder)){state.documentSubfolder='all';refresh()}});
       $('#vk-prev').addEventListener('click',()=>{archivePage--;render();$('#vk-results').scrollIntoView({block:'start'})});
       $('#vk-next').addEventListener('click',()=>{archivePage++;render();$('#vk-results').scrollIntoView({block:'start'})});
     }
