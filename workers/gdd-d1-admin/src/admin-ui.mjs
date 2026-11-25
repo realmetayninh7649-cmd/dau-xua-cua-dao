@@ -23,7 +23,7 @@ export const ADMIN_HTML=`<!doctype html>
 </div></header>
 <main class="wrap">
 <section class="notice" role="status"><strong>Website công khai đã hoạt động.</strong> · Bản gốc được giữ riêng.</section>
- <nav class="quick-links" aria-label="Liên kết"><a href="https://dauxuacuadao.info.vn/" target="_blank" rel="noopener noreferrer">Mở website công khai</a></nav>
+ <nav class="quick-links" aria-label="Liên kết"><button id="admin-app-refresh" type="button" class="admin-app-refresh"><span aria-hidden="true">↻</span> Làm mới ứng dụng</button><a href="https://dauxuacuadao.info.vn/" target="_blank" rel="noopener noreferrer">Mở website công khai</a></nav><p id="admin-app-refresh-status" role="status" aria-live="polite"></p>
 <section aria-labelledby="work-title" id="work-editor-panel" hidden>
 <div class="heading"><h2 id="work-title">Soạn bài &amp; quản lý tư liệu</h2></div>
 <div class="admin-home" aria-label="Lối tắt quản trị">
@@ -154,6 +154,11 @@ export const ADMIN_HTML=`<!doctype html>
 <footer>Dấu Xưa Cửa Đạo · Quản trị tư liệu</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
+.admin-app-refresh{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#214c3d;color:#fff;font-weight:650;border-color:#214c3d;min-height:44px}
+.admin-app-refresh span{font-size:1.45rem;line-height:1}
+#admin-app-refresh-status{font-size:.85rem;color:#637168;margin:0 0 10px;overflow-wrap:anywhere}#admin-app-refresh-status:empty{display:none}
+@media(max-width:500px){.admin-app-refresh{width:100%}}
+
 .admin-home{padding:10px 0 12px;border-bottom:1px solid #e2e5dc;margin-bottom:12px}
 .admin-home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .admin-home-grid button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:70px;padding:7px 3px;font-size:.82rem;font-weight:650;line-height:1.25;border-color:#d4ded3;background:#f8faf5}
@@ -1527,6 +1532,24 @@ recoverySubmit.addEventListener('click',async()=>{
   recoveryFile.value='';
  }catch(e){recoveryStatus.textContent='Chưa hoàn tất: '+e.message+' · Có thể thử lại.'}
  finally{recoveryFile.disabled=false;recoverySubmit.disabled=!recoveryFile.files?.[0]}
+});
+function adminRefreshBlockReason(){
+ if(workBusy||workTrashBusy||window.GDDPhotoAlbum?.isBusy())return 'Đang xử lý bài hoặc tải tệp. Hoàn tất thao tác trước khi làm mới.';
+ if(workHasLocalFiles())return 'Còn ảnh hoặc tệp chưa lưu. Hãy đăng bài hoặc bỏ tệp trước khi làm mới.';
+ if(document.querySelector('#radio-recovery-file')?.files?.length||document.querySelector('#r2-managed-file')?.files?.length)return 'Còn tệp đang chọn trong công cụ R2 hoặc Radio. Hoàn tất và bỏ chọn tệp trước khi làm mới.';
+ if(workCurrent){
+  try{const fields=workChanged();delete fields.published;
+   if(Object.keys(fields).length||!workCurrent.id)return 'Bài đang soạn chưa lưu. Hãy lưu bản nháp hoặc đăng bài trước khi làm mới.';
+  }catch{return 'Bài đang soạn có thông tin chưa hoàn chỉnh. Hãy kiểm tra và lưu trước.'}
+ }
+ return '';
+}
+$('admin-app-refresh').addEventListener('click',()=>{
+ const msg=$('admin-app-refresh-status'),reason=adminRefreshBlockReason();
+ if(reason){msg.textContent=reason;return}
+ if(workCurrent)workForgetPhotoDraft();
+ $('admin-app-refresh').disabled=true;msg.textContent='Đang làm mới ứng dụng…';
+ location.reload();
 });
 $('work-fields').addEventListener('input',workKeepPhotoDraft);
 $('work-fields').addEventListener('change',workKeepPhotoDraft);

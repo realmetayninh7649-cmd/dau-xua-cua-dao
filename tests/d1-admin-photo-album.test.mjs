@@ -133,3 +133,19 @@ test('all nine editors recover text and small cover files without forced scrolli
  assert.doesNotThrow(()=>new Script(ADMIN_JS));
  assert.doesNotThrow(()=>new Script(PHOTO_JS));
 });
+
+test('manual app refresh blocks unsaved editor data and selected files before reload',()=>{
+ assert.ok(ADMIN_HTML.includes('id="admin-app-refresh"'));
+ const start=ADMIN_JS.indexOf('function adminRefreshBlockReason()');
+ const end=ADMIN_JS.indexOf("$('admin-app-refresh').addEventListener",start);
+ const code=ADMIN_JS.slice(start,end);
+ const check=new Function('workBusy','workTrashBusy','window','workHasLocalFiles','document','workCurrent','workChanged',code+';return adminRefreshBlockReason();');
+ const run=(busy,files,current,fields)=>check(busy,false,{},()=>files,{querySelector:()=>null},current,()=>({...fields}));
+ assert.ok(run(true,false,null,{}));
+ assert.ok(run(false,true,null,{}));
+ assert.ok(run(false,false,{id:null},{}));
+ assert.ok(run(false,false,{id:'saved'},{title:'Changed'}));
+ assert.equal(run(false,false,{id:'saved'},{}),'');
+ assert.equal(run(false,false,null,{}),'');
+ assert.doesNotThrow(()=>new Script(ADMIN_JS));
+});
