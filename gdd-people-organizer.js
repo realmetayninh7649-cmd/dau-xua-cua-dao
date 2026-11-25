@@ -43,7 +43,7 @@
   .gdd-manage-actions button:disabled{opacity:.35;cursor:default}
   #gdd-manager-status{font-size:12px;color:#746a58;margin:8px 0}
   .gdd-menu-gender{font-weight:600!important;color:#174d43!important}
-  /* Trang Chủ Chức sắc: 2 cột, 4 thẻ cùng chiều cao; giữ vòng xoay 15 giây. */
+  /* Trang Chủ Chức sắc: 3 cơ quan, 2 hồ sơ mỗi cơ quan; giữ vòng xoay 15 giây. */
   body #gdd-directory [data-preview-section="chuc-sac"] .gdd-preview-cards{display:block!important}
   body #gdd-directory .gdd-home-people-split{
     display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(9px,2vw,18px);
@@ -304,21 +304,19 @@
        && rows.some(p=>(p.gender||'Chưa phân loại')==='Chưa phân loại')) s.selectedSex='Chưa phân loại';
     document.body.classList.add('gdd-people-enhanced');renderList();
   }
-  // Trang Chủ: 2 Chức sắc mỗi Đài, tự động đổi cặp sau mỗi 15 giây.
+  // Trang Chủ: 2 Chức sắc mỗi cơ quan, tự động đổi cặp sau mỗi 15 giây.
   // Giữ nguyên cách sắp xếp trong quản trị; chỉ thay những thẻ xem trước.
+  const homeBranches=['Hiệp Thiên Đài','Cửu Trùng Đài','Phước Thiện'];
   let homeRotationTick=0;
   function renderHomepagePreview(){
     const box=document.querySelector('[data-preview-section="chuc-sac"] .gdd-preview-cards');
     if(!box||!s.ready)return;
     const ordered=sorted().filter(p=>p.published);
-    const groups=[
-      {branch:'Hiệp Thiên Đài',short:'HIỆP THIÊN ĐÀI'},
-      {branch:'Cửu Trùng Đài',short:'CỬU TRÙNG ĐÀI'}
-    ].map(group=>{
-      const candidates=ordered.filter(p=>norm(p.branch)===norm(group.branch));
+    const groups=homeBranches.map(branch=>{
+      const candidates=ordered.filter(p=>norm(p.branch)===norm(branch));
       const rows=candidates.length<=2?candidates:
         Array.from({length:2},(_,i)=>candidates[(homeRotationTick*2+i)%candidates.length]);
-      return {...group,rows};
+      return {branch,rows};
     });
     const signature=JSON.stringify(groups.map(g=>g.rows.map(p=>[p.id,p.full_name,p.rank,p.archive_code,p.summary,p.image_url,p.sort_order])));
     if(box.dataset.gddHomeBranches===signature && box.querySelector('.gdd-home-people-split'))return;
@@ -360,7 +358,7 @@
       if(preview.contains(document.activeElement)&&document.activeElement?.matches?.(':focus-visible'))return;
       if(window.matchMedia('(hover:hover) and (pointer:fine)').matches&&preview.matches(':hover'))return;
       const published=sorted().filter(p=>p.published);
-      if(!['Hiệp Thiên Đài','Cửu Trùng Đài'].some(branch=>
+      if(!homeBranches.some(branch=>
         published.filter(p=>norm(p.branch)===norm(branch)).length>2))return;
       homeRotationTick++;
       renderHomepagePreview();
