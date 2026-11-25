@@ -91,16 +91,35 @@ function normalizeInput(kind,payload,{creation=false}={}){
  return clean;
 }
 function whereKind(kind){return Object.hasOwn(SCHEMAS,kind)}
+function trashPredicate(kind,trashed=false){
+ return (trashed?'EXISTS':'NOT EXISTS')+"(SELECT 1 FROM gdd_editor_trash t WHERE t.kind='"+kind+"' AND t.record_id=\""+kind+"\".id AND t.trashed=1)";
+}
+async function setTrash(request,db,kind,id,trashed){
+ if(request.method!=='POST')return response({error:'method_not_allowed'},405);
+ const payload=await body(request);
+ if(Object.keys(payload).length!==1||!Number.isSafeInteger(payload.version)||payload.version<1)return response({error:'invalid_version'},400);
+ const table='"'+kind+'"',time=new Date().toISOString(),token=crypto.randomUUID();
+ // Both statements commit atomically; version and state are checked before changing the marker.
+ const marker=db.prepare("INSERT INTO gdd_editor_trash(kind,record_id,trashed,changed_at,operation_id) SELECT ?,id,?,?,? FROM "+table+" WHERE id=? AND gdd_version=? AND "+trashPredicate(kind,!trashed)+" ON CONFLICT(kind,record_id) DO UPDATE SET trashed=excluded.trashed,changed_at=excluded.changed_at,operation_id=excluded.operation_id")
+  .bind(kind,Number(trashed),time,token,id,payload.version);
+ const update=db.prepare("UPDATE "+table+" SET published=0,updated_at=?,gdd_version=gdd_version+1 WHERE id=? AND gdd_version=? AND EXISTS(SELECT 1 FROM gdd_editor_trash t WHERE t.kind=? AND t.record_id=? AND t.operation_id=?) RETURNING *")
+  .bind(time,id,payload.version,kind,id,token);
+ const results=await db.batch([marker,update]);
+ const row=results[1]?.results?.[0];
+ if(!row)return response({error:'version_or_trash_conflict'},409);
+ return response({data:row,trashed});
+}
 async function list(db,kind,params){
  const limit=Number(params.get('limit')||20),offset=Number(params.get('offset')||0);
  if(!Number.isInteger(limit)||limit<1||limit>50||!Number.isInteger(offset)||offset<0||offset>5000)
    return response({error:'invalid_pagination'},400);
  const title=SCHEMAS[kind].title;
+ const trash=params.get('trash')==='1',filter=' WHERE '+trashPredicate(kind,trash);
  const sql=kind==='gdd_calendar_memorials'
    ? 'SELECT id,NULL AS slug,full_name AS title,published,created_at,updated_at,gdd_version '+
-       'FROM gdd_calendar_memorials ORDER BY created_at DESC LIMIT ? OFFSET ?'
+       'FROM gdd_calendar_memorials'+filter+' ORDER BY created_at DESC LIMIT ? OFFSET ?'
    : 'SELECT id,slug,"'+title+'" AS title,published,created_at,updated_at,gdd_version FROM "'+kind+
-       '" ORDER BY created_at DESC LIMIT ? OFFSET ?';
+       '"'+filter+' ORDER BY created_at DESC LIMIT ? OFFSET ?';
  const {results}=await db.prepare(sql).bind(limit,offset).all();
  return response({kind,data:results||[],limit,offset,write_enabled:true});
 }
@@ -132,8 +151,9 @@ export async function handleWorkingEditor(request,db,path){
    }
    const id=parts[1];
    if(!UUID.test(id))return response({error:'invalid_id'},400);
+   if(parts.length===3&&['trash','untrash'].includes(parts[2]))return await setTrash(request,db,kind,id,parts[2]==='trash');
    if(parts.length===2&&request.method==='GET'){
-     const row=await db.prepare('SELECT * FROM "'+kind+'" WHERE id=? LIMIT 1').bind(id).first();
+     const row=await db.prepare('SELECT * FROM "'+kind+'" WHERE id=? AND '+trashPredicate(kind)+' LIMIT 1').bind(id).first();
      if(row&&kind==='documents'){
        const cover=await db.prepare("SELECT asset_id FROM gdd_r2_assets WHERE record_kind='documents' AND record_id=? AND role='cover' AND media_kind='image' AND public_view=1 AND preview_ready=1 ORDER BY view_updated_at DESC,created_at DESC,asset_id DESC LIMIT 1").bind(id).first();
        if(cover)row.cover_url='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+cover.asset_id+'/preview';
@@ -141,6 +161,8 @@ export async function handleWorkingEditor(request,db,path){
      return response(row?{data:row}:{error:'not_found'},row?200:404);
    }
    if(parts.length===3&&(parts[2]==='code-preview'||parts[2]==='assign-code')){
+     const marker=await db.prepare('SELECT 1 FROM gdd_editor_trash WHERE kind=? AND record_id=? AND trashed=1').bind(kind,id).first();
+     if(marker)return response({error:'record_in_trash'},409);
      return handleWorkingCode(request,db,kind,id,parts[2]);
    }
    if(parts.length===3&&parts[2]==='history'){
@@ -156,7 +178,7 @@ export async function handleWorkingEditor(request,db,path){
    if(isRestore?request.method!=='POST':request.method!=='PATCH')
      return response({error:'method_not_allowed'},405);
    const payload=await body(request);
-   const before=await db.prepare('SELECT * FROM "'+kind+'" WHERE id=? LIMIT 1').bind(id).first();
+   const before=await db.prepare('SELECT * FROM "'+kind+'" WHERE id=? AND '+trashPredicate(kind)+' LIMIT 1').bind(id).first();
    if(!before)return response({error:'not_found'},404);
    if(!Number.isSafeInteger(payload.version)||payload.version<1||payload.version!==before.gdd_version)
      return response({error:'version_conflict',current_version:before.gdd_version},409);
@@ -184,7 +206,7 @@ export async function handleWorkingEditor(request,db,path){
    }
    const keys=Object.keys(fields);
    const sql='UPDATE "'+kind+'" SET '+keys.map(col=>'"'+col+'"=?').join(',')+
-     ',updated_at=?,gdd_version=gdd_version+1 WHERE id=? AND gdd_version=? RETURNING *';
+     ',updated_at=?,gdd_version=gdd_version+1 WHERE id=? AND gdd_version=? AND '+trashPredicate(kind)+' RETURNING *';
    const row=await db.prepare(sql).bind(...keys.map(k=>fields[k]),new Date().toISOString(),id,payload.version).first();
    if(!row)return response({error:'version_conflict'},409);
    return response({data:row,mode:'working-d1',audit_trigger:'automatic',restore:isRestore});

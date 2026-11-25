@@ -62,7 +62,7 @@ export const ADMIN_HTML=`<!doctype html>
 <div class="work-record-inner">
 <p class="work-list-note">Tìm trong 10 kết quả của trang hiện tại. Mở trang tiếp theo để xem thêm.</p>
 <div class="controls work-list-controls"><label for="work-search">Tìm nhanh</label><input id="work-search" type="search" placeholder="Nhập tên hồ sơ hoặc nhan đề" autocomplete="off" />
-<button id="work-list-refresh" type="button">Làm mới danh sách</button></div>
+<button id="work-list-refresh" type="button">Làm mới danh sách</button><button id="work-trash-toggle" type="button" aria-pressed="false">Thùng rác</button></div>
 <ul class="records work-compact-records" id="work-list"></ul>
 <div class="pagination"><button id="work-prev" type="button">Trang trước</button><span id="work-page">Trang 1</span><button id="work-next" type="button">Trang sau</button></div>
 </div>
@@ -161,7 +161,7 @@ button.work-primary:hover{background:#164237}
 .work-record-panel>summary{padding:15px 13px;cursor:pointer;font-weight:700;list-style:revert}
 .work-record-inner{padding:0 12px 14px}
 .work-muted{font-weight:400;color:var(--muted);font-size:.9rem}
-.work-list-note{font-size:.82rem;color:var(--muted);margin:3px 0 10px}
+.work-trash-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.work-trash-actions .work-trash-delete{color:#9b2828;border-color:#cfa4a4}.work-list-note{font-size:.82rem;color:var(--muted);margin:3px 0 10px}
 .work-list-controls input{flex:1;min-width:160px;max-width:100%;padding:10px;border:1px solid #aeb9b1;border-radius:8px;font:inherit;color:var(--ink);background:#fff}
 .work-compact-records li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 3px}
 .work-row-text{min-width:0;flex:1}
@@ -779,7 +779,7 @@ async function workRestorePhotoDraft(){
  workStatus('Đã khôi phục nội dung đang soạn. Vui lòng chọn lại ảnh/tệp chưa tải.');
 }
 function workHasLocalFiles(){return !!workAudioFile||workCoverQueue.size>0||!!window.GDDPhotoAlbum?.hasPending()}
-let workCachedPage=[];
+let workCachedPage=[],workTrashMode=false,workTrashBusy=false;
 const workPageSize=10;
 const workRoot='/api/v1/admin/work/';
 function workRenderList(){
@@ -790,30 +790,47 @@ function workRenderList(){
   const item=document.createElement('li'),texts=document.createElement('div');
   texts.className='work-row-text';
   appendText(texts,'span',record.title||'(Chưa có nhan đề)').className='work-row-title';
-  appendText(texts,'span',(record.published===1?'Đã công bố':'Bản nháp')+' · v'+record.gdd_version).className='work-row-meta';
+  appendText(texts,'span',(workTrashMode?'Trong thùng rác':record.published===1?'Đã công bố':'Bản nháp')+' · v'+record.gdd_version).className='work-row-meta';
   const button=document.createElement('button');
-  button.type='button';button.textContent='Sửa';
-  button.addEventListener('click',()=>workOpen($('work-kind').value,record.id));
-  item.append(texts,button);list.append(item);
+  button.type='button';button.textContent=workTrashMode?'Khôi phục':'Sửa';
+  button.addEventListener('click',()=>workTrashMode?workMoveTrash(record,false):workOpen($('work-kind').value,record.id));
+  const actions=document.createElement('div');actions.className='work-trash-actions';actions.append(button);
+  if(!workTrashMode){const remove=document.createElement('button');remove.type='button';remove.textContent='Xóa';remove.className='work-trash-delete';remove.setAttribute('aria-label','Xóa '+(record.title||'bài viết'));remove.addEventListener('click',()=>workMoveTrash(record,true));actions.append(remove)}
+  item.append(texts,actions);list.append(item);
  }
  if(!items.length)appendText(list,'li',query?'Không có kết quả trong trang này.':'Chưa có bản ghi.');
  $('work-list-count').textContent=' · '+workCachedPage.length+' bản ghi ở trang '+(Math.floor(workOffset/workPageSize)+1);
 }
 
+async function workMoveTrash(record,trashed){
+ if(workBusy||workTrashBusy)return;
+ const kind=$('work-kind').value;
+ if(workHasLocalFiles()){workStatus('Hãy lưu hoặc bỏ tệp đang chọn trước khi thao tác Thùng rác.');return}
+ if(!confirm((trashed?'Đưa bài vào Thùng rác và ẩn khỏi website?':'Khôi phục về bản nháp?')+'\n'+(record.title||record.id)))return;
+ workTrashBusy=true;
+ try{
+  const result=await workWrite(workRoot+kind+'/'+record.id+'/'+(trashed?'trash':'untrash'),'POST',{version:record.gdd_version});
+  if(result?.data?.id!==record.id||result.trashed!==trashed)throw Error('Chưa xác nhận thao tác');
+  if(workCurrent?.id===record.id&&workCurrent.kind===kind)workClose();
+  workOffset=0;await workList();
+  workStatus(trashed?'Đã đưa bài vào Thùng rác. Có thể khôi phục.':'Đã khôi phục về bản nháp. Kiểm tra và Đăng bài nếu muốn công bố.');
+ }catch(e){workStatus('Chưa hoàn tất: '+e.message)}
+ finally{workTrashBusy=false}
+}
 function workStatus(message){$('work-status').textContent=message;$('work-submit-status').textContent=message;}
 function workClose(){if(workCurrent?.kind==='media')workForgetPhotoDraft();workClearCovers();window.GDDPhotoAlbum?.reset();workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
 async function workList(){
- const kind=$('work-kind').value;
+ const kind=$('work-kind').value,trash=workTrashMode,offset=workOffset;
  try{
-  const data=await api(workRoot+kind+'?limit='+workPageSize+'&offset='+workOffset);
+  const data=await api(workRoot+kind+'?limit='+workPageSize+'&offset='+offset+(trash?'&trash=1':''));
   // Discard delayed responses when the category is changed while loading.
-  if(kind!==$('work-kind').value)return;
+  if(kind!==$('work-kind').value||trash!==workTrashMode||offset!==workOffset)return;
   workCachedPage=Array.isArray(data.data)?data.data:[];
   workRenderList();
   $('work-prev').disabled=workOffset===0;
   $('work-next').disabled=workCachedPage.length<workPageSize;
   $('work-page').textContent='Trang '+(Math.floor(workOffset/workPageSize)+1);
-  workStatus('Đã kết nối D1 làm việc · Chọn Soạn bài mới để viết hoặc mở danh sách để sửa.');
+  workStatus(trash?'Thùng rác của chuyên mục hiện tại. Khôi phục bài về bản nháp.':'Đã kết nối D1 làm việc · Chọn Soạn bài mới để viết hoặc mở danh sách để sửa.');
  }catch(e){workStatus('Lỗi tải danh sách D1: '+e.message)}
 }
 const workPersonRanks={
@@ -1357,6 +1374,13 @@ $('work-kind').addEventListener('change',()=>{
 });
 $('work-search').addEventListener('input',workRenderList);
 $('work-list-refresh').addEventListener('click',workList);
+$('work-trash-toggle').addEventListener('click',()=>{
+ if(workBusy||workTrashBusy)return;
+ workTrashMode=!workTrashMode;workOffset=0;$('work-search').value='';
+ $('work-trash-toggle').textContent=workTrashMode?'Về danh sách bài':'Thùng rác';
+ $('work-trash-toggle').setAttribute('aria-pressed',String(workTrashMode));
+ $('work-list-details').open=true;workList();
+});
 $('work-new').addEventListener('click',workNew);
 $('work-save').addEventListener('click',()=>workSave('draft'));
 $('work-publish').addEventListener('click',()=>workSave('publish'));

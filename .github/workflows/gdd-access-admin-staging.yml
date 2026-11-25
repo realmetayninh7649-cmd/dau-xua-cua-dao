@@ -12,6 +12,7 @@ on:
       - "tests/d1-editor-sandbox.test.mjs"
       - "tests/d1-r2-sandbox.test.mjs"
       - "tests/d1-working-editor.test.mjs"
+      - "tests/d1-working-editor-integration.test.mjs"
       - "tests/d1-working-photo-album.test.mjs"
       - "tests/d1-admin-photo-album.test.mjs"
       - "tests/d1-radio-recovery.test.mjs"
@@ -176,7 +177,15 @@ jobs:
         run: |
           set -euo pipefail
           node --test tests/d1-admin-preview.test.mjs tests/d1-editor-sandbox.test.mjs tests/d1-r2-sandbox.test.mjs tests/d1-working-editor.test.mjs tests/d1-r2-managed.test.mjs tests/d1-admin-inbox.test.mjs tests/d1-working-code-assignment.test.mjs tests/d1-contribution-review.test.mjs tests/d1-working-photo-album.test.mjs tests/d1-admin-photo-album.test.mjs tests/d1-radio-recovery.test.mjs tests/d1-audio-upload.test.mjs
+          node --test tests/d1-working-editor-integration.test.mjs
           echo "D1_ADMIN_UNIT_TESTS=PASS"
+      - name: "Create reversible editorial trash table in working D1 only"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          npx --yes wrangler@4.159.0 d1 execute gdd-dao-su-editor-live-clone-20261124 --remote --config workers/gdd-d1-admin/wrangler.jsonc --file workers/gdd-d1-admin/migrations/editor-trash.sql
       - name: "Deploy ONLY isolated Access-protected admin worker"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_WORKER_TOKEN }}

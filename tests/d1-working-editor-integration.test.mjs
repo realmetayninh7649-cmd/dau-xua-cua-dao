@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {readFileSync} from 'node:fs';
 import {webcrypto} from 'node:crypto';
 import {handleWorkingEditor} from '../workers/gdd-d1-admin/src/working-editor.mjs';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
@@ -28,9 +29,11 @@ const python=[
 ].join('\n');
 execFileSync('python3',['-c',python,dbPath],{stdio:'pipe'});
 const database=new DatabaseSync(dbPath);
-const db={prepare(sql){
+database.exec(readFileSync('workers/gdd-d1-admin/migrations/editor-trash.sql','utf8'));
+const db={async batch(statements){database.exec('BEGIN');try{const out=[];for(const stmt of statements)out.push(await stmt.executeBatch());database.exec('COMMIT');return out}catch(e){database.exec('ROLLBACK');throw e}},prepare(sql){
  const statement=database.prepare(sql);
  return {bind(...args){return {
+  executeBatch:async()=>({results:sql.includes('RETURNING')?statement.all(...args):(statement.run(...args),[])}),
   first:async()=>statement.get(...args)||null,
   all:async()=>({results:statement.all(...args)}),
   run:async()=>statement.run(...args)
@@ -109,5 +112,29 @@ test('assign real archive codes on SQLite with atomic version checks and automat
  assert.equal((await call('POST','people/'+id+'/assign-code',{
    version:3,code:'CS-CTD.LS-00019',confirmed:true})).status,409);
  console.log('REAL_SQLITE_ARCHIVE_CODE_ASSIGNMENT_AND_IMMUTABLE_ID=PASS');
+});
+test('trash and restore all nine kinds without removing content or changing IDs',async()=>{
+ for(const kind of kinds){
+  const name=kind==='people'||kind==='gdd_calendar_memorials'?'full_name':'title';
+  const created=await call('POST',kind,{fields:{[name]:'Trash test '+kind}});
+  const id=created.body.data.id;
+  if(kind!=='gdd_calendar_memorials'&&kind!=='gdd_memorials'&&kind!=='gdd_audio_programs')database.prepare('UPDATE "'+kind+'" SET archive_code=? WHERE id=?').run('TEST-'+kind,id);
+  const published=await call('PATCH',kind+'/'+id,{version:1,fields:{published:true}});
+  assert.equal(published.status,200,JSON.stringify(published.body));
+  assert.equal((await call('POST',kind+'/'+id+'/trash',{version:1})).status,409);
+  const deleted=await call('POST',kind+'/'+id+'/trash',{version:2});
+  assert.equal(deleted.status,200,JSON.stringify(deleted.body));
+  assert.equal(deleted.body.data.published,0);
+  assert.equal((await call('GET',kind+'/'+id)).status,404);
+  assert.equal((await call('PATCH',kind+'/'+id,{version:3,fields:{published:true}})).status,404);
+  assert.ok(!(await call('GET',kind+'?limit=50')).body.data.some(r=>r.id===id));
+  assert.ok((await call('GET',kind+'?limit=50&trash=1')).body.data.some(r=>r.id===id));
+  const restored=await call('POST',kind+'/'+id+'/untrash',{version:3});
+  assert.equal(restored.status,200,JSON.stringify(restored.body));
+  assert.equal(restored.body.data.published,0);
+  assert.equal(restored.body.data[name],'Trash test '+kind);
+  assert.equal(restored.body.data.archive_code,published.body.data.archive_code);
+  assert.ok((await call('GET',kind+'?limit=50')).body.data.some(r=>r.id===id));
+ }
 });
 process.on('exit',()=>{try{database.close()}catch{}try{rmSync(temp,{recursive:true,force:true})}catch{}});
