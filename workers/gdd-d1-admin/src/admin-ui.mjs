@@ -63,6 +63,12 @@ export const ADMIN_HTML=`<!doctype html>
 <p>Chỉ tối đa 30 bản nháp mỗi lần. Niên đại và nguồn là thông tin đã duyệt trong CSV, cần đối chiếu bản scan. Hãy đóng biểu mẫu đang sửa trước khi nhập.</p>
 <div class="controls"><button id="work-archive-prepare" type="button">Kiểm tra danh mục</button><button id="work-archive-create" type="button" disabled>Tạo bản nháp đã chọn</button></div>
 <p id="work-archive-status" role="status" aria-live="polite"></p><ul id="work-archive-rows" class="records"></ul>
+<hr><h4>Gắn bản gốc và nội dung OCR vào từng bản nháp</h4>
+<p>Chọn PDF/Word nguyên mẫu và các tệp OCR .txt đặt tên theo SHA-256 từ Colab. Đối chiếu toàn bộ kho R2 trước khi tải. OCR sẽ hiện trong bài sau khi công bố, dưới nhãn chưa kiểm chứng. Không tự công bố, không mở quyền tải, không sửa bản scan.</p>
+<label for="work-archive-originals">Chọn tối đa 30 tệp gốc PDF/Word, 45 MB/tệp</label><input id="work-archive-originals" type="file" accept=".pdf,.doc,.docx" multiple>
+<label for="work-archive-ocr">Chọn tệp OCR đã đối chiếu (không bắt buộc)</label><input id="work-archive-ocr" type="file" accept=".txt,text/plain" multiple>
+<div class="controls"><button id="work-archive-link" type="button">Đối chiếu R2 và gắn vào bản nháp</button></div>
+<p id="work-archive-link-status" role="status" aria-live="polite"></p>
 </details>
 
 <div id="work-edit-area" class="work-editor-form" hidden><h3 id="work-edit-heading">Chi tiết</h3><p id="work-identity" class="audit-caution"></p>
@@ -1589,7 +1595,7 @@ function archiveBatchCandidates(raw){
   if(!title||title.length>220||!/^[a-f0-9]{64}$/.test(hash)||year.length>1500||notes.length>14980)problem='Nhan đề, mã SHA-256 hoặc thông tin vượt giới hạn';
   else if(hashes.has(hash)||titles.has(archiveBatchNorm(title)))problem='Trùng trong danh mục';
   if(!problem){hashes.add(hash);titles.add(archiveBatchNorm(title))}
-  items.push({file:r.ten_tep,title,year,source,notes,hash,problem,selected:!problem,done:false});
+  items.push({file:r.ten_tep,title,year,source,notes,hash,problem,selected:!problem,done:false,id:null,assetId:null,linked:false});
  }
  return items;
 }
@@ -1598,7 +1604,7 @@ function archiveBatchRender(){
  const list=$('work-archive-rows');list.replaceChildren();
  for(const r of archiveBatchRows){
   const li=document.createElement('li'),label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=r.selected;box.disabled=!!r.problem||r.done;box.onchange=()=>{r.selected=box.checked;archiveBatchButton()};
-  label.append(box,document.createTextNode(' '+r.title));li.append(label);appendText(li,'small',r.file+' · '+(r.year||'Chưa rõ năm')+' · '+(r.source||'Chưa rõ nguồn')+' · '+(r.done?'Đã tạo nháp':r.problem||'Chờ tạo nháp'));list.append(li);
+  label.append(box,document.createTextNode(' '+r.title));li.append(label);appendText(li,'small',r.file+' · '+(r.year||'Chưa rõ năm')+' · '+(r.source||'Chưa rõ nguồn')+' · '+(r.linked?'Đã gắn tệp':r.done?'Có bản nháp · '+r.id:r.problem||'Chờ tạo nháp'));list.append(li);
  }
  archiveBatchButton();
 }
@@ -1607,13 +1613,13 @@ function archiveBatchButton(){
  $('work-archive-create').disabled=!archiveBatchReady||n<1||n>30||!$('work-archive-folder').value;
 }
 async function archiveBatchExisting(){
- const existing=new Set();
+ const existing=new Map();
  for(const trash of [false,true]){
   let complete=false;
   for(let offset=0;offset<=5000;offset+=50){
    const response=await api(workRoot+'documents?limit=50&offset='+offset+(trash?'&trash=1':''));
    if(!Array.isArray(response.data)||response.data.length>50)throw Error('Không đọc đủ danh mục D1');
-   for(const row of response.data)existing.add(archiveBatchNorm(row.title));
+   for(const row of response.data){const key=archiveBatchNorm(row.title),matches=existing.get(key)||[];matches.push({...row,trash});existing.set(key,matches)}
    if(response.data.length<50){complete=true;break}
   }
   if(!complete)throw Error('Kho lớn hơn giới hạn kiểm tra, không tự tạo bản nháp');
@@ -1638,7 +1644,11 @@ async function archiveBatchRun(create){
   if(!create){archiveBatchReady=false;archiveBatchRows=archiveBatchCandidates(await files[0].text());}
   status.textContent='Đối chiếu nhan đề với D1…';
   const existing=await archiveBatchExisting();
-  for(const r of archiveBatchRows)if(!r.done&&!r.problem&&existing.has(archiveBatchNorm(r.title))){r.problem='Nhan đề đã có trong D1 hoặc thùng rác';r.selected=false}
+  for(const r of archiveBatchRows)if(!r.done&&!r.problem&&existing.has(archiveBatchNorm(r.title))){
+   const matches=existing.get(archiveBatchNorm(r.title));
+   if(matches.length===1&&!matches[0].trash&&Number(matches[0].published)===0){r.id=matches[0].id;r.done=true;r.selected=false;}
+   else{r.problem='Nhan đề đã có trong D1 hoặc thùng rác';r.selected=false}
+  }
   if(!create){archiveBatchReady=true;status.textContent='Đã kiểm tra '+archiveBatchRows.length+' dòng được duyệt. Chọn tối đa 30 dòng hợp lệ và thư mục gốc.';return}
   let count=0;
   for(const r of selected){
@@ -1648,7 +1658,7 @@ async function archiveBatchRun(create){
    const fields={title:r.title,subfolder_code:folder,document_date:r.year,sources:[tag,r.notes].filter(Boolean).join(' '),published:false};
    const result=await workWrite(workRoot+'documents','POST',{fields});
    if(!result?.data?.id||result.published!==false||Number(result.data.published)!==0)throw Error('Chưa xác nhận bản nháp; dừng để đối chiếu');
-   r.done=true;r.selected=false;count++;
+   r.id=result.data.id;r.done=true;r.selected=false;count++;
   }
   status.textContent='Đã tạo '+count+' bản nháp. Mở từng bản để đính kèm tài liệu, đối chiếu rồi đăng.';
   workOffset=0;await adminSetListMode('draft');
@@ -1657,6 +1667,97 @@ async function archiveBatchRun(create){
 }
 $('work-archive-prepare').addEventListener('click',()=>archiveBatchRun(false));
 $('work-archive-create').addEventListener('click',()=>archiveBatchRun(true));
+
+async function archiveFileHash(file){
+ const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
+ return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+}
+const archiveAuditPath='/api/v1/admin/r2/managed/v1/duplicate-audit';
+async function archiveAudit(files,notify){
+ const sizes=[...new Set(files.map(x=>x.file.size))],wanted=new Set(files.map(x=>x.hash)),hits=new Set(),seen=new Set();
+ let cursor=null,pages=0;
+ do{
+  if(++pages>100)throw Error('Kho vượt giới hạn kiểm tra; chưa thể kết luận không trùng');
+  notify('Đối chiếu danh mục R2 · lượt '+pages);
+  const result=await workWrite(archiveAuditPath,'POST',{action:'list',sizes,...(cursor?{cursor}:{})});
+  if(!Array.isArray(result.candidates)||result.candidates.length>1000||!(result.cursor===null||typeof result.cursor==='string'))throw Error('Danh mục R2 không hợp lệ');
+  for(const object of result.candidates){
+   if(!sizes.includes(object.size))throw Error('Dung lượng đối chiếu không hợp lệ');
+   const checked=await workWrite(archiveAuditPath,'POST',{action:'hash',key:object.key,size:object.size,etag:object.etag});
+   if(!/^[a-f0-9]{64}$/.test(checked.sha256||''))throw Error('Chưa xác nhận được SHA-256 R2');
+   if(wanted.has(checked.sha256))hits.add(checked.sha256);
+  }
+  cursor=result.cursor;if(cursor){if(seen.has(cursor))throw Error('Phân trang R2 bị lặp');seen.add(cursor)}
+ }while(cursor);
+ return hits;
+}
+async function archiveBatchLink(){
+ if(workBusy||workTrashBusy||workCurrent||$('work-kind').value!=='documents')return;
+ const status=$('work-archive-link-status'),originals=Array.from($('work-archive-originals').files||[]),ocrFiles=Array.from($('work-archive-ocr').files||[]);
+ if(!archiveBatchRows.length||!originals.length||originals.length>30||ocrFiles.length>30){status.textContent='Nhập và kiểm tra CSV trước, tạo bản nháp, rồi chọn 1–30 tệp gốc.';return}
+ if(originals.some(f=>!/\\.(pdf|doc|docx)$/i.test(f.name)||f.size<1||f.size>45*1048576)){status.textContent='Chỉ PDF/Word, tối đa 45 MB mỗi tệp.';return}
+ const controls=Array.from(document.querySelectorAll('#work-editor-panel input,#work-editor-panel select,#work-editor-panel button'));
+ const disabled=controls.map(el=>[el,el.disabled]);workBusy=true;controls.forEach(el=>el.disabled=true);
+ const say=message=>status.textContent=message;
+ try{
+  const session=await api('/api/v1/admin/session');if(session.authenticated!==true||session.working_editor_enabled!==true||session.managed_r2_enabled!==true)throw Error('Phiên quản trị hoặc R2 không hợp lệ');
+  const targets=new Map(archiveBatchRows.filter(r=>r.id&&!r.problem&&!r.linked).map(r=>[r.hash,r]));
+  const matched=[],localHashes=new Set();
+  for(const file of originals){
+   say('Đọc SHA-256: '+file.name);const hash=await archiveFileHash(file),r=targets.get(hash);
+   if(!r)throw Error('Không có bản nháp khớp SHA-256: '+file.name);
+   if(localHashes.has(hash))throw Error('Tệp được chọn trùng nhau: '+file.name);
+   localHashes.add(hash);matched.push({file,hash,r});
+  }
+  const texts=new Map();
+  for(const file of ocrFiles){
+   const name=file.name.toLowerCase(),match=/^([a-f0-9]{64})\\.txt$/.exec(name);
+   if(!match||!localHashes.has(match[1])||texts.has(match[1])||file.size>256*1024)throw Error('OCR không khớp SHA-256 hoặc vượt giới hạn: '+file.name);
+   const value=(await file.text()).trim();if(!value||value.length>58000)throw Error('OCR trống hoặc quá dài: '+file.name);
+   texts.set(match[1],value);
+  }
+  const check=matched.filter(x=>!x.r.assetId);
+  const duplicates=check.length?await archiveAudit(check,say):new Set();
+  const eligible=[];
+  for(const x of matched){
+   if(duplicates.has(x.hash)){x.r.problem='SHA-256 đã tồn tại trong R2; không tải lại';continue}
+   const saved=await api(workRoot+'documents/'+x.r.id);
+   const row=saved.data;
+   if(row?.id!==x.r.id||Number(row.published)!==0||archiveBatchNorm(row.title)!==archiveBatchNorm(x.r.title))throw Error('Bản nháp đã thay đổi: '+x.r.title);
+   if(texts.has(x.hash)){
+    const marker='BẢN NHẬN DẠNG OCR — CHƯA KIỂM CHỨNG';
+    const old=String(row.body||'');
+    const next=(old?old+'\\n\\n':'')+marker+'\\n'+texts.get(x.hash);
+    if(!old.includes(marker)&&next.length>65000)throw Error('OCR vượt dung lượng nội dung: '+x.r.title);
+   }
+   eligible.push(x);
+  }
+  if(!eligible.length){say('Tất cả tệp đã có trong R2; không tải lại.');return}
+  if(!confirm('Đã đối chiếu R2. Gắn '+eligible.length+' tệp vào các bản nháp đúng nhan đề và SHA-256; bỏ qua '+duplicates.size+' tệp trùng. OCR đã chọn sẽ trở thành nội dung có thể tìm kiếm khi công bố. Không đăng bài?')){say('Đã hủy; không tải tệp.');return}
+  let count=0;
+  for(const x of eligible){
+   const r=x.r;let record=(await api(workRoot+'documents/'+r.id)).data;
+   if(record?.id!==r.id||Number(record.published)!==0||archiveBatchNorm(record.title)!==archiveBatchNorm(r.title))throw Error('Bản nháp đã thay đổi: '+r.title);
+   say('Đang gắn '+(count+1)+'/'+eligible.length+': '+r.title);
+   if(!r.assetId)r.assetId=await window.GDDPhotoAlbum.archiveBatchDocument(x.file,say);
+   const link=await workWrite(workRoot+'documents/'+r.id+'/attachments','POST',{asset_id:r.assetId});
+   if(link?.data?.asset_id!==r.assetId)throw Error('Chưa xác nhận liên kết R2');
+   const marker='BẢN NHẬN DẠNG OCR — CHƯA KIỂM CHỨNG';
+   if(texts.has(x.hash)&&!String(record.body||'').includes(marker)){
+    const body=[record.body,marker+'\\n'+texts.get(x.hash)].filter(Boolean).join('\\n\\n');
+    if(body.length>65000)throw Error('OCR vượt giới hạn');
+    const saved=await workWrite(workRoot+'documents/'+r.id,'PATCH',{version:record.gdd_version,fields:{body}});
+    if(saved?.data?.id!==r.id||Number(saved.data.published)!==0)throw Error('Chưa xác nhận lưu OCR');
+   }
+   r.linked=true;count++;
+  }
+  say('Đã gắn '+count+' văn kiện vào bản nháp. Bản trùng đã bỏ qua. Kiểm tra từng hồ sơ trước khi công bố.');
+  await workList();
+ }catch(e){say('Dừng an toàn: '+e.message+'. Những tệp đã gắn vẫn giữ nguyên; không tự công bố.')}
+ finally{workBusy=false;for(const [el,was] of disabled)if(el.isConnected)el.disabled=was;archiveBatchRender()}
+}
+$('work-archive-link').addEventListener('click',archiveBatchLink);
+
 
 $('work-search').addEventListener('input',workRenderList);
 $('work-list-refresh').addEventListener('click',workList);
