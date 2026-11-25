@@ -123,7 +123,12 @@ jobs:
           assert "preview_not_approved" in album
           assert "archive_gallery_images" in album
           assert "GDD_BUCKET.get(" not in album and "GDD_BUCKET.put(" not in album
-          assert "DELETE FROM" not in album
+          # User-confirmed unlink is limited to a single album association; all archive objects remain.
+          unlink_sql="DELETE FROM archive_gallery_images WHERE owner_kind=? AND owner_id=? AND id=? AND image_url=? RETURNING id"
+          assert album.count(unlink_sql)==1
+          assert "DELETE FROM" not in album.replace(unlink_sql,"")
+          assert "GDD_BUCKET.delete(" not in album and "bucket.delete(" not in album
+          assert "action==='remove'" in album
           helper=(root/'src/r2-managed.mjs').read_text()
           assert 'indexAsset(env' in helper
           assert 'bucket.delete(' not in helper and 'GDD_BUCKET.delete(' not in helper
