@@ -55,6 +55,16 @@ export const ADMIN_HTML=`<!doctype html>
 <option value="gdd_calendar_memorials">Lịch tưởng niệm</option></select>
 <button id="work-new" class="work-primary" type="button">Soạn bài mới</button></div>
 <p id="work-status" role="status" aria-live="polite">Đang kết nối D1 làm việc…</p>
+<details id="work-archive-batch" class="work-record-panel" hidden>
+<summary>Văn khố Đạo Sử · Nhập danh mục và tạo nhiều bản nháp</summary>
+<p>Nhập CSV đã duyệt từ công cụ kiểm kê. Chỉ tạo hồ sơ nháp, chưa đính kèm tệp, chưa cấp mã, chưa công bố. Kiểm tra nhan đề trùng trong D1, không xác nhận trùng nội dung R2.</p>
+<label for="work-archive-csv">Danh mục CSV đã duyệt</label><input id="work-archive-csv" type="file" accept=".csv,text/csv">
+<label for="work-archive-folder">Thư mục gốc cho đợt này</label><select id="work-archive-folder"><option value="">Chọn thư mục</option><option value="HCĐ">Hành Chánh Đạo</option><option value="HTĐ">Hiệp Thiên Đài</option><option value="CTĐ">Cửu Trùng Đài</option><option value="PT">Phước Thiện</option><option value="CQK">Các Cơ Quan Khác</option></select>
+<p>Chỉ tối đa 30 bản nháp mỗi lần. Niên đại và nguồn là thông tin đã duyệt trong CSV, cần đối chiếu bản scan. Hãy đóng biểu mẫu đang sửa trước khi nhập.</p>
+<div class="controls"><button id="work-archive-prepare" type="button">Kiểm tra danh mục</button><button id="work-archive-create" type="button" disabled>Tạo bản nháp đã chọn</button></div>
+<p id="work-archive-status" role="status" aria-live="polite"></p><ul id="work-archive-rows" class="records"></ul>
+</details>
+
 <div id="work-edit-area" class="work-editor-form" hidden><h3 id="work-edit-heading">Chi tiết</h3><p id="work-identity" class="audit-caution"></p>
 <div id="work-code-area" class="audit-caution" hidden>
 <p id="work-code-preview">Mã định danh sẽ được xác định sau khi lưu bản nháp và thông tin phân loại.</p>
@@ -935,7 +945,7 @@ function adminSetListMode(mode){
  $('work-search').value='';$('work-list-details').open=true;
  return workList();
 }
-function adminMarkKind(){for(const button of $('admin-home-grid').querySelectorAll('[data-admin-kind]'))button.setAttribute('aria-pressed',String(button.dataset.adminKind===$('work-kind').value))}
+function adminMarkKind(){for(const button of $('admin-home-grid').querySelectorAll('[data-admin-kind]'))button.setAttribute('aria-pressed',String(button.dataset.adminKind===$('work-kind').value));$('work-archive-batch').hidden=$('work-kind').value!=='documents';}
 function workStatus(message){$('work-status').textContent=message;$('work-submit-status').textContent=message;}
 function workClose(){if(workCurrent)workForgetPhotoDraft();workClearCovers();window.GDDPhotoAlbum?.reset();workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
 async function workList(){
@@ -1267,6 +1277,13 @@ function workBuild(kind,record){
   workFieldInputs.get('full_name').addEventListener('input',()=>{if(dateInput.value!==initial)recalc()});
   workDeathValidate=recalc;recalc();
  }
+ if(kind==='documents'){
+  const source=workFieldInputs.get('sources'),bar=document.createElement('div');bar.className='controls';
+  for(const [tag,title] of [['[VKNN]','Văn Khố Ngoại Quốc'],['[VKVN]','Văn Khố Việt Nam']]){
+   const btn=document.createElement('button');btn.type='button';btn.textContent=title;btn.addEventListener('click',()=>{if(!source.value.includes(tag)){source.value=tag+' '+source.value;source.dispatchEvent(new Event('input',{bubbles:true}));}});bar.append(btn)
+  }
+  source.after(bar);
+ }
  if(kind==='documents')workFieldInputs.get('subfolder_code').addEventListener('change',workInvalidateCode);
  const optional=['verified','sort_order','person_id','linked_person_id'].filter(k=>workFieldInputs.has(k));
  if(optional.length){
@@ -1542,6 +1559,105 @@ $('admin-home-r2').addEventListener('click',async()=>{
  catch(e){status.textContent='Chưa đọc được dung lượng: '+e.message}finally{btn.disabled=false}
 });
 adminMarkKind();
+
+function archiveParseCSV(raw){
+ const rows=[];let row=[],cell='',quoted=false,closed=false;const str=String(raw).replace(/^\\uFEFF/,'');
+ for(let i=0;i<str.length;i++){const ch=str[i];
+  if(quoted){if(ch==='"'){if(str[i+1]==='"'){cell+='"';i++}else{quoted=false;closed=true}}else cell+=ch;continue}
+  if(ch===','||ch==='\\n'||ch==='\\r'){row.push(cell);cell='';closed=false;if(ch!==','){if(ch==='\\r'&&str[i+1]==='\\n')i++;rows.push(row);row=[]}continue}
+  if(ch==='"'&&!cell&&!closed){quoted=true;continue}
+  if(closed||ch==='"')throw Error('CSV sai định dạng');
+  cell+=ch;
+ }
+ if(quoted)throw Error('CSV thiếu dấu ngoặc kép');
+ if(row.length||cell||closed){row.push(cell);rows.push(row)}
+ return rows.filter(r=>r.some(v=>v.trim()));
+}
+const archiveBatchNorm=value=>String(value??'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/đ/gi,'d').toLocaleLowerCase('vi').replace(/\\s+/g,' ').trim();
+function archiveBatchCandidates(raw){
+ const [head,...rows]=archiveParseCSV(raw);
+ const required=['ten_tep','nhan_de_goi_y','nam_goi_y','nhom_nguon','xuat_xu_so_hieu','sha256','da_duyet'];
+ if(!head||required.some(key=>!head.includes(key))||new Set(head).size!==head.length)throw Error('CSV không đúng mẫu kiểm kê');
+ if(rows.length>1000)throw Error('Tối đa 1.000 dòng trong danh mục');
+ const items=[],hashes=new Set(),titles=new Set();
+ for(const row of rows){
+  if(row.length!==head.length)throw Error('Một dòng CSV không đúng số cột');
+  const r=Object.fromEntries(head.map((k,i)=>[k,row[i]]));
+  if(archiveBatchNorm(r.da_duyet)!=='co')continue;
+  const title=r.nhan_de_goi_y.trim(),hash=r.sha256.trim().toLowerCase(),year=r.nam_goi_y.trim(),source=r.nhom_nguon.trim(),notes=r.xuat_xu_so_hieu.trim();
+  let problem='';
+  if(!title||title.length>220||!/^[a-f0-9]{64}$/.test(hash)||year.length>1500||notes.length>14980)problem='Nhan đề, mã SHA-256 hoặc thông tin vượt giới hạn';
+  else if(hashes.has(hash)||titles.has(archiveBatchNorm(title)))problem='Trùng trong danh mục';
+  if(!problem){hashes.add(hash);titles.add(archiveBatchNorm(title))}
+  items.push({file:r.ten_tep,title,year,source,notes,hash,problem,selected:!problem,done:false});
+ }
+ return items;
+}
+let archiveBatchRows=[],archiveBatchReady=false;
+function archiveBatchRender(){
+ const list=$('work-archive-rows');list.replaceChildren();
+ for(const r of archiveBatchRows){
+  const li=document.createElement('li'),label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=r.selected;box.disabled=!!r.problem||r.done;box.onchange=()=>{r.selected=box.checked;archiveBatchButton()};
+  label.append(box,document.createTextNode(' '+r.title));li.append(label);appendText(li,'small',r.file+' · '+(r.year||'Chưa rõ năm')+' · '+(r.source||'Chưa rõ nguồn')+' · '+(r.done?'Đã tạo nháp':r.problem||'Chờ tạo nháp'));list.append(li);
+ }
+ archiveBatchButton();
+}
+function archiveBatchButton(){
+ const n=archiveBatchRows.filter(r=>r.selected&&!r.problem&&!r.done).length;
+ $('work-archive-create').disabled=!archiveBatchReady||n<1||n>30||!$('work-archive-folder').value;
+}
+async function archiveBatchExisting(){
+ const existing=new Set();
+ for(const trash of [false,true]){
+  let complete=false;
+  for(let offset=0;offset<=5000;offset+=50){
+   const response=await api(workRoot+'documents?limit=50&offset='+offset+(trash?'&trash=1':''));
+   if(!Array.isArray(response.data)||response.data.length>50)throw Error('Không đọc đủ danh mục D1');
+   for(const row of response.data)existing.add(archiveBatchNorm(row.title));
+   if(response.data.length<50){complete=true;break}
+  }
+  if(!complete)throw Error('Kho lớn hơn giới hạn kiểm tra, không tự tạo bản nháp');
+ }
+ return existing;
+}
+$('work-archive-folder').addEventListener('change',archiveBatchButton);
+$('work-archive-csv').addEventListener('change',()=>{archiveBatchReady=false;archiveBatchRows=[];archiveBatchRender();$('work-archive-status').textContent='Chọn Kiểm tra danh mục.'});
+async function archiveBatchRun(create){
+ if(workBusy||workTrashBusy||$('work-kind').value!=='documents')return;
+ if(workCurrent){$('work-archive-status').textContent='Đóng biểu mẫu đang sửa trước khi nhập danh mục.';return}
+ const status=$('work-archive-status'),folder=$('work-archive-folder').value;
+ if(create&&(!archiveBatchReady||!Object.hasOwn(workDocumentFolders,folder)))return;
+ const files=$('work-archive-csv').files;
+ if(!create&&(!files.length||files[0].size>2*1048576)){status.textContent='Chọn CSV tối đa 2 MB.';return}
+ const selected=archiveBatchRows.filter(r=>r.selected&&!r.problem&&!r.done);
+ if(create&&(selected.length<1||selected.length>30||!confirm('Tạo '+selected.length+' bản nháp riêng trong '+workDocumentFolders[folder]+'? Không đăng bài, không tải tệp, không cấp mã.')))return;
+ const controls=Array.from(document.querySelectorAll('#work-editor-panel input,#work-editor-panel select,#work-editor-panel button'));
+ const disabled=controls.map(el=>[el,el.disabled]);workBusy=true;controls.forEach(el=>el.disabled=true);
+ try{
+  const session=await api('/api/v1/admin/session');if(session.authenticated!==true||session.working_editor_enabled!==true)throw Error('Phiên quản trị không hợp lệ');
+  if(!create){archiveBatchReady=false;archiveBatchRows=archiveBatchCandidates(await files[0].text());}
+  status.textContent='Đối chiếu nhan đề với D1…';
+  const existing=await archiveBatchExisting();
+  for(const r of archiveBatchRows)if(!r.done&&!r.problem&&existing.has(archiveBatchNorm(r.title))){r.problem='Nhan đề đã có trong D1 hoặc thùng rác';r.selected=false}
+  if(!create){archiveBatchReady=true;status.textContent='Đã kiểm tra '+archiveBatchRows.length+' dòng được duyệt. Chọn tối đa 30 dòng hợp lệ và thư mục gốc.';return}
+  let count=0;
+  for(const r of selected){
+   if(r.problem||r.done)continue;
+   status.textContent='Đang tạo nháp '+(count+1)+' · '+r.title;
+   const tag=r.source==='VKNN'?'[VKNN]':r.source==='VKVN'?'[VKVN]':'';
+   const fields={title:r.title,subfolder_code:folder,document_date:r.year,sources:[tag,r.notes].filter(Boolean).join(' '),published:false};
+   const result=await workWrite(workRoot+'documents','POST',{fields});
+   if(!result?.data?.id||result.published!==false||Number(result.data.published)!==0)throw Error('Chưa xác nhận bản nháp; dừng để đối chiếu');
+   r.done=true;r.selected=false;count++;
+  }
+  status.textContent='Đã tạo '+count+' bản nháp. Mở từng bản để đính kèm tài liệu, đối chiếu rồi đăng.';
+  workOffset=0;await adminSetListMode('draft');
+ }catch(e){archiveBatchReady=false;status.textContent='Đã dừng: '+e.message+'. Các bản nháp đã tạo vẫn được giữ; hãy kiểm tra danh mục lại trước khi thử tiếp.'}
+ finally{workBusy=false;for(const [el,was] of disabled)if(el.isConnected)el.disabled=was;archiveBatchRender()}
+}
+$('work-archive-prepare').addEventListener('click',()=>archiveBatchRun(false));
+$('work-archive-create').addEventListener('click',()=>archiveBatchRun(true));
+
 $('work-search').addEventListener('input',workRenderList);
 $('work-list-refresh').addEventListener('click',workList);
 $('work-trash-toggle').addEventListener('click',()=>{
