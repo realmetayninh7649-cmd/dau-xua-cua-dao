@@ -219,6 +219,15 @@ try{
   page.on('dialog',dialog=>dialog.accept());
   await page.locator('#work-cover-file-cover_url').setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});
   assert.equal(await page.locator('#work-field-cover_url').inputValue(),'');
+  // A real page reload must keep the selected cover and unsaved content, without posting/uploading.
+  const beforeRecovery=uploaded;
+  assert.equal(await page.evaluate(()=>workKeepCoverFiles()),true);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.querySelector('#work-status')?.textContent.includes('Đã khôi phục nội dung đang soạn'),null,{timeout:12000});
+  assert.equal(await page.locator('#work-field-title').inputValue(),'BÀI KIỂM TRA ẢNH');
+  assert.equal(await page.evaluate(()=>workCoverQueue.get('cover_url')?.file?.name),'cover.png');
+  assert.equal(uploaded,beforeRecovery);
+  console.log('COVER_RECOVERY_AFTER_RELOAD_'+label.toUpperCase()+'=PASS');
   await page.getByRole('button',{name:'Xem ảnh đã chọn',exact:true}).first().click();
   await page.locator('.work-cover-upload img').waitFor({state:'visible',timeout:10000});
   assert.equal(await page.locator('#work-photo-files').isEnabled(),true);
