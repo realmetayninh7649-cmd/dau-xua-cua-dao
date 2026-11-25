@@ -201,6 +201,7 @@ function selectProgram(row,autoplay=false){
  const line=document.createElement('p');line.textContent=[row.episode_number?'Số '+row.episode_number:'',date(row.published_date)].filter(Boolean).join(' · ');detail.append(line);
  if(row.body){const p=document.createElement('p');if(window.GDDTextLinks)p.innerHTML=window.GDDTextLinks.html(row.body);else p.textContent=row.body;detail.append(p)}
  const cover=safe(row.cover_url);if(cover){const image=document.createElement('img');image.src=window.GDDLegacyImages?.displayUrl(cover)||cover;image.alt='Ảnh bìa '+row.title;image.loading='lazy';image.style.cssText='max-width:100%;max-height:200px;object-fit:contain;display:block;margin:6px auto';detail.prepend(image)}
+ window.GDDPublicAttachments?.attachCovers?.(detail,'gdd_audio_programs',row.id,{after:detail.querySelector('img'),before:detail.querySelector('p')});
  window.GDDPublicAttachments?.attach(detail,'gdd_audio_programs',row.id,{photos:true,lazy:true});
  if(safe(row.audio_url)){const a=document.createElement('a');a.className='gdd-radio-source';a.href=safe(row.audio_url);a.target='_blank';a.rel='noopener noreferrer';a.textContent='Mở file âm thanh gốc ↗';detail.append(a)}
  renderList();

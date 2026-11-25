@@ -54,5 +54,36 @@ function attach(target,kind,id,{before=null,photos=false,lazy=false}={}){
  }
  if(lazy)section.addEventListener('toggle',()=>{if(section.open)load()});else load();
 }
-window.GDDPublicAttachments=Object.freeze({attach});
+// Secondary cover pages have independent slots, never enter the ordinary album.
+function attachCovers(target,kind,id,{after=null,before=null,lazy=false}={}){
+ if(!target||!kinds.has(kind)||!uuid.test(id||'')||window.SITE_CONFIG?.publicReadProvider!=='d1-staging')return;
+ const section=el(lazy?'details':'section');section.className='gdd-extra-covers';
+ section.setAttribute('aria-label','Ảnh bìa bổ sung');
+ if(lazy)section.append(el('summary','Xem ảnh bìa bổ sung'));else section.hidden=true;
+ if(after?.parentElement===target)after.after(section);
+ else if(before?.parentElement===target)before.before(section);
+ else target.append(section);
+ let started=false;
+ async function load(){
+  if(started)return;started=true;
+  try{
+   const url=new URL(api+'covers');url.searchParams.set('owner_kind',kind);url.searchParams.set('owner_id',id);
+   const response=await fetch(url,{cache:'no-store',credentials:'omit'});
+   if(!response.ok)throw Error('cover read failed');
+   const json=await response.json();
+   if(!section.isConnected)return;
+   const rows=(Array.isArray(json.data)?json.data:[]).filter(row=>[2,3].includes(row.slot)&&/^https:\/\/gdd-r2-gateway\.realmetayninh7649\.workers\.dev\/v1\/public\/[a-f0-9-]{36}\/preview$/i.test(row.image_url||'')).sort((a,b)=>a.slot-b.slot).slice(0,2);
+   if(!rows.length){if(lazy)section.append(el('small','Không có ảnh bìa bổ sung.'));else section.remove();return}
+   for(const row of rows){
+    const figure=el('figure');figure.className='gdd-extra-cover-page';
+    const a=el('a');a.href=row.image_url;a.target='_blank';a.rel='noopener noreferrer';a.setAttribute('aria-label','Xem toàn ảnh bìa '+row.slot);
+    const img=el('img');img.src=row.image_url;img.alt='Ảnh bìa '+row.slot;img.loading='lazy';img.decoding='async';a.append(img);
+    figure.append(a,el('figcaption','Ảnh bìa '+row.slot+' · Xem toàn ảnh ↗'));section.append(figure);
+   }
+   section.hidden=false;
+  }catch{if(!section.isConnected)return;if(lazy){section.append(el('small','Chưa tải được ảnh bìa bổ sung.'));}else section.remove()}
+ }
+ if(lazy)section.addEventListener('toggle',()=>{if(section.open)load()});else load();
+}
+window.GDDPublicAttachments=Object.freeze({attach,attachCovers});
 })();

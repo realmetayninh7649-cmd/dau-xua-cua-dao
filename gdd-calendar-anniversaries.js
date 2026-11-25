@@ -152,7 +152,7 @@
      '<span class="gdd-cal-qui-vi-sub">Kỷ niệm trích từ Hồ sơ Chức Sắc và những ngày do quản trị viên ghi nhận.</span>'+
      events.people.map(recordHTML).join('')+events.entered.map(manualHTML).join('');
    else list.innerHTML=heading+'<p class="gdd-cal-qui-vi-empty">Chưa có kỷ niệm qui vị được ghi nhận cho ngày này.</p>';
-   list.querySelectorAll('[data-calendar-attachment-id]').forEach(node=>window.GDDPublicAttachments?.attach(node,'gdd_calendar_memorials',node.dataset.calendarAttachmentId,{photos:true,lazy:true}));
+   list.querySelectorAll('[data-calendar-attachment-id]').forEach(node=>{window.GDDPublicAttachments?.attachCovers?.(node,'gdd_calendar_memorials',node.dataset.calendarAttachmentId,{lazy:true});window.GDDPublicAttachments?.attach(node,'gdd_calendar_memorials',node.dataset.calendarAttachmentId,{photos:true,lazy:true})});
   }
   async function reload(){
    if(requesting){pendingReload=true;return;}

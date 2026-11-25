@@ -469,6 +469,8 @@ function videoSource(raw){
         portrait.before(panel);
       }
     }
+    const coverTarget=$('#detail-content');
+    window.GDDPublicAttachments?.attachCovers?.(coverTarget,kind,record.id,{after:coverTarget.querySelector('.detail-cover,.detail-video-preview'),before:coverTarget.querySelector('.detail-body')});
     $('#detail-overlay').hidden=false;document.body.classList.add('modal-open');$('.detail-panel').scrollTop=0;
     if(updateHash){
       // Mỗi lần mở hồ sơ tạo một bước lịch sử, để Back trở về đúng chuyên mục.
