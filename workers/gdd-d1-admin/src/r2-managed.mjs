@@ -32,9 +32,34 @@ async function indexAsset(env,id,owner){
   'INSERT OR IGNORE INTO gdd_r2_assets(asset_id,owner_id,record_kind,record_id,role,original_name,original_bytes,media_kind,preview_ready,download_ready,created_at,public_view,allow_download) VALUES(?,?,NULL,NULL,?,?,?, ?,0,0,?,0,0)'
  ).bind(id,owner,'vault',meta.originalName,meta.originalBytes,meta.kind,time).run();
 }
+// Read-only duplicate check, restricted by the existing Access + same-origin gate.
+async function duplicateAudit(request,env){
+ if(request.method!=='POST')return json({error:'method_not_allowed'},405);
+ const raw=await request.text();if(raw.length>12000)return json({error:'invalid_audit_body'},400);
+ let p;try{p=JSON.parse(raw)}catch{return json({error:'invalid_json'},400)}
+ if(p?.action==='list'){
+  if(!Array.isArray(p.sizes)||p.sizes.length<1||p.sizes.length>30||p.sizes.some(n=>!Number.isSafeInteger(n)||n<1||n>45*1048576)||p.cursor!==undefined&&(typeof p.cursor!=='string'||p.cursor.length>8192))return json({error:'invalid_audit_sizes'},400);
+  const wanted=new Set(p.sizes);
+  const page=await env.GDD_BUCKET.list({limit:1000,...(p.cursor?{cursor:p.cursor}:{})});
+  return json({candidates:page.objects.filter(o=>wanted.has(o.size)).map(o=>({key:o.key,size:o.size,etag:o.etag})),cursor:page.truncated?page.cursor:null});
+ }
+ if(p?.action==='hash'){
+  if(typeof p.key!=='string'||p.key.length<1||p.key.length>1024||!Number.isSafeInteger(p.size)||p.size<1||p.size>45*1048576||typeof p.etag!=='string'||p.etag.length>200)return json({error:'invalid_audit_object'},400);
+  const obj=await env.GDD_BUCKET.get(p.key);
+  if(!obj||obj.size!==p.size||obj.etag!==p.etag)return json({error:'audit_object_changed'},409);
+  let digest;
+  if(obj.checksums?.sha256)digest=obj.checksums.sha256;
+  else if(typeof crypto.DigestStream==='function'){const stream=new crypto.DigestStream('SHA-256');await obj.body.pipeTo(stream);digest=await stream.digest}
+  else digest=await crypto.subtle.digest('SHA-256',await obj.arrayBuffer());
+  return json({sha256:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')});
+ }
+ return json({error:'invalid_audit_action'},400);
+}
+
 export async function handleManagedR2(request,env,path){
  if(!env.GDD_BUCKET)return json({error:'bucket_missing'},503);
  const suffix=path.slice(PREFIX.length), url=new URL(request.url);
+ if(suffix==='/v1/duplicate-audit'&&url.pathname===path){try{return await duplicateAudit(request,env)}catch(e){return json({error:'duplicate_audit_unavailable'},503)}}
  if(!ALLOWED.test(suffix)||url.pathname!==path)
    return json({error:'not_found'},404);
  if(request.method==='DELETE')return json({error:'delete_disabled'},405);
