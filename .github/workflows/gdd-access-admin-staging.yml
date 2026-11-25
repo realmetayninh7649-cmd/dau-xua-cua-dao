@@ -186,6 +186,7 @@ jobs:
           CI: "true"
         run: |
           npx --yes wrangler@4.159.0 d1 execute gdd-dao-su-editor-live-clone-20261124 --remote --config workers/gdd-d1-admin/wrangler.jsonc --file workers/gdd-d1-admin/migrations/editor-trash.sql
+          npx --yes wrangler@4.159.0 d1 execute gdd-dao-su-editor-live-clone-20261124 --remote --config workers/gdd-d1-admin/wrangler.jsonc --file workers/gdd-d1-admin/migrations/editor-cover-slots.sql
       - name: "Deploy ONLY isolated Access-protected admin worker"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_WORKER_TOKEN }}

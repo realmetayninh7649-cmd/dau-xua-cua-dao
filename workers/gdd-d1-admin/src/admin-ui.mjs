@@ -154,6 +154,8 @@ export const ADMIN_HTML=`<!doctype html>
 <footer>Dấu Xưa Cửa Đạo · Quản trị tư liệu</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
+.work-cover-group{display:grid;gap:8px;margin:0 0 10px}.work-cover-group>small{color:#637168}.work-cover-group .work-cover-upload>strong{display:block;font-size:.85rem;margin-bottom:5px;color:#214c3d}
+
 .admin-app-refresh{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#214c3d;color:#fff;font-weight:650;border-color:#214c3d;min-height:44px}
 .admin-app-refresh span{font-size:1.45rem;line-height:1}
 #admin-app-refresh-status{font-size:.85rem;color:#637168;margin:0 0 10px;overflow-wrap:anywhere}#admin-app-refresh-status:empty{display:none}
@@ -791,8 +793,8 @@ const workLabels={
  solar_day:'Ngày dương',solar_month:'Tháng dương',death_year:'Năm qui vị',date_notes:'Ghi chú niên đại'
 };
 let workOffset=0,workCurrent=null,workFieldInputs=new Map();
-let workBusy=false;const workCoverQueue=new Map();let workAudioFile=null,workAudioPrepared=null;
-function workClearCovers(){for(const item of workCoverQueue.values())if(item.localUrl)URL.revokeObjectURL(item.localUrl);workCoverQueue.clear();workAudioFile=null;workAudioPrepared=null}
+let workBusy=false;const workCoverQueue=new Map();const workCoverControls=new Map();let workAudioFile=null,workAudioPrepared=null;
+function workClearCovers(){for(const item of workCoverQueue.values())if(item.localUrl)URL.revokeObjectURL(item.localUrl);workCoverQueue.clear();workCoverControls.clear();workAudioFile=null;workAudioPrepared=null}
 const photoDraftKey='gdd-admin-photo-draft-v1';
 let workDraftToken=null,workCoverDb=null;
 const workCoverRecoveryLimit=24*1048576;
@@ -859,18 +861,30 @@ async function workRestorePhotoDraft(){
  const cached=await workCoverDisk('get',workDraftToken);
  let recovered=0;
  for(const item of cached?.covers||[]){
-  if(!workFieldInputs.has(item.field)||!(item.file instanceof Blob))continue;
+  if(!workCoverControls.has(item.field)||!(item.file instanceof Blob))continue;
   const file=item.file instanceof File?item.file:new File([item.file],'anh-bia.'+(item.file.type==='image/png'?'png':item.file.type==='image/webp'?'webp':'jpg'),{type:item.file.type});
   if(window.GDDPhotoAlbum.imageError(file,draft.kind))continue;
-  const chooser=$('work-cover-file-'+item.field);
+  const chooser=workCoverControls.get(item.field)?.choose;
   if(!chooser)continue;
   workCoverQueue.set(item.field,{...item,file,localUrl:URL.createObjectURL(file)});
   const panel=chooser.closest('.work-cover-upload');
   if(panel){const message=panel.querySelector('[role=status]');if(message)message.textContent='Đã khôi phục '+file.name+' · Sẵn sàng đăng bài.';const buttons=panel.querySelectorAll('button');for(const button of buttons)button.hidden=false;const preview=panel.querySelector('img');if(preview){preview.hidden=true;preview.removeAttribute('src')}}
   recovered++;
  }
- adminMarkKind();workUpdateIdentity();workKeepPhotoDraft();
+ await workLoadExtraCovers();adminMarkKind();workUpdateIdentity();workKeepPhotoDraft();
  workStatus('Đã khôi phục nội dung đang soạn'+(recovered?' và '+recovered+' ảnh bìa':'')+'. Kiểm tra tệp đính kèm trước khi đăng.');
+}
+async function workLoadExtraCovers(){
+ const active=workCurrent;if(!active?.id)return;
+ try{
+  const result=await api(workRoot+active.kind+'/'+active.id+'/covers');
+  if(workCurrent!==active)return;
+  for(const row of result.data||[]){
+   if(![2,3].includes(row.slot))continue;
+   const control=[...workCoverControls.values()].find(c=>c.slot===row.slot);if(!control)continue;
+   control.saved=row.image_url;control.render();
+  }
+ }catch{if(workCurrent===active)for(const c of workCoverControls.values())if(c.slot>1&&!workCoverQueue.has(c.key))c.msg.textContent='Chưa đọc được ảnh bìa đã lưu. Có thể thử mở lại bài.'}
 }
 function workHasLocalFiles(){return !!workAudioFile||workCoverQueue.size>0||!!window.GDDPhotoAlbum?.hasPending()}
 let workCachedPage=[],workTrashMode=false,workTrashBusy=false,workDraftMode=false;
@@ -1136,26 +1150,49 @@ function workBuild(kind,record){
    const advancedTitle=document.createElement('summary');advancedTitle.textContent='Nhập liên kết ảnh thủ công';
    advanced.append(advancedTitle);input.before(advanced);advanced.append(input);
    if(kind==='documents'){advanced.hidden=true;input.readOnly=true;}
+   label.textContent+=' (tối đa 3 ảnh)';
+   const coverGroup=document.createElement('div');coverGroup.className='work-cover-group';
+   const coverHint=document.createElement('small');coverHint.textContent='Ảnh 1 là ảnh đại diện; ảnh 2 và 3 hiện ngay sau ảnh 1 khi mở bài.';coverGroup.append(coverHint);
+   for(const slot of [1,2,3]){
+   const key=slot===1?field:field+'#'+slot;
    const upload=document.createElement('div');upload.className='work-cover-upload';
-   const choose=document.createElement('input');choose.type='file';choose.accept='image/jpeg,image/png,image/webp';choose.id='work-cover-file-'+field;
-   const msg=document.createElement('small');msg.setAttribute('role','status');msg.textContent='Chọn ảnh; hệ thống tự tải khi đăng bài.';
+   const heading=document.createElement('strong');heading.textContent='Ảnh bìa '+slot+(slot===1?' · Đại diện':' · Bổ sung (không bắt buộc)');upload.append(heading);
+   const choose=document.createElement('input');choose.type='file';choose.accept='image/jpeg,image/png,image/webp';choose.id='work-cover-file-'+(slot===1?field:field+'-'+slot);choose.setAttribute('aria-label','Chọn ảnh bìa '+slot);
+   const msg=document.createElement('small');msg.setAttribute('role','status');
    const preview=document.createElement('img');preview.alt='Bản xem ảnh đã chọn';preview.hidden=true;
    const showPreview=document.createElement('button');showPreview.type='button';showPreview.textContent='Xem ảnh đã chọn';showPreview.hidden=true;
-   showPreview.addEventListener('click',()=>{const item=workCoverQueue.get(field);if(item?.localUrl){preview.src=item.localUrl;preview.hidden=false;showPreview.hidden=true}});
-   if(input.value){try{const u=new URL(input.value);if(u.protocol==='https:'){preview.src=u.href;preview.hidden=false}}catch{}}
    const remove=document.createElement('button');remove.type='button';remove.textContent='Bỏ ảnh đã chọn';remove.hidden=true;
-   function clearSelection(){const previous=workCoverQueue.get(field);if(previous?.localUrl)URL.revokeObjectURL(previous.localUrl);workCoverQueue.delete(field);choose.value='';remove.hidden=true;showPreview.hidden=true;preview.hidden=!input.value;if(input.value)preview.src=input.value;else preview.removeAttribute('src');msg.textContent='Chọn ảnh; hệ thống tự tải khi đăng bài.';void workKeepCoverFiles()}
+   const unlink=document.createElement('button');unlink.type='button';unlink.textContent='Gỡ ảnh bìa '+slot+' đã lưu';unlink.hidden=true;
+   const control={slot,key,choose,msg,saved:slot===1?input.value:'',render(){
+    const item=workCoverQueue.get(key);
+    preview.hidden=true;preview.removeAttribute('src');
+    showPreview.hidden=!(item?.localUrl||control.saved);remove.hidden=!item;
+    unlink.hidden=slot===1||!control.saved||!!item;
+    msg.textContent=item?'Đã chọn '+item.file.name+' · Sẵn sàng đăng bài.':control.saved?'Đã lưu ảnh bìa '+slot+'.':'Chọn ảnh; hệ thống tự tải khi đăng bài.';
+    if(slot===1&&!item&&control.saved){try{const u=new URL(control.saved);if(u.protocol==='https:'){preview.src=u.href;preview.hidden=false;showPreview.hidden=true}}catch{}}
+   }};
+   workCoverControls.set(key,control);
+   showPreview.addEventListener('click',()=>{const url=workCoverQueue.get(key)?.localUrl||control.saved;if(url){preview.src=url;preview.hidden=false;showPreview.hidden=true}});
+   function clearSelection(){const previous=workCoverQueue.get(key);if(previous?.localUrl)URL.revokeObjectURL(previous.localUrl);workCoverQueue.delete(key);choose.value='';control.render();void workKeepCoverFiles()}
    choose.addEventListener('change',()=>{
     if(workBusy)return;
     const file=choose.files?.[0];if(!file)return;
-    const error=window.GDDPhotoAlbum.imageError(file,kind);if(error){clearSelection();msg.textContent=error;return}
-    const previous=workCoverQueue.get(field);if(previous?.localUrl)URL.revokeObjectURL(previous.localUrl);
-    const localUrl=URL.createObjectURL(file);workCoverQueue.set(field,{file,localUrl});
-    preview.removeAttribute('src');preview.hidden=true;showPreview.hidden=false;remove.hidden=false;msg.textContent='Đã chọn '+file.name+' · Sẵn sàng đăng bài.';
-    void workKeepCoverFiles().then(saved=>{if(workCoverQueue.get(field)?.file!==file)return;if(!saved||file.size>workCoverRecoveryLimit)msg.textContent+=' (Nếu tải lại trang, có thể cần chọn lại ảnh.)'});
+    const error=window.GDDPhotoAlbum.imageError(file,kind);if(error){choose.value='';msg.textContent=error;return}
+    const previous=workCoverQueue.get(key);if(previous?.localUrl)URL.revokeObjectURL(previous.localUrl);
+    const localUrl=URL.createObjectURL(file);workCoverQueue.set(key,{file,localUrl});control.render();
+    void workKeepCoverFiles().then(saved=>{if(workCoverQueue.get(key)?.file!==file)return;if(!saved||file.size>workCoverRecoveryLimit)msg.textContent+=' (Nếu tải lại trang, có thể cần chọn lại ảnh.)'});
    });
    remove.addEventListener('click',()=>{if(!workBusy)clearSelection()});
-   upload.append(choose,msg,showPreview,preview,remove);advanced.before(upload);
+   unlink.addEventListener('click',async()=>{
+    const active=workCurrent;if(workBusy||!active?.id||!confirm('Gỡ ảnh bìa '+slot+' khỏi bài? Tệp nguyên mẫu vẫn giữ.'))return;
+    workBusy=true;unlink.disabled=true;
+    try{const r=await workWrite(workRoot+active.kind+'/'+active.id+'/covers','POST',{slot,asset_id:null});if(!r.removed)throw Error('Chưa xác nhận');control.saved='';control.render()}
+    catch(e){msg.textContent='Chưa gỡ được ảnh: '+e.message}
+    finally{workBusy=false;unlink.disabled=false}
+   });
+   upload.append(choose,msg,showPreview,preview,remove,unlink);coverGroup.append(upload);control.render();
+   }
+   advanced.before(coverGroup);
   }
  }
  if(kind==='people'){
@@ -1320,6 +1357,7 @@ async function workOpen(kind,id,{scroll=true}={}){
   $('work-code-area').hidden=true;
   workUpdateIdentity();
   await workHistory();
+  await workLoadExtraCovers();
   window.GDDPhotoAlbum?.show(workCurrent);
  }catch(e){workStatus('Không đọc được chi tiết: '+e.message)}
 }
@@ -1445,6 +1483,11 @@ async function workSave(mode='draft'){
    progress('Đang tải ảnh bìa…');
    item.checkpoint=workKeepCoverFiles;
    const url=await window.GDDPhotoAlbum.uploadCover(item.file,progress,item,kind);
+   const slot=workCoverControls.get(field)?.slot||1;
+   if(slot>1){
+    if(!item.linked){const result=await workWrite(workRoot+kind+'/'+active.id+'/covers','POST',{slot,asset_id:item.assetId});if(result?.data?.image_url!==url)throw Error('Chưa xác nhận ảnh bìa '+slot);item.linked=true}
+    await workKeepCoverFiles();continue;
+   }
    if(kind==='documents'&&field==='cover_url'&&!item.linked){
     const result=await workWrite(workRoot+kind+'/'+active.id+'/photos','POST',{asset_id:item.assetId,caption:'Ảnh bìa bài viết',role:'cover'});
     if(result?.data?.image_url!==url)throw Error('Chưa xác nhận ảnh bìa tài liệu');

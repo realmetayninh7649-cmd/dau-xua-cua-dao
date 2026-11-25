@@ -149,3 +149,11 @@ test('manual app refresh blocks unsaved editor data and selected files before re
  assert.equal(run(false,false,null,{}),'');
  assert.doesNotThrow(()=>new Script(ADMIN_JS));
 });
+
+test('three cover slots are separate from ordinary attachments and restored across reloads',()=>{
+ assert.ok(ADMIN_JS.includes('for(const slot of [1,2,3])'));
+ assert.ok(ADMIN_JS.includes('workCoverControls.has(item.field)'));
+ assert.ok(ADMIN_JS.includes("active.id+'/covers'"));
+ assert.ok(ADMIN_JS.includes('if(slot>1)'));
+ assert.doesNotThrow(()=>new Script(ADMIN_JS));
+});

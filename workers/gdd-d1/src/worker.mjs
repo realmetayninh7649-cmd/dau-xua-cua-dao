@@ -168,6 +168,14 @@ export default {
         const {results=[]}=await env.DB.prepare("SELECT asset_id,original_name,CASE WHEN public_view=1 AND preview_ready=1 THEN 1 ELSE 0 END AS has_reader,CASE WHEN view_source='single_pdf' AND allow_download=1 THEN 1 ELSE 0 END AS single_pdf,CASE WHEN allow_download=1 THEN 1 ELSE 0 END AS allow_download FROM gdd_r2_assets WHERE record_kind=? AND record_id=? AND role='attachment' AND media_kind='document' AND ((public_view=1 AND preview_ready=1) OR allow_download=1) ORDER BY created_at,asset_id LIMIT ? OFFSET ?").bind(kind,id,page.limit+1,page.offset).all();
         return respond(request,{data:results.slice(0,page.limit),has_next:results.length>page.limit},200,{private:true});
       }
+      if(path[3]==='covers'&&path.length===4){
+        const kind=url.searchParams.get('owner_kind'),id=url.searchParams.get('owner_id');
+        if(!PUBLIC_TABLES.has(kind)||!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id||''))return respond(request,{error:'invalid_cover_query'},400,{private:true});
+        const parent=await env.DB.prepare('SELECT id FROM "'+kind+'" WHERE id=? AND published=1 LIMIT 1').bind(id).first();
+        if(!parent)return respond(request,{data:[]},200,{private:true});
+        const {results=[]}=await env.DB.prepare("SELECT c.slot,c.asset_id FROM gdd_editor_cover_slots c JOIN gdd_r2_assets a ON a.asset_id=c.asset_id WHERE c.kind=? AND c.record_id=? AND a.record_kind=c.kind AND a.record_id=c.record_id AND a.media_kind='image' AND a.public_view=1 AND a.preview_ready=1 ORDER BY c.slot LIMIT 2").bind(kind,id).all();
+        return respond(request,{data:results.map(r=>({slot:r.slot,image_url:'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+r.asset_id+'/preview'}))},200,{private:true});
+      }
       if(path[3]==='albums'&&path.length===4){
         const kind=url.searchParams.get('owner_kind'),id=url.searchParams.get('owner_id');
         if(!ALBUM_OWNERS.has(kind)||!id||!/^[a-f\d-]{36}$/i.test(id))
