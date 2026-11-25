@@ -118,7 +118,7 @@ test('photo editor keeps text in session storage and defers local image decoding
  assert.ok(ADMIN_JS.includes("sessionStorage.setItem(photoDraftKey"));
  assert.ok(ADMIN_JS.includes("await workRestorePhotoDraft()"));
  assert.ok(ADMIN_JS.includes("draft.version"));
- assert.ok(ADMIN_JS.includes("showPreview.hidden=false"));
+ assert.ok(ADMIN_JS.includes("showPreview.hidden=!(item?.localUrl||control.saved)"));
  assert.ok(PHOTO_JS.includes("if(item.showPreview)picture.src=item.previewUrl"));
 });
 

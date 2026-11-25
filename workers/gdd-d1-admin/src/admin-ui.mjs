@@ -867,8 +867,7 @@ async function workRestorePhotoDraft(){
   const chooser=workCoverControls.get(item.field)?.choose;
   if(!chooser)continue;
   workCoverQueue.set(item.field,{...item,file,localUrl:URL.createObjectURL(file)});
-  const panel=chooser.closest('.work-cover-upload');
-  if(panel){const message=panel.querySelector('[role=status]');if(message)message.textContent='Đã khôi phục '+file.name+' · Sẵn sàng đăng bài.';const buttons=panel.querySelectorAll('button');for(const button of buttons)button.hidden=false;const preview=panel.querySelector('img');if(preview){preview.hidden=true;preview.removeAttribute('src')}}
+  workCoverControls.get(item.field).render();
   recovered++;
  }
  await workLoadExtraCovers();adminMarkKind();workUpdateIdentity();workKeepPhotoDraft();

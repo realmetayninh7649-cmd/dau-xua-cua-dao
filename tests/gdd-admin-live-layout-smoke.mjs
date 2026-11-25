@@ -17,7 +17,7 @@ const session={
  managed_r2_enabled:true,mode:'staging',role:'administrator'
 };
 const requests=[];
-const album=[];let uploaded=0, previews=0, approvals=0,postRecord=null,creates=0,publishWrites=0,failAttach=false;const postId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const album=[],coverSlots=new Map();let uploaded=0, previews=0, approvals=0,postRecord=null,creates=0,publishWrites=0,failAttach=false;const postId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://127.0.0.1').pathname;
  requests.push(pathname);
@@ -49,6 +49,14 @@ const server=createServer(async(req,res)=>{
    assert.equal(payload.fields.published,false);creates++;
    postRecord={...payload.fields,id:postId,published:0,gdd_version:1,archive_code:null};status=201;body=JSON.stringify({data:postRecord});
   }else body=JSON.stringify({data:postRecord?[postRecord]:[],kind:'posts'});
+ }
+ else if(pathname==='/api/v1/admin/work/posts/'+postId+'/covers'){
+  if(req.method==='POST'){
+   let raw='';for await(const chunk of req)raw+=chunk;const p=JSON.parse(raw);
+   assert.ok([2,3].includes(p.slot));
+   if(p.asset_id===null){coverSlots.delete(p.slot);body=JSON.stringify({removed:true,slot:p.slot})}
+   else{const row={slot:p.slot,asset_id:p.asset_id,image_url:'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/'+p.asset_id+'/preview'};coverSlots.set(p.slot,row);body=JSON.stringify({data:row})}
+  }else body=JSON.stringify({data:[...coverSlots.values()]});
  }
  else if(pathname==='/api/v1/admin/work/posts/'+postId+'/photos'){
   if(req.method==='POST'){
@@ -208,6 +216,7 @@ try{
   await page.waitForFunction(()=>!document.getElementById('work-photo-panel').hidden);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6e5F8AAAAASUVORK5CYII=','base64');
   assert.equal(await page.locator('#work-cover-file-cover_url').count(),1);
+  assert.equal(await page.locator('.work-cover-group input[type=file]').count(),3);
   assert.equal(await page.locator('#work-field-cover_url').isVisible(),false);
   assert.equal(await page.locator('#work-field-person_id').isVisible(),false);
   await page.locator('.cover-url-details > summary').click();
@@ -218,6 +227,8 @@ try{
   await page.locator('.work-extra > summary').click();
   page.on('dialog',dialog=>dialog.accept());
   await page.locator('#work-cover-file-cover_url').setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});
+  await page.locator('#work-cover-file-cover_url-2').setInputFiles({name:'cover-2.png',mimeType:'image/png',buffer:png});
+  await page.locator('#work-cover-file-cover_url-3').setInputFiles({name:'cover-3.png',mimeType:'image/png',buffer:png});
   assert.equal(await page.locator('#work-field-cover_url').inputValue(),'');
   // A real page reload must keep the selected cover and unsaved content, without posting/uploading.
   const beforeRecovery=uploaded;
@@ -226,13 +237,15 @@ try{
   await page.waitForFunction(()=>document.querySelector('#work-status')?.textContent.includes('Đã khôi phục nội dung đang soạn'),null,{timeout:12000});
   assert.equal(await page.locator('#work-field-title').inputValue(),'BÀI KIỂM TRA ẢNH');
   assert.equal(await page.evaluate(()=>workCoverQueue.get('cover_url')?.file?.name),'cover.png');
+  assert.equal(await page.evaluate(()=>workCoverQueue.get('cover_url#2')?.file?.name),'cover-2.png');
+  assert.equal(await page.evaluate(()=>workCoverQueue.get('cover_url#3')?.file?.name),'cover-3.png');
   assert.equal(uploaded,beforeRecovery);
   await page.locator('#admin-app-refresh').click();
   assert.match(await page.locator('#admin-app-refresh-status').textContent(),/Còn ảnh hoặc tệp chưa lưu/);
   assert.equal(await page.locator('#work-field-title').inputValue(),'BÀI KIỂM TRA ẢNH');
   console.log('COVER_RECOVERY_AFTER_RELOAD_'+label.toUpperCase()+'=PASS');
   await page.getByRole('button',{name:'Xem ảnh đã chọn',exact:true}).first().click();
-  await page.locator('.work-cover-upload img').waitFor({state:'visible',timeout:10000});
+  await page.locator('.work-cover-upload img').first().waitFor({state:'visible',timeout:10000});
   assert.equal(await page.locator('#work-photo-files').isEnabled(),true);
   await page.locator('#work-photo-files').setInputFiles(Array.from({length:55},(_,i)=>({name:'test-'+i+'.png',mimeType:'image/png',buffer:png})));
   await page.waitForFunction(()=>document.querySelectorAll('#work-photo-queue li').length===55,null,{timeout:10000});
@@ -249,18 +262,18 @@ try{
   const beforeUploads=uploaded;failAttach=true;
   await page.locator('#work-publish').click();
   await page.waitForFunction(()=>document.getElementById('work-submit-status').textContent.includes('simulated_attach_failure'),null,{timeout:17000});
-  assert.equal(postRecord.published,0);assert.equal(album.length,0);assert.equal(uploaded,beforeUploads+2);
+  assert.equal(postRecord.published,0);assert.equal(album.length,0);assert.equal(uploaded,beforeUploads+4);assert.equal(coverSlots.size,2);
   await page.locator('#work-publish').click();
   await page.waitForFunction(()=>document.getElementById('work-submit-status').textContent.includes('Đã đăng bài thành công'),null,{timeout:17000});
   await page.waitForFunction(()=>document.getElementById('work-photo-count')?.textContent.includes('2 ảnh'),null,{timeout:17000});
-  assert.equal(postRecord.published,true);assert.equal(uploaded,beforeUploads+3);
+  assert.equal(postRecord.published,true);assert.equal(uploaded,beforeUploads+5);assert.equal(coverSlots.size,2);
   assert.equal(await page.locator('#work-photo-album figure').count(),2);
   assert.equal(await page.locator('#work-photo-album figcaption').first().textContent(),'Hình ảnh 01 – tư liệu');
   assert.equal(errors.length,0,errors.join('; '));
   console.log('ADMIN_MULTIPHOTO_IPHONE_DESKTOP_'+label.toUpperCase()+'=PASS',
    JSON.stringify({selected:2,albumVisible:2,storageOriginalsPrivate:true,attachments:album.length}));
-  if(label==='iphone'){assert.equal(uploaded,3);assert.equal(previews,3);assert.equal(approvals,3)}
-  album.length=0;postRecord=null;
+  if(label==='iphone'){assert.equal(uploaded,5);assert.equal(previews,5);assert.equal(approvals,5)}
+  album.length=0;coverSlots.clear();postRecord=null;
   await page.close();
  }
  assert.equal(creates,2);assert.equal(publishWrites,2);
