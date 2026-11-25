@@ -217,8 +217,14 @@ test('admin home-screen app uses stable URL, same-origin protected icons, and no
  const {res}=await call('/admin/manifest.webmanifest');
  assert.equal(res.status,200);
  assert.match(res.headers.get('Content-Type'),/manifest/);
- const m=JSON.parse((await call('/admin/manifest.webmanifest')).body);
+ const m=(await call('/admin/manifest.webmanifest')).body;
  assert.equal(m.start_url,'/admin');assert.equal(m.display,'standalone');
+ for(const [url,size] of [['/admin/icon.png',180],['/admin/icon-192.png',192],['/admin/icon-512.png',512]]){
+  const response=await worker.fetch(new Request('https://test.invalid'+url),{...vars,DB:db},good);
+  assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),'image/png');
+  const bytes=Buffer.from(await response.arrayBuffer());assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  assert.equal(bytes.readUInt32BE(16),size);assert.equal(bytes.readUInt32BE(20),size);
+ }
  assert.equal((await call('/admin/manifest.webmanifest',{ctx:{}})).res.status,403);
  assert.equal((await call('/admin/icon.png',{ctx:{}})).res.status,403);
  assert.ok(ADMIN_HTML.includes('apple-touch-icon'));
