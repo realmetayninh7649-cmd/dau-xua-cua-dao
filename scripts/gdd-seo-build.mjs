@@ -4,6 +4,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import '../gdd-text-links.js';
+const linkedText=globalThis.GDDTextLinks.html;
 const ROOT=process.cwd();
 const BASE='https://dauxuacuadao.info.vn';
 const API='https://gdd-d1-api-staging.realmetayninh7649.workers.dev';
@@ -58,9 +60,9 @@ function page(kind, record) {
   const label = isPerson ? 'Hồ sơ Chức sắc' : 'Biên khảo Đạo sử';
   const category = isPerson ? [record.rank, record.branch, record.years].filter(Boolean).join(' · ') : [record.category, asDate(record.created_at)].filter(Boolean).join(' · ');
   const main = '<main><div class="section">'+e(label)+'</div><h1>'+e(title)+'</h1><p><small>'+e(category)+'</small></p>'
-    +(summary ? '<p class="summary">'+e(summary)+'</p>' : '')
-    +'<article class="prose">'+e(body || 'Nội dung đang được bổ sung.')+'</article>'
-    +(record.sources ? '<h2>Tư liệu tham khảo</h2><div class="sources">'+e(record.sources)+'</div>' : '')
+    +(summary ? '<p class="summary">'+linkedText(summary)+'</p>' : '')
+    +'<article class="prose">'+linkedText(body || 'Nội dung đang được bổ sung.')+'</article>'
+    +(record.sources ? '<h2>Tư liệu tham khảo</h2><div class="sources">'+linkedText(record.sources)+'</div>' : '')
     +'<p><a class="back" href="/#'+e(hash)+'">Mở hồ sơ và hình ảnh trong kho tư liệu ↗</a></p>'
     +'<p><a href="/">Trang chủ</a> · <a href="'+(isPerson?'/ho-so/':'/bien-khao/')+'">Danh mục tư liệu</a></p></main>';
   return {rel:urlPath.slice(1), url, title, summary, date:asDate(record.updated_at||record.created_at), html:head(title,summary||body,url)+main+'<footer>Kho tư liệu Đạo sử Cao Đài · Tòa Thánh Tây Ninh. Bản đọc phục vụ tìm kiếm; dữ liệu gốc được quản lý tại website chính.</footer></body></html>\n'};

@@ -228,7 +228,7 @@
         }
         const caption=document.createElement('figcaption');
         const page=document.createElement('span');page.className='gdd-album-page';page.textContent=String(i+1).padStart(2,'0')+'.';
-        caption.append(page,document.createTextNode(item.caption?.trim()||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu')));
+        caption.append(page);const note=document.createElement('span');const value=item.caption?.trim()||(isDocument?'Tài liệu '+docLabel:'Ảnh tư liệu');if(window.GDDTextLinks)note.innerHTML=window.GDDTextLinks.html(value);else note.textContent=value;caption.append(note);
         if(item.photo_code){
           const trace=document.createElement('span');
           trace.className='gdd-album-trace';

@@ -66,6 +66,7 @@
   const prefixNames={people:'nhan-vat',posts:'bai-viet',media:'hinh-anh-tu-lieu',videos:'video-dao-su',obituaries:'ai-tin',documents:'tai-lieu-so-hoa'};
   const kindFromPrefix=Object.fromEntries(Object.entries(prefixNames).map(([kind,prefix])=>[prefix,kind]));
   const escape = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const linkedText = s => window.GDDTextLinks?.html(s) ?? escape(s);
   const norm = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase();
   const slugify = s => norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,72) || 'tu-lieu';
   const safeUrl = s => {try{const u=new URL(String(s));return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}};
@@ -388,7 +389,7 @@ function videoSource(raw){
           return '<figure><a href="'+escape(url)+'" target="_blank" rel="noopener noreferrer" '+
             'aria-label="Xem ảnh tư liệu '+(i+1)+'">'+
             '<img src="'+escape(url)+'" alt="'+escape(caption)+'" loading="lazy" decoding="async"></a>'+
-            '<figcaption>'+escape(note)+'</figcaption></figure>';
+            '<figcaption>'+linkedText(note)+'</figcaption></figure>';
         }).join('')+'</div></section>'
       :'';
     const summary=record.summary||'';
@@ -418,7 +419,7 @@ function videoSource(raw){
       <button class="btn btn-primary" type="button" data-gdd-qr-download>Tải mã QR PNG</button>
       <button class="btn btn-outline" type="button" data-gdd-qr-copy>Sao chép liên kết</button>
       <small class="gdd-archive-qr-status" data-gdd-qr-status></small></div></div></section>`:'';
-    $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${archivePanel}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${escape(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${escape(body||'Nội dung đang được bổ sung.')}</div>${galleryMarkup}${pdfFileLink}${seoLink}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${escape(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
+    $('#detail-content').innerHTML=`<div class="eyebrow">${escape(sectionNames[kind])}</div><h2 class="detail-title">${escape(title)}</h2><p class="detail-meta">${escape(subtitle)}</p>${dateNotes}${archivePanel}${visual}${['people','posts'].includes(kind)?statusTag(record):''}${summary?`<p class="detail-summary">${linkedText(summary)}</p>`:''}${person?`<p class="detail-meta">Hồ sơ liên quan: ${escape(person.full_name)}</p>`:''}<div class="detail-body">${linkedText(body||'Nội dung đang được bổ sung.')}</div>${galleryMarkup}${pdfFileLink}${seoLink}<div class="detail-source"><strong>NGUỒN TƯ LIỆU & GHI CHÚ</strong>${linkedText(record.sources||'Chưa cập nhật nguồn tư liệu.')}</div>${state.admin?`<p><button class="btn btn-outline" type="button" data-edit-kind="${escape(kind)}" data-edit-id="${escape(record.id)}">Chỉnh sửa tư liệu</button></p>`:''}`;
     // Chỉ tải ảnh có dấu đối với hồ sơ Chức sắc; không đổi dữ liệu hoặc file gốc.
     if(seoHref){
       const seoRow=$('.detail-seo-link',$('#detail-content'));
