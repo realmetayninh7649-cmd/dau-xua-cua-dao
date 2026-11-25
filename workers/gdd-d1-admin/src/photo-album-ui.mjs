@@ -472,7 +472,7 @@ async function saveDownloadPermissions(record,allow,notify=()=>{}){
 }
 $('work-attachment-files').addEventListener('change',selectDocuments);
 $('work-photo-files').addEventListener('change',select);
-window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0||replacements.size>0,imageError,hasPhotos:()=>queue.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={},kind=context?.kind){
+window.GDDPhotoAlbum={async archiveBatchDocument(file,notify){if(!workBusy||!file||!/\.(pdf|doc|docx)$/i.test(file.name)||file.size<1||file.size>documentLimit)throw Error('Tệp không hợp lệ');return archiveOriginal(file,notify)},reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0||replacements.size>0,imageError,hasPhotos:()=>queue.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={},kind=context?.kind){
  const error=imageError(file,kind);if(error)throw Error(error);
  item.file=file;item.cover=true;
  if(!item.assetId){item.assetId=await archiveOriginal(file,notify);await item.checkpoint?.()}
