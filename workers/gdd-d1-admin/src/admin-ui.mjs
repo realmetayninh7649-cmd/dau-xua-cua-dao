@@ -56,14 +56,21 @@ export const ADMIN_HTML=`<!doctype html>
 <button id="work-new" class="work-primary" type="button">Soạn bài mới</button></div>
 <p id="work-status" role="status" aria-live="polite">Đang kết nối D1 làm việc…</p>
 <details id="work-archive-batch" class="work-record-panel" hidden>
-<summary>Văn khố Đạo Sử · Nhập danh mục và tạo nhiều bản nháp</summary>
-<p>Nhập CSV đã duyệt từ công cụ kiểm kê. Chỉ tạo hồ sơ nháp, chưa đính kèm tệp, chưa cấp mã, chưa công bố. Kiểm tra nhan đề trùng trong D1, không xác nhận trùng nội dung R2.</p>
+<summary>KIỂM KÊ VĂN KIỆN · Nhập và quản lý hàng loạt</summary>
+<div id="archive-inventory-panel"><h4>1. Kiểm kê văn kiện</h4><p>Chọn PDF, Word hoặc ảnh để kiểm tra SHA-256, sửa nhan đề, niên đại và nguồn. Tệp chỉ được đọc trên thiết bị trong bước này, không gửi lên máy chủ.</p>
+<label for="archive-inventory-files">Chọn tệp (có thể chọn nhiều lần)</label><input id="archive-inventory-files" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.tif,.tiff" multiple>
+<small>45 MB/tệp. PDF/Word có thể chuyển sang bước tạo bản nháp; ảnh có thể kiểm kê và xuất CSV.</small>
+<div class="controls"><button id="archive-inventory-export" type="button" disabled>Xuất CSV</button><button id="archive-inventory-clear" type="button" disabled>Xóa danh sách</button></div>
+<p id="archive-inventory-status" role="status" aria-live="polite">Chưa chọn tệp.</p><div id="archive-inventory-rows"></div>
+<button id="archive-inventory-transfer" class="work-primary" type="button" disabled>Chuyển PDF/Word đã duyệt sang bước 2</button></div>
+<hr><h4>2. Kiểm tra danh mục và tạo bản nháp</h4>
+<p>Dùng danh mục vừa kiểm kê ở trên hoặc nhập CSV đã duyệt từ Colab. Chỉ tạo hồ sơ nháp, chưa đính kèm tệp, chưa cấp mã, chưa công bố. Kiểm tra nhan đề trùng trong D1, không xác nhận trùng nội dung R2.</p>
 <label for="work-archive-csv">Danh mục CSV đã duyệt</label><input id="work-archive-csv" type="file" accept=".csv,text/csv">
 <label for="work-archive-folder">Thư mục gốc cho đợt này</label><select id="work-archive-folder"><option value="">Chọn thư mục</option><option value="HCĐ">Hành Chánh Đạo</option><option value="HTĐ">Hiệp Thiên Đài</option><option value="CTĐ">Cửu Trùng Đài</option><option value="PT">Phước Thiện</option><option value="CQK">Các Cơ Quan Khác</option></select>
 <p>Chỉ tối đa 30 bản nháp mỗi lần. Niên đại và nguồn là thông tin đã duyệt trong CSV, cần đối chiếu bản scan. Hãy đóng biểu mẫu đang sửa trước khi nhập.</p>
 <div class="controls"><button id="work-archive-prepare" type="button">Kiểm tra danh mục</button><button id="work-archive-create" type="button" disabled>Tạo bản nháp đã chọn</button></div>
 <p id="work-archive-status" role="status" aria-live="polite"></p><ul id="work-archive-rows" class="records"></ul>
-<hr><h4>Gắn bản gốc và nội dung OCR vào từng bản nháp</h4>
+<hr><h4>3. Gắn bản gốc và nội dung OCR vào từng bản nháp</h4>
 <p>Chọn PDF/Word nguyên mẫu và các tệp OCR .txt đặt tên theo SHA-256 từ Colab. Đối chiếu toàn bộ kho R2 trước khi tải. OCR sẽ hiện trong bài sau khi công bố, dưới nhãn chưa kiểm chứng. Không tự công bố, không mở quyền tải, không sửa bản scan.</p>
 <label for="work-archive-originals">Chọn tối đa 30 tệp gốc PDF/Word, 45 MB/tệp</label><input id="work-archive-originals" type="file" accept=".pdf,.doc,.docx" multiple>
 <label for="work-archive-ocr">Chọn tệp OCR đã đối chiếu (không bắt buộc)</label><input id="work-archive-ocr" type="file" accept=".txt,text/plain" multiple>
@@ -170,6 +177,8 @@ export const ADMIN_HTML=`<!doctype html>
 <footer>Dấu Xưa Cửa Đạo · Quản trị tư liệu</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
+#archive-inventory-panel{border:1px solid #d8cdb3;background:#fffdf7;border-radius:10px;padding:12px;margin:12px 0}#archive-inventory-rows{display:grid;gap:10px;max-height:460px;overflow:auto;overscroll-behavior:contain}#archive-inventory-rows .archive-inv-row{display:grid;gap:6px;min-width:0;border:1px solid #ddd3bc;border-radius:8px;padding:10px}#archive-inventory-rows .archive-inv-row input:not([type=checkbox]),#archive-inventory-rows .archive-inv-row select{box-sizing:border-box;width:100%;min-width:0}#archive-inventory-rows small{overflow-wrap:anywhere}#archive-inventory-panel button{white-space:normal}#archive-inventory-transfer{margin-top:12px;width:100%}
+
 .saved-photo-tools{margin-top:6px;font-size:.8rem}.saved-photo-tools summary{cursor:pointer;color:#214c3d;font-weight:650;padding:6px 0}.saved-photo-tools label{display:block;font-size:.76rem;margin-top:6px}.saved-photo-tools textarea,.saved-photo-tools input{width:100%;min-width:0;box-sizing:border-box;font-size:.78rem}.saved-photo-tools button{font-size:.75rem;padding:5px 7px;margin:3px 3px 0 0;min-height:36px}.saved-photo-tools small{display:block;overflow-wrap:anywhere}.saved-photo-tools .saved-photo-remove{color:#9b2828;border-color:#cfa4a4}
 
 .work-cover-group{display:grid;gap:8px;margin:0 0 10px}.work-cover-group>small{color:#637168}.work-cover-group .work-cover-upload>strong{display:block;font-size:.85rem;margin-bottom:5px;color:#214c3d}
@@ -1599,7 +1608,7 @@ function archiveBatchCandidates(raw){
  }
  return items;
 }
-let archiveBatchRows=[],archiveBatchReady=false;
+let archiveBatchRows=[],archiveBatchReady=false,archiveInventoryCSV=null,archiveInventoryOriginals=[];
 function archiveBatchRender(){
  const list=$('work-archive-rows');list.replaceChildren();
  for(const r of archiveBatchRows){
@@ -1627,21 +1636,21 @@ async function archiveBatchExisting(){
  return existing;
 }
 $('work-archive-folder').addEventListener('change',archiveBatchButton);
-$('work-archive-csv').addEventListener('change',()=>{archiveBatchReady=false;archiveBatchRows=[];archiveBatchRender();$('work-archive-status').textContent='Chọn Kiểm tra danh mục.'});
+$('work-archive-csv').addEventListener('change',()=>{archiveInventoryCSV=null;archiveInventoryOriginals=[];archiveBatchReady=false;archiveBatchRows=[];archiveBatchRender();$('work-archive-status').textContent='Chọn Kiểm tra danh mục.'});
 async function archiveBatchRun(create){
  if(workBusy||workTrashBusy||$('work-kind').value!=='documents')return;
  if(workCurrent){$('work-archive-status').textContent='Đóng biểu mẫu đang sửa trước khi nhập danh mục.';return}
  const status=$('work-archive-status'),folder=$('work-archive-folder').value;
  if(create&&(!archiveBatchReady||!Object.hasOwn(workDocumentFolders,folder)))return;
  const files=$('work-archive-csv').files;
- if(!create&&(!files.length||files[0].size>2*1048576)){status.textContent='Chọn CSV tối đa 2 MB.';return}
+ if(!create&&archiveInventoryCSV===null&&(!files.length||files[0].size>2*1048576)){status.textContent='Chọn CSV tối đa 2 MB.';return}
  const selected=archiveBatchRows.filter(r=>r.selected&&!r.problem&&!r.done);
  if(create&&(selected.length<1||selected.length>30||!confirm('Tạo '+selected.length+' bản nháp riêng trong '+workDocumentFolders[folder]+'? Không đăng bài, không tải tệp, không cấp mã.')))return;
  const controls=Array.from(document.querySelectorAll('#work-editor-panel input,#work-editor-panel select,#work-editor-panel button'));
  const disabled=controls.map(el=>[el,el.disabled]);workBusy=true;controls.forEach(el=>el.disabled=true);
  try{
   const session=await api('/api/v1/admin/session');if(session.authenticated!==true||session.working_editor_enabled!==true)throw Error('Phiên quản trị không hợp lệ');
-  if(!create){archiveBatchReady=false;archiveBatchRows=archiveBatchCandidates(await files[0].text());}
+  if(!create){archiveBatchReady=false;archiveBatchRows=archiveBatchCandidates(archiveInventoryCSV!==null?archiveInventoryCSV:await files[0].text());}
   status.textContent='Đối chiếu nhan đề với D1…';
   const existing=await archiveBatchExisting();
   for(const r of archiveBatchRows)if(!r.done&&!r.problem&&existing.has(archiveBatchNorm(r.title))){
@@ -1693,7 +1702,7 @@ async function archiveAudit(files,notify){
 }
 async function archiveBatchLink(){
  if(workBusy||workTrashBusy||workCurrent||$('work-kind').value!=='documents')return;
- const status=$('work-archive-link-status'),originals=Array.from($('work-archive-originals').files||[]),ocrFiles=Array.from($('work-archive-ocr').files||[]);
+ const status=$('work-archive-link-status'),chosenOriginals=Array.from($('work-archive-originals').files||[]),targetHashes=new Set(archiveBatchRows.filter(r=>r.id&&!r.problem&&!r.linked).map(r=>r.hash)),originals=chosenOriginals.length?chosenOriginals:archiveInventoryOriginals.filter(r=>targetHashes.has(r.hash)).map(r=>r.original),ocrFiles=Array.from($('work-archive-ocr').files||[]);
  if(!archiveBatchRows.length||!originals.length||originals.length>30||ocrFiles.length>30){status.textContent='Nhập và kiểm tra CSV trước, tạo bản nháp, rồi chọn 1–30 tệp gốc.';return}
  if(originals.some(f=>!/\\.(pdf|doc|docx)$/i.test(f.name)||f.size<1||f.size>45*1048576)){status.textContent='Chỉ PDF/Word, tối đa 45 MB mỗi tệp.';return}
  const controls=Array.from(document.querySelectorAll('#work-editor-panel input,#work-editor-panel select,#work-editor-panel button'));
@@ -1757,6 +1766,68 @@ async function archiveBatchLink(){
  finally{workBusy=false;for(const [el,was] of disabled)if(el.isConnected)el.disabled=was;archiveBatchRender()}
 }
 $('work-archive-link').addEventListener('click',archiveBatchLink);
+
+const invRows=[],invHashes=new Map();let invBusy=false;
+const invDoc=r=>/\\.(pdf|doc|docx)$/i.test(r.file);
+const invEligible=r=>!!r.hash&&!r.duplicate;
+function invCSV(onlyDocs=false){
+ const rows=onlyDocs?invRows.filter(r=>r.approved&&invEligible(r)&&invDoc(r)):invRows;
+ const cell=value=>{let v=String(value??'');if(/^[\\s\\uFEFF]*[=+@-]/.test(v)||/^[\\t\\r\\n]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'};
+ return [['ten_tep','dung_luong_byte','nhan_de_goi_y','nam_goi_y','nhom_nguon','xuat_xu_so_hieu','sha256','kiem_tra','da_duyet'],...rows.map(r=>[r.file,r.size,r.title,r.year,r.source,r.notes,r.hash,r.status,r.approved?'co':'chua'])].map(row=>row.map(cell).join(',')).join('\\r\\n');
+}
+function invButtons(){
+ const approved=invRows.filter(r=>r.approved&&invEligible(r)),docs=approved.filter(invDoc);
+ $('archive-inventory-export').disabled=invBusy||workBusy||!invRows.length;
+ $('archive-inventory-clear').disabled=invBusy||workBusy||!invRows.length;
+ $('archive-inventory-transfer').disabled=invBusy||workBusy||docs.length<1||docs.length>30;
+ $('archive-inventory-status').textContent=invRows.length+' tệp · '+invRows.filter(r=>r.duplicate).length+' trùng · '+approved.length+' đã duyệt · '+docs.length+' PDF/Word'+(docs.length>30?' · Chỉ duyệt tối đa 30 PDF/Word để chuyển mỗi lượt.':'');
+}
+function invRender(){
+ const root=$('archive-inventory-rows');root.replaceChildren();
+ for(const r of invRows){
+  const row=document.createElement('div');row.className='archive-inv-row';
+  appendText(row,'strong',r.file+' · '+(r.size/1048576).toFixed(2)+' MB');appendText(row,'small',r.status);
+  for(const [field,title] of [['title','Nhan đề'],['year','Niên đại'],['source','Nguồn'],['notes','Xuất xứ / số hiệu']]){
+   const label=document.createElement('label');label.textContent=title;
+   const input=document.createElement(field==='source'?'select':'input');
+   if(field==='source')for(const [value,text] of [['','Chưa rõ'],['VKNN','Văn Khố Ngoại Quốc'],['VKVN','Văn Khố Việt Nam'],['other','Khác']]){const o=document.createElement('option');o.value=value;o.textContent=text;input.append(o)}
+   input.value=r[field];input.disabled=!invEligible(r);input.addEventListener('input',()=>r[field]=input.value);label.append(input);row.append(label);
+  }
+  const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=r.approved;check.disabled=!invEligible(r);check.addEventListener('change',()=>{r.approved=check.checked;invButtons()});label.append(check,document.createTextNode(' Đã đối chiếu, duyệt văn kiện'));row.append(label);root.append(row);
+ }
+ invButtons();
+}
+$('archive-inventory-files').addEventListener('change',async()=>{
+ if(invBusy||workBusy||workCurrent){$('archive-inventory-status').textContent='Đóng biểu mẫu đang sửa trước khi kiểm kê.';return}
+ const input=$('archive-inventory-files'),files=Array.from(input.files||[]);
+ if(invRows.length+files.length>1000){$('archive-inventory-status').textContent='Tối đa 1.000 tệp trong danh mục.';input.value='';return}
+ invBusy=true;workBusy=true;const controls=Array.from(document.querySelectorAll('#work-editor-panel input,#work-editor-panel select,#work-editor-panel button')),disabled=controls.map(el=>[el,el.disabled]);controls.forEach(el=>el.disabled=true);
+ try{
+  for(const file of files){
+   $('archive-inventory-status').textContent='Đang tính SHA-256: '+file.name;
+   const title=file.name.replace(/\\.[^.]+$/,'').replace(/_/g,' ').trim(),key=archiveBatchNorm(title),year=(title.match(/(?:^|[^0-9])((?:18|19|20)\\d{2})(?=[^0-9]|$)/)||[])[1]||'';
+   const source=/\\b(?:cia|nara|anom|gallica|frus|pentagon|texas tech|archives)\\b/.test(key)?'VKNN':/\\b(?:nac2|luu tru quoc gia)\\b/.test(key)?'VKVN':'';
+   const row={file:file.name,original:file,size:file.size,title,year,source,notes:'',hash:'',status:'',duplicate:false,approved:false};
+   if(!/\\.(pdf|doc|docx|jpe?g|png|webp|tiff?)$/i.test(file.name)||file.size<1||file.size>45*1048576)row.status='Tệp không hợp lệ hoặc vượt 45 MB';
+   else try{row.hash=await archiveFileHash(file);row.duplicate=invHashes.has(row.hash);row.status=row.duplicate?'Trùng với '+invHashes.get(row.hash):'Chưa trùng trong danh sách này';if(!row.duplicate)invHashes.set(row.hash,row.file)}catch{row.status='Không đọc được SHA-256'}
+   invRows.push(row);
+  }
+ }finally{invBusy=false;workBusy=false;for(const [el,was] of disabled)if(el.isConnected)el.disabled=was;input.value='';invRender()}
+});
+$('archive-inventory-clear').addEventListener('click',()=>{if(workBusy||invBusy||!confirm('Xóa danh sách kiểm kê trên màn hình? Tệp gốc và bản nháp không bị xóa.'))return;invRows.length=0;invHashes.clear();invRender()});
+$('archive-inventory-export').addEventListener('click',()=>{if(workBusy||invBusy||!invRows.length)return;const url=URL.createObjectURL(new Blob(['\\uFEFF',invCSV()],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Van_kho_Dao_Su_kiem_ke.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$('archive-inventory-transfer').addEventListener('click',async()=>{
+ if(workBusy||invBusy||workCurrent||$('work-kind').value!=='documents')return;
+ const chosen=invRows.filter(r=>r.approved&&invEligible(r)&&invDoc(r));
+ if(chosen.length<1||chosen.length>30)return;
+ if(archiveBatchRows.some(r=>r.id||r.assetId)&&!confirm('Thay danh mục đang làm trên màn hình? Bản nháp và tệp đã lưu vẫn giữ nguyên.'))return;
+ archiveInventoryCSV=invCSV(true);archiveInventoryOriginals=chosen.map(r=>({hash:r.hash,original:r.original}));
+ $('work-archive-csv').value='';$('work-archive-originals').value='';
+ archiveBatchRows=[];archiveBatchReady=false;
+ $('work-archive-link-status').textContent='Đã giữ '+chosen.length+' tệp gốc đã kiểm kê trong phiên hiện tại. Không cần chọn lại nếu chưa tải lại trang.';
+ await archiveBatchRun(false);
+});
+
 
 
 $('work-search').addEventListener('input',workRenderList);
