@@ -1,6 +1,6 @@
 export const PHOTO_JS=String.raw`/* Multi-image editor for Access-authenticated working D1.
  * Originals go to the private R2 vault. Only approved optimized previews are linked.
- * No removal of R2 original objects, no old-gallery deletion, no Supabase calls.
+ * Saved album associations can be edited; original R2 objects are never deleted.
  */
 (()=>{
 'use strict';
@@ -15,10 +15,12 @@ const documentLimit=45*1048576;
 let documents=[];
 const downloadChanges=new Map();
 let queue=[],context=null,busy=false,loadId=0;
+const replacements=new Map();
 function status(message){$('work-photo-status').textContent=message}
 function clear(){
  loadId++;
  for(const item of queue)if(item.previewUrl)URL.revokeObjectURL(item.previewUrl);
+ for(const item of replacements.values())if(item.previewUrl)URL.revokeObjectURL(item.previewUrl);replacements.clear();
  queue=[];documents=[];readerPlans.clear();downloadChanges.clear();context=null;busy=false;
  $('work-attachment-files').value='';$('work-attachment-queue').replaceChildren();$('work-attachment-existing').replaceChildren();$('work-attachment-count').textContent=' · 0 tệp';$('work-attachment-status').textContent='';$('work-attachment-panel').hidden=true;
  $('work-photo-files').value='';
@@ -35,6 +37,7 @@ function refresh(){
  $('work-attachment-files').disabled=busy||workBusy;
  if(!allowed)return;
  $('work-photo-files').disabled=busy||workBusy;
+ for(const el of $('work-photo-album').querySelectorAll('button,input,textarea'))el.disabled=busy||workBusy||el.dataset.edge==='1';
 }
 function label(container,tag,value,cls){
  const element=document.createElement(tag);
@@ -141,6 +144,59 @@ async function uploadPreview(item){
    method:'PUT',data:optimized,type:mime});
  }finally{image.onload=null;image.onerror=null;image.removeAttribute('src')}
 }
+async function changeSavedPhoto(photo,action,extra={},message=null){
+ if(!context?.id||busy||workBusy)return;
+ const current=context;
+ busy=true;workBusy=true;refresh();
+ const say=text=>{status(text);if(message)message.textContent=text};
+ try{
+  const payload={action,photo_id:photo.id,expected_url:photo.image_url,...extra};
+  if(action==='replace'){
+   const item=replacements.get(photo.id);if(!item)throw Error('Chọn ảnh thay thế trước');
+   if(!item.assetId)item.assetId=await archiveOriginal(item.file,say);
+   if(!item.previewReady){say('Đang tạo bản xem ảnh mới…');await uploadPreview(item);item.previewReady=true}
+   if(!item.published){
+    const released=await managedRequest('/v1/assets/'+item.assetId+'/publication',{method:'POST',data:JSON.stringify({publish:true,allowDownload:false})});
+    if(released.published!==true||released.originalPrivate!==true)throw Error('Chưa xác nhận bản xem');
+    item.published=true;
+   }
+   payload.asset_id=item.assetId;
+  }
+  const result=await workWrite('/api/v1/admin/work/'+current.kind+'/'+current.id+'/photos','POST',payload);
+  if(action==='remove'?result?.removed!==true:result?.data?.id!==photo.id)throw Error('Máy chủ chưa xác nhận');
+  const item=replacements.get(photo.id);if(item){if(item.previewUrl)URL.revokeObjectURL(item.previewUrl);replacements.delete(photo.id)}
+  say(action==='remove'?'Đã gỡ ảnh khỏi bài. Bản gốc vẫn giữ.':'Đã cập nhật bộ ảnh. Không cần đăng lại bài.');
+  await reloadAlbum();
+ }catch(error){say('Chưa hoàn tất: '+error.message+'. '+(action==='replace'?'Có thể nhấn Thử thay ảnh lại.':'Mở lại bộ ảnh nếu có thay đổi từ phiên khác.'))}
+ finally{busy=false;workBusy=false;refresh()}
+}
+function savedPhotoTools(figure,photo,index,total){
+ const details=document.createElement('details');details.className='saved-photo-tools';
+ label(details,'summary','Chỉnh sửa ảnh '+(index+1));
+ const msg=label(details,'small','Thay đổi được lưu trực tiếp vào bài.');
+ msg.setAttribute('role','status');
+ const captionLabel=label(details,'label','Chú thích');
+ const caption=document.createElement('textarea');caption.rows=2;caption.maxLength=600;caption.value=photo.caption||'';captionLabel.append(caption);
+ function button(name,fn,edge=false){const btn=label(details,'button',name);btn.type='button';if(edge)btn.dataset.edge='1';btn.addEventListener('click',fn);return btn}
+ button('Lưu chú thích',()=>changeSavedPhoto(photo,'caption',{caption:caption.value},msg));
+ const replaceLabel=label(details,'label','Chọn ảnh thay thế');
+ const chooser=document.createElement('input');chooser.type='file';chooser.accept='image/jpeg,image/png,image/webp';replaceLabel.append(chooser);
+ const retry=button('Thử thay ảnh lại',()=>changeSavedPhoto(photo,'replace',{},msg));retry.hidden=!replacements.has(photo.id);
+ chooser.addEventListener('change',()=>{
+  if(busy||workBusy)return;
+  const file=chooser.files?.[0];chooser.value='';if(!file)return;
+  const error=imageError(file,context.kind);if(error){msg.textContent=error;return}
+  if(!confirm('Thay ảnh số '+(index+1)+'? Giữ nguyên chú thích, thứ tự và bản gốc cũ.'))return;
+  const previous=replacements.get(photo.id);if(previous?.previewUrl)URL.revokeObjectURL(previous.previewUrl);
+  replacements.set(photo.id,{file,previewUrl:URL.createObjectURL(file)});
+  retry.hidden=false;changeSavedPhoto(photo,'replace',{},msg);
+ });
+ button('↑ Lên',()=>changeSavedPhoto(photo,'move',{direction:-1},msg),index===0);
+ button('↓ Xuống',()=>changeSavedPhoto(photo,'move',{direction:1},msg),index===total-1);
+ const remove=button('Gỡ ảnh khỏi bài',()=>{if(confirm('Gỡ ảnh số '+(index+1)+' khỏi bài viết? Bản gốc vẫn được giữ.'))changeSavedPhoto(photo,'remove',{},msg)});
+ remove.className='saved-photo-remove';
+ figure.append(details);
+}
 async function reloadAlbum(){
  const serial=++loadId;
  if(!context?.id)return;
@@ -157,7 +213,7 @@ async function reloadAlbum(){
   }
   $('work-photo-count').textContent=' · '+images.length+' ảnh';
   const grid=$('work-photo-album');grid.replaceChildren();
-  for(const photo of images){
+  for(const [index,photo] of images.entries()){
    const figure=document.createElement('figure');
    try{
     const u=new URL(photo.image_url);
@@ -167,8 +223,10 @@ async function reloadAlbum(){
     }
    }catch{}
    label(figure,'figcaption',photo.caption||photo.photo_code||'Ảnh tư liệu');
+   savedPhotoTools(figure,photo,index,images.length);
    grid.append(figure);
   }
+  refresh();
  }catch(error){status('Chưa tải được ảnh đã gắn: '+error.message)}
 }
 async function uploadBatch(record,notify=()=>{}){
@@ -413,7 +471,7 @@ async function saveDownloadPermissions(record,allow,notify=()=>{}){
 }
 $('work-attachment-files').addEventListener('change',selectDocuments);
 $('work-photo-files').addEventListener('change',select);
-window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0,imageError,hasPhotos:()=>queue.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={},kind=context?.kind){
+window.GDDPhotoAlbum={reset:clear,refresh,isBusy:()=>busy,hasPending:()=>queue.some(x=>!x.done)||documents.some(x=>!x.done)||downloadChanges.size>0||replacements.size>0,imageError,hasPhotos:()=>queue.some(x=>!x.done),hasDocuments:()=>documents.some(x=>!x.done),uploadDocuments,prepareReaders,releaseReaders,saveDownloadPermissions,bindRecord(record){if(context&&context.kind===record.kind&&(!context.id||context.id===record.id)){context.id=record.id;refresh()}},uploadBatch,async uploadCover(file,notify,item={},kind=context?.kind){
  const error=imageError(file,kind);if(error)throw Error(error);
  item.file=file;item.cover=true;
  if(!item.assetId){item.assetId=await archiveOriginal(file,notify);await item.checkpoint?.()}

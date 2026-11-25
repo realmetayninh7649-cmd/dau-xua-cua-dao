@@ -154,6 +154,8 @@ export const ADMIN_HTML=`<!doctype html>
 <footer>Dấu Xưa Cửa Đạo · Quản trị tư liệu</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
+.saved-photo-tools{margin-top:6px;font-size:.8rem}.saved-photo-tools summary{cursor:pointer;color:#214c3d;font-weight:650;padding:6px 0}.saved-photo-tools label{display:block;font-size:.76rem;margin-top:6px}.saved-photo-tools textarea,.saved-photo-tools input{width:100%;min-width:0;box-sizing:border-box;font-size:.78rem}.saved-photo-tools button{font-size:.75rem;padding:5px 7px;margin:3px 3px 0 0;min-height:36px}.saved-photo-tools small{display:block;overflow-wrap:anywhere}.saved-photo-tools .saved-photo-remove{color:#9b2828;border-color:#cfa4a4}
+
 .work-cover-group{display:grid;gap:8px;margin:0 0 10px}.work-cover-group>small{color:#637168}.work-cover-group .work-cover-upload>strong{display:block;font-size:.85rem;margin-bottom:5px;color:#214c3d}
 
 .admin-app-refresh{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#214c3d;color:#fff;font-weight:650;border-color:#214c3d;min-height:44px}

@@ -12,6 +12,46 @@ function reply(data,status=200){
   'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'
  }});
 }
+// Only modify the album index; never delete any R2 object or original.
+async function editPhoto(env,kind,recordId,input){
+ const db=env.DB,id=input.photo_id,action=input.action;
+ const allowed={caption:['caption'],replace:['asset_id'],remove:[],move:['direction']};
+ if(!Object.hasOwn(allowed,action)||!ID.test(id||'')||typeof input.expected_url!=='string'||input.expected_url.length>2000||Object.keys(input).some(k=>!['action','photo_id','expected_url',...allowed[action]].includes(k)))return reply({error:'invalid_photo_action'},400);
+ const lookup=()=>db.prepare('SELECT id,image_url,caption,sort_order,photo_code FROM archive_gallery_images WHERE owner_kind=? AND owner_id=? AND id=?').bind(kind,recordId,id).first();
+ const row=await lookup();
+ if(!row)return action==='remove'?reply({removed:true,photo_id:id,original_preserved:true}):reply({error:'photo_not_found'},404);
+ if(row.image_url!==input.expected_url){
+  if(action==='replace'&&ID.test(input.asset_id||'')&&row.image_url===BASE+input.asset_id+'/preview')return reply({data:row,original_preserved:true});
+  return reply({error:'photo_changed_reload'},409);
+ }
+ if(action==='caption'){
+  if(typeof input.caption!=='string'||input.caption.length>600)return reply({error:'invalid_caption'},400);
+  const saved=await db.prepare('UPDATE archive_gallery_images SET caption=? WHERE owner_kind=? AND owner_id=? AND id=? AND image_url=? RETURNING id,image_url,caption,sort_order,photo_code').bind(input.caption.trim(),kind,recordId,id,row.image_url).first();
+  return saved?reply({data:saved}):reply({error:'photo_changed_reload'},409);
+ }
+ if(action==='remove'){
+  const removed=await db.prepare('DELETE FROM archive_gallery_images WHERE owner_kind=? AND owner_id=? AND id=? AND image_url=? RETURNING id').bind(kind,recordId,id,row.image_url).first();
+  return removed?reply({removed:true,photo_id:id,original_preserved:true}):reply({error:'photo_changed_reload'},409);
+ }
+ if(action==='move'){
+  if(![-1,1].includes(input.direction))return reply({error:'invalid_direction'},400);
+  // Stable ranking also handles migrated rows with null or duplicate sort positions.
+  const sql='WITH ordered AS MATERIALIZED (SELECT id,ROW_NUMBER() OVER (ORDER BY sort_order ASC,created_at ASC,id ASC) AS pos FROM archive_gallery_images WHERE owner_kind=? AND owner_id=?), target AS MATERIALIZED (SELECT pos FROM ordered WHERE id=?) UPDATE archive_gallery_images SET sort_order=(SELECT CASE WHEN o.pos=t.pos THEN t.pos+? WHEN o.pos=t.pos+? THEN t.pos ELSE o.pos END FROM ordered o CROSS JOIN target t WHERE o.id=archive_gallery_images.id) WHERE owner_kind=? AND owner_id=? AND EXISTS(SELECT 1 FROM ordered o CROSS JOIN target t WHERE o.pos=t.pos+?) AND EXISTS(SELECT 1 FROM archive_gallery_images x WHERE x.id=? AND x.owner_kind=? AND x.owner_id=? AND x.image_url=?)';
+  await db.prepare(sql).bind(kind,recordId,id,input.direction,input.direction,kind,recordId,input.direction,id,kind,recordId,row.image_url).run();
+  return reply({data:await lookup()});
+ }
+ if(!ID.test(input.asset_id||''))return reply({error:'invalid_asset_id'},400);
+ const owner=ownerUUID(env),assetId=input.asset_id,url=BASE+assetId+'/preview';
+ const asset=await db.prepare('SELECT asset_id,owner_id,record_kind,record_id,media_kind,public_view,preview_ready FROM gdd_r2_assets WHERE asset_id=?').bind(assetId).first();
+ if(!asset||asset.owner_id!==owner||asset.media_kind!=='image'||Number(asset.public_view)!==1||Number(asset.preview_ready)!==1)return reply({error:'preview_not_approved'},409);
+ if(asset.record_id||asset.record_kind)return reply({error:'asset_already_linked_elsewhere'},409);
+ const results=await db.batch([
+  db.prepare("UPDATE gdd_r2_assets SET record_kind=?,record_id=?,role='album' WHERE asset_id=? AND owner_id=? AND record_id IS NULL AND record_kind IS NULL AND public_view=1 AND preview_ready=1 AND EXISTS(SELECT 1 FROM archive_gallery_images WHERE owner_kind=? AND owner_id=? AND id=? AND image_url=?) AND NOT EXISTS(SELECT 1 FROM archive_gallery_images WHERE owner_kind=? AND owner_id=? AND image_url=?)").bind(kind,recordId,assetId,owner,kind,recordId,id,row.image_url,kind,recordId,url),
+  db.prepare("UPDATE archive_gallery_images SET image_url=? WHERE owner_kind=? AND owner_id=? AND id=? AND image_url=? AND EXISTS(SELECT 1 FROM gdd_r2_assets WHERE asset_id=? AND owner_id=? AND record_kind=? AND record_id=? AND role='album') AND NOT EXISTS(SELECT 1 FROM archive_gallery_images WHERE owner_kind=? AND owner_id=? AND image_url=?) RETURNING id,image_url,caption,sort_order,photo_code").bind(url,kind,recordId,id,row.image_url,assetId,owner,kind,recordId,kind,recordId,url)
+ ]);
+ const saved=results[1]?.results?.[0];
+ return saved?reply({data:saved,original_preserved:true}):reply({error:'photo_changed_reload'},409);
+}
 export async function handleAlbumPhotos(request,env,path){
  const match=ROUTE.exec(path);
  if(!match||!ID.test(match[2]))return reply({error:'invalid_album'},404);
@@ -38,8 +78,9 @@ export async function handleAlbumPhotos(request,env,path){
   if(raw.length>2500)return reply({error:'invalid_body_size'},413);
   let input;try{input=JSON.parse(raw)}catch{return reply({error:'invalid_json'},400)}
   if(!input||Array.isArray(input)||typeof input!=='object'
-    ||Object.keys(input).some(k=>!['asset_id','caption','role'].includes(k)))
-    return reply({error:'invalid_fields'},400);
+    )return reply({error:'invalid_fields'},400);
+  if(Object.hasOwn(input,'action'))return await editPhoto(env,kind,recordId,input);
+  if(Object.keys(input).some(k=>!['asset_id','caption','role'].includes(k)))return reply({error:'invalid_fields'},400);
   const id=input.asset_id;
   if(!ID.test(id||''))return reply({error:'invalid_asset_id'},400);
   if(typeof input.caption!=='string'||input.caption.length>600)
