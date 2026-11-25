@@ -114,7 +114,7 @@ async function list(db,kind,params){
  if(!Number.isInteger(limit)||limit<1||limit>50||!Number.isInteger(offset)||offset<0||offset>5000)
    return response({error:'invalid_pagination'},400);
  const title=SCHEMAS[kind].title;
- const trash=params.get('trash')==='1',filter=' WHERE '+trashPredicate(kind,trash);
+ const trash=params.get('trash')==='1',filter=' WHERE '+trashPredicate(kind,trash)+(!trash&&params.get('draft')==='1'?' AND published=0':'');
  const sql=kind==='gdd_calendar_memorials'
    ? 'SELECT id,NULL AS slug,full_name AS title,published,created_at,updated_at,gdd_version '+
        'FROM gdd_calendar_memorials'+filter+' ORDER BY created_at DESC LIMIT ? OFFSET ?'

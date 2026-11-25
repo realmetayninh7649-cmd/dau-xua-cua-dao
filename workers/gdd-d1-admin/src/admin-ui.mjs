@@ -4,6 +4,13 @@ export const ADMIN_HTML=`<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Quản trị tư liệu — Dấu Xưa Cửa Đạo </title>
+<meta name="theme-color" content="#214c3d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Quản trị Đạo sử">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/admin/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/admin/icon.png">
+<link rel="icon" href="/admin/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/admin/style.css">
 <script src="/admin/app.js" defer></script>
 <script src="/admin/photo-album.js" defer></script>
@@ -19,6 +26,26 @@ export const ADMIN_HTML=`<!doctype html>
  <nav class="quick-links" aria-label="Liên kết"><a href="https://dauxuacuadao.info.vn/" target="_blank" rel="noopener noreferrer">Mở website công khai</a></nav>
 <section aria-labelledby="work-title" id="work-editor-panel" hidden>
 <div class="heading"><h2 id="work-title">Soạn bài &amp; quản lý tư liệu</h2></div>
+<div class="admin-home" aria-label="Lối tắt quản trị">
+ <div class="admin-home-grid" id="admin-home-grid">
+  <button type="button" data-admin-kind="people"><span aria-hidden="true">♙</span>Chức Sắc</button>
+  <button type="button" data-admin-kind="posts"><span aria-hidden="true">▤</span>Biên Khảo</button>
+  <button type="button" data-admin-kind="media"><span aria-hidden="true">▧</span>Hình Ảnh</button>
+  <button type="button" data-admin-kind="documents"><span aria-hidden="true">▱</span>Số Hóa</button>
+  <button type="button" data-admin-kind="obituaries"><span aria-hidden="true">✧</span>Ai Tín</button>
+  <button type="button" data-admin-kind="gdd_audio_programs"><span aria-hidden="true">♫</span>Âm Thanh</button>
+  <button type="button" data-admin-kind="gdd_memorials"><span aria-hidden="true">✿</span>Tưởng Niệm</button>
+  <button type="button" data-admin-kind="gdd_calendar_memorials"><span aria-hidden="true">▦</span>Lịch Đạo</button>
+  <button type="button" data-admin-kind="videos"><span aria-hidden="true">▷</span>Video</button>
+ </div>
+ <div class="admin-home-tools">
+  <button id="admin-home-drafts" type="button">Bản nháp</button>
+  <button id="admin-home-trash" type="button">Thùng rác</button>
+  <button id="admin-home-r2" type="button">Dung lượng R2</button>
+ </div>
+ <p id="admin-home-storage" role="status" aria-live="polite"></p>
+ <details class="admin-install-help"><summary>Ghim ứng dụng trên iPhone</summary><p>Safari → Chia sẻ → Thêm vào màn hình chính. Đặt tên Quản trị Đạo sử. Dùng cùng một biểu tượng cho mọi bản cập nhật. Đăng nhập Cloudflare Access khi được yêu cầu.</p></details>
+</div>
 <div class="controls work-actions"><label for="work-kind">Chuyên mục</label>
 <select id="work-kind">
 <option value="people">Chức sắc</option><option value="posts">Biên khảo</option>
@@ -127,6 +154,17 @@ export const ADMIN_HTML=`<!doctype html>
 <footer>Dấu Xưa Cửa Đạo · Quản trị tư liệu</footer>
 </main></body></html>`;
 export const ADMIN_CSS=`
+.admin-home{padding:10px 0 12px;border-bottom:1px solid #e2e5dc;margin-bottom:12px}
+.admin-home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.admin-home-grid button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:70px;padding:7px 3px;font-size:.82rem;font-weight:650;line-height:1.25;border-color:#d4ded3;background:#f8faf5}
+.admin-home-grid button span{font-size:1.6rem;line-height:1;color:#997a44}
+.admin-home-grid button[aria-pressed=true],.admin-home-tools button[aria-pressed=true]{border-color:#214c3d;background:#e3eee5;box-shadow:inset 0 0 0 1px #214c3d}
+.admin-home-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px}
+.admin-home-tools button{padding:7px 3px;font-size:.78rem;font-weight:600;min-height:44px}
+#admin-home-storage{font-size:.84rem;margin:6px 0;overflow-wrap:anywhere}#admin-home-storage:empty{display:none}
+.admin-install-help{font-size:.81rem;color:#637168;margin-top:8px}.admin-install-help summary{cursor:pointer}.admin-install-help p{margin:6px 0}
+@media(min-width:700px){.admin-home-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
 .work-photo-panel{margin:16px 0;padding:13px;background:#f8fbf6;border:1px solid #cddccf;border-radius:12px}
 .work-photo-panel h4{margin:0 0 7px;font:600 1.15rem Georgia,serif}
 .work-photo-explain{font-size:.89rem;color:#53695b;margin:0 0 10px}
@@ -779,7 +817,7 @@ async function workRestorePhotoDraft(){
  workStatus('Đã khôi phục nội dung đang soạn. Vui lòng chọn lại ảnh/tệp chưa tải.');
 }
 function workHasLocalFiles(){return !!workAudioFile||workCoverQueue.size>0||!!window.GDDPhotoAlbum?.hasPending()}
-let workCachedPage=[],workTrashMode=false,workTrashBusy=false;
+let workCachedPage=[],workTrashMode=false,workTrashBusy=false,workDraftMode=false;
 const workPageSize=10;
 const workRoot='/api/v1/admin/work/';
 function workRenderList(){
@@ -806,7 +844,7 @@ async function workMoveTrash(record,trashed){
  if(workBusy||workTrashBusy)return;
  const kind=$('work-kind').value;
  if(workHasLocalFiles()){workStatus('Hãy lưu hoặc bỏ tệp đang chọn trước khi thao tác Thùng rác.');return}
- if(!confirm((trashed?'Đưa bài vào Thùng rác và ẩn khỏi website?':'Khôi phục về bản nháp?')+'\n'+(record.title||record.id)))return;
+ if(!confirm((trashed?'Đưa bài vào Thùng rác và ẩn khỏi website?':'Khôi phục về bản nháp?')+'\\n'+(record.title||record.id)))return;
  workTrashBusy=true;
  try{
   const result=await workWrite(workRoot+kind+'/'+record.id+'/'+(trashed?'trash':'untrash'),'POST',{version:record.gdd_version});
@@ -817,20 +855,30 @@ async function workMoveTrash(record,trashed){
  }catch(e){workStatus('Chưa hoàn tất: '+e.message)}
  finally{workTrashBusy=false}
 }
+function adminSetListMode(mode){
+ workTrashMode=mode==='trash';workDraftMode=mode==='draft';workOffset=0;
+ $('work-trash-toggle').textContent=workTrashMode?'Về danh sách bài':'Thùng rác';
+ $('work-trash-toggle').setAttribute('aria-pressed',String(workTrashMode));
+ $('admin-home-drafts').setAttribute('aria-pressed',String(workDraftMode));
+ $('admin-home-trash').setAttribute('aria-pressed',String(workTrashMode));
+ $('work-search').value='';$('work-list-details').open=true;
+ return workList();
+}
+function adminMarkKind(){for(const button of $('admin-home-grid').querySelectorAll('[data-admin-kind]'))button.setAttribute('aria-pressed',String(button.dataset.adminKind===$('work-kind').value))}
 function workStatus(message){$('work-status').textContent=message;$('work-submit-status').textContent=message;}
 function workClose(){if(workCurrent?.kind==='media')workForgetPhotoDraft();workClearCovers();window.GDDPhotoAlbum?.reset();workCurrent=null;workFieldInputs.clear();$('work-edit-area').hidden=true;$('work-fields').replaceChildren();$('work-revisions').replaceChildren();$('work-code-area').hidden=true;}
 async function workList(){
- const kind=$('work-kind').value,trash=workTrashMode,offset=workOffset;
+ const kind=$('work-kind').value,trash=workTrashMode,draft=workDraftMode,offset=workOffset;
  try{
-  const data=await api(workRoot+kind+'?limit='+workPageSize+'&offset='+offset+(trash?'&trash=1':''));
+  const data=await api(workRoot+kind+'?limit='+workPageSize+'&offset='+offset+(trash?'&trash=1':draft?'&draft=1':''));
   // Discard delayed responses when the category is changed while loading.
-  if(kind!==$('work-kind').value||trash!==workTrashMode||offset!==workOffset)return;
+  if(kind!==$('work-kind').value||trash!==workTrashMode||draft!==workDraftMode||offset!==workOffset)return;
   workCachedPage=Array.isArray(data.data)?data.data:[];
   workRenderList();
   $('work-prev').disabled=workOffset===0;
   $('work-next').disabled=workCachedPage.length<workPageSize;
   $('work-page').textContent='Trang '+(Math.floor(workOffset/workPageSize)+1);
-  workStatus(trash?'Thùng rác của chuyên mục hiện tại. Khôi phục bài về bản nháp.':'Đã kết nối D1 làm việc · Chọn Soạn bài mới để viết hoặc mở danh sách để sửa.');
+  workStatus(trash?'Thùng rác của chuyên mục hiện tại. Khôi phục bài về bản nháp.':draft?'Bản nháp của chuyên mục hiện tại.':'Đã kết nối D1 làm việc · Chọn Soạn bài mới để viết hoặc mở danh sách để sửa.');
  }catch(e){workStatus('Lỗi tải danh sách D1: '+e.message)}
 }
 const workPersonRanks={
@@ -1370,16 +1418,28 @@ $('work-kind').addEventListener('change',()=>{
  if(workBusy)return;
  if(workHasLocalFiles()&&!confirm('Tệp đang chọn chưa được lưu. Chuyển chuyên mục?')){$('work-kind').value=workCurrent.kind;return}
  workOffset=0;$('work-search').value='';workCachedPage=[];
- workClose();workList()
+ workClose();adminMarkKind();adminSetListMode('all')
 });
+$('admin-home-grid').addEventListener('click',event=>{
+ const button=event.target.closest('[data-admin-kind]');if(!button||workBusy||workTrashBusy)return;
+ if($('work-kind').value!==button.dataset.adminKind){
+  $('work-kind').value=button.dataset.adminKind;$('work-kind').dispatchEvent(new Event('change'));
+ }else if(!workCurrent)adminSetListMode('all');
+ adminMarkKind();
+});
+$('admin-home-drafts').addEventListener('click',()=>{if(!workBusy&&!workTrashBusy)adminSetListMode(workDraftMode?'all':'draft')});
+$('admin-home-trash').addEventListener('click',()=>{if(!workBusy&&!workTrashBusy)adminSetListMode(workTrashMode?'all':'trash')});
+$('admin-home-r2').addEventListener('click',async()=>{
+ const btn=$('admin-home-r2'),status=$('admin-home-storage');btn.disabled=true;status.textContent='Đang kiểm kê R2…';
+ try{const r=await api('/api/v1/admin/r2/inventory');if(!Number.isFinite(r.total_bytes)||!Number.isFinite(r.objects))throw Error('Dữ liệu không hợp lệ');status.textContent=(r.total_bytes/1e9).toFixed(2)+' GB · '+r.objects+' tệp · Kiểm tra trực tiếp.'}
+ catch(e){status.textContent='Chưa đọc được dung lượng: '+e.message}finally{btn.disabled=false}
+});
+adminMarkKind();
 $('work-search').addEventListener('input',workRenderList);
 $('work-list-refresh').addEventListener('click',workList);
 $('work-trash-toggle').addEventListener('click',()=>{
  if(workBusy||workTrashBusy)return;
- workTrashMode=!workTrashMode;workOffset=0;$('work-search').value='';
- $('work-trash-toggle').textContent=workTrashMode?'Về danh sách bài':'Thùng rác';
- $('work-trash-toggle').setAttribute('aria-pressed',String(workTrashMode));
- $('work-list-details').open=true;workList();
+ adminSetListMode(workTrashMode?'all':'trash');
 });
 $('work-new').addEventListener('click',workNew);
 $('work-save').addEventListener('click',()=>workSave('draft'));

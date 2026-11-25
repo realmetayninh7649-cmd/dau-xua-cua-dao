@@ -219,6 +219,7 @@ try{
   page.on('dialog',dialog=>dialog.accept());
   await page.locator('#work-cover-file-cover_url').setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});
   assert.equal(await page.locator('#work-field-cover_url').inputValue(),'');
+  await page.getByRole('button',{name:'Xem ảnh đã chọn',exact:true}).first().click();
   await page.locator('.work-cover-upload img').waitFor({state:'visible',timeout:10000});
   assert.equal(await page.locator('#work-photo-files').isEnabled(),true);
   await page.locator('#work-photo-files').setInputFiles(Array.from({length:55},(_,i)=>({name:'test-'+i+'.png',mimeType:'image/png',buffer:png})));
