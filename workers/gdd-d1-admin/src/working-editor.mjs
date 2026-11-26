@@ -62,6 +62,7 @@ function normalValue(field,value){
    return value;
  }
  if(typeof value!=='string')throw Error('invalid_text');
+ if(field==='subfolder_code'&&value&&!['HCĐ','HTĐ','CTĐ','PT','VKNN','VKVN','CQK'].includes(value))throw Error('invalid_document_folder');
  if(value.length>(LENGTHS[field]||1500))throw Error('invalid_text_length');
  if(URLS.has(field)&&value){
    let u;try{u=new URL(value)}catch{throw Error('invalid_url')}

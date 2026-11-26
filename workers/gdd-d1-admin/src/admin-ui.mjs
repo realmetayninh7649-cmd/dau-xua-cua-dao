@@ -66,7 +66,7 @@ export const ADMIN_HTML=`<!doctype html>
 <hr><h4>2. Kiểm tra danh mục và tạo bản nháp</h4>
 <p>Dùng danh mục vừa kiểm kê ở trên hoặc nhập CSV đã duyệt từ Colab. Chỉ tạo hồ sơ nháp, chưa đính kèm tệp, chưa cấp mã, chưa công bố. Kiểm tra nhan đề trùng trong D1, không xác nhận trùng nội dung R2.</p>
 <label for="work-archive-csv">Danh mục CSV đã duyệt</label><input id="work-archive-csv" type="file" accept=".csv,text/csv">
-<label for="work-archive-folder">Thư mục gốc cho đợt này</label><select id="work-archive-folder"><option value="">Chọn thư mục</option><option value="HCĐ">Hành Chánh Đạo</option><option value="HTĐ">Hiệp Thiên Đài</option><option value="CTĐ">Cửu Trùng Đài</option><option value="PT">Phước Thiện</option><option value="CQK">Các Cơ Quan Khác</option></select>
+<label for="work-archive-folder">Thư mục gốc cho đợt này</label><select id="work-archive-folder"><option value="">Chọn thư mục</option><option value="HCĐ">Hành Chánh Đạo</option><option value="HTĐ">Hiệp Thiên Đài</option><option value="CTĐ">Cửu Trùng Đài</option><option value="PT">Phước Thiện</option><option value="VKNN">Văn Khố Ngoại Quốc</option><option value="VKVN">Văn Khố Việt Nam</option><option value="CQK">Các Cơ Quan Khác</option></select>
 <p>Chỉ tối đa 30 bản nháp mỗi lần. Niên đại và nguồn là thông tin đã duyệt trong CSV, cần đối chiếu bản scan. Hãy đóng biểu mẫu đang sửa trước khi nhập.</p>
 <div class="controls"><button id="work-archive-prepare" type="button">Kiểm tra danh mục</button><button id="work-archive-create" type="button" disabled>Tạo bản nháp đã chọn</button></div>
 <p id="work-archive-status" role="status" aria-live="polite"></p><ul id="work-archive-rows" class="records"></ul>
@@ -812,7 +812,7 @@ const workLabels={
  cover_url:'Ảnh bìa (URL)',portrait_url:'Di ảnh (URL)',file_url:'Tài liệu (URL)',audio_url:'Âm thanh (URL)',
  video_url:'Video (URL)',published:'Công bố nội dung',verified:'Đã kiểm chứng',sort_order:'Thứ tự',
  caption:'Chú thích ảnh',category:'Chuyên mục',person_id:'Mã hồ sơ liên quan',
- document_number:'Số hiệu văn kiện',document_date:'Ngày văn kiện',subfolder_code:'Thư mục số hóa',
+ document_number:'Số hiệu văn kiện',document_date:'Ngày văn kiện',subfolder_code:'Danh mục lưu trữ',
  death_lunar_day:'Ngày qui vị âm lịch',death_lunar_month:'Tháng qui vị âm lịch',
  death_lunar_leap:'Tháng nhuận',death_solar_date:'Ngày qui vị dương lịch',
  person_name:'Danh xưng',rank_title:'Phẩm vị',death_date:'Ngày qui vị',anniversary_date:'Ngày tưởng niệm',deceased_name:'Danh xưng người qui vị',memorial_date:'Ngày qui vị / ngày lễ',published_date:'Ngày phát hành',episode_number:'Số chương trình',duration_seconds:'Thời lượng (giây)',calendar_system:'Loại lịch',description:'Nội dung',source_note:'Tư liệu tham khảo',linked_person_id:'Hồ sơ Chức sắc liên quan',
@@ -989,7 +989,31 @@ const workPersonGroups={
  'Hiệp Thiên Đài':['Chức Sắc Đại Thiên Phong Nam/Nữ','Bộ Pháp Chánh','Chức Sắc Bộ Nhạc','Ban Thế Đạo','Các Cơ Quan Hành Chánh Đạo khác'],
  'Phước Thiện':[],'Hành chánh Đạo':[],'Khác':[]
 };
-const workDocumentFolders={'HCĐ':'Tài Liệu Hành Chánh Đạo','HTĐ':'Tài Liệu Chức Sắc Hiệp Thiên Đài','CTĐ':'Tài Liệu Chức Sắc Cửu Trùng Đài','PT':'Tài Liệu Chức Sắc Phước Thiện','CQK':'Tài Liệu Các Cơ Quan Khác'};
+const workDocumentFolders={'HCĐ':'Tài Liệu Hành Chánh Đạo','HTĐ':'Tài Liệu Chức Sắc Hiệp Thiên Đài','CTĐ':'Tài Liệu Chức Sắc Cửu Trùng Đài','PT':'Tài Liệu Chức Sắc Phước Thiện','VKNN':'Văn Khố Ngoại Quốc','VKVN':'Văn Khố Việt Nam','CQK':'Tài Liệu Các Cơ Quan Khác'};
+const workArchiveNorm=s=>String(s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/đ/gi,'d').toLowerCase();
+  const archiveSourceGroups=[
+    ['foreign',/\\b(?:cia|nara|anom|gallica|pentagon papers|frus|texas tech|hoa ky|van kho phap|archives nationales|bibliotheque nationale|ecpad|service historique|national archives|reading room|history\\.state\\.gov|vietnam archive)\\b/],
+    ['vietnam',/\\b(?:trung tam luu tru quoc gia|van kho viet nam|luu tru quoc gia|nac2|luutru\\.gov\\.vn)\\b/]
+  ];
+  const archiveSourceMatches=(r,source)=>{
+    // Explicit provenance in the existing source field takes precedence; no database mutation.
+    if(r.subfolder_code==='VKNN'||r.subfolder_code==='VKVN')return source===(r.subfolder_code==='VKNN'?'foreign':'vietnam');
+    const provenance=workArchiveNorm(r.sources);
+    const taggedForeign=/(?:\\[vknn\\]|\\bvan kho ngoai quoc\\b)/.test(provenance);
+    const taggedVietnam=/(?:\\[vkvn\\]|\\bvan kho viet nam\\b)/.test(provenance);
+    const t=workArchiveNorm([r.sources,r.document_number].filter(Boolean).join(' '));
+    const title=workArchiveNorm(r.title);
+    const foreign=taggedForeign||(!taggedVietnam&&(archiveSourceGroups[0][1].test(t)||/\\b(?:cia|pentagon papers|anom|gallica|frus|nara)\\b/.test(title)));
+    const vietnam=taggedVietnam||(!taggedForeign&&archiveSourceGroups[1][1].test(t));
+    return source==='foreign'?foreign:source==='vietnam'?vietnam:!foreign&&!vietnam;
+  };
+function workEffectiveFolder(record){
+  const group=record?.subfolder_code||'';
+  if(!record||group!=='CQK')return group;
+  if(archiveSourceMatches(record,'foreign'))return 'VKNN';
+  if(archiveSourceMatches(record,'vietnam'))return 'VKVN';
+  return 'CQK';
+}
 const workGalleryCategories=['Tòa Thánh Tây Ninh xưa','Tang lễ Chức sắc','Hành đạo và Sinh hoạt Đạo','Dấu tích Đạo sử xưa và nay','Chơn Dung Tiền Bối','Tư liệu hình ảnh khác'];
 function workSelectFill(select,choices,current,placeholder){
  select.replaceChildren();
@@ -1124,7 +1148,7 @@ function workBuild(kind,record){
   const input=document.createElement(choices?'select':workLong.has(field)?'textarea':'input');
   input.id='work-field-'+field;
   if(choices){
-   workSelectFill(input,choices,record?.[field]||'',field==='subgroup'?'Chưa phân nhóm':'Chọn '+(workLabels[field]||field));
+   workSelectFill(input,choices,kind==='documents'&&field==='subfolder_code'?workEffectiveFolder(record):record?.[field]||'',field==='subgroup'?'Chưa phân nhóm':'Chọn '+(workLabels[field]||field));
    if(kind==='media'&&field==='category'){input.setAttribute('aria-required','true');input.options[0].textContent='Chọn chuyên mục Hình ảnh';}
    if(kind==='gdd_audio_programs'&&field==='category'){const labels={'radio-dao-su':'Radio Đạo Sử','niem-danh':'Niệm danh hiệu','thuyet-minh':'Bài thuyết minh','nhac-dao':'Nhạc Đạo'};for(const option of input.options)if(labels[option.value])option.textContent=labels[option.value]}
   }else if(workBool.has(field)){
@@ -1292,13 +1316,6 @@ function workBuild(kind,record){
   workFieldInputs.get('full_name').addEventListener('input',()=>{if(dateInput.value!==initial)recalc()});
   workDeathValidate=recalc;recalc();
  }
- if(kind==='documents'){
-  const source=workFieldInputs.get('sources'),bar=document.createElement('div');bar.className='controls';
-  for(const [tag,title] of [['[VKNN]','Văn Khố Ngoại Quốc'],['[VKVN]','Văn Khố Việt Nam']]){
-   const btn=document.createElement('button');btn.type='button';btn.textContent=title;btn.addEventListener('click',()=>{if(!source.value.includes(tag)){source.value=tag+' '+source.value;source.dispatchEvent(new Event('input',{bubbles:true}));}});bar.append(btn)
-  }
-  source.after(bar);
- }
  if(kind==='documents')workFieldInputs.get('subfolder_code').addEventListener('change',workInvalidateCode);
  const optional=['verified','sort_order','person_id','linked_person_id'].filter(k=>workFieldInputs.has(k));
  if(optional.length){
@@ -1464,7 +1481,7 @@ async function workSave(mode='draft'){
   const title=workFieldInputs.get(kind==='people'||kind==='gdd_calendar_memorials'?'full_name':'title')?.value.trim();
   if(!title)throw Error('Nhập danh xưng hoặc nhan đề trước.');
   if(publish&&kind==='people'&&(!workFieldInputs.get('branch')?.value||!workFieldInputs.get('rank')?.value.trim()))throw Error('Chọn Cơ quan và Phẩm vị trước.');
-  if(publish&&kind==='documents'&&!workFieldInputs.get('subfolder_code')?.value)throw Error('Chọn thư mục số hóa trước.');
+  if(publish&&kind==='documents'&&!Object.hasOwn(workDocumentFolders,workFieldInputs.get('subfolder_code')?.value||''))throw Error('Chọn một danh mục lưu trữ trước.');
   if(publish&&kind==='media'&&!workGalleryCategories.includes(workFieldInputs.get('category')?.value))throw Error('Chọn một trong 6 chuyên mục Hình ảnh trước khi đăng bài.');
   if(publish&&kind==='gdd_audio_programs'){
    if(!workFieldInputs.get('category')?.value)throw Error('Chọn chuyên mục âm thanh.');
@@ -1645,7 +1662,7 @@ async function archiveBatchRun(create){
  const files=$('work-archive-csv').files;
  if(!create&&archiveInventoryCSV===null&&(!files.length||files[0].size>2*1048576)){status.textContent='Chọn CSV tối đa 2 MB.';return}
  const selected=archiveBatchRows.filter(r=>r.selected&&!r.problem&&!r.done);
- if(create&&(selected.length<1||selected.length>30||!confirm('Tạo '+selected.length+' bản nháp riêng trong '+workDocumentFolders[folder]+'? Không đăng bài, không tải tệp, không cấp mã.')))return;
+ if(create&&(selected.length<1||selected.length>30||!confirm('Tạo '+selected.length+' bản nháp riêng trong '+workDocumentFolders[folder]+'? Nếu chọn Các Cơ Quan Khác, dòng đã nhận diện văn khố sẽ vào danh mục tương ứng. Không đăng bài, không tải tệp, không cấp mã.')))return;
  const controls=Array.from(document.querySelectorAll('#work-editor-panel input,#work-editor-panel select,#work-editor-panel button'));
  const disabled=controls.map(el=>[el,el.disabled]);workBusy=true;controls.forEach(el=>el.disabled=true);
  try{
@@ -1664,7 +1681,8 @@ async function archiveBatchRun(create){
    if(r.problem||r.done)continue;
    status.textContent='Đang tạo nháp '+(count+1)+' · '+r.title;
    const tag=r.source==='VKNN'?'[VKNN]':r.source==='VKVN'?'[VKVN]':'';
-   const fields={title:r.title,subfolder_code:folder,document_date:r.year,sources:[tag,r.notes].filter(Boolean).join(' '),published:false};
+   const actualFolder=folder==='CQK'&&['VKNN','VKVN'].includes(r.source)?r.source:folder;
+    const fields={title:r.title,subfolder_code:actualFolder,document_date:r.year,sources:[tag,r.notes].filter(Boolean).join(' '),published:false};
    const result=await workWrite(workRoot+'documents','POST',{fields});
    if(!result?.data?.id||result.published!==false||Number(result.data.published)!==0)throw Error('Chưa xác nhận bản nháp; dừng để đối chiếu');
    r.id=result.data.id;r.done=true;r.selected=false;count++;

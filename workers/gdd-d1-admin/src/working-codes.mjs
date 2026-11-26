@@ -6,7 +6,7 @@
 const SIMPLE=Object.freeze({
  posts:'DXCD-BK',media:'DXCD-HA',videos:'DXCD-VD',obituaries:'DXCD-AT'
 });
-const DOCUMENT_GROUPS=new Set(['HCĐ','HTĐ','CTĐ','PT','CQK']);
+const DOCUMENT_GROUPS=new Set(['HCĐ','HTĐ','CTĐ','PT','VKNN','VKVN','CQK']);
 const KINDS=new Set(['people','posts','media','videos','obituaries','documents']);
 const CODE_SUFFIX=/-(\d{5})$/;
 function norm(text){
