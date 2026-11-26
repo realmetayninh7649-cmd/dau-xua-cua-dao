@@ -5,28 +5,29 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="referrer" content="no-referrer">
 <title>DẤU XƯA CỬA ĐẠO – Trình xem tư liệu</title>
-<link rel="stylesheet" href="r2-xem.css?v=20261117-dk015">
+<link rel="preconnect" href="https://gdd-r2-gateway.realmetayninh7649.workers.dev"><link rel="preconnect" href="https://gdd-d1-api-staging.realmetayninh7649.workers.dev"><link rel="stylesheet" href="r2-xem.css?v=20261127-reader-01">
 </head>
 <body>
 <main class="r2-reader">
   <header>
-    <p class="kicker">GIỮ ĐẠO GIỮA ĐỜI · DẤU XƯA CỬA ĐẠO</p>
+    <div class="reader-brand"><button id="r2-back" type="button">‹ Trở về</button><span class="kicker">DẤU XƯA CỬA ĐẠO<br>TRÌNH ĐỌC TƯ LIỆU SỐ</span><button id="r2-full" type="button" aria-pressed="false">Toàn màn</button></div>
     <h1 id="r2-title">Đang mở tư liệu…</h1>
     <p class="subtitle" id="r2-desc">Trình đọc tài liệu thống nhất. Trạng thái bảo tồn nguyên mẫu được ghi rõ theo từng nguồn.</p>
   </header>
   <section class="controls" id="r2-controls" hidden aria-label="Điều khiển xem tư liệu">
-    <button id="r2-prev" type="button">Trang trước</button>
-    <span id="r2-counter" aria-live="polite">1 / 1</span>
-    <button id="r2-next" type="button">Trang sau</button>
+    <button id="r2-prev" type="button" aria-label="Trang trước">‹</button><label class="page-jump">Trang <input id="r2-jump" type="number" min="1" value="1" inputmode="numeric" aria-label="Đến trang"></label><span id="r2-counter" aria-live="polite">1 / 1</span><button id="r2-next" type="button" aria-label="Trang sau">›</button>
     <label for="r2-zoom">Độ phóng</label><select id="r2-zoom"><option value="100">100%</option><option value="125">125%</option><option value="150">150%</option><option value="200">200%</option></select>
+    <button id="r2-thumbs" type="button" aria-expanded="false">Các trang</button><button id="r2-mode" type="button" aria-pressed="false">Cuộn dọc</button><a id="r2-pdf-download" hidden rel="noopener noreferrer">Tải PDF ↓</a>
     <a id="r2-download" hidden rel="noopener noreferrer" target="_blank">Tải ảnh tối ưu</a>
   </section>
+  <div id="r2-page-list" class="page-list" hidden></div>
   <div class="image-scroller" id="r2-scroller" hidden>
     <img id="r2-page" loading="eager" draggable="false" alt="Trang tư liệu được số hoá">
     <canvas id="r2-canvas" aria-label="Trang PDF cũ đã kết xuất" hidden></canvas>
   </div>
+  <div id="r2-continuous" class="continuous" hidden></div>
   <p id="r2-status" class="status" role="status" aria-live="polite">Đang kiểm tra tư liệu…</p>
-  <p><a id="r2-legacy-open" hidden target="_blank" rel="noopener noreferrer">Mở tệp công khai cũ (dự phòng)</a></p>
+  <button id="r2-retry" type="button" hidden>Thử tải lại</button><p><a id="r2-legacy-open" hidden target="_blank" rel="noopener noreferrer">Mở tệp công khai cũ (dự phòng)</a></p>
   <footer>
     <p><strong>Ghi chú:</strong> Bản xem được tối ưu cho việc đọc trên điện thoại. Bản Word có thể chỉ là bản trích đọc chữ và không giữ nguyên kiểu trình bày. Khi khảo cứu hoặc trích dẫn, xin đối chiếu tư liệu gốc với đơn vị lưu trữ.</p>
     <a href="./index.html">Trở về Kho Tư Liệu Đạo Sử</a>
@@ -34,6 +35,6 @@
 </main>
 <script src="supabase-config.js"></script>
 <script defer src="gdd-site-download-counter.js?v=20261119-download-total-01"></script>
-<script type="module" src="r2-xem.mjs?v=20261119-r2-pdf-privacy-02?v=20261117-dk015"></script>
+<script type="module" src="r2-xem.mjs?v=20261127-reader-01"></script>
 </body>
 </html>

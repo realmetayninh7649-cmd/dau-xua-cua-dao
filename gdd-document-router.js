@@ -16,8 +16,8 @@
   function kind(raw) {
     const url=parse(raw);
     if(!url)return 'other';
-    if(url.origin===window.location.origin&&url.pathname===READER_PATH
-      &&UUID.test(url.searchParams.get('asset')||''))return 'r2';
+    if((url.origin===window.location.origin&&url.pathname===READER_PATH||url.origin==='https://realmetayninh7649-cmd.github.io'&&url.pathname==='/dau-xua-cua-dao/r2-xem.html')&&UUID.test(url.searchParams.get('asset')||''))return 'r2';
+    if(url.origin===window.location.origin&&url.pathname===READER_PATH&&url.searchParams.has('attachment'))return 'reader';
     if(url.origin===window.location.origin&&url.pathname===READER_PATH
       &&url.searchParams.has('source'))return 'reader';
     if(url.hostname!==SUPABASE_HOST||url.port||!url.pathname.startsWith('/storage/v1/object/public/'))
@@ -43,7 +43,7 @@
   }
   function readerUrl(raw){
     const type=kind(raw);
-    if(type==='r2')return parse(raw).href;
+    if(type==='r2'){const target=new URL(READER_PATH,window.location.origin);target.searchParams.set('asset',parse(raw).searchParams.get('asset'));return target.href}
     if(type==='reader'){
       const old=parse(raw),mapped=approvedReaderId(old?.searchParams.get('source')||'');
       if(mapped){const target=new URL(READER_PATH,window.location.origin);target.searchParams.set('asset',mapped);return target.href}
@@ -66,12 +66,10 @@
     if(!anchor)return;
     const raw=anchor.getAttribute('href');
     const type=kind(raw);
-    if(!type.startsWith('legacy-'))return;
+    if(!type.startsWith('legacy-')&&!['r2','reader'].includes(type))return;
     const to=readerUrl(raw);
-    if(to===raw)return;
     event.preventDefault();
-    if(anchor.target==='_blank')window.open(to,'_blank','noopener,noreferrer');
-    else window.location.assign(to);
+    window.location.assign(to);
   }
   window.GDDDocumentReader=Object.freeze({kind,readerUrl});
   document.addEventListener('click',routeClick,true);

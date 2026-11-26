@@ -22,3 +22,26 @@ a{color:#176a53}
 #r2-canvas{display:block;margin:0 auto;background:#fff;width:100%;max-width:none;height:auto;box-shadow:0 0 7px #0002}
 #r2-canvas[hidden],#r2-legacy-open[hidden]{display:none!important}
 #r2-legacy-open{font-weight:700;overflow-wrap:anywhere}
+
+/* Compact reader, mobile-first. Original page ratio is never cropped. */
+:root{background:#f4f1e8;color:#23483e}body{background:#f4f1e8}
+.r2-reader{max-width:1120px;padding:10px 12px 34px}
+header{padding:0 0 9px;border-color:#d9d0bd}
+.reader-brand{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.reader-brand .kicker{text-align:center;line-height:1.55;color:#8b7048;font-size:10px}
+h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(17px,2.5vw,25px);margin:10px 0 5px}
+.subtitle{font-size:11px;color:#746b5c}
+.controls{position:sticky;top:0;z-index:2;margin:8px 0;padding:8px 0;background:#f4f1e8;gap:6px;border-bottom:1px solid #d9d0bd}
+button,select,.controls a,.page-jump input{font:600 12px system-ui,sans-serif;border-radius:6px;border:1px solid #b7b9a9;color:#23483e;background:#fffdf8;min-height:42px;padding:7px 9px}
+#r2-prev,#r2-next{font-size:24px;line-height:1;background:#194e45;color:white;min-width:42px}
+#r2-counter{font-size:12px;min-width:44px}.page-jump{display:flex;align-items:center;gap:4px}.page-jump input{width:54px;text-align:center}
+#r2-pdf-download{background:#194e45;color:white}
+.image-scroller{background:#dfdcd3;border:1px solid #d1c8b5;max-height:none;min-height:250px;padding:6px 0;touch-action:pan-x pan-y pinch-zoom}
+#r2-page,#r2-canvas{box-shadow:0 2px 8px #0002}
+.status{font-size:12px;color:#75694e;margin:8px 0}
+.page-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-height:42vh;overflow:auto;padding:8px;border:1px solid #d1c8b5;background:#fffdf8}
+.page-list button{display:grid;gap:4px;justify-items:center;padding:4px;min-width:0}.page-list img{width:100%;height:76px;object-fit:contain}.page-list button[aria-current=true]{border:2px solid #194e45}
+.continuous{background:#dfdcd3;border:1px solid #d1c8b5;padding:8px;display:grid;gap:12px;overflow:auto;max-height:76vh}
+.continuous figure{margin:0;min-height:150px;text-align:center}.continuous img,.continuous canvas{display:block;width:100%;height:auto;margin:auto;background:white;max-width:none}.continuous figcaption{font-size:11px;padding:5px}
+body.reader-expanded .r2-reader{max-width:none;padding:4px}body.reader-expanded header h1,body.reader-expanded header .subtitle,body.reader-expanded footer{display:none}
+@media(max-width:520px){.r2-reader{padding:7px 8px 24px}.controls{gap:5px}.controls label{font-size:11px}.controls a,button,select{font-size:11px;padding:6px 8px}.reader-brand .kicker{font-size:9px}}

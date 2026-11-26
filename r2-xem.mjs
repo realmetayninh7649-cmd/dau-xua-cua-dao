@@ -10,8 +10,31 @@ const el=id=>document.getElementById(id);
 const query=new URLSearchParams(location.search);
 const id=query.get('asset')||'';
 const sourceRaw=query.get('source')||'';
+const ATTACH_API='https://gdd-d1-api-staging.realmetayninh7649.workers.dev';
+const attachRaw=query.get('attachment')||'';
+const nameHint=(query.get('name')||'').slice(0,220);
+if(nameHint)el('r2-title').textContent=nameHint;
+let positionKey='',continuous=false,observer=null,rendered=false,scrollEpoch=0;
+const warmed=new Map();
 let info=null,page=1,zoom=100,pdfDoc=null,renderTask=null,drawSerial=0,mode='r2';
 function status(message){el('r2-status').textContent=message}
+function retry(message){status(message);el('r2-retry').hidden=false}
+function attachmentSource(raw){
+  try{const u=new URL(raw);
+    if(u.origin!==ATTACH_API||u.username||u.password||u.hash||u.search!=='?view=1')return null;
+    const parts=u.pathname.split('/');
+    if(parts.length!==9||parts.slice(1,5).join('/')!=='api/v1/public/attachments'||parts[8]!=='download'||!['people','posts','media','videos','obituaries','documents','gdd_memorials','gdd_audio_programs','gdd_calendar_memorials'].includes(parts[5])||!UUID.test(parts[6])||!UUID.test(parts[7]))return null;
+    return u;
+  }catch{return null}
+}
+function remember(){try{if(positionKey)localStorage.setItem(positionKey,String(page))}catch{}}
+function initialPage(){try{return Math.max(1,Math.min(info.pageCount,Number(localStorage.getItem(positionKey))||1))}catch{return 1}}
+function warm(n){
+  if(!info||mode!=='r2'||n<1||n>info.pageCount||warmed.has(n))return;
+  const img=new Image();img.decoding='async';img.src=pageUrl(n);warmed.set(n,img);
+  for(const k of warmed.keys())if(Math.abs(k-page)>3)warmed.delete(k);
+}
+function ready(){positionKey='gdd-reader-page:'+(id||attachRaw||sourceRaw);el('r2-controls').hidden=false;el('r2-scroller').hidden=false;el('r2-jump').max=String(info.pageCount);show(initialPage());}
 function validatePublicSource(raw){
   try{
     const url=new URL(raw);
@@ -30,6 +53,7 @@ function adjust(){
   el('r2-prev').disabled=page<=1;
   el('r2-next').disabled=page>=info.pageCount;
   el('r2-counter').textContent=page+' / '+info.pageCount;
+  el('r2-jump').value=String(page);remember();
   if(mode==='legacy-pdf'){
     el('r2-canvas').style.width=zoom+'%';
   }else{
@@ -63,33 +87,34 @@ async function showLegacyPdf(n){
     await renderTask.promise;
     if(current!==drawSerial)return;
     canvas.hidden=false;
-    status('Trang '+page+'/'+pdfDoc.numPages+' · PDF công khai cũ từ Supabase. Chưa chuyển bản nguyên mẫu sang R2.');
+    status('Trang '+page+' / '+pdfDoc.numPages+' · '+(attachRaw?'PDF đã được cho phép đọc và tải.':'PDF công khai cũ từ Supabase.'));el('r2-retry').hidden=true;
   }catch(e){
     if(e?.name!=='RenderingCancelledException'&&current===drawSerial)
-      status('Chưa hiển thị được trang PDF: '+(e?.message||e)+' . Có thể mở tệp công khai cũ bằng liên kết dự phòng.');
+      retry('Chưa hiển thị được trang PDF. Hãy thử tải lại hoặc mở liên kết dự phòng.');
   }finally{p?.cleanup?.()}
 }
 function show(n){
   if(!info)return;
+  if(continuous){page=Math.min(info.pageCount,Math.max(1,n));adjust();el('r2-continuous').querySelector('[data-page="'+page+'"]')?.scrollIntoView({block:'start'});return}
   if(mode==='legacy-pdf'){showLegacyPdf(n);return}
   page=Math.min(info.pageCount,Math.max(1,n));
   const image=el('r2-page'),current=page;
-  image.style.visibility='hidden';
-  image.onload=()=>{image.style.visibility='visible';status('Trang '+current+'/'+info.pageCount+' · Bản xem đã công bố.')};
-  image.onerror=()=>{image.style.visibility='visible';status('Chưa tải được trang này. Hãy kiểm tra kết nối.')};
+  image.style.visibility='hidden';status('Đang tải trang '+current+' / '+info.pageCount+'…');
+  image.onload=()=>{image.style.visibility='visible';el('r2-retry').hidden=true;status('Trang '+current+' / '+info.pageCount+' · Bản xem đã công bố.');warm(current+1);warm(current+2);warm(current-1)};
+  image.onerror=()=>{retry('Chưa tải được trang này. Hãy kiểm tra kết nối.');};
   image.src=pageUrl(page);
   image.alt='Trang '+page+' trong '+info.name;
   adjust();
 }
-async function initializeLegacy(raw) {
-  const source=validatePublicSource(raw);
+async function initializeLegacy(raw,attachment=false) {
+  const source=attachment?attachmentSource(raw):validatePublicSource(raw);
   if(!source){status('Đường dẫn Supabase không hợp lệ. Chỉ nhận tệp công khai từ kho Web Đạo.');return}
-  const filename=decodeURIComponent(source.pathname.split('/').pop()||'Tài liệu số hóa');
+  const filename=attachment?(nameHint||'Tài liệu PDF'):decodeURIComponent(source.pathname.split('/').pop()||'Tài liệu số hóa');
   el('r2-title').textContent=filename;
   const backup=el('r2-legacy-open');
-  backup.href=source.href;backup.hidden=false;
+  backup.href=source.href;backup.hidden=!attachment; if(attachment){backup.textContent='Mở PDF bằng trình duyệt (dự phòng)';}
   // Explicitly warn: identical UI is NOT private storage migration.
-  el('r2-desc').textContent='TÀI LIỆU CŨ: nguồn PDF/Word vẫn đang công khai trên Supabase. Trình đọc đã thống nhất giao diện nhưng chưa chuyển bản gốc sang R2.';
+  el('r2-desc').textContent=attachment?'PDF đã được phép công khai · tải theo từng phần.':'TÀI LIỆU CŨ: nguồn PDF/Word vẫn đang công khai trên Supabase.';
   if(/\.(docx|doc)$/i.test(source.pathname)){
     mode='legacy-word';
     status('Tệp Word cũ không có bản xem từng trang trong R2. Hãy dùng liên kết dự phòng hoặc tạo bản xem đã duyệt từ PDF/DOCX trong Quản Trị Viên.');
@@ -99,23 +124,25 @@ async function initializeLegacy(raw) {
   try{
     const pdfjs=await import(PDF_JS);
     pdfjs.GlobalWorkerOptions.workerSrc=PDF_WORKER;
-    pdfDoc=await pdfjs.getDocument({url:source.href,isEvalSupported:false,useSystemFonts:true}).promise;
+    const task=pdfjs.getDocument({url:source.href,isEvalSupported:false,useSystemFonts:true,disableAutoFetch:true,disableStream:true,rangeChunkSize:262144});
+    task.onProgress=p=>{if(!info&&p.total)status('Đang mở PDF… '+Math.min(99,Math.round(p.loaded/p.total*100))+'%')};
+    pdfDoc=await task.promise;
     if(!Number.isInteger(pdfDoc.numPages)||pdfDoc.numPages<1)throw Error('Tệp PDF không có trang đọc');
     info={kind:'legacy-pdf',name:filename,pageCount:pdfDoc.numPages};
     el('r2-controls').hidden=false;
     el('r2-scroller').hidden=false;
     el('r2-page').hidden=true;
     el('r2-canvas').hidden=false;
-    show(1);
+    if(attachment){const dl=el('r2-pdf-download');const url=new URL(source.href);url.search='';dl.href=url.href;dl.hidden=false;}
+    ready();
   }catch(error){
-    status('Không nạp được PDF cũ trong trình đọc: '+(error?.message||error)+
-      '. Liên kết mở tệp nguồn công khai cũ được giữ để tránh mất khả năng tra cứu.');
+    backup.hidden=false;retry('Chưa mở được PDF trong trình đọc. Có thể thử lại hoặc mở bằng trình duyệt.');
   }
 }
 async function initializeApproved(){
   if(!UUID.test(id)){status('Đường dẫn bản xem không hợp lệ.');return}
   try{
-    const response=await fetch(API+'/v1/public/'+id,{method:'GET',mode:'cors',cache:'no-store'});
+    const response=await fetch(API+'/v1/public/'+id,{method:'GET',mode:'cors',cache:'no-store',signal:AbortSignal.timeout(20000)});
     if(!response.ok){status(response.status===404?'Tư liệu chưa được công bố hoặc đã được ẩn.':'Máy chủ chưa cho phép mở bản xem.');return}
     const data=await response.json();
     if(!data||data.id!==id||!['image','document'].includes(data.kind)||
@@ -133,12 +160,50 @@ async function initializeApproved(){
     if(data.allowDownload===true&&data.kind==='image'){
       const anchor=el('r2-download');anchor.href=API+'/v1/public/'+id+'/download';anchor.hidden=false;
     }
-    show(1);
-  }catch(err){status('Không mở được bản xem. '+(err?.message||String(err)))}
+    ready();
+  }catch(err){retry('Không mở được bản xem. Hãy thử tải lại.')}
 }
+function closeContinuous(){
+  continuous=false;scrollEpoch++;observer?.disconnect();observer=null;el('r2-continuous').replaceChildren();el('r2-continuous').hidden=true;el('r2-scroller').hidden=false;el('r2-mode').textContent='Cuộn dọc';el('r2-mode').setAttribute('aria-pressed','false');show(page);
+}
+function openContinuous(){
+  if(!info)return;
+  continuous=true;const epoch=++scrollEpoch;drawSerial++;try{renderTask?.cancel()}catch{}
+  const wrap=el('r2-continuous');wrap.hidden=false;el('r2-scroller').hidden=true;el('r2-mode').textContent='Lật trang';el('r2-mode').setAttribute('aria-pressed','true');
+  const frag=document.createDocumentFragment();
+  for(let n=1;n<=info.pageCount;n++){
+    const figure=document.createElement('figure');figure.dataset.page=n;
+    const view=document.createElement(mode==='legacy-pdf'?'canvas':'img');view.style.aspectRatio='3/4';view.style.width=zoom+'%';view.dataset.loaded='0';view.setAttribute('aria-label','Trang '+n);
+    if(mode!=='legacy-pdf'){view.alt='Trang '+n;view.loading='lazy';view.decoding='async'}
+    const label=document.createElement('figcaption');label.textContent='Trang '+n;figure.append(view,label);frag.append(figure);
+  }
+  wrap.replaceChildren(frag);
+  observer=new IntersectionObserver(entries=>{
+    for(const entry of entries){const figure=entry.target,n=Number(figure.dataset.page),view=figure.firstElementChild;if(!entry.isIntersecting)continue;
+      if(entry.intersectionRatio>.3){page=n;adjust()}
+      if(view.dataset.loaded==='1')continue;view.dataset.loaded='1';
+      if(mode==='legacy-pdf'){
+        (async()=>{try{const p=await pdfDoc.getPage(n);if(epoch!==scrollEpoch)return;const v=p.getViewport({scale:Math.min(2,1100/p.getViewport({scale:1}).width)});view.width=Math.ceil(v.width);view.height=Math.ceil(v.height);view.style.aspectRatio='auto';await p.render({canvasContext:view.getContext('2d',{alpha:false}),viewport:v}).promise;}catch{view.dataset.loaded='0'}})();
+      }else{view.src=pageUrl(n);view.onload=()=>view.style.aspectRatio='auto';view.onerror=()=>{view.dataset.loaded='0';retry('Có trang chưa tải được. Hãy thử lại.')} }
+    }
+    if(mode==='legacy-pdf')for(const figure of wrap.children){const n=Number(figure.dataset.page),view=figure.firstElementChild;if(Math.abs(n-page)>4&&view.dataset.loaded==='1'){view.width=1;view.height=1;view.style.aspectRatio='3/4';view.dataset.loaded='0'}}
+  },{root:wrap,rootMargin:'120px 0px',threshold:[0,.35,.7]});
+  for(const figure of wrap.children)observer.observe(figure);
+  wrap.querySelector('[data-page="'+page+'"]')?.scrollIntoView({block:'start'});
+}
+el('r2-back').addEventListener('click',()=>{if(document.referrer&&new URL(document.referrer).origin===location.origin&&history.length>1)history.back();else location.assign('./index.html')});
+el('r2-full').addEventListener('click',()=>{const active=document.body.classList.toggle('reader-expanded');el('r2-full').setAttribute('aria-pressed',String(active));el('r2-full').textContent=active?'Thu về':'Toàn màn';});
+el('r2-retry').addEventListener('click',()=>{if(info){if(continuous){closeContinuous();openContinuous()}else show(page)}else location.reload()});
+el('r2-jump').addEventListener('change',e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&info)show(n)});
+el('r2-mode').addEventListener('click',()=>continuous?closeContinuous():openContinuous());
+el('r2-thumbs').addEventListener('click',()=>{
+ const list=el('r2-page-list'),open=list.hidden;list.hidden=!open;el('r2-thumbs').setAttribute('aria-expanded',String(open));if(!open||!info)return;
+ list.replaceChildren();for(let n=1;n<=info.pageCount;n++){const b=document.createElement('button');b.type='button';b.setAttribute('aria-current',String(n===page));if(mode==='r2'){const im=document.createElement('img');im.loading='lazy';im.alt='';im.src=pageUrl(n);b.append(im)}const label=document.createElement('span');label.textContent='Trang '+n;b.append(label);b.onclick=()=>{list.hidden=true;el('r2-thumbs').setAttribute('aria-expanded','false');show(n)};list.append(b)}
+});
+let touch=null;el('r2-scroller').addEventListener('touchstart',e=>{touch=e.touches.length===1?[e.touches[0].clientX,e.touches[0].clientY]:null},{passive:true});el('r2-scroller').addEventListener('touchmove',e=>{if(e.touches.length!==1)touch=null},{passive:true});el('r2-scroller').addEventListener('touchend',e=>{if(!touch||zoom!==100)return;const dx=e.changedTouches[0].clientX-touch[0],dy=e.changedTouches[0].clientY-touch[1];touch=null;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.8)show(page+(dx<0?1:-1))},{passive:true});
 el('r2-prev').addEventListener('click',()=>show(page-1));
 el('r2-next').addEventListener('click',()=>show(page+1));
-el('r2-zoom').addEventListener('change',e=>{zoom=Number(e.target.value)||100;if(info)show(page)});
+el('r2-zoom').addEventListener('change',e=>{zoom=Number(e.target.value)||100;if(info){if(continuous){for(const f of el('r2-continuous').children)f.firstElementChild.style.width=zoom+'%'}else show(page)}});
 window.addEventListener('pagehide',()=>pdfDoc?.destroy?.().catch(()=>{}),{once:true});
 // Known, verified legacy PDF origins are now served as pre-rendered R2 JPEG pages.
 // Shared source= links are redirected too; do not fetch the public PDF itself.
@@ -155,7 +220,7 @@ function mappedR2Asset(raw){
   const key=source.pathname.slice(prefix.length);
   return Object.hasOwn(SAFE_LEGACY_PDF_IDS,key)?SAFE_LEGACY_PDF_IDS[key]:'';
 }
-if(sourceRaw&&!id){
+if(attachRaw&&!id&&!sourceRaw){initializeLegacy(attachRaw,true)}else if(sourceRaw&&!id){
   const approved=mappedR2Asset(sourceRaw);
   if(approved){const target=new URL(location.href);target.searchParams.delete('source');target.searchParams.set('asset',approved);location.replace(target.href)}
   else initializeLegacy(sourceRaw);
