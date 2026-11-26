@@ -57,10 +57,19 @@
     {code:'HTĐ',title:'Tài Liệu Chức Sắc Hiệp Thiên Đài'},
     {code:'CTĐ',title:'Tài Liệu Chức Sắc Cửu Trùng Đài'},
     {code:'PT',title:'Tài Liệu Chức Sắc Phước Thiện'},
+    {code:'VKNN',title:'Văn Khố Ngoại Quốc'},
+    {code:'VKVN',title:'Văn Khố Việt Nam'},
     {code:'CQK',title:'Tài Liệu Các Cơ Quan Khác'}
   ];
   const documentSubfolderTitle=code=>documentSubfolders.find(f=>f.code===code)?.title||'Tài Liệu Các Cơ Quan Khác';
-  const documentSubfolderOf=(kind,record)=>kind==='documents'&&documentSubfolders.some(f=>f.code===record.subfolder_code)?record.subfolder_code:'CQK';
+  const documentSubfolderOf=(kind,record)=>{
+    const group=kind==='documents'&&documentSubfolders.some(f=>f.code===record.subfolder_code)?record.subfolder_code:'CQK';
+    if(group!=='CQK'||kind!=='documents')return group;
+    // Legacy CQK records: single effective folder; original archive code and URL remain untouched.
+    if(archiveSourceMatches(record,'foreign'))return 'VKNN';
+    if(archiveSourceMatches(record,'vietnam'))return 'VKVN';
+    return 'CQK';
+  };
   const galleryCategoryOf=record=>galleryCategories.includes(record?.category)?record.category:'Tư liệu hình ảnh khác';
   const sectionNames={people:'Hồ sơ Chức sắc',posts:'Bài biên khảo',media:'Hình ảnh',videos:'Video Đạo Sử',obituaries:'Ai Tín',documents:'Tài liệu số hóa'};
   const prefixNames={people:'nhan-vat',posts:'bai-viet',media:'hinh-anh-tu-lieu',videos:'video-dao-su',obituaries:'ai-tin',documents:'tai-lieu-so-hoa'};
@@ -270,6 +279,7 @@ function videoSource(raw){
   };
   const archiveSourceMatches=(r,source)=>{
     // Explicit provenance in the existing source field takes precedence; no database mutation.
+    if(r.subfolder_code==='VKNN'||r.subfolder_code==='VKVN')return source===(r.subfolder_code==='VKNN'?'foreign':'vietnam');
     const provenance=norm(r.sources);
     const taggedForeign=/(?:\[vknn\]|\bvan kho ngoai quoc\b)/.test(provenance);
     const taggedVietnam=/(?:\[vkvn\]|\bvan kho viet nam\b)/.test(provenance);
@@ -279,15 +289,13 @@ function videoSource(raw){
     const vietnam=taggedVietnam||(!taggedForeign&&archiveSourceGroups[1][1].test(t));
     return source==='foreign'?foreign:source==='vietnam'?vietnam:!foreign&&!vietnam;
   };
-  const archiveShelves={VKNN:{title:'Văn Khố Ngoại Quốc',source:'foreign'},VKVN:{title:'Văn Khố Việt Nam',source:'vietnam'}};
-  const archiveShelf=group=>Object.prototype.hasOwnProperty.call(archiveShelves,group)?archiveShelves[group]:null;
-  const archiveFolderTitle=group=>archiveShelf(group)?.title||documentSubfolderTitle(group);
+  const archiveFolderTitle=group=>documentSubfolderTitle(group);
   const archiveGroupMatches=(entry,group)=>['all','browse'].includes(group)||
-    (archiveShelf(group)?archiveSourceMatches(entry.record,archiveShelf(group).source):documentSubfolderOf(entry.originKind,entry.record)===group);
+    documentSubfolderOf(entry.originKind,entry.record)===group;
 
   const archiveText=r=>norm([r.title,r.document_number,r.document_date,r.archive_code,r.archive_legacy_code,
     ...(Array.isArray(r.archive_code_aliases)?r.archive_code_aliases:[]),r.summary,r.body,r.caption,r.sources,
-    r.subfolder_code,documentSubfolderTitle(r.subfolder_code),linkedPerson(r.person_id)?.full_name,
+    r.subfolder_code,documentSubfolderTitle(documentSubfolderOf('documents',r)),linkedPerson(r.person_id)?.full_name,
     linkedPerson(r.person_id)?.secular_name].filter(Boolean).join(' '));
   let archivePage=1,archiveTimer;
   function archiveControls(){
@@ -382,7 +390,7 @@ function videoSource(raw){
       if(activeTitle)activeTitle.textContent=activeAll?'Tất cả tài liệu Số hóa':
         archiveFolderTitle(state.documentSubfolder);
       const activeCode=$('#document-folder-active-code');
-      if(activeCode)activeCode.textContent=activeAll?'Toàn bộ văn khố':archiveShelf(state.documentSubfolder)?'Ngăn tra cứu theo nguồn · giữ nguyên mã gốc':'DXCD-SH.'+state.documentSubfolder;
+      if(activeCode)activeCode.textContent=activeAll?'Toàn bộ văn khố':'DXCD-SH.'+state.documentSubfolder;
       const activeTotal=$('#document-folder-active-total');
       if(activeTotal)activeTotal.textContent=activeCount+' tư liệu';
       $$('#document-subfolder-filters [data-document-subfolder]').forEach(button=>{
@@ -395,8 +403,8 @@ function videoSource(raw){
       });
       const info=$('#document-subfolder-count');
       if(info)info.textContent=browsing
-        ?'Chọn một thư mục hoặc ngăn tra cứu theo nguồn. Một tư liệu có thể thuộc nhiều ngăn.'
-        :activeAll?'Đang xem '+docEntries.length+' tài liệu trong cả 5 thư mục con.'
+        ?'Chọn một danh mục lưu trữ. Mỗi tư liệu chỉ thuộc một danh mục chính.'
+        :activeAll?'Đang xem '+docEntries.length+' tài liệu trong cả 7 danh mục lưu trữ.'
         :'Đang xem '+activeCount+' tài liệu thuộc '+archiveFolderTitle(state.documentSubfolder)+'.';
     }
     const opts=archiveControls();
@@ -425,7 +433,7 @@ function videoSource(raw){
         const src=imageFromRecord(x,originKind)||
           (kind==='videos'?videoSource(x.video_url)?.poster||'':'');
         const meta=originKind==='obituaries'?x.memorial_date:
-          originKind==='documents'?[documentSubfolderTitle(x.subfolder_code),x.document_number,x.document_date].filter(Boolean).join(' · '):
+          originKind==='documents'?[documentSubfolderTitle(documentSubfolderOf(originKind,x)),x.document_number,x.document_date].filter(Boolean).join(' · '):
           sectionNames[originKind]||'';
         const preview=state.admin&&originKind==='videos'&&kind==='videos'
           ?`<div class="archive-thumb video-preview-slot" data-video-id="${escape(x.id)}">${videoPoster(x)}</div>`
@@ -452,7 +460,7 @@ function videoSource(raw){
     const src=displayImageUrl(record.cover_url||record.image_url||(kind==='documents'&&/\.(png|jpe?g|webp)(\?|$)/i.test(record.file_url||'')?record.file_url:''));
     const subtitle=kind==='people'?[record.rank,record.branch,record.subgroup,record.years].filter(Boolean).join(' · '):
       kind==='obituaries'?[record.deceased_name,record.memorial_date].filter(Boolean).join(' · '):
-      kind==='documents'?[documentSubfolderTitle(record.subfolder_code),record.document_number,record.document_date].filter(Boolean).join(' · '):
+      kind==='documents'?[documentSubfolderTitle(documentSubfolderOf(kind,record)),record.document_number,record.document_date].filter(Boolean).join(' · '):
       kind==='posts'?[record.category,date(record.created_at)].filter(Boolean).join(' · '):sectionNames[kind]||'';
     const body=kind==='people'?record.biography:kind==='media'?record.caption:record.body;
     // Published gallery entries are already filtered by public D1 on the parent.
@@ -652,7 +660,7 @@ function videoSource(raw){
 if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<input type="number" name="${name}" min="1" max="${type==='lunar-day'?'30':'12'}" step="1" inputmode="numeric" placeholder="${type==='lunar-day'?'Ngày':'Tháng'}"></label>`;
     if(type==='date')return `<label>${escape(label)}<input type="date" name="${name}"></label>`;
     if(type==='gender')return `<label>${escape(label)}<select name="gender" required><option value="">Chọn Nam hoặc Nữ</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></label>`;
-    if(type==='document-subfolder')return '<label>'+escape(label)+'<select name="subfolder_code" required><option value="">— Chọn một trong 5 thư mục con —</option>'+
+    if(type==='document-subfolder')return '<label>'+escape(label)+'<select name="subfolder_code" required><option value="">— Chọn một trong 7 danh mục —</option>'+
       documentSubfolders.map(f=>'<option value="'+escape(f.code)+'">'+escape(f.title)+' ('+escape(f.code)+')</option>').join('')+'</select></label>';
     if(type==='gallery-category')return `<label>${escape(label)}<select name="${name}" required><option value="">Chọn chuyên mục cho bộ ảnh</option>${galleryCategories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('')}</select></label>`;
   
@@ -821,7 +829,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     const list=$('#editor-list');
     list.classList.toggle('gdd-editor-list-scroll',Boolean(term)||(expanded&&matched.length>visibleLimit));
     list.innerHTML=visible.length?visible.map(({record:r,originKind})=>{
-      const moved=originKind!==kind?' · Chuyển từ '+sectionNames[originKind]:kind==='media'?' · '+displayGalleryCategory(originKind,r):kind==='documents'?' · '+documentSubfolderTitle(r.subfolder_code):'';
+      const moved=originKind!==kind?' · Chuyển từ '+sectionNames[originKind]:kind==='media'?' · '+displayGalleryCategory(originKind,r):kind==='documents'?' · '+documentSubfolderTitle(documentSubfolderOf(originKind,r)):'';
       const actions=`<button type="button" data-list-qr="${escape(originKind)}" data-id="${escape(r.id)}" aria-label="Xem mã QR">QR</button><button type="button" data-list-edit="${escape(originKind)}" data-id="${escape(r.id)}">Sửa</button>${originKind!=='people'&&r.published?`<button type="button" data-list-transfer="${escape(originKind)}" data-id="${escape(r.id)}" title="Chuyển mục hiển thị" aria-label="Chuyển mục hiển thị">⇄</button>`:''}`;
       return `<div class="editor-item"><div class="gdd-record-label"><b>${escape(recordTitle(originKind,r))}</b><span>${r.published?'Đã công bố':'Bản nháp'} · ${escape(date(r.created_at))} · ${escape(r.archive_code||'Chưa có mã')}${escape(moved)}</span></div><div class="gdd-record-actions">${actions}</div></div>`;
     }).join(''):rows.length
@@ -986,7 +994,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
         data[name]=el.type==='checkbox'?el.checked:el.value.trim()||null;
       }
       if(kind==='documents'&&!documentSubfolders.some(f=>f.code===data.subfolder_code))
-        throw new Error('Xin chọn đúng một trong 5 thư mục con Số hóa trước khi lưu.');
+        throw new Error('Xin chọn đúng một trong 7 danh mục Số hóa trước khi lưu.');
       if(kind==='people'){
         // Không cho cấp mã lần đầu khi phân loại chưa được biên tập viên đối chiếu.
         // Mã đã cấp trước đây không bị đổi và không yêu cầu xác nhận lại.
@@ -1333,7 +1341,7 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       const button=event.target.closest('[data-document-subfolder]');
       if(!event.currentTarget.contains(back||button))return;
       const group=back?'browse':button?.dataset.documentSubfolder;
-      if(group!=='browse'&&group!=='all'&&!archiveShelf(group)&&!documentSubfolders.some(f=>f.code===group))return;
+      if(group!=='browse'&&group!=='all'&&!documentSubfolders.some(f=>f.code===group))return;
       // Sau khi mở thư mục, các thư mục khác thu gọn và tài liệu hiện trực tiếp ngay dưới.
       // Không sửa URL hay khởi động lại trang nên giữ nguyên phóng to/thu nhỏ của iPhone.
       state.documentSubfolder=group;archivePage=1;
@@ -1359,7 +1367,6 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
       vk.addEventListener('change',refresh);
       vk.addEventListener('submit',e=>{e.preventDefault();clearTimeout(archiveTimer);refresh()});
       $('#vk-reset').addEventListener('click',()=>{vk.reset();state.documentSubfolder='browse';refresh()});
-      $('#vk-source').addEventListener('change',()=>{if(archiveShelf(state.documentSubfolder)){state.documentSubfolder='all';refresh()}});
       $('#vk-prev').addEventListener('click',()=>{archivePage--;render();$('#vk-results').scrollIntoView({block:'start'})});
       $('#vk-next').addEventListener('click',()=>{archivePage++;render();$('#vk-results').scrollIntoView({block:'start'})});
     }
