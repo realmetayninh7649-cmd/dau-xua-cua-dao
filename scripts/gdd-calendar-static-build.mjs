@@ -19,6 +19,8 @@ async function pages(kind){
 }
 const [allPeople,manual]=await Promise.all([pages('people'),pages('gdd_calendar_memorials')]);
 const selected=selectCalendarSources(allPeople,manual);
+const caMinhChuong=allPeople.find(x=>x.slug==='bao-dao-ca-minh-chuong-67sgj4');
+if(caMinhChuong)console.log('CA_MINH_CHUONG_PUBLIC_DATE',JSON.stringify({day:caMinhChuong.death_lunar_day??null,month:caMinhChuong.death_lunar_month??null,leap:caMinhChuong.death_lunar_leap??null,solar:caMinhChuong.death_solar_date??null,calendar:!!selected.people.find(x=>x.id===caMinhChuong.id)}));
 if(allPeople.length<40||selected.people.length<1)throw Error('No published dated source');
 const now=new Date();
 const dateParts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{

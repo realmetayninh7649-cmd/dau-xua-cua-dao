@@ -43,7 +43,7 @@
   const monthNote=document.createElement('p');monthNote.className='gdd-cal-qui-vi-month';list.insertAdjacentElement('afterend',monthNote);
   let records=[],allPeople=[],manual=[],loaded=false,selection=null,run=0;
   let requesting=false,pendingReload=false,lastSync=0,syncNote="",corePromise=null;
-  const calendarCore=()=>corePromise||(corePromise=import("./workers/gdd-calendar-static/calendar-core.mjs?v=20261127-profile-sync-01"));
+  const calendarCore=()=>corePromise||(corePromise=import("./workers/gdd-calendar-static/calendar-core.mjs?v=20261127-profile-sync-02"));
   const normal=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/\s+/g,' ').trim();
   const validDate=row=>Number.isInteger(Number(row.death_lunar_day)) && Number(row.death_lunar_day)>0&&Number(row.death_lunar_day)<=30&&
     Number.isInteger(Number(row.death_lunar_month))&&Number(row.death_lunar_month)>=1&&Number(row.death_lunar_month)<=12;
@@ -86,7 +86,7 @@
    return '<button type="button" class="gdd-cal-qui-vi-entry" data-open-kind="people" data-id="'+esc(row.id)+'" aria-label="Mở tiểu sử '+esc(row.full_name)+'">'+
       (image?'<img loading="lazy" decoding="async" src="'+esc(image)+'" alt="Chơn dung '+esc(row.full_name)+'">':
         '<span class="gdd-cal-qui-vi-photo" aria-hidden="true">✦</span>')+
-      '<span class="gdd-cal-qui-vi-copy"><b>'+esc(row.full_name)+'</b><small>'+esc((row.rank||'Chức Sắc')+' · '+when)+' · Xem tiểu sử ↗</small>'+((row.verified===true||row.verified===1)?'':'<small>Hồ sơ chưa đánh dấu đối chiếu</small>')+'</span></button>';
+      '<span class="gdd-cal-qui-vi-copy"><b>'+esc(row.full_name)+'</b><small>'+esc((row.rank||'Chức Sắc')+' · '+when)+' · Xem tiểu sử ↗</small>'+((row.verified===true||row.verified===1)?'':'<small>Hồ sơ chưa đánh dấu đối chiếu</small>')+(row.calendar_date_source?'<small>'+esc(row.calendar_date_source)+'</small>':'')+'</span></button>';
   }
   function manualHTML(row){
     const image=safeImg(row.image_url);

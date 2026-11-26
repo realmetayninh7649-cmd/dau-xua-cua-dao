@@ -76,7 +76,7 @@ const validLunar=(d,m)=>Number.isInteger(Number(d))&&Number(d)>=1&&Number(d)<=30
 const validSolar=(d,m,y=2000)=>{const dt=new Date(Date.UTC(y,m-1,d));return Number.isInteger(d)&&Number.isInteger(m)&&m>=1&&m<=12&&d>=1&&dt.getUTCDate()===d&&dt.getUTCMonth()===m-1&&dt.getUTCFullYear()===y};
 const published=r=>r?.published===true||r?.published===1;
 const recPerson=p=>{
- const row={type:"person",id:p.id,name:p.full_name,rank:p.rank||"",source:p.verified===true||p.verified===1?"Hồ sơ Chức Sắc đã đối chiếu":"Hồ sơ Chức Sắc công bố – chưa đánh dấu đối chiếu",verified:p.verified===true||p.verified===1,slug:p.slug};
+ const row={type:"person",id:p.id,name:p.full_name,rank:p.rank||"",source:p.calendar_date_source||(p.verified===true||p.verified===1?"Hồ sơ Chức Sắc đã đối chiếu":"Hồ sơ Chức Sắc công bố – chưa đánh dấu đối chiếu"),verified:p.verified===true||p.verified===1,slug:p.slug};
  if(validLunar(p.death_lunar_day,p.death_lunar_month))return {...row,ld:+p.death_lunar_day,lm:+p.death_lunar_month,leap:!!p.death_lunar_leap};
  if(/^\d{4}-\d{2}-\d{2}$/.test(p.death_solar_date||"")){const [y,m,d]=p.death_solar_date.split("-").map(Number);if(validSolar(d,m,y))return {...row,sd:d,sm:m}}
  return null;
@@ -87,9 +87,19 @@ const recManual=p=>{
  if(p.calendar_system==="solar"&&validSolar(+p.solar_day,+p.solar_month))return {...row,sd:+p.solar_day,sm:+p.solar_month};
  return null;
 };
+// Documented annual lunar date in the published biography; never invent a death year.
+const PROFILE_LUNAR_FALLBACKS=Object.freeze({
+ "bao-dao-ca-minh-chuong-67sgj4":{day:19,month:10,leap:false,source:"Hồ sơ Bảo Đạo Chơn Quân Ca Minh Chương: cả hai niên đại được ghi nhận đều là 19/10 âm lịch; năm qui vị còn dị biệt."}
+});
+function applyDocumentedLunarDate(p){
+ if(validLunar(p.death_lunar_day,p.death_lunar_month))return p;
+ const date=Object.hasOwn(PROFILE_LUNAR_FALLBACKS,p.slug)?PROFILE_LUNAR_FALLBACKS[p.slug]:null;
+ if(!date)return p;
+ return {...p,death_lunar_day:date.day,death_lunar_month:date.month,death_lunar_leap:date.leap,calendar_date_source:date.source};
+}
 // Profile dates are authoritative for explicitly linked manual records, even if the date changes.
 function selectCalendarSources(people,manual){
- const allPeople=people.filter(published),dated=allPeople.filter(p=>recPerson(p));
+ const allPeople=people.filter(published).map(applyDocumentedLunarDate),dated=allPeople.filter(p=>recPerson(p));
  const ids=new Set(dated.map(p=>p.id));
  const records=manual.filter(p=>published(p)&&recManual(p)&&!(p.linked_person_id&&ids.has(p.linked_person_id)));
  return {allPeople,people:dated,manual:records};

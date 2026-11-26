@@ -34,3 +34,10 @@ test('lunar events do not expose any unpublished person when filtered at the sou
  const events=calculate([{id:'l',full_name:'Lunar',published:true,death_lunar_day:15,death_lunar_month:8,death_solar_date:'1950-01-01'}],[],2026,1);
  assert.equal(events.filter(e=>e.id==='l').length,1);assert.match(events.find(e=>e.id==='l').lunar,/^15\/08\//);
  });
+
+ test('documented Ca Minh Chuong lunar anniversary survives missing structured date without assigning disputed year',()=>{
+ const p={id:'cmc',slug:'bao-dao-ca-minh-chuong-67sgj4',full_name:'BẢO ĐẠO CHƠN QUÂN CA MINH CHƯƠNG',published:true};
+ const e=calculate([p],[],2026,1).filter(x=>x.id==='cmc');assert.equal(e.length,1);assert.equal(e[0].solar,'2026-11-27');assert.equal(e[0].lunar,'19/10/2026');assert.match(e[0].source,/năm qui vị còn dị biệt/);
+ assert.equal(calculate([{...p,published:false}],[],2026,1).some(x=>x.id==='cmc'),false);
+ const structured=selectCalendarSources([{...p,death_lunar_day:20,death_lunar_month:10}],[]).people[0];assert.equal(structured.death_lunar_day,20);
+ });
