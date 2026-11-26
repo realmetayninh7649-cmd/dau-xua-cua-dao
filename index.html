@@ -1661,7 +1661,7 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
 <script defer src="gdd-calendar-quick-editor.js?v=20261109-auto6mb-02"></script>
 <script defer src="gdd-calendar-reminder-subscription.js?v=20261109-nam-am-01"></script>
 <script defer src="gdd-calendar-festivals.js?v=20261109-nam-am-01"></script>
-<script defer src="gdd-memorial.js?v=20261125-cover-slots-01"></script>
+<script defer src="gdd-memorial.js?v=20261126-compact-feature-01"></script>
 <script defer src="gdd-people-form-simple.js?v=20261114-simple-people-01"></script>
 <script defer src="gdd-people-organizer.js?v=20261125-home-three-branches-01"></script>
 <!-- CHỈNH HIỂN THỊ PHÂN LOẠI CHỨC SẮC -->
@@ -1931,33 +1931,6 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
   const css = document.createElement('style');
   css.id = 'gdd-memorial-layout-v2-css';
   css.textContent = `
-    /* Chỉ tác động phần Tưởng Niệm Chức Sắc và dòng phiên bản cuối trang. */
-    #gdd-memorial-feature .gdd-memorial-v2-rank {
-      font: 700 13px/1.6 'Be Vietnam Pro', sans-serif;
-      color: #98794d; margin: 0 0 7px; text-align: left;
-    }
-    #gdd-memorial-feature .gdd-memorial-name {
-      margin: 0 0 11px; text-align: left; line-height: 1.4;
-    }
-    #gdd-memorial-feature .gdd-memorial-v2-anniversary {
-      display: block; margin: 0 0 14px; padding: 0;
-      color: #8b7451; text-align: left;
-      font: 400 13px/1.8 'Be Vietnam Pro', sans-serif;
-      overflow-wrap: anywhere;
-    }
-    #gdd-memorial-feature .gdd-memorial-v2-body {
-      display: -webkit-box; -webkit-box-orient: vertical;
-      -webkit-line-clamp: 4; line-clamp: 4;
-      overflow: hidden; overflow-wrap: anywhere;
-      white-space: pre-line; text-align: left;
-      color: #5a6860; font: 400 13px/1.85 'Be Vietnam Pro', sans-serif;
-      margin: 0 0 14px; padding: 0;
-    }
-    #gdd-memorial-feature .gdd-memorial-v2-body[hidden] { display: none !important; }
-    #gdd-memorial-feature .gdd-memorial-feature-copy > .gdd-memorial-meta {
-      margin: 0 0 12px; text-align: left;
-    }
-    #gdd-memorial-feature .gdd-memorial-actions { margin-top: 0; }
     #gdd-site-build-version {
       border-top: 1px solid rgba(233, 228, 208, .19);
       max-width: 1100px; margin: 18px auto 0; padding: 11px 18px 5px;
@@ -2018,17 +1991,6 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
       });
   }
 
-  let supabaseClientPromise;
-  function client() {
-    const cfg = window.SITE_CONFIG || {};
-    if (!cfg.supabaseUrl || !cfg.supabasePublishableKey) return Promise.reject(Error('Thiếu cấu hình Supabase'));
-    if (!supabaseClientPromise) {
-      supabaseClientPromise = import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')
-        .then(({ createClient }) => createClient(cfg.supabaseUrl, cfg.supabasePublishableKey));
-    }
-    return supabaseClientPromise;
-  }
-
   function hideUnusedIntroduction() {
     // Giữ textarea trong DOM để mã lưu bài cũ không bị lỗi hoặc xóa dữ liệu cũ.
     const input = $('#gdd-memorial-form textarea[name="summary"]');
@@ -2036,76 +1998,9 @@ body #trang-chu .hero-foot .gdd-temple-symbol {
     if (field) field.hidden = true;
   }
 
-  function patchFeatured(feature, serial) {
-    const copy = $('.gdd-memorial-feature-copy', feature);
-    const name = $('.gdd-memorial-name', copy || feature);
-    if (!copy || !name) return;
-
-    // Tách dòng cũ: "Đầu Sư – Cửu Trùng Đài · Kỷ niệm ngày qui vị: ..."
-    const oldMeta = copy.querySelector('.gdd-memorial-meta');
-    const current = (oldMeta?.textContent || '').trim();
-    const prefix = 'Kỷ niệm ngày qui vị:';
-    const index = current.indexOf(prefix);
-    const rank = (index >= 0 ? current.slice(0, index) : current)
-      .replace(/[·\s]+$/, '').trim();
-    const anniversary = index >= 0 ? current.slice(index + prefix.length).trim() : '';
-    const rankEl = document.createElement('div');
-    rankEl.className = 'gdd-memorial-v2-rank';
-    if (rank) { rankEl.textContent = rank; name.before(rankEl); }
-    const anniversaryEl = document.createElement('p');
-    anniversaryEl.className = 'gdd-memorial-v2-anniversary';
-    if (anniversary) {
-      anniversaryEl.textContent = prefix + ' ' + anniversary;
-      name.after(anniversaryEl);
-    }
-    oldMeta?.remove();
-
-    // Chỉ giữ trích đoạn lấy từ trường NỘI DUNG bài tưởng niệm, không lấy summary.
-    copy.querySelector('.gdd-memorial-summary')?.remove();
-    const bodyEl = document.createElement('p');
-    bodyEl.className = 'gdd-memorial-v2-body';
-    bodyEl.hidden = true;
-    (anniversary ? anniversaryEl : name).after(bodyEl);
-
-    const link = $('.gdd-memorial-primary', copy)?.getAttribute('href') || '';
-    const match = link.match(/^#tuong-niem\/(.+)$/);
-    if (!match) return;
-    let slug;
-    try { slug = decodeURIComponent(match[1]); } catch { return; }
-    client()
-      .then(supa => supa.from('gdd_memorials')
-        .select('body,rank_title,anniversary_date')
-        .eq('published', true).eq('slug', slug).maybeSingle())
-      .then(({ data, error }) => {
-        if (error || !data || !feature.contains(copy) || serial !== Number(feature.dataset.v2Serial)) return;
-        if (data.rank_title) {
-          rankEl.textContent = data.rank_title;
-          if (!rankEl.isConnected) name.before(rankEl);
-        }
-        if (data.anniversary_date) {
-          anniversaryEl.textContent = prefix + ' ' + data.anniversary_date;
-          if (!anniversaryEl.isConnected) name.after(anniversaryEl);
-        }
-        const body = String(data.body || '').trim();
-        if (body) { bodyEl.textContent = body; bodyEl.hidden = false; }
-      })
-      .catch(() => { /* Nếu mạng lỗi: giữ bố cục đã sửa, không đụng bài viết. */ });
-  }
-
   function init() {
     showVersion();
     hideUnusedIntroduction();
-    const feature = $('#gdd-memorial-feature');
-    if (!feature) return;
-    let serial = 0;
-    const update = () => {
-      serial++;
-      feature.dataset.v2Serial = String(serial);
-      patchFeatured(feature, serial);
-    };
-    // Chỉ theo dõi phần nội dung trực tiếp của thẻ tưởng niệm.
-    new MutationObserver(update).observe(feature, { childList: true });
-    update();
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init, { once: true });

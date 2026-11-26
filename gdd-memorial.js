@@ -100,6 +100,27 @@
     .gdd-memorial-admin .gdd-two-col{grid-template-columns:minmax(0,1fr);}
   }
   @media(max-width:380px){.gdd-memorial-inner{width:calc(100% - 30px)}.gdd-memorial-actions{gap:8px}.gdd-memorial-primary,.gdd-memorial-more{font-size:11px;padding:8px 10px}}
+  /* Compact featured card: portrait stays proportional, no oversized image well. */
+  #gdd-memorial-feature{grid-template-columns:minmax(0,36%) minmax(0,1fr);gap:12px 16px;padding:16px;align-items:start;box-shadow:none;}
+  #gdd-memorial-feature .gdd-memorial-portrait{min-height:0;max-height:none;align-self:start;background:transparent;border:0;border-radius:5px;overflow:hidden;}
+  #gdd-memorial-feature .gdd-memorial-portrait img{width:100%;height:auto;max-height:310px;object-fit:contain;object-position:center top;display:block;}
+  #gdd-memorial-feature .gdd-memorial-feature-copy{padding:0;justify-content:start;min-width:0;}
+  #gdd-memorial-feature .gdd-memorial-label{font-size:10px;letter-spacing:.10em;margin:0 0 6px;line-height:1.5;}
+  #gdd-memorial-feature .gdd-memorial-name{font-size:clamp(17px,2.3vw,25px);line-height:1.4;margin:0 0 7px;overflow-wrap:anywhere;}
+  #gdd-memorial-feature .gdd-memorial-meta{font-size:12px;line-height:1.55;margin:0 0 7px;}
+  #gdd-memorial-feature .gdd-memorial-summary{font-size:12px;line-height:1.65;margin:0 0 8px;-webkit-line-clamp:3;}
+  #gdd-memorial-feature .gdd-memorial-date{font-size:10px;color:#8b7451;line-height:1.5;margin:0;}
+  #gdd-memorial-feature>.gdd-memorial-actions{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:8px;border-top:1px solid #e5dfd2;padding-top:11px;margin:0;}
+  #gdd-memorial-feature .gdd-memorial-primary,#gdd-memorial-feature .gdd-memorial-more{font-size:11px;line-height:1.4;padding:8px 7px;min-height:44px;text-align:center;white-space:normal;}
+  #gdd-memorial-feature .gdd-memorial-empty{grid-column:1/-1;min-height:90px;}
+  @media(max-width:700px){
+    #gdd-memorial-feature{grid-template-columns:minmax(0,38%) minmax(0,1fr);gap:10px;padding:11px;}
+    #gdd-memorial-feature .gdd-memorial-name{font-size:clamp(15px,4.1vw,19px);}
+    #gdd-memorial-feature .gdd-memorial-meta,#gdd-memorial-feature .gdd-memorial-summary{font-size:11px;}
+    #gdd-memorial-feature .gdd-memorial-summary{-webkit-line-clamp:2;}
+    #gdd-memorial-feature .gdd-memorial-label{font-size:9px;letter-spacing:.06em;}
+  }
+  @media(max-width:340px){#gdd-memorial-feature{gap:8px;padding:9px;}#gdd-memorial-feature .gdd-memorial-primary,#gdd-memorial-feature .gdd-memorial-more{font-size:10px;}}
   @media(prefers-reduced-motion:reduce){.gdd-memorial-primary,.gdd-memorial-more{transition:none}}
   `;
   document.head.appendChild(css);
@@ -125,19 +146,25 @@
   document.body.append(overlay);
   const dialogBody=$('#gdd-memorial-dialog-body',overlay);
 
+  const memorialName=row=>String(row.person_name||'').trim()||String(row.title||'').trim()||'Bài tưởng niệm Chức sắc';
+  const memorialExcerpt=row=>{
+    const body=String(row.body||row.summary||'').trim().replace(/\s+/g,' ');
+    return body?body.slice(0,280)+(body.length>280?'…':''):'';
+  };
   function featuredCard(row){
     const originalPortrait=safeUrl(row.portrait_url);const portrait=window.GDDLegacyImages?.displayUrl(originalPortrait)||originalPortrait;
-    const img=portrait?`<img loading="lazy" src="${escape(portrait)}" alt="Chân dung ${escape(row.person_name)}">`:'<span class="gdd-memorial-no-image" aria-hidden="true">✧</span>';
-    const meta=[row.rank_title,row.anniversary_date&&'Kỷ niệm ngày qui vị: '+row.anniversary_date].filter(Boolean).join(' · ');
+    const img=portrait?`<img loading="lazy" src="${escape(portrait)}" alt="Chân dung ${escape(memorialName(row))}">`:'<span class="gdd-memorial-no-image" aria-hidden="true">✧</span>';
+    const rank=String(row.rank_title||'').trim(),name=memorialName(row),excerpt=memorialExcerpt(row);
+    const posted=formatDay(row.published_at||row.created_at);
     const slug=encodeURIComponent(row.slug);
     return `<div class="gdd-memorial-portrait">${img}</div><div class="gdd-memorial-feature-copy">
       <div class="gdd-memorial-label">BÀI TƯỞNG NIỆM MỚI NHẤT</div>
-      <h3 class="gdd-memorial-name">${escape(row.person_name)}</h3>
-      ${meta?`<div class="gdd-memorial-meta">${escape(meta)}</div>`:''}
-      <p class="gdd-memorial-summary">${escape(row.summary||row.title||'Kính tưởng công nghiệp tiền nhân.')}</p>
-      <div class="gdd-memorial-meta">Đăng ngày ${formatDay(row.published_at||row.created_at)}</div>
-      <div class="gdd-memorial-actions"><a class="gdd-memorial-primary" href="#tuong-niem/${slug}">Xem chi tiết ↗</a><a class="gdd-memorial-more" href="#tuong-niem">Xem các bài tưởng niệm khác</a></div>
-    </div>`;
+      ${rank? `<div class="gdd-memorial-meta">${escape(rank)}</div>`:''}
+      <h3 class="gdd-memorial-name">${escape(name)}</h3>
+      ${row.anniversary_date?`<div class="gdd-memorial-meta">Kỷ niệm ngày qui vị: <strong>${escape(row.anniversary_date)}</strong></div>`:''}
+      ${excerpt?`<p class="gdd-memorial-summary">${escape(excerpt)}</p>`:''}
+      ${posted?`<div class="gdd-memorial-date">Đăng ngày ${escape(posted)}</div>`:''}
+    </div><div class="gdd-memorial-actions"><a class="gdd-memorial-primary" href="#tuong-niem/${slug}">Xem chi tiết ↗</a><a class="gdd-memorial-more" href="#tuong-niem">Các bài tưởng niệm khác</a></div>`;
   }
   async function refreshFeatured(){
     const feature=$('#gdd-memorial-feature');
@@ -145,6 +172,7 @@
     try{
       let data;
       try{
+        if(config.publicReadProvider==='d1-staging')throw Error('Use public D1');
         const supa=await client();
         const result=await supa.from(TABLE).select('*').eq('published',true)
           .order('published_at',{ascending:false,nullsFirst:false})
@@ -180,7 +208,7 @@
   function archiveItem(r){
     const originalPhoto=safeUrl(r.portrait_url);const img=window.GDDLegacyImages?.displayUrl(originalPhoto)||originalPhoto;
     const thumb=img?`<img loading="lazy" src="${escape(img)}" alt="">`:'<span class="gdd-memorial-archive-fallback">✧</span>';
-    return `<button class="gdd-memorial-archive-item" type="button" data-gdd-mem-slug="${escape(r.slug)}">${thumb}<span><strong>${escape(r.person_name)}</strong><small>${escape([r.rank_title,r.anniversary_date].filter(Boolean).join(' · ')||'Tưởng niệm Chức sắc')}</small><em>${escape(r.summary||r.title||'Xem bài tưởng niệm')} · Đăng ${formatDay(r.published_at||r.created_at)}</em></span></button>`;
+    return `<button class="gdd-memorial-archive-item" type="button" data-gdd-mem-slug="${escape(r.slug)}">${thumb}<span><strong>${escape(memorialName(r))}</strong><small>${escape([r.rank_title,r.anniversary_date].filter(Boolean).join(' · ')||'Tưởng niệm Chức sắc')}</small><em>${escape(r.summary||r.title||'Xem bài tưởng niệm')} · Đăng ${formatDay(r.published_at||r.created_at)}</em></span></button>`;
   }
   async function showArchive(reset=true){
     openModal();
@@ -193,6 +221,7 @@
       const offset=openArchivePage*PAGE_SIZE;
       let data;
       try{
+        if(config.publicReadProvider==='d1-staging')throw Error('Use public D1');
         const supa=await client();
         const result=await supa.from(TABLE)
           .select('slug,person_name,title,rank_title,anniversary_date,summary,portrait_url,published_at,created_at')
@@ -222,6 +251,7 @@
     try{
       let data;
       try{
+        if(config.publicReadProvider==='d1-staging')throw Error('Use public D1');
         const supa=await client();
         const result=await supa.from(TABLE).select('*').eq('published',true).eq('slug',slug).maybeSingle();
         if(result.error)throw result.error;
