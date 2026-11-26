@@ -1,5 +1,5 @@
 import {mkdir,writeFile} from 'node:fs/promises';
-import {calculate,buildICS} from '../workers/gdd-calendar-static/calendar-core.mjs';
+import {calculate,buildICS,selectCalendarSources} from '../workers/gdd-calendar-static/calendar-core.mjs';
 const API='https://gdd-d1-api-staging.realmetayninh7649.workers.dev';
 const ROOT=new URL('../',import.meta.url);
 async function pages(kind){
@@ -18,27 +18,27 @@ async function pages(kind){
  throw Error('Calendar D1 pagination incomplete');
 }
 const [allPeople,manual]=await Promise.all([pages('people'),pages('gdd_calendar_memorials')]);
-const verified=allPeople.filter(x=>x.verified===true);
-if(allPeople.length<40||verified.length<1)throw Error('No verified published source');
+const selected=selectCalendarSources(allPeople,manual);
+if(allPeople.length<40||selected.people.length<1)throw Error('No published dated source');
 const now=new Date();
 const dateParts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{
  timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'
 }).formatToParts(now).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
 const currentYear=Number(dateParts.year),today=dateParts.year+'-'+dateParts.month+'-'+dateParts.day;
 if(!Number.isInteger(currentYear)||currentYear<2026)throw Error('Invalid publication year');
-const events=calculate(verified,manual,currentYear,11);
+const events=calculate(allPeople,manual,currentYear,11);
 if(events.length<250)throw Error('Unexpectedly few calendar events');
 if(events.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.solar)))throw Error('Malformed dates');
 const ics=buildICS(events);
 if(!ics.startsWith('BEGIN:VCALENDAR')||!ics.endsWith('END:VCALENDAR\r\n')||ics.includes('undefined'))throw Error('Invalid ICS');
 const upcoming=events.filter(x=>x.solar>=today).slice(0,10)
  .map(x=>({name:x.name,rank:x.rank,solar:x.solar,lunar:x.lunar,
-   lunarYear:x.lunarYear,lunarCanChi:x.lunarCanChi,type:x.type}));
-const json={ok:true,source:'public-published-verified-D1-only',
+   lunarYear:x.lunarYear,lunarCanChi:x.lunarCanChi,type:x.type,verified:x.verified}));
+const json={ok:true,source:'public-published-dated-D1-only',
  generated_at:now.toISOString(),years:[currentYear,currentYear+10],
- people_records:verified.length,manual_records:manual.length,
+ people_records:selected.people.length,manual_records:selected.manual.length,
  count:events.length,upcoming};
 await writeFile(new URL('../lich-ky-niem-qui-vi.ics',import.meta.url),ics);
 await writeFile(new URL('../lich-ky-niem-qui-vi.json',import.meta.url),JSON.stringify(json,null,2)+'\n');
-console.log('GDD_CALENDAR_D1_BUILD_PASS',JSON.stringify({people:verified.length,manual:manual.length,
+console.log('GDD_CALENDAR_D1_BUILD_PASS',JSON.stringify({people:selected.people.length,manual:selected.manual.length,
  year:currentYear,events:events.length,upcoming:upcoming.length,ics_bytes:Buffer.byteLength(ics)}));

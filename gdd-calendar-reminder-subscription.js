@@ -122,15 +122,15 @@
   }
   async function upcoming(){
     try{
-      const response=await fetch(upcomingEndpoint,{cache:'no-store'});
-      if(!response.ok)throw Error('HTTP '+response.status);
-      const json=await response.json();
+      let json;
+      if(window.GDDCalendarUpcoming)json={ok:true,...window.GDDCalendarUpcoming};
+      else{const response=await fetch(upcomingEndpoint,{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);json=await response.json();if(window.GDDCalendarUpcoming)json={ok:true,...window.GDDCalendarUpcoming};}
       if(!json.ok||!Array.isArray(json.upcoming))throw Error('Unexpected calendar');
       list.replaceChildren();
       for(const e of json.upcoming.slice(0,5)){
         const li=document.createElement('li');
         const date=document.createElement('time');date.dateTime=e.solar;date.textContent=dateVN(e.solar);
-        const summary=document.createTextNode(' · '+String(e.name||'Chức Sắc')+' (âm '+labelLunar(e)+')');
+        const summary=document.createTextNode(' · '+String(e.name||'Chức Sắc')+' (âm '+labelLunar(e)+')'+(e.type==='person'&&e.verified===false?' · Chưa đánh dấu đối chiếu':''));
         li.append(date,summary);list.append(li);
       }
       if(!json.upcoming.length){const li=document.createElement('li');li.textContent='Chưa có ngày lễ hoặc kỷ niệm sắp tới được ghi nhận.';list.append(li)}
@@ -139,6 +139,7 @@
       const li=document.createElement('li');li.textContent='Chưa tải được danh sách sắp tới. Vẫn có thể đăng ký hoặc tải lịch ở trên.';list.append(li);
     }
   }
+  window.addEventListener('gdd:calendar-source-synced',upcoming);
   window.addEventListener('gdd:calendar-quick-saved',upcoming);
   window.addEventListener('gdd:people-anniversary-refresh',upcoming);
   upcoming();

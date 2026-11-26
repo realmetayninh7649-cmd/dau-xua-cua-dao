@@ -2,6 +2,13 @@ name: "GDD - Cap nhat lich cung va ky niem qui vi tu Cloudflare D1"
 on:
   schedule:
     - cron: "15 19 * * *"
+  push:
+    branches: [main]
+    paths:
+      - 'workers/gdd-calendar-static/calendar-core.mjs'
+      - 'scripts/gdd-calendar-static-build.mjs'
+      - 'tests/gdd-calendar-static.test.mjs'
+      - '.github/workflows/gdd-calendar-d1-daily.yml'
   workflow_dispatch:
 permissions:
   contents: write
@@ -30,7 +37,7 @@ jobs:
           from pathlib import Path
           p=Path('lich-ky-niem-qui-vi.json')
           obj=json.loads(p.read_text())
-          assert obj['ok'] is True and obj['source']=='public-published-verified-D1-only'
+          assert obj['ok'] is True and obj['source']=='public-published-dated-D1-only'
           assert obj['people_records']>=1 and obj['count']>=250
           assert p.stat().st_size<25000
           txt=Path('lich-ky-niem-qui-vi.ics').read_bytes()

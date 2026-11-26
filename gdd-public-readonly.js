@@ -57,6 +57,14 @@
     }
     return pending;
   }
+  async function calendarSources(){
+    // Fresh targeted D1 queries: do not wait for or invalidate the entire archive cache.
+    if(window.SITE_CONFIG?.publicReadProvider==='d1-staging'){
+      const [people,gdd_calendar_memorials]=await Promise.all([pages('people'),pages('gdd_calendar_memorials')]);
+      return {people,gdd_calendar_memorials,backend:'d1'};
+    }
+    const data=await staticArchive();return {...data,backend:'snapshot'};
+  }
   async function rows(kind){
     const data=await load();
     return kind==='archive_gallery_images'?data.gallery:(data[kind]||[]);
@@ -71,5 +79,5 @@
         ||String(a.created_at||'').localeCompare(String(b.created_at||'')))
       ;
   }
-  window.GDDPublicReadOnly=Object.freeze({load,rows,find,album});
+  window.GDDPublicReadOnly=Object.freeze({load,rows,find,album,calendarSources});
 })();

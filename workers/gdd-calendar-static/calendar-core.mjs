@@ -72,21 +72,32 @@ const canChiYear=y=>CAN[(y+6)%10]+" "+CHI[(y+8)%12];
 const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/gi,"d").toLowerCase().replace(/\s+/g," ").trim();
 const esc=s=>String(s??"").replace(/\\/g,"\\\\").replace(/\r?\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;");
 const folded=line=>{let out="",part="",n=0;for(const c of line){const p=c.codePointAt(0),k=p<128?1:p<2048?2:p<65536?3:4;if(n+k>73){out+=part+"\r\n ";part="";n=1}part+=c;n+=k}return out+part};
+const validLunar=(d,m)=>Number.isInteger(Number(d))&&Number(d)>=1&&Number(d)<=30&&Number.isInteger(Number(m))&&Number(m)>=1&&Number(m)<=12;
+const validSolar=(d,m,y=2000)=>{const dt=new Date(Date.UTC(y,m-1,d));return Number.isInteger(d)&&Number.isInteger(m)&&m>=1&&m<=12&&d>=1&&dt.getUTCDate()===d&&dt.getUTCMonth()===m-1&&dt.getUTCFullYear()===y};
+const published=r=>r?.published===true||r?.published===1;
 const recPerson=p=>{
- const row={type:"person",id:p.id,name:p.full_name,rank:p.rank||"",source:"Hồ sơ Chức Sắc đã xác minh",slug:p.slug};
- if(p.death_lunar_day&&p.death_lunar_month)return {...row,ld:+p.death_lunar_day,lm:+p.death_lunar_month,leap:!!p.death_lunar_leap};
- if(/^\d{4}-\d{2}-\d{2}$/.test(p.death_solar_date||"")){const [y,m,d]=p.death_solar_date.split("-").map(Number);return {...row,sd:d,sm:m}}
+ const row={type:"person",id:p.id,name:p.full_name,rank:p.rank||"",source:p.verified===true||p.verified===1?"Hồ sơ Chức Sắc đã đối chiếu":"Hồ sơ Chức Sắc công bố – chưa đánh dấu đối chiếu",verified:p.verified===true||p.verified===1,slug:p.slug};
+ if(validLunar(p.death_lunar_day,p.death_lunar_month))return {...row,ld:+p.death_lunar_day,lm:+p.death_lunar_month,leap:!!p.death_lunar_leap};
+ if(/^\d{4}-\d{2}-\d{2}$/.test(p.death_solar_date||"")){const [y,m,d]=p.death_solar_date.split("-").map(Number);if(validSolar(d,m,y))return {...row,sd:d,sm:m}}
  return null;
 };
 const recManual=p=>{
  const row={type:"manual",id:p.id,name:p.full_name,rank:p.rank||"",source:p.source_note||"Lịch tưởng niệm Web Đạo",linked:p.linked_person_id||null};
- if(p.calendar_system==="lunar"&&p.lunar_day&&p.lunar_month)return {...row,ld:+p.lunar_day,lm:+p.lunar_month,leap:!!p.lunar_leap};
- if(p.calendar_system==="solar"&&p.solar_day&&p.solar_month)return {...row,sd:+p.solar_day,sm:+p.solar_month};
+ if(p.calendar_system==="lunar"&&validLunar(p.lunar_day,p.lunar_month))return {...row,ld:+p.lunar_day,lm:+p.lunar_month,leap:!!p.lunar_leap};
+ if(p.calendar_system==="solar"&&validSolar(+p.solar_day,+p.solar_month))return {...row,sd:+p.solar_day,sm:+p.solar_month};
  return null;
 };
+// Profile dates are authoritative for explicitly linked manual records, even if the date changes.
+function selectCalendarSources(people,manual){
+ const allPeople=people.filter(published),dated=allPeople.filter(p=>recPerson(p));
+ const ids=new Set(dated.map(p=>p.id));
+ const records=manual.filter(p=>published(p)&&recManual(p)&&!(p.linked_person_id&&ids.has(p.linked_person_id)));
+ return {allPeople,people:dated,manual:records};
+}
 function calculate(people,manual,startYear,years){
+ const selected=selectCalendarSources(people,manual);
  const lunarMap=new Map(),solarMap=new Map();
- for(const r of [...people.map(recPerson),...manual.map(recManual)].filter(Boolean)){
+ for(const r of [...selected.people.map(recPerson),...selected.manual.map(recManual)].filter(Boolean)){
    const l=r.ld!=null,map=l?lunarMap:solarMap,key=l?r.ld+"/"+r.lm+"/"+(r.leap?1:0):r.sd+"/"+r.sm;
    if(!map.has(key))map.set(key,[]);map.get(key).push(r);
  }
@@ -97,7 +108,7 @@ function calculate(people,manual,startYear,years){
      const candidates=[...(lunarMap.get(l.day+"/"+l.month+"/"+(l.leap?1:0))||[]),...(solarMap.get(d+"/"+m)||[])];
      const unique=[];
      for(const x of candidates){
-       const same=r=>x.type!==r.type&&((x.linked&&x.linked===r.id)||(r.linked&&r.linked===x.id)||norm(r.name)===norm(x.name));
+       const same=r=>x.type!==r.type&&((x.linked&&x.linked===r.id)||(r.linked&&r.linked===x.id)||(!x.linked&&!r.linked&&norm(r.name)===norm(x.name)));
        if(x.type==="manual"&&unique.some(same))continue;
        if(x.type==="person")for(let i=unique.length-1;i>=0;i--)if(same(unique[i]))unique.splice(i,1);
        unique.push(x);
@@ -137,4 +148,4 @@ function buildICS(events){
  return lines.map(folded).join("\r\n")+"\r\n";
 }
 
-export {calculate,buildICS};
+export {calculate,buildICS,selectCalendarSources};
