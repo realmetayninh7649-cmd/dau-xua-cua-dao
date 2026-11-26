@@ -53,7 +53,7 @@
    </div>
    <p class="gdd-remind-status" id="gdd-remind-status" role="status" aria-live="polite">Ngày lễ và ngày kỷ niệm được cập nhật theo bản lịch công khai định kỳ từ D1.</p>
    <div class="gdd-remind-coming" id="gdd-remind-coming">
-     <strong>Những ngày lễ cúng và kỷ niệm sắp tới (theo dương lịch)</strong>
+     <strong>Những ngày lễ cúng và kỷ niệm sắp tới</strong>
      <ul><li>Đang tải ngày lễ và ngày tưởng niệm…</li></ul>
    </div>
    <details id="gdd-remind-help">
@@ -129,8 +129,9 @@
       list.replaceChildren();
       for(const e of json.upcoming.slice(0,5)){
         const li=document.createElement('li');
-        const date=document.createElement('time');date.dateTime=e.solar;date.textContent=dateVN(e.solar);
-        const summary=document.createTextNode(' · '+String(e.name||'Chức Sắc')+' (âm '+labelLunar(e)+')'+(e.type==='person'&&e.verified===false?' · Chưa đánh dấu đối chiếu':''));
+        const lunarFirst=e.basis!=='solar'&&!!e.lunar;
+        const date=document.createElement('time');date.dateTime=e.solar;date.textContent=lunarFirst?labelLunar(e)+' ÂL':dateVN(e.solar)+' DL';
+        const summary=document.createTextNode(' · '+String(e.name||'Chức Sắc')+(lunarFirst?' (DL '+dateVN(e.solar)+')':e.lunar?' (ÂL '+labelLunar(e)+')':'')+(e.type==='person'&&e.verified===false?' · Chưa đánh dấu đối chiếu':''));
         li.append(date,summary);list.append(li);
       }
       if(!json.upcoming.length){const li=document.createElement('li');li.textContent='Chưa có ngày lễ hoặc kỷ niệm sắp tới được ghi nhận.';list.append(li)}

@@ -41,3 +41,17 @@ test('lunar events do not expose any unpublished person when filtered at the sou
  assert.equal(calculate([{...p,published:false}],[],2026,1).some(x=>x.id==='cmc'),false);
  const structured=selectCalendarSources([{...p,death_lunar_day:20,death_lunar_month:10}],[]).people[0];assert.equal(structured.death_lunar_day,20);
  });
+
+test('explicit lunar dates in biography outrank a structured solar date and unrelated milestones',()=>{
+ const profile={id:'p',full_name:'Test',published:true,death_solar_date:'1928-11-30',biography:'Sinh ngày 12 tháng 3 năm Giáp Tý. Ngài qui vị ngày 19 tháng 10 năm Mậu Thìn (DL 30/11/1928). An táng ngày 20/10 âm lịch.'};
+ const e=calculate([profile],[],2026,1).find(x=>x.id==='p');assert.equal(e.solar,'2026-11-27');assert.equal(e.basis,'lunar');
+});
+test('explicit solar date is used only in the absence of a lunar death date',()=>{
+ const p={id:'s',full_name:'Solar',published:true,biography:'Ông qui vị ngày 09/10/1973 dương lịch.'};
+ const e=calculate([p],[],2026,1).find(x=>x.id==='s');assert.equal(e.solar,'2026-10-09');assert.equal(e.basis,'solar');
+ const p2={...p,biography:'Ông sinh ngày 12/3 âm lịch.'};assert.equal(calculate([p2],[],2026,1).some(x=>x.id==='s'),false);
+});
+test('conflicting lunar dates are not silently replaced with solar date',()=>{
+ const p={id:'conflict',full_name:'Conflict',published:true,death_solar_date:'1973-10-09',biography:'Ông qui vị ngày 14/9 âm lịch. Theo nguồn khác, ông qui vị ngày 15/9 âm lịch.'};
+ assert.equal(calculate([p],[],2026,1).some(x=>x.id==='conflict'),false);
+});

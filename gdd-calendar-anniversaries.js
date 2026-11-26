@@ -43,7 +43,7 @@
   const monthNote=document.createElement('p');monthNote.className='gdd-cal-qui-vi-month';list.insertAdjacentElement('afterend',monthNote);
   let records=[],allPeople=[],manual=[],loaded=false,selection=null,run=0;
   let requesting=false,pendingReload=false,lastSync=0,syncNote="",corePromise=null;
-  const calendarCore=()=>corePromise||(corePromise=import("./workers/gdd-calendar-static/calendar-core.mjs?v=20261127-profile-sync-02"));
+  const calendarCore=()=>corePromise||(corePromise=import("./workers/gdd-calendar-static/calendar-core.mjs?v=20261127-lunar-first-01"));
   const normal=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/\s+/g,' ').trim();
   const validDate=row=>Number.isInteger(Number(row.death_lunar_day)) && Number(row.death_lunar_day)>0&&Number(row.death_lunar_day)<=30&&
     Number.isInteger(Number(row.death_lunar_month))&&Number(row.death_lunar_month)>=1&&Number(row.death_lunar_month)<=12;

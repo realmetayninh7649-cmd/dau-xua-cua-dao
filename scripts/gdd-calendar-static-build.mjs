@@ -35,7 +35,7 @@ const ics=buildICS(events);
 if(!ics.startsWith('BEGIN:VCALENDAR')||!ics.endsWith('END:VCALENDAR\r\n')||ics.includes('undefined'))throw Error('Invalid ICS');
 const upcoming=events.filter(x=>x.solar>=today).slice(0,10)
  .map(x=>({name:x.name,rank:x.rank,solar:x.solar,lunar:x.lunar,
-   lunarYear:x.lunarYear,lunarCanChi:x.lunarCanChi,type:x.type,verified:x.verified}));
+   lunarYear:x.lunarYear,lunarCanChi:x.lunarCanChi,type:x.type,verified:x.verified,basis:x.basis}));
 const json={ok:true,source:'public-published-dated-D1-only',
  generated_at:now.toISOString(),years:[currentYear,currentYear+10],
  people_records:selected.people.length,manual_records:selected.manual.length,
