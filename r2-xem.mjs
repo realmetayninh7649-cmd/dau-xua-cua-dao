@@ -14,7 +14,7 @@ const ATTACH_API='https://gdd-d1-api-staging.realmetayninh7649.workers.dev';
 const attachRaw=query.get('attachment')||'';
 const nameHint=(query.get('name')||'').slice(0,220);
 if(nameHint)el('r2-title').textContent=nameHint;
-let positionKey='',continuous=false,observer=null,rendered=false,scrollEpoch=0;
+let positionKey='',continuous=false,observer=null,scrollEpoch=0,scrollFrame=0,stableRatio='3/4';
 const warmed=new Map();
 let info=null,page=1,zoom=100,pdfDoc=null,renderTask=null,drawSerial=0,mode='r2';
 function status(message){el('r2-status').textContent=message}
@@ -48,12 +48,13 @@ function validatePublicSource(raw){
 function pageUrl(n){
   return API+'/v1/public/'+encodeURIComponent(id)+(info.kind==='image'?'/preview':'/page/'+n);
 }
+function jumpWithin(wrap,figure){if(!figure)return;const top=figure.getBoundingClientRect().top-wrap.getBoundingClientRect().top+wrap.scrollTop;wrap.scrollTo({top,behavior:'instant'});}
 function adjust(){
   if(!info)return;
   el('r2-prev').disabled=page<=1;
   el('r2-next').disabled=page>=info.pageCount;
   el('r2-counter').textContent=page+' / '+info.pageCount;
-  el('r2-jump').value=String(page);remember();
+  if(document.activeElement!==el('r2-jump'))el('r2-jump').value=String(page);remember();
   if(mode==='legacy-pdf'){
     el('r2-canvas').style.width=zoom+'%';
   }else{
@@ -77,7 +78,7 @@ async function showLegacyPdf(n){
     const v=p.getViewport({scale});
     const maximum=Math.min(1,2800/Math.max(v.width,1),3600/Math.max(v.height,1));
     const view=maximum<1?p.getViewport({scale:scale*maximum}):v;
-    const canvas=el('r2-canvas');
+    const canvas=document.createElement('canvas');
     canvas.width=Math.max(1,Math.ceil(view.width));
     canvas.height=Math.max(1,Math.ceil(view.height));
     const ctx=canvas.getContext('2d',{alpha:false});
@@ -86,7 +87,8 @@ async function showLegacyPdf(n){
     renderTask=p.render({canvasContext:ctx,viewport:view});
     await renderTask.promise;
     if(current!==drawSerial)return;
-    canvas.hidden=false;
+    const visible=el('r2-canvas');visible.width=canvas.width;visible.height=canvas.height;visible.getContext('2d',{alpha:false}).drawImage(canvas,0,0);visible.hidden=false;
+    stableRatio=first.width+'/'+first.height;
     status('Trang '+page+' / '+pdfDoc.numPages+' · '+(attachRaw?'PDF đã được cho phép đọc và tải.':'PDF công khai cũ từ Supabase.'));el('r2-retry').hidden=true;
   }catch(e){
     if(e?.name!=='RenderingCancelledException'&&current===drawSerial)
@@ -95,16 +97,20 @@ async function showLegacyPdf(n){
 }
 function show(n){
   if(!info)return;
-  if(continuous){page=Math.min(info.pageCount,Math.max(1,n));adjust();el('r2-continuous').querySelector('[data-page="'+page+'"]')?.scrollIntoView({block:'start'});return}
+  if(continuous){page=Math.min(info.pageCount,Math.max(1,n));adjust();const wrap=el('r2-continuous');jumpWithin(wrap,wrap.querySelector('[data-page="'+page+'"]'));return}
+  if(n!==page){const pane=el('r2-scroller');pane.scrollTop=0;pane.scrollLeft=0;}
   if(mode==='legacy-pdf'){showLegacyPdf(n);return}
   page=Math.min(info.pageCount,Math.max(1,n));
-  const image=el('r2-page'),current=page;
-  image.style.visibility='hidden';status('Đang tải trang '+current+' / '+info.pageCount+'…');
-  image.onload=()=>{image.style.visibility='visible';el('r2-retry').hidden=true;status('Trang '+current+' / '+info.pageCount+' · Bản xem đã công bố.');warm(current+1);warm(current+2);warm(current-1)};
-  image.onerror=()=>{retry('Chưa tải được trang này. Hãy kiểm tra kết nối.');};
-  image.src=pageUrl(page);
-  image.alt='Trang '+page+' trong '+info.name;
-  adjust();
+  const image=el('r2-page'),current=page,serial=++drawSerial;
+  const pending=warmed.get(current)||new Image();pending.decoding='async';
+  status('Đang tải trang '+current+' / '+info.pageCount+'…');adjust();
+  const display=()=>{if(serial!==drawSerial||continuous)return;image.src=pending.src;image.alt='Trang '+current+' trong '+info.name;image.style.visibility='visible';if(pending.naturalWidth&&pending.naturalHeight)stableRatio=pending.naturalWidth+'/'+pending.naturalHeight;el('r2-retry').hidden=true;status('Trang '+current+' / '+info.pageCount+' · Bản xem đã công bố.');warm(current+1);warm(current+2);warm(current-1);};
+  const failed=()=>{if(serial===drawSerial&&!continuous){warmed.delete(current);retry('Chưa tải được trang này. Hãy thử lại.')}};
+  if(!pending.src)pending.src=pageUrl(current);
+  if(pending.complete&&pending.naturalWidth)display();
+  else if(pending.decode)pending.decode().then(display,failed);
+  else{pending.onload=display;pending.onerror=failed;}
+
 }
 async function initializeLegacy(raw,attachment=false) {
   const source=attachment?attachmentSource(raw):validatePublicSource(raw);
@@ -165,7 +171,8 @@ async function initializeApproved(){
   }catch(err){retry('Không mở được bản xem. Hãy thử tải lại.')}
 }
 function closeContinuous(){
-  continuous=false;scrollEpoch++;observer?.disconnect();observer=null;el('r2-continuous').replaceChildren();el('r2-continuous').hidden=true;el('r2-scroller').hidden=false;el('r2-mode').textContent='Cuộn dọc';el('r2-mode').setAttribute('aria-pressed','false');show(page);
+  continuous=false;scrollEpoch++;observer?.disconnect();observer=null;cancelAnimationFrame(scrollFrame);scrollFrame=0;
+  el('r2-continuous').replaceChildren();el('r2-continuous').hidden=true;el('r2-scroller').hidden=false;el('r2-mode').textContent='Cuộn dọc';el('r2-mode').setAttribute('aria-pressed','false');show(page);
 }
 function openContinuous(){
   if(!info)return;
@@ -173,25 +180,42 @@ function openContinuous(){
   const wrap=el('r2-continuous');wrap.hidden=false;el('r2-scroller').hidden=true;el('r2-mode').textContent='Lật trang';el('r2-mode').setAttribute('aria-pressed','true');
   const frag=document.createDocumentFragment();
   for(let n=1;n<=info.pageCount;n++){
-    const figure=document.createElement('figure');figure.dataset.page=n;
-    const view=document.createElement(mode==='legacy-pdf'?'canvas':'img');view.style.aspectRatio='3/4';view.style.width=zoom+'%';view.dataset.loaded='0';view.setAttribute('aria-label','Trang '+n);
-    if(mode!=='legacy-pdf'){view.alt='Trang '+n;view.loading='lazy';view.decoding='async'}
-    const label=document.createElement('figcaption');label.textContent='Trang '+n;figure.append(view,label);frag.append(figure);
+    const figure=document.createElement('figure');figure.dataset.page=n;figure.style.width=zoom+'%';
+    const slot=document.createElement('div');slot.className='reader-page-slot';slot.style.setProperty('--page-ratio',stableRatio);
+    const view=document.createElement(mode==='legacy-pdf'?'canvas':'img');view.dataset.loaded='0';view.setAttribute('aria-label','Trang '+n);
+    if(mode!=='legacy-pdf'){view.alt='Trang '+n;view.decoding='async'}
+    const label=document.createElement('figcaption');label.textContent='Trang '+n;slot.append(view);figure.append(slot,label);frag.append(figure);
   }
   wrap.replaceChildren(frag);
   observer=new IntersectionObserver(entries=>{
-    for(const entry of entries){const figure=entry.target,n=Number(figure.dataset.page),view=figure.firstElementChild;if(!entry.isIntersecting)continue;
-      if(entry.intersectionRatio>.3){page=n;adjust()}
-      if(view.dataset.loaded!=='0')continue;view.dataset.loaded='1';
+    for(const entry of entries){
+      const figure=entry.target,n=Number(figure.dataset.page),view=figure.querySelector('img,canvas');
+      if(!entry.isIntersecting||view.dataset.loaded!=='0')continue;
+      view.dataset.loaded='1';
       if(mode==='legacy-pdf'){
-        (async()=>{try{const p=await pdfDoc.getPage(n);if(epoch!==scrollEpoch)return;const v=p.getViewport({scale:Math.min(2,1100/p.getViewport({scale:1}).width)});view.width=Math.ceil(v.width);view.height=Math.ceil(v.height);view.style.aspectRatio='auto';await p.render({canvasContext:view.getContext('2d',{alpha:false}),viewport:v}).promise;view.dataset.loaded='2';}catch{view.dataset.loaded='0'}})();
-      }else{view.src=pageUrl(n);view.onload=()=>view.style.aspectRatio='auto';view.onerror=()=>{view.dataset.loaded='0';retry('Có trang chưa tải được. Hãy thử lại.')} }
+        (async()=>{try{const p=await pdfDoc.getPage(n);if(epoch!==scrollEpoch)return;
+          const first=p.getViewport({scale:1}),v=p.getViewport({scale:Math.min(2,1300/first.width,1800/first.height)});
+          view.width=Math.ceil(v.width);view.height=Math.ceil(v.height);
+          await p.render({canvasContext:view.getContext('2d',{alpha:false}),viewport:v}).promise;
+          view.dataset.loaded='2';p.cleanup();
+        }catch{view.dataset.loaded='0'}})();
+      }else{view.onload=()=>{view.dataset.loaded='2';el('r2-retry').hidden=true};view.onerror=()=>{view.dataset.loaded='0';retry('Có trang chưa tải được. Hãy thử lại.')};view.src=pageUrl(n)}
     }
-    if(mode==='legacy-pdf')for(const figure of wrap.children){const n=Number(figure.dataset.page),view=figure.firstElementChild;if(Math.abs(n-page)>4&&view.dataset.loaded==='2'){view.width=1;view.height=1;view.style.aspectRatio='3/4';view.dataset.loaded='0'}}
-  },{root:wrap,rootMargin:'120px 0px',threshold:[0,.35,.7]});
+  },{root:wrap,rootMargin:'300px 0px',threshold:0});
   for(const figure of wrap.children)observer.observe(figure);
-  wrap.querySelector('[data-page="'+page+'"]')?.scrollIntoView({block:'start'});
+  jumpWithin(wrap,wrap.querySelector('[data-page="'+page+'"]'));
 }
+el('r2-continuous').addEventListener('scroll',()=>{
+  if(!continuous||scrollFrame)return;
+  scrollFrame=requestAnimationFrame(()=>{
+    scrollFrame=0;if(!continuous)return;
+    const wrap=el('r2-continuous'),center=wrap.getBoundingClientRect().top+wrap.clientHeight*.45;
+    let nearest=page,distance=Infinity;
+    for(const figure of wrap.children){const rect=figure.getBoundingClientRect(),d=Math.abs((rect.top+rect.bottom)/2-center);if(d<distance){distance=d;nearest=Number(figure.dataset.page)}}
+    if(nearest!==page){page=nearest;adjust();status('Trang '+page+' / '+info.pageCount);}
+    if(mode==='legacy-pdf')for(const figure of wrap.children){const n=Number(figure.dataset.page),view=figure.querySelector('canvas');if(Math.abs(n-page)>6&&view.dataset.loaded==='2'){view.width=1;view.height=1;view.dataset.loaded='0';observer?.unobserve(figure);observer?.observe(figure)}}
+  });
+},{passive:true});
 el('r2-back').addEventListener('click',()=>{try{const raw=sessionStorage.getItem('gdd-reader-return');sessionStorage.removeItem('gdd-reader-return');const target=new URL(raw||document.referrer||'./index.html',location.href);if(target.origin===location.origin&&!target.pathname.endsWith('/r2-xem.html')){location.assign(target.href);return}}catch{}location.assign('./index.html')});
 el('r2-full').addEventListener('click',()=>{const active=document.body.classList.toggle('reader-expanded');el('r2-full').setAttribute('aria-pressed',String(active));el('r2-full').textContent=active?'Thu về':'Toàn màn';});
 el('r2-retry').addEventListener('click',()=>{if(info){if(continuous){closeContinuous();openContinuous()}else show(page)}else location.reload()});
@@ -204,7 +228,7 @@ el('r2-thumbs').addEventListener('click',()=>{
 let touch=null;el('r2-scroller').addEventListener('touchstart',e=>{touch=e.touches.length===1?[e.touches[0].clientX,e.touches[0].clientY]:null},{passive:true});el('r2-scroller').addEventListener('touchmove',e=>{if(e.touches.length!==1)touch=null},{passive:true});el('r2-scroller').addEventListener('touchend',e=>{if(!touch||zoom!==100)return;const dx=e.changedTouches[0].clientX-touch[0],dy=e.changedTouches[0].clientY-touch[1];touch=null;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.8)show(page+(dx<0?1:-1))},{passive:true});
 el('r2-prev').addEventListener('click',()=>show(page-1));
 el('r2-next').addEventListener('click',()=>show(page+1));
-el('r2-zoom').addEventListener('change',e=>{zoom=Number(e.target.value)||100;if(info){if(continuous){for(const f of el('r2-continuous').children)f.firstElementChild.style.width=zoom+'%'}else show(page)}});
+el('r2-zoom').addEventListener('change',e=>{zoom=Number(e.target.value)||100;if(info){if(continuous){const wrap=el('r2-continuous');for(const figure of wrap.children)figure.style.width=zoom+'%';jumpWithin(wrap,wrap.querySelector('[data-page="'+page+'"]'))}else show(page)}});
 window.addEventListener('pagehide',()=>pdfDoc?.destroy?.().catch(()=>{}),{once:true});
 // Known, verified legacy PDF origins are now served as pre-rendered R2 JPEG pages.
 // Shared source= links are redirected too; do not fetch the public PDF itself.

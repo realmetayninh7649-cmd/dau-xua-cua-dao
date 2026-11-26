@@ -45,3 +45,30 @@ button,select,.controls a,.page-jump input{font:600 12px system-ui,sans-serif;bo
 .continuous figure{margin:0;min-height:150px;text-align:center}.continuous img,.continuous canvas{display:block;width:100%;height:auto;margin:auto;background:white;max-width:none}.continuous figcaption{font-size:11px;padding:5px}
 body.reader-expanded .r2-reader{max-width:none;padding:4px}body.reader-expanded header h1,body.reader-expanded header .subtitle,body.reader-expanded footer{display:none}
 @media(max-width:520px){.r2-reader{padding:7px 8px 24px}.controls{gap:5px}.controls label{font-size:11px}.controls a,button,select{font-size:11px;padding:6px 8px}.reader-brand .kicker{font-size:9px}}
+
+/* Stable viewport: only the document pane scrolls. Keep browser chrome, title and controls still. */
+@media screen{
+ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
+ body{position:fixed;inset:0}
+ .r2-reader{width:100%;height:100vh;height:100svh;max-height:100%;display:flex;flex-direction:column;gap:0;padding:8px 10px max(8px,env(safe-area-inset-bottom));overflow:hidden}
+ .r2-reader>header,.r2-reader>.controls,.reader-statusbar{flex:0 0 auto;min-width:0}
+ .r2-reader h1{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.35}
+ .r2-reader .subtitle{display:none}
+ .r2-reader>.controls{position:static;margin:3px 0;padding:5px 0;min-height:52px;align-content:center}
+ .reader-stage{position:relative;flex:1 1 0;min-height:0;min-width:0;overflow:hidden;background:#dfdcd3;border:1px solid #d1c8b5;border-radius:8px;isolation:isolate}
+ .reader-stage>.image-scroller,.reader-stage>.continuous{position:absolute;inset:0;width:100%;height:100%;min-height:0;max-height:none;border:0;border-radius:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;overflow-anchor:none;scroll-behavior:auto}
+ .reader-stage>.image-scroller{padding:6px 0;touch-action:pan-x pan-y pinch-zoom}
+ .reader-stage>.image-scroller img,.reader-stage>.image-scroller canvas{margin-inline:auto}
+ .reader-stage>.continuous{display:block;padding:8px;touch-action:pan-x pan-y pinch-zoom}
+ .continuous figure{display:block;margin:0 auto 12px;min-height:0;width:100%;overflow-anchor:none}
+ .continuous .reader-page-slot{width:100%;aspect-ratio:var(--page-ratio,3/4);position:relative;margin-inline:auto;background:#fffdf8;overflow:hidden}
+ .continuous .reader-page-slot>img,.continuous .reader-page-slot>canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;max-width:none;margin:0;background:transparent}
+ .continuous figcaption{height:26px;line-height:16px;padding:5px;overflow:hidden}
+ .reader-stage>.page-list{position:absolute;top:0;left:0;right:0;z-index:5;max-height:100%;overflow:auto;overscroll-behavior:contain;box-shadow:0 6px 18px #0002}
+ .reader-statusbar{display:flex;align-items:center;gap:6px;height:40px;overflow:hidden}
+ .reader-statusbar .status{flex:1;min-width:0;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+ .reader-statusbar button,.reader-statusbar a{flex:none;font-size:11px;min-height:32px;padding:5px}
+ .r2-reader>footer{display:none}
+ body.reader-expanded .r2-reader{padding:4px}
+ body.reader-expanded .reader-statusbar{height:32px}
+}
