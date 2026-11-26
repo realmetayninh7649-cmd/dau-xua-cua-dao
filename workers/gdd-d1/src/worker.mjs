@@ -80,6 +80,12 @@ export default {
     }
     const docDownload=/^\/api\/v1\/public\/attachments\/([a-z_]+)\/([a-f0-9-]{36})\/([a-f0-9-]{36})\/download$/.exec(incomingPath);
     if(docDownload){
+      const origin=request.headers.get('Origin');
+      const trusted=origin&&ALLOWED_ORIGINS.has(origin);
+      if(request.method==='OPTIONS'){
+        if(!trusted)return respond(request,{error:'forbidden'},403,{private:true});
+        return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET, HEAD, OPTIONS','Access-Control-Allow-Headers':'Range','Access-Control-Max-Age':'600','Vary':'Origin'}});
+      }
       if(!['GET','HEAD'].includes(request.method))return respond(request,{error:'read_only'},405,{private:true});
       const [,kind,id,asset]=docDownload;
       const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
@@ -97,10 +103,34 @@ export default {
         const info=await env.SUBMISSIONS_BUCKET.get('meta/'+asset+'.json');
         const meta=info?await info.json():null;
         if(!meta||meta.id!==asset||meta.owner!==row.owner_id||meta.key!==key||meta.kind!=='document'||meta.mime!==types[ext])return deny();
-        const file=request.method==='HEAD'?await env.SUBMISSIONS_BUCKET.head(key):await env.SUBMISSIONS_BUCKET.get(key);
-        if(!file||file.size!==Number(row.original_bytes))return deny();
+        const total=Number(row.original_bytes);
+        let start=0,end=total-1,partial=false;
+        const cors=new Headers({'Vary':'Origin','Cache-Control':'private, no-store'});
+        if(trusted&&inline){
+          cors.set('Access-Control-Allow-Origin',origin);
+          cors.set('Access-Control-Expose-Headers','Accept-Ranges, Content-Range, Content-Length, Content-Disposition');
+        }
+        const range=inline&&request.method==='GET'?request.headers.get('Range'):null;
+        if(range){
+          const m=/^bytes=(\d*)-(\d*)$/.exec(range);
+          const invalid=()=>{const h=new Headers(cors);h.set('Content-Range','bytes */'+total);return new Response(null,{status:416,headers:h})};
+          if(!m||(!m[1]&&!m[2]))return invalid();
+          if(m[1]){start=Number(m[1]);if(m[2])end=Math.min(Number(m[2]),total-1);}
+          else {const suffix=Number(m[2]);if(!Number.isSafeInteger(suffix)||suffix<1)return invalid();start=Math.max(0,total-suffix);}
+          if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=total||end<start)return invalid();
+          partial=true;
+        }
+        const file=request.method==='HEAD'?await env.SUBMISSIONS_BUCKET.head(key):await env.SUBMISSIONS_BUCKET.get(key,partial?{range:{offset:start,length:end-start+1}}:{});
+        if(!file||file.size!==total)return deny();
         const filename=encodeURIComponent(String(row.original_name).slice(0,160)).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16));
-        return new Response(request.method==='HEAD'?null:file.body,{headers:{'Content-Type':types[ext],'Content-Length':String(file.size),'Content-Disposition':(inline?'inline':'attachment')+"; filename=\"document."+ext+"\"; filename*=UTF-8''"+filename,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox",'Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex,nofollow'}});
+        const headers=new Headers(cors);
+        headers.set('Content-Type',types[ext]);headers.set('Content-Length',String(end-start+1));
+        headers.set('Content-Disposition',(inline?'inline':'attachment')+"; filename=\"document."+ext+"\"; filename*=UTF-8''"+filename);
+        headers.set('X-Content-Type-Options','nosniff');headers.set('Content-Security-Policy',"default-src 'none'; sandbox");
+        headers.set('Referrer-Policy','no-referrer');headers.set('X-Robots-Tag','noindex,nofollow');
+        if(inline)headers.set('Accept-Ranges','bytes');
+        if(partial)headers.set('Content-Range','bytes '+start+'-'+end+'/'+total);
+        return new Response(request.method==='HEAD'?null:file.body,{status:partial?206:200,headers});
       }catch{return respond(request,{error:'download_unavailable'},503,{private:true})}
     }
     const managedAudio=/^\/api\/v1\/public\/audio\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\/([a-f0-9]{64})\.mp3$/.exec(incomingPath);

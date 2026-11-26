@@ -111,3 +111,14 @@ test('attachment download requires explicit permission and published owning reco
  single=true;const inline=await go(path+'?view=1');assert.equal(inline.status,200);assert.match(inline.headers.get('Content-Disposition'),/^inline/);assert.equal(await inline.text(),'%PDF-');
  allowed=false;assert.equal((await go()).status,404);assert.equal((await go(path+'?view=1')).status,404);assert.equal((await go(path,'POST')).status,405);
 });
+
+
+test('approved inline PDF supports byte ranges only after existing permission checks',async()=>{
+ const owner='33333333-3333-4333-a333-333333333333',id='11111111-1111-4111-a111-111111111111',asset='22222222-2222-4222-a222-222222222222';
+ const key='originals/'+owner+'/'+asset+'/original.pdf';const path='/api/v1/public/attachments/documents/'+id+'/'+asset+'/download?view=1';
+ let allowed=true;const env={DB:{prepare(sql){assert.match(sql,/a\.allow_download=1/);assert.match(sql,/p\.published=1/);return {bind:()=>({first:async()=>allowed?{asset_id:asset,owner_id:owner,original_name:'test.pdf',original_bytes:5,view_source:'single_pdf'}:null})}}},SUBMISSIONS_BUCKET:{get:async(k,o)=>k==='meta/'+asset+'.json'?{json:async()=>({id:asset,owner,key,kind:'document',mime:'application/pdf'})}:{size:5,body:o?.range?'%P':'%PDF-'}}};
+ const go=(range,origin='https://dauxuacuadao.info.vn')=>worker.fetch(new Request('https://staging.test'+path,{headers:{Range:range,Origin:origin}}),env,{});
+ const res=await go('bytes=0-1');assert.equal(res.status,206);assert.equal(res.headers.get('Content-Range'),'bytes 0-1/5');assert.equal(res.headers.get('Access-Control-Allow-Origin'),'https://dauxuacuadao.info.vn');assert.equal(await res.text(),'%P');
+ assert.equal((await go('bytes=10-20')).status,416);assert.equal((await go('bytes=0-1','https://other.invalid')).headers.get('Access-Control-Allow-Origin'),null);
+ allowed=false;assert.equal((await go('bytes=0-1')).status,404);
+});
