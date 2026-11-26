@@ -40,7 +40,7 @@ function attach(target,kind,id,{before=null,photos=false,lazy=false}={}){
    const line=el('div');line.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0;';
    const name=el('span',row.original_name||'Tài liệu');name.style.cssText='flex:1;min-width:100px;overflow-wrap:anywhere';line.append(name);
    if(Number(row.has_reader)===1||row.has_reader===undefined){
-    const link=el('a','Đọc tài liệu ↗','btn btn-outline');const url=new URL('r2-xem.html',new URL('.',location.href));url.searchParams.set('asset',row.asset_id);url.searchParams.set('name',row.original_name||'Tài liệu');link.href=url.href;line.append(link);
+    const link=el('a','Đọc tài liệu ↗','btn btn-outline');const url=new URL('r2-xem.html',new URL('.',location.href));url.searchParams.set('asset',row.asset_id);url.searchParams.set('name',row.original_name||'Tài liệu');if(Number(row.allow_download)===1&&/\.pdf$/i.test(row.original_name||''))url.searchParams.set('download',api+'attachments/'+encodeURIComponent(kind)+'/'+encodeURIComponent(id)+'/'+encodeURIComponent(row.asset_id)+'/download');link.href=url.href;line.append(link);
    }else if(Number(row.single_pdf)===1&&Number(row.allow_download)===1){
     const link=el('a','Xem PDF ↗','btn btn-outline');const url=new URL('r2-xem.html',new URL('.',location.href));url.searchParams.set('attachment',api+'attachments/'+encodeURIComponent(kind)+'/'+encodeURIComponent(id)+'/'+encodeURIComponent(row.asset_id)+'/download?view=1');url.searchParams.set('name',row.original_name||'Tài liệu PDF');link.href=url.href;line.append(link);
    }

@@ -157,6 +157,7 @@ async function initializeApproved(){
       :'Ảnh xem đã được tối ưu; ảnh nguyên mẫu vẫn lưu riêng.';
     el('r2-controls').hidden=false;
     el('r2-scroller').hidden=false;
+    if(data.kind==='document'&&query.get('download'))void (async()=>{try{const u=new URL(query.get('download'));if(!u.search){u.search='?view=1';const valid=attachmentSource(u.href);if(valid&&valid.pathname.split('/')[7]===id){const parts=valid.pathname.split('/');const check=new URL(ATTACH_API+'/api/v1/public/attachments');check.searchParams.set('owner_kind',parts[5]);check.searchParams.set('owner_id',parts[6]);check.searchParams.set('limit','100');const result=await fetch(check,{cache:'no-store'});if(result.ok&&(await result.json()).data?.some(x=>x.asset_id===id&&Number(x.allow_download)===1&&/\.pdf$/i.test(x.original_name||''))){valid.search='';const dl=el('r2-pdf-download');dl.href=valid.href;dl.hidden=false;}}}}catch{}})();
     if(data.allowDownload===true&&data.kind==='image'){
       const anchor=el('r2-download');anchor.href=API+'/v1/public/'+id+'/download';anchor.hidden=false;
     }
@@ -181,17 +182,17 @@ function openContinuous(){
   observer=new IntersectionObserver(entries=>{
     for(const entry of entries){const figure=entry.target,n=Number(figure.dataset.page),view=figure.firstElementChild;if(!entry.isIntersecting)continue;
       if(entry.intersectionRatio>.3){page=n;adjust()}
-      if(view.dataset.loaded==='1')continue;view.dataset.loaded='1';
+      if(view.dataset.loaded!=='0')continue;view.dataset.loaded='1';
       if(mode==='legacy-pdf'){
-        (async()=>{try{const p=await pdfDoc.getPage(n);if(epoch!==scrollEpoch)return;const v=p.getViewport({scale:Math.min(2,1100/p.getViewport({scale:1}).width)});view.width=Math.ceil(v.width);view.height=Math.ceil(v.height);view.style.aspectRatio='auto';await p.render({canvasContext:view.getContext('2d',{alpha:false}),viewport:v}).promise;}catch{view.dataset.loaded='0'}})();
+        (async()=>{try{const p=await pdfDoc.getPage(n);if(epoch!==scrollEpoch)return;const v=p.getViewport({scale:Math.min(2,1100/p.getViewport({scale:1}).width)});view.width=Math.ceil(v.width);view.height=Math.ceil(v.height);view.style.aspectRatio='auto';await p.render({canvasContext:view.getContext('2d',{alpha:false}),viewport:v}).promise;view.dataset.loaded='2';}catch{view.dataset.loaded='0'}})();
       }else{view.src=pageUrl(n);view.onload=()=>view.style.aspectRatio='auto';view.onerror=()=>{view.dataset.loaded='0';retry('Có trang chưa tải được. Hãy thử lại.')} }
     }
-    if(mode==='legacy-pdf')for(const figure of wrap.children){const n=Number(figure.dataset.page),view=figure.firstElementChild;if(Math.abs(n-page)>4&&view.dataset.loaded==='1'){view.width=1;view.height=1;view.style.aspectRatio='3/4';view.dataset.loaded='0'}}
+    if(mode==='legacy-pdf')for(const figure of wrap.children){const n=Number(figure.dataset.page),view=figure.firstElementChild;if(Math.abs(n-page)>4&&view.dataset.loaded==='2'){view.width=1;view.height=1;view.style.aspectRatio='3/4';view.dataset.loaded='0'}}
   },{root:wrap,rootMargin:'120px 0px',threshold:[0,.35,.7]});
   for(const figure of wrap.children)observer.observe(figure);
   wrap.querySelector('[data-page="'+page+'"]')?.scrollIntoView({block:'start'});
 }
-el('r2-back').addEventListener('click',()=>{if(document.referrer&&new URL(document.referrer).origin===location.origin&&history.length>1)history.back();else location.assign('./index.html')});
+el('r2-back').addEventListener('click',()=>{try{const raw=sessionStorage.getItem('gdd-reader-return');sessionStorage.removeItem('gdd-reader-return');const target=new URL(raw||document.referrer||'./index.html',location.href);if(target.origin===location.origin&&!target.pathname.endsWith('/r2-xem.html')){location.assign(target.href);return}}catch{}location.assign('./index.html')});
 el('r2-full').addEventListener('click',()=>{const active=document.body.classList.toggle('reader-expanded');el('r2-full').setAttribute('aria-pressed',String(active));el('r2-full').textContent=active?'Thu về':'Toàn màn';});
 el('r2-retry').addEventListener('click',()=>{if(info){if(continuous){closeContinuous();openContinuous()}else show(page)}else location.reload()});
 el('r2-jump').addEventListener('change',e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&info)show(n)});

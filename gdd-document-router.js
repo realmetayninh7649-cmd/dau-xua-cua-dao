@@ -43,7 +43,7 @@
   }
   function readerUrl(raw){
     const type=kind(raw);
-    if(type==='r2'){const target=new URL(READER_PATH,window.location.origin);target.searchParams.set('asset',parse(raw).searchParams.get('asset'));return target.href}
+    if(type==='r2'){const old=parse(raw),target=new URL(READER_PATH,window.location.origin);for(const key of ['asset','name','download'])if(old.searchParams.has(key))target.searchParams.set(key,old.searchParams.get(key));return target.href}
     if(type==='reader'){
       const old=parse(raw),mapped=approvedReaderId(old?.searchParams.get('source')||'');
       if(mapped){const target=new URL(READER_PATH,window.location.origin);target.searchParams.set('asset',mapped);return target.href}
@@ -69,6 +69,7 @@
     if(!type.startsWith('legacy-')&&!['r2','reader'].includes(type))return;
     const to=readerUrl(raw);
     event.preventDefault();
+    try{sessionStorage.setItem('gdd-reader-return',location.href)}catch{}
     window.location.assign(to);
   }
   window.GDDDocumentReader=Object.freeze({kind,readerUrl});
