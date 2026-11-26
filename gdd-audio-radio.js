@@ -141,6 +141,7 @@ const state={category:'all',rows:[],page:0,fetching:false,refreshPending:false,s
 const player=$('#gdd-radio-audio'),list=$('#gdd-radio-list'),listStatus=$('#gdd-radio-list-status'),playStatus=$('#gdd-radio-play-status'),more=$('#gdd-radio-more');
 const previous=$('#gdd-radio-previous'),next=$('#gdd-radio-next'),repeatOne=$('#gdd-radio-repeat-one'),retry=$('#gdd-radio-retry');
 const REPEAT_KEY='gdd-radio-repeat-one-v1';
+let selectionSerial=0,advancing=false;
 let repeatEnabled=false;
 try{repeatEnabled=localStorage.getItem(REPEAT_KEY)==='on'}catch{}
 player.loop=repeatEnabled;
@@ -156,7 +157,7 @@ const progressKey=id=>'gdd-radio-position-'+id;
 const progressFor=id=>{try{return Number(localStorage.getItem(progressKey(id)))||0}catch{return 0}};
 function saveProgress(){
  if(!state.selected||!Number.isFinite(player.currentTime))return;
- try{localStorage.setItem(progressKey(state.selected.id),String(Math.floor(player.currentTime)))}catch{}
+ try{if(player.ended||(Number.isFinite(player.duration)&&player.duration>0&&player.currentTime>=player.duration-1))localStorage.removeItem(progressKey(state.selected.id));else localStorage.setItem(progressKey(state.selected.id),String(Math.floor(player.currentTime)))}catch{}
 }
 function radioIcon(category){
  const paths={
@@ -177,8 +178,9 @@ function renderList(){
  list.innerHTML=state.rows.length?state.rows.map(itemHTML).join(''):'<p class="gdd-radio-status">Chưa có chương trình công khai trong chuyên mục này.</p>';
  syncControls();
 }
-function selectProgram(row,autoplay=false){
+function selectProgram(row,autoplay=false,fromBeginning=false){
  if(!row)return;
+ const serial=++selectionSerial;
  const changed=state.selected?.id!==row.id;
  if(changed){
   saveProgress();player.pause();state.selected=row;
@@ -186,9 +188,10 @@ function selectProgram(row,autoplay=false){
   const url=safe(row.audio_url);
   if(!url){playStatus.textContent='Không có đường dẫn MP3 hợp lệ.';return}
   player.src=url;player.load();
-  const saved=progressFor(row.id);
+  const saved=fromBeginning?0:progressFor(row.id);
+  if(fromBeginning)try{localStorage.removeItem(progressKey(row.id))}catch{}
   player.addEventListener('loadedmetadata',()=>{
-   if(state.selected?.id===row.id&&saved>10&&Number.isFinite(player.duration)&&saved<player.duration-15)
+   if(serial===selectionSerial&&state.selected?.id===row.id&&saved>10&&Number.isFinite(player.duration)&&saved<player.duration-15)
     try{player.currentTime=saved;playStatus.textContent='Nghe tiếp từ '+Math.floor(saved/60)+' phút.'}catch{}
   },{once:true});
  }
@@ -205,7 +208,7 @@ function selectProgram(row,autoplay=false){
  window.GDDPublicAttachments?.attach(detail,'gdd_audio_programs',row.id,{photos:true,lazy:true});
  if(safe(row.audio_url)){const a=document.createElement('a');a.className='gdd-radio-source';a.href=safe(row.audio_url);a.target='_blank';a.rel='noopener noreferrer';a.textContent='Mở file âm thanh gốc ↗';detail.append(a)}
  renderList();
- if(autoplay){playStatus.textContent='Đang mở chương trình…';player.play().catch(()=>{playStatus.textContent='Chạm ▶ trong trình phát để nghe.'})}
+ if(autoplay){playStatus.textContent=fromBeginning?'Đang chuyển sang bài tiếp theo…':'Đang mở chương trình…';player.play().catch(()=>{if(serial===selectionSerial)playStatus.textContent='Chạm ▶ trong trình phát để nghe.'})}
 }
 async function fetchPublic(reset=true){
  if(state.fetching){if(reset)state.refreshPending=true;return;}
@@ -233,7 +236,7 @@ async function fetchPublic(reset=true){
       .slice(offset,offset+size);
   }
   if(state.category!==requestedCategory){state.refreshPending=true;return}
-  state.rows.push(...(data||[]));state.page++;more.hidden=(data||[]).length<size;
+  const seen=new Set(state.rows.map(r=>r.id));state.rows.push(...(data||[]).filter(r=>!seen.has(r.id)));state.page++;more.hidden=(data||[]).length<size;
   renderList();listStatus.textContent='';
   if(reset){
    // The visible playlist and the selected song should stay in sync after filtering.
@@ -257,7 +260,7 @@ async function fetchPublic(reset=true){
 }
 section.addEventListener('click',e=>{
  const filter=e.target.closest('[data-gdd-radio-filter]');
- if(filter){state.category=filter.dataset.gddRadioFilter;section.querySelectorAll('[data-gdd-radio-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===filter)));fetchPublic(true);return}
+ if(filter){selectionSerial++;state.category=filter.dataset.gddRadioFilter;section.querySelectorAll('[data-gdd-radio-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===filter)));fetchPublic(true);return}
  const item=e.target.closest('[data-gdd-radio-play]');
  if(item){const row=state.rows.find(r=>r.id===item.dataset.gddRadioPlay);if(row)selectProgram(row,true)}
 });
@@ -311,12 +314,41 @@ repeatOne.addEventListener('click',()=>{
  syncControls();
  playStatus.textContent=repeatEnabled?
   'Đã bật lặp lại: bài đang nghe sẽ tự phát lại từ đầu.':
-  'Đã tắt lặp lại bài.';
+  'Đã tắt lặp lại bài. Hết bài sẽ tự chuyển sang bài kế tiếp.';
 });
 let lastProgress=0;
 player.addEventListener('timeupdate',()=>{if(Date.now()-lastProgress>5000){lastProgress=Date.now();saveProgress()}});
 player.addEventListener('pause',saveProgress);
-player.addEventListener('ended',()=>{try{if(state.selected)localStorage.removeItem(progressKey(state.selected.id))}catch{};playStatus.textContent='Đã nghe hết số phát thanh.'});
+// Automatic playback follows the current category, including unloaded playlist pages.
+function nextAutomaticTrack(rows,selected){
+ const i=rows.findIndex(r=>r.id===selected?.id);
+ if(i<0)return null;
+ return rows.slice(i+1).find(r=>r.id!==selected.id&&r.category===selected.category&&r.audio_url)||null;
+}
+async function advanceAfterEnd(){
+ if(!state.selected||advancing||repeatEnabled)return;
+ const selected=state.selected,serial=selectionSerial,category=state.category;
+ const stillCurrent=()=>serial===selectionSerial&&state.selected?.id===selected.id&&state.category===category&&!repeatEnabled&&player.ended;
+ advancing=true;
+ try{
+  let chosen=nextAutomaticTrack(state.rows,selected);
+  while(!chosen&&!more.hidden&&stillCurrent()&&!state.fetching){
+   const before=state.page;
+   await fetchPublic(false);
+   if(!stillCurrent()||state.page===before)break;
+   chosen=nextAutomaticTrack(state.rows,selected);
+  }
+  if(!stillCurrent())return;
+  if(chosen){selectProgram(chosen,true,true);return}
+  playStatus.textContent='Đã nghe hết danh sách trong chuyên mục.';
+ }finally{advancing=false}
+}
+player.addEventListener('ended',()=>{
+ try{if(state.selected)localStorage.removeItem(progressKey(state.selected.id))}catch{}
+ if(repeatEnabled)return;
+ playStatus.textContent='Đã nghe hết bài. Đang kiểm tra bài tiếp theo…';
+ void advanceAfterEnd();
+});
 player.addEventListener('play',()=>{
  document.dispatchEvent(new Event('gdd:radio-play'));
  playStatus.textContent='Đang nghe '+(state.selected?.title||'Âm Thanh Đại Đạo');
@@ -335,7 +367,7 @@ retry.addEventListener('click',()=>{
  if(!url)return;
  retry.hidden=true;player.hidden=false;
  playStatus.textContent='Đang kiểm tra lại tệp MP3…';
- player.src=url;player.load();
+ selectionSerial++;player.src=url;player.load();
  player.play().catch(()=>{});
 });
 player.addEventListener('loadeddata',()=>{retry.hidden=true;player.hidden=false});
