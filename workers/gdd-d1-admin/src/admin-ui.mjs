@@ -23,7 +23,7 @@ export const ADMIN_HTML=`<!doctype html>
 </div></header>
 <main class="wrap">
 <section class="notice" role="status"><strong>Website công khai đã hoạt động.</strong> · Bản gốc được giữ riêng.</section>
- <nav class="quick-links" aria-label="Liên kết"><button id="admin-app-refresh" type="button" class="admin-app-refresh"><span aria-hidden="true">↻</span> Làm mới ứng dụng</button><a href="https://dauxuacuadao.info.vn/" target="_blank" rel="noopener noreferrer">Mở website công khai</a></nav><p id="admin-app-refresh-status" role="status" aria-live="polite"></p>
+ <nav class="quick-links" aria-label="Liên kết"><button id="admin-app-refresh" type="button" class="admin-app-refresh"><span aria-hidden="true">↻</span> Làm mới ứng dụng</button><a href="/admin/research">Trung tâm Sưu tầm &amp; Khảo chứng</a><a href="https://dauxuacuadao.info.vn/" target="_blank" rel="noopener noreferrer">Mở website công khai</a></nav><p id="admin-app-refresh-status" role="status" aria-live="polite"></p>
 <section aria-labelledby="work-title" id="work-editor-panel" hidden>
 <div class="heading"><h2 id="work-title">Soạn bài &amp; quản lý tư liệu</h2></div>
 <div class="admin-home" aria-label="Lối tắt quản trị">

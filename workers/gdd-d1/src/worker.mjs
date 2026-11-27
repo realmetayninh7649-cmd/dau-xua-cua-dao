@@ -72,6 +72,13 @@ function parsePage(url){
 export default {
   async fetch(request,env,ctx){
     const incomingPath=new URL(request.url).pathname;
+    if(incomingPath==='/api/v1/public/research-utilities'){
+      if(request.method!=='GET')return respond(request,{error:'read_only'},405,{private:true});
+      try{
+        const {results}=await env.DB.prepare("SELECT id,kind,title,excerpt,speaker,source_url,citation,source_date FROM gdd_research_items WHERE state='approved' AND visible=1 AND rights<>'unknown' AND length(excerpt)>0 AND length(citation)>0 ORDER BY id LIMIT 500").all();
+        return respond(request,{data:results||[]},200,{private:true});
+      }catch{return respond(request,{data:[],unavailable:true},503,{private:true})}
+    }
     if(incomingPath==='/api/v1/contributions'){
       return handleContribution(request,env);
     }
