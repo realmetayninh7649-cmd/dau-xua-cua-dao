@@ -57,6 +57,10 @@
     }
     return pending;
   }
+  async function utilitySources(){
+    const result=await Promise.allSettled([pages('documents'),pages('posts')]);
+    return {documents:result[0].status==='fulfilled'?result[0].value:[],posts:result[1].status==='fulfilled'?result[1].value:[]};
+  }
   async function calendarSources(){
     // Fresh targeted D1 queries: do not wait for or invalidate the entire archive cache.
     if(window.SITE_CONFIG?.publicReadProvider==='d1-staging'){
@@ -79,5 +83,5 @@
         ||String(a.created_at||'').localeCompare(String(b.created_at||'')))
       ;
   }
-  window.GDDPublicReadOnly=Object.freeze({load,rows,find,album,calendarSources});
+  window.GDDPublicReadOnly=Object.freeze({load,rows,find,album,calendarSources,utilitySources});
 })();
