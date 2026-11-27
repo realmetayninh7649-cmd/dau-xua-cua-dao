@@ -84,9 +84,23 @@ function cardHeader(card,kind,name,kicker){
  const header=make('div','gdd-ornate-heading'),emblem=make('span','gdd-ornate-emblem'),labels=make('div','gdd-ornate-labels');
  emblem.append(ornament(kind));if(kicker)labels.append(make('div','gdd-research-kicker',kicker));labels.append(make('h3','',name));header.append(emblem,labels);card.append(header,make('div','gdd-ornate-rule'));
 }
-function renderQuote(card,row,name){
- card.classList.add('gdd-daily-quote');
- cardHeader(card,'quote',name,'');card.append(make('blockquote','',row.excerpt),make('strong','gdd-quote-speaker',row.speaker),make('small','gdd-quote-date',row.source_date));
+const quoteMotifs=[
+ {name:'lotus',path:'M60 23C43 23 31 15 29 7c13 1 24 6 31 16C48 12 52 5 60 1c8 4 12 11 0 22C67 13 78 8 91 7c-2 8-14 16-31 16ZM35 25h50'},
+ {name:'cloud',path:'M5 19h28c9 0 10-10 3-10-5 0-6 5-2 6M115 19H87c-9 0-10-10-3-10 5 0 6 5 2 6M43 19h34M60 4l6 6-6 6-6-6z'},
+ {name:'diamond',path:'M5 14h38M77 14h38M60 2l12 12-12 12-12-12zM60 8l6 6-6 6-6-6zM40 14l-4-4m4 4-4 4m44-4 4-4m-4 4 4 4'},
+ {name:'scroll',path:'M6 18h32c9 0 8-12 1-12-5 0-7 7-2 8M114 18H82c-9 0-8-12-1-12 5 0 7 7 2 8M49 8h22M49 13h22M54 18h12'},
+ {name:'sun',path:'M8 22h104M42 22a18 18 0 0 1 36 0M60 1v5M44 6l3 4M76 6l-3 4M35 14l4 2M85 14l-4 2'},
+ {name:'floral',path:'M60 14C52 4 48 10 60 14c-12 4-8 10 0 0 8 10 12 4 0 0 12-4 8-10 0 0zM8 14h31l7-6M112 14H81l-7-6M30 14l7 7m53-7-7 7'}
+];
+function quoteMotifIndex(day){return ((day%quoteMotifs.length)+quoteMotifs.length)%quoteMotifs.length}
+function quoteDecoration(day){
+ const motif=quoteMotifs[quoteMotifIndex(day)],ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');
+ svg.setAttribute('viewBox','0 0 120 28');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');svg.setAttribute('class','gdd-quote-decoration');
+ path.setAttribute('d',motif.path);path.setAttribute('stroke','currentColor');path.setAttribute('stroke-width','1');path.setAttribute('fill','none');path.setAttribute('stroke-linejoin','round');path.setAttribute('stroke-linecap','round');svg.append(path);return svg;
+}
+function renderQuote(card,row,name,day){
+ card.classList.add('gdd-daily-quote','gdd-motif-'+quoteMotifs[quoteMotifIndex(day)].name);
+ cardHeader(card,'quote',name,'');const rule=card.querySelector('.gdd-ornate-rule');if(rule)rule.replaceWith(quoteDecoration(day));card.append(make('blockquote','',row.excerpt),make('strong','gdd-quote-speaker',row.speaker),make('small','gdd-quote-date',row.source_date));
 }
 style.textContent+=`
 .gdd-research-card.gdd-ornate-card{position:relative;isolation:isolate;overflow:hidden;border:1px solid #d7c9aa;border-radius:11px;background:linear-gradient(145deg,#fffdf8 65%,#f2ead9);padding:17px 15px 15px;box-shadow:0 2px 7px #3a362408}
@@ -110,6 +124,20 @@ style.textContent+=`
 .gdd-daily-quote blockquote{margin:5px 0 12px;border-top:0;border-bottom:1px solid #d6c6a4;padding:5px 3px 14px;font:italic 17px/1.85 Georgia,serif}
 .gdd-daily-quote .gdd-quote-speaker{letter-spacing:.05em}
 @media(max-width:600px){.gdd-research-card.gdd-ornate-card{padding:16px 15px}.gdd-ornate-card .gdd-ornate-heading h3{font-size:16px}.gdd-ornate-card .gdd-archive-summary{font-size:14px}.gdd-ornate-card .gdd-ornate-link{min-height:44px}.gdd-daily-quote blockquote{font-size:18px}}
+`;
+style.textContent+=`
+.gdd-daily-quote .gdd-quote-decoration{display:block;width:min(170px,75%);height:36px;color:#a58b56;margin:9px auto 7px;overflow:visible}
+.gdd-research-card.gdd-motif-lotus{background:linear-gradient(145deg,#fffdf7 70%,#e9eee4)}
+.gdd-research-card.gdd-motif-cloud{background:linear-gradient(145deg,#fffdf8 70%,#e9edf0)}
+.gdd-research-card.gdd-motif-diamond{background:linear-gradient(145deg,#fffdf8 70%,#f0e4cc)}
+.gdd-research-card.gdd-motif-scroll{background:linear-gradient(145deg,#fffdf8 70%,#efe5d9);border-style:double;border-width:3px}
+.gdd-research-card.gdd-motif-sun{background:linear-gradient(145deg,#fffdf8 65%,#f5ead0)}
+.gdd-research-card.gdd-motif-floral{background:linear-gradient(145deg,#fffdf8 65%,#eee8db)}
+.gdd-motif-cloud:before,.gdd-motif-cloud:after{border-radius:50%}
+.gdd-motif-diamond:before,.gdd-motif-diamond:after{border-radius:0}
+.gdd-motif-scroll:before,.gdd-motif-scroll:after{border-radius:8px}
+.gdd-motif-sun:before,.gdd-motif-sun:after{border-radius:50%;box-shadow:0 0 0 4px #b8a16f22,0 0 0 9px #b8a16f14,0 0 0 14px #b8a16f0b}
+.gdd-motif-floral:before,.gdd-motif-floral:after{border-radius:40% 0 40% 0}
 `;
 let busy=false,last=0;
 async function refresh(){
@@ -136,7 +164,7 @@ async function refresh(){
  if(!items.length&&kind==='featured')items=featured;
  if(!items.length)continue;
  const row=items[day%items.length],card=make('section','gdd-research-card');
- if(kind==='quote'){renderQuote(card,row,name);fragment.append(card);continue;}
+ if(kind==='quote'){renderQuote(card,row,name,day);fragment.append(card);continue;}
  cardHeader(card,kind,name,kicker);card.append(make('p','gdd-research-title',row.title));if(row.source_date)card.append(make('small','gdd-ornate-date',row.source_date));if(row.excerpt)card.append(make('p','gdd-archive-summary',row.archiveKind?row.excerpt:clipArchiveText(row.excerpt)));
  if(row.speaker)card.append(make('strong','',row.speaker));
  card.append(make('small','gdd-ornate-source',row.citation));const link=make('a','gdd-ornate-link',kind==='ritual'?'Mở xem kinh / nghi lễ ↗':kind==='history'?'Xem tư liệu lịch sử ↗':'Xem tư liệu ↗');link.href=safeLink(row.source_url);if(!row.archiveKind){link.target='_blank';link.rel='noopener noreferrer'}card.append(link);fragment.append(card);
