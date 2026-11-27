@@ -36,11 +36,195 @@ jobs:
           GDD_BACKUP_CONFIRMED_THROUGH_UTC: ${{ vars.GDD_BACKUP_CONFIRMED_THROUGH_UTC }}
           GDD_BACKUP_UNTIL_UTC: ${{ inputs.until_utc }}
         run: python scripts/gdd_r2_daily_delta.py
-      - name: "Temporary encrypted transfer artifact; skip if no new original"
+      - name: "Transfer encrypted part 01, if present"
         uses: actions/upload-artifact@v4
         with:
-          name: gdd-originals-delta-${{ github.run_id }}
-          path: /tmp/gdd-daily-encrypted/*.tar.gpg
+          name: gdd-originals-delta-${{ github.run_id }}-part-01
+          path: /tmp/gdd-daily-encrypted/*-part-01.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 02, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-02
+          path: /tmp/gdd-daily-encrypted/*-part-02.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 03, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-03
+          path: /tmp/gdd-daily-encrypted/*-part-03.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 04, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-04
+          path: /tmp/gdd-daily-encrypted/*-part-04.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 05, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-05
+          path: /tmp/gdd-daily-encrypted/*-part-05.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 06, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-06
+          path: /tmp/gdd-daily-encrypted/*-part-06.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 07, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-07
+          path: /tmp/gdd-daily-encrypted/*-part-07.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 08, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-08
+          path: /tmp/gdd-daily-encrypted/*-part-08.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 09, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-09
+          path: /tmp/gdd-daily-encrypted/*-part-09.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 10, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-10
+          path: /tmp/gdd-daily-encrypted/*-part-10.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 11, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-11
+          path: /tmp/gdd-daily-encrypted/*-part-11.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 12, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-12
+          path: /tmp/gdd-daily-encrypted/*-part-12.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 13, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-13
+          path: /tmp/gdd-daily-encrypted/*-part-13.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 14, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-14
+          path: /tmp/gdd-daily-encrypted/*-part-14.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 15, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-15
+          path: /tmp/gdd-daily-encrypted/*-part-15.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 16, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-16
+          path: /tmp/gdd-daily-encrypted/*-part-16.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 17, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-17
+          path: /tmp/gdd-daily-encrypted/*-part-17.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 18, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-18
+          path: /tmp/gdd-daily-encrypted/*-part-18.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 19, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-19
+          path: /tmp/gdd-daily-encrypted/*-part-19.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 20, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-20
+          path: /tmp/gdd-daily-encrypted/*-part-20.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 21, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-21
+          path: /tmp/gdd-daily-encrypted/*-part-21.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 22, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-22
+          path: /tmp/gdd-daily-encrypted/*-part-22.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 23, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-23
+          path: /tmp/gdd-daily-encrypted/*-part-23.tar.gpg
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+      - name: "Transfer encrypted part 24, if present"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-originals-delta-${{ github.run_id }}-part-24
+          path: /tmp/gdd-daily-encrypted/*-part-24.tar.gpg
           if-no-files-found: ignore
           retention-days: 7
           compression-level: 0
