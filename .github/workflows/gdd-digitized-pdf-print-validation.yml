@@ -71,3 +71,7 @@ jobs:
           doc.close()
           print("PRINT PDF PASS: original-size images only, no brand cover, no header/footer, ready for A4 printing")
           PY
+
+      - name: "Read-only live audit of published albums and approved print derivatives"
+        continue-on-error: true
+        run: node tests/digitized-pdf-live-source-audit.mjs

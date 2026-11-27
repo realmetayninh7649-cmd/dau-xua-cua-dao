@@ -104,7 +104,7 @@
     if(!['people','posts','documents'].includes(record.kind))throw Error('Chuyên mục không hỗ trợ xuất tệp.');
     const read=async url=>{
       const response=await fetch(url,{credentials:'omit',cache:'no-store'});
-      if(!response.ok)throw Error('Kho tư liệu công khai chưa phản hồi (HTTP '+response.status+')');
+      if(!response.ok)throw Error('Kho D1 công khai chưa phản hồi (HTTP '+response.status+')');
       return response.json();
     };
     const owner=(await read(api+record.kind+'/'+encodeURIComponent(record.slug))).data;

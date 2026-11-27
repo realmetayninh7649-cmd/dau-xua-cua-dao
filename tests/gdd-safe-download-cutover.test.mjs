@@ -25,7 +25,9 @@ test('no public original download via site image button; official output always 
 });
 test('document export uses printable R2 derivatives and optimized photo previews',()=>{
  const source=fs.readFileSync(new URL('../gdd-document-export.js',import.meta.url),'utf8');
- assert.match(source,/fetch\(window.GDDLegacyImages\?\.printUrl\?\.\(url\)\|\|url/);
+ assert.match(source,/const print=window.GDDLegacyImages\?\.printUrl\?\.\(url\)\|\|url/);
+ assert.match(source,/fetch\(print,/);
+ assert.match(source,/hostname\.endsWith\('\.supabase\.co'\)/);
  assert.match(source,/fetch\(window.GDDLegacyImages\?\.displayUrl\?\.\(url\)\|\|url/);
 });
 test('legacy PDF routed only to 3 verified page-only R2 assets',()=>{
