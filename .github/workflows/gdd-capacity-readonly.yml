@@ -1,0 +1,58 @@
+name: GDD - Read-only live storage capacity
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: ['.github/workflows/gdd-capacity-readonly.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capacity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read only D1 database sizes and R2 object metadata
+        env:
+          ACCOUNT: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          D1_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request,urllib.parse,urllib.error,collections,datetime
+          base='https://api.cloudflare.com/client/v4/accounts/'+os.environ['ACCOUNT']
+          def get(path,token):
+              req=urllib.request.Request(base+path,headers={'Authorization':'Bearer '+token,'User-Agent':'GDD-capacity-audit/1.0'})
+              with urllib.request.urlopen(req,timeout=15) as response: d=json.load(response)
+              if d.get('success') is not True: raise ValueError('API unsuccessful')
+              return d
+          for name,dbid in [('live','56bf9fcc-3f9a-43e5-82f7-8c521f5b370a'),('archive','bffcd3e0-e46e-4280-b8dd-82e8d3402b3d'),('sandbox','cf3f0c4e-6cdd-4360-b421-03c87717c688')]:
+              try:
+                  d=get('/d1/database/'+dbid,os.environ['D1_TOKEN'])['result']
+                  print('D1_SIZE',name,json.dumps({k:d.get(k) for k in ('file_size','num_tables','name')}),flush=True)
+              except urllib.error.HTTPError as e: print('D1_BLOCKED',name,e.code,flush=True)
+              except Exception as e: print('D1_BLOCKED',name,type(e).__name__,flush=True)
+          for tokenname in ('CF_TOKEN','D1_TOKEN'):
+              total=0; count=0; cursor=None; groups=collections.defaultdict(lambda:[0,0])
+              try:
+                  for i in range(100):
+                      args={'per_page':1000}
+                      if cursor: args['cursor']=cursor
+                      d=get('/r2/buckets/gdd-dau-xua-cua-dao/objects?'+urllib.parse.urlencode(args),os.environ[tokenname])
+                      for o in d['result']:
+                          n=int(o['size']); count+=1;total+=n
+                          prefix=o['key'].split('/',1)[0]
+                          group=prefix if prefix in ('originals','derivatives','meta','legacy-originals','legacy-preview','legacy-print','audio','radio','documents','pdf','attachments') else 'other'
+                          groups[group][0]+=1;groups[group][1]+=n
+                      info=d.get('result_info',{})
+                      if info.get('is_truncated') is False or (not info.get('cursor') and len(d['result'])<1000):
+                          print('R2_CAPACITY',json.dumps({'objects':count,'bytes':total,'groups':groups,'pages':i+1}),flush=True)
+                          break
+                      new=info.get('cursor')
+                      if not new or new==cursor: raise ValueError('Incomplete pagination')
+                      cursor=new
+                  else: raise ValueError('Page limit reached')
+                  break
+              except urllib.error.HTTPError as e: print('R2_BLOCKED',tokenname,e.code,flush=True)
+              except Exception as e: print('R2_BLOCKED',tokenname,type(e).__name__,flush=True)
+          print('AUDIT_UTC',datetime.datetime.now(datetime.timezone.utc).isoformat())
+          PY
