@@ -374,6 +374,61 @@ player.addEventListener('loadeddata',()=>{retry.hidden=true;player.hidden=false}
 document.addEventListener('gdd:chant-play',()=>{if(!player.paused)player.pause()});
 document.addEventListener('play',e=>{if(e.target instanceof HTMLVideoElement&&!player.paused)player.pause()},true);
 document.addEventListener('click',e=>{if(e.target.closest?.('[data-video-play],[data-open-kind="videos"]')&&!player.paused)player.pause()},true);
+// Floating playback indicator: no second media element, no audio analysis or extra network requests.
+function floatingRadioMode({started,selected,paused,ended,error,hidden,waiting}){
+ if(!started||!selected||ended||error||hidden)return 'hidden';
+ return paused?'paused':waiting?'waiting':'playing';
+}
+function mountFloatingRadio(){
+ if(document.getElementById('gdd-floating-radio'))return;
+ const css=document.createElement('style');css.id='gdd-floating-radio-style';css.textContent=
+ '#gdd-floating-radio{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:65;display:flex;flex-direction:column;align-items:flex-end;gap:8px;font-family:system-ui,sans-serif}'+
+ '#gdd-floating-radio[hidden],#gdd-floating-radio-panel[hidden]{display:none!important}'+
+ '#gdd-floating-radio button{cursor:pointer;touch-action:manipulation;font:inherit}'+
+ '#gdd-floating-radio-toggle{display:flex;align-items:center;justify-content:center;width:46px;height:46px;padding:0;border:1px solid #c7b17d;border-radius:50%;background:#194b42;color:#fff5df;box-shadow:0 3px 12px #163c3633}'+
+ '#gdd-floating-radio-toggle .gdd-wave{display:flex;align-items:center;justify-content:center;gap:3px;height:24px}'+
+ '#gdd-floating-radio-toggle .gdd-wave i{width:3px;border-radius:4px;background:currentColor;height:12px;transform-origin:center}'+
+ '#gdd-floating-radio-toggle .gdd-wave i:nth-child(1){height:8px;animation-delay:-.25s}#gdd-floating-radio-toggle .gdd-wave i:nth-child(2){height:17px;animation-delay:-.6s}#gdd-floating-radio-toggle .gdd-wave i:nth-child(3){height:23px;animation-delay:-.12s}#gdd-floating-radio-toggle .gdd-wave i:nth-child(4){height:15px;animation-delay:-.43s}#gdd-floating-radio-toggle .gdd-wave i:nth-child(5){height:9px;animation-delay:-.78s}'+
+ '#gdd-floating-radio[data-mode="playing"] .gdd-wave i{animation-name:gdd-float-wave;animation-duration:.95s;animation-iteration-count:infinite;animation-timing-function:ease-in-out}'+
+ '@keyframes gdd-float-wave{0%,100%{transform:scaleY(.45)}45%{transform:scaleY(1.12)}70%{transform:scaleY(.65)}}'+
+ '#gdd-floating-radio[data-mode="paused"] #gdd-floating-radio-toggle,#gdd-floating-radio[data-mode="waiting"] #gdd-floating-radio-toggle{background:#45675c}'+
+ '#gdd-floating-radio-panel{width:min(292px,calc(100vw - 48px));border:1px solid #c7b17d;border-radius:12px;background:#fffdf6;color:#194b42;padding:12px;box-shadow:0 7px 26px #12382f33;box-sizing:border-box}'+
+ '#gdd-floating-radio-panel header{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;letter-spacing:.05em;color:#8a7146;font-weight:700}'+
+ '#gdd-floating-radio-panel #gdd-floating-radio-title{font:700 14px/1.5 Georgia,serif;margin:6px 0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}'+
+ '#gdd-floating-radio-panel #gdd-floating-radio-status{font-size:11px;color:#576e62;margin:0 0 8px}'+
+ '#gdd-floating-radio-panel .gdd-floating-actions{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:5px}'+
+ '#gdd-floating-radio-panel button{min-height:40px;padding:5px;border-radius:6px;border:1px solid #d2c5a6;background:#f3efe3;color:#194b42;font-size:11px;font-weight:600}'+
+ '#gdd-floating-radio-panel #gdd-floating-radio-play{background:#194b42;color:#fffdf6}#gdd-floating-radio-panel #gdd-floating-radio-close{min-height:32px;min-width:32px;font-size:18px}'+
+ '#gdd-floating-radio-panel #gdd-floating-radio-open{width:100%;margin-top:6px}#gdd-floating-radio-panel button:disabled{opacity:.45;cursor:default}'+
+ '#gdd-floating-radio button:focus-visible{outline:2px solid #ad8d53;outline-offset:3px}@media(prefers-reduced-motion:reduce){#gdd-floating-radio .gdd-wave i{animation:none!important}}';
+ document.head.append(css);
+ const root=document.createElement('div');root.id='gdd-floating-radio';root.hidden=true;
+ root.innerHTML='<section id="gdd-floating-radio-panel" aria-label="Trình nghe thu nhỏ" hidden><header><span>ÂM THANH ĐẠI ĐẠO</span><button type="button" id="gdd-floating-radio-close" aria-label="Thu gọn trình nghe">×</button></header><p id="gdd-floating-radio-title"></p><p id="gdd-floating-radio-status"></p><div class="gdd-floating-actions"><button type="button" id="gdd-floating-radio-prev" aria-label="Bài trước">⏮ Trước</button><button type="button" id="gdd-floating-radio-play">Tạm dừng</button><button type="button" id="gdd-floating-radio-next" aria-label="Bài tiếp theo">Tiếp ⏭</button></div><button type="button" id="gdd-floating-radio-open">Mở trình nghe đầy đủ ↗</button></section><button type="button" id="gdd-floating-radio-toggle" aria-label="Mở trình nghe thu nhỏ" aria-controls="gdd-floating-radio-panel" aria-expanded="false"><span class="gdd-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></button>';
+ document.body.append(root);
+ const panel=root.querySelector('#gdd-floating-radio-panel'),toggle=root.querySelector('#gdd-floating-radio-toggle'),play=root.querySelector('#gdd-floating-radio-play'),prev=root.querySelector('#gdd-floating-radio-prev'),forward=root.querySelector('#gdd-floating-radio-next');
+ let started=false,waiting=false;
+ const expand=open=>{panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));toggle.setAttribute('aria-label',open?'Thu gọn trình nghe':'Mở trình nghe thu nhỏ')};
+ function sync(){
+  const mode=floatingRadioMode({started,selected:!!state.selected,paused:player.paused,ended:player.ended,error:!!player.error,hidden:player.hidden,waiting});
+  root.dataset.mode=mode;root.hidden=mode==='hidden';if(root.hidden)expand(false);
+  root.querySelector('#gdd-floating-radio-title').textContent=state.selected?.title||'';
+  root.querySelector('#gdd-floating-radio-status').textContent=mode==='playing'?'Đang phát':mode==='waiting'?'Đang tải âm thanh…':'Đã tạm dừng';
+  play.textContent=player.paused?'▶ Phát tiếp':'Ⅱ Tạm dừng';prev.disabled=previous.disabled;forward.disabled=next.disabled;
+ }
+ toggle.addEventListener('click',()=>expand(panel.hidden));
+ root.querySelector('#gdd-floating-radio-close').addEventListener('click',()=>{expand(false);toggle.focus()});
+ play.addEventListener('click',()=>{if(player.paused)player.play().catch(()=>sync());else player.pause();sync()});
+ prev.addEventListener('click',()=>{previous.click();sync()});forward.addEventListener('click',()=>{next.click();sync()});
+ root.querySelector('#gdd-floating-radio-open').addEventListener('click',()=>{expand(false);if(location.hash!=='#am-thanh-dai-dao')location.hash='am-thanh-dai-dao';else{document.getElementById('gdd-p1-audio-panel')?.setAttribute('open','');document.getElementById('gdd-radio-player-box')?.scrollIntoView({block:'start',behavior:'smooth'})}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!panel.hidden){expand(false);toggle.focus()}});
+ player.addEventListener('playing',()=>{started=true;waiting=false;sync()});
+ player.addEventListener('waiting',()=>{waiting=true;sync()});
+ player.addEventListener('stalled',()=>{waiting=true;sync()});
+ for(const event of ['play','pause','ended','error','emptied','loadeddata','canplay','loadstart'])player.addEventListener(event,()=>{if(event==='canplay'||event==='pause'||event==='ended'||event==='error')waiting=false;if(event==='emptied')started=false;queueMicrotask(sync)});
+ const observer=new MutationObserver(sync);observer.observe(previous,{attributes:true,attributeFilter:['disabled']});observer.observe(next,{attributes:true,attributeFilter:['disabled']});observer.observe(player,{attributes:true,attributeFilter:['hidden']});observer.observe(document.getElementById('gdd-radio-title'),{childList:true,characterData:true,subtree:true});
+ sync();
+}
+mountFloatingRadio();
 fetchPublic();
 if(d1Audio)return; // The public website has no legacy admin entry in D1 mode.
 const admin=$('#admin-editor-area'),tabs=admin?.querySelector('.editor-tabs');
