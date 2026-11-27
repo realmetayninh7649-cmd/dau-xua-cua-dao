@@ -146,6 +146,27 @@ function rotatingUtilityItem(items,kind,slot,day){
  return items[((n%items.length)+items.length)%items.length];
 }
 let busy=false,last=0;
+function historyPlace(value){
+ return String(value||'').match(/^Địa điểm:\s*(.+)$/i)?.[1].trim()||'';
+}
+function historyDate(value){
+ const s=String(value||'').trim(),iso=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+ return iso?iso[3]+'/'+iso[2]+'/'+iso[1]+' DL':s;
+}
+function renderHistory(card,row,name,kicker){
+ cardHeader(card,'history',name,kicker);
+ card.append(make('p','gdd-history-date',historyDate(row.source_date)),make('p','gdd-research-title',row.title));
+ const place=historyPlace(row.speaker);
+ if(place)card.append(make('p','gdd-history-place',place));
+ card.append(make('p','gdd-history-excerpt',row.excerpt));
+}
+style.textContent+=`
+.gdd-ornate-history .gdd-history-date{font:700 15px/1.5 Georgia,serif;color:#927544;text-align:center;margin:4px 0 8px;white-space:pre-wrap}
+.gdd-ornate-history .gdd-research-title{text-align:center;font-size:16px;line-height:1.5}
+.gdd-ornate-history .gdd-history-place{font:500 12px/1.55 system-ui;color:#806d4e;text-align:center;margin:6px 0 0}
+.gdd-ornate-history .gdd-history-excerpt{font:15px/1.75 Georgia,serif;color:#34554a;margin:11px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:600px){.gdd-ornate-history .gdd-history-excerpt{font-size:16px}}
+`;
 async function refresh(){
  const aside=document.getElementById('gdd-p1-aside');if(!aside||busy)return;
  let root=document.getElementById('gdd-research-public');if(!root){root=make('div');root.id='gdd-research-public';root.hidden=true;aside.append(root)}
@@ -171,6 +192,7 @@ async function refresh(){
  if(!items.length)continue;
  const row=rotatingUtilityItem(items,kind,slot,day),card=make('section','gdd-research-card');
  if(kind==='quote'){renderQuote(card,row,name,slot);quotes.append(card);continue;}
+ if(kind==='history'){renderHistory(card,row,name,kicker);fragment.append(card);continue;}
  cardHeader(card,kind,name,kicker);card.append(make('p','gdd-research-title',row.title));if(row.source_date)card.append(make('small','gdd-ornate-date',row.source_date));if(row.excerpt)card.append(make('p','gdd-archive-summary',row.archiveKind?row.excerpt:clipArchiveText(row.excerpt)));
  if(row.speaker)card.append(make('strong','',row.speaker));
  card.append(make('small','gdd-ornate-source',row.citation));const link=make('a','gdd-ornate-link',kind==='ritual'?'Mở xem kinh / nghi lễ ↗':kind==='history'?'Xem tư liệu lịch sử ↗':'Xem tư liệu ↗');link.href=safeLink(row.source_url);if(!row.archiveKind){link.target='_blank';link.rel='noopener noreferrer'}card.append(link);fragment.append(card);
