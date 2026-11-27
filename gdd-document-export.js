@@ -236,15 +236,31 @@
       reader.readAsDataURL(blob);
     });
   }
-  async function fullResolutionPrintScan(url){
+  function approvedPreviewForPrint(url){
+    // Only the exact public derivative associated with the published document.
+    // Never request a private object or a guessed original/storage path.
+    const display=window.GDDLegacyImages?.displayUrl?.(url)||url;
+    try{
+      const u=new URL(display);
+      if(u.origin!=='https://gdd-r2-gateway.realmetayninh7649.workers.dev'||u.search||u.hash||u.username||u.password)return '';
+      if(/^\/v1\/public\/[a-f0-9-]{36}\/preview$/i.test(u.pathname))return u.href;
+      if(/^\/v1\/legacy-preview\/documents\/[A-Za-z0-9_./-]+\.webp$/i.test(u.pathname)&&!u.pathname.split('/').some(p=>p==='..'||p==='.'))return u.href;
+    }catch{}
+    return '';
+  }
+  async function fullResolutionPrintScan(url,{allowPublicPreview=false}={}){
     const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),45000);
-    let response;
+    let response,previewCopy=false;
     try{
       const print=window.GDDLegacyImages?.printUrl?.(url)||url;
-      // Never request the restricted old storage in D1 mode, and never substitute a thumbnail for a print scan.
-      if(window.SITE_CONFIG?.publicReadProvider==='d1-staging'&&new URL(print).hostname.endsWith('.supabase.co'))
-        throw Error('Ảnh này chưa có bản in công khai tại kho R2');
-      response=await fetch(print,{mode:'cors',credentials:'omit',signal:abort.signal});
+      const restricted=window.SITE_CONFIG?.publicReadProvider==='d1-staging'&&new URL(print).hostname.endsWith('.supabase.co');
+      const preview=allowPublicPreview?approvedPreviewForPrint(url):'';
+      if(!restricted&&print!==preview)response=await fetch(print,{mode:'cors',credentials:'omit',signal:abort.signal});
+      if(preview&&(restricted||print===preview||response?.status===404)){
+        previewCopy=true;
+        response=await fetch(preview,{mode:'cors',credentials:'omit',signal:abort.signal});
+      }
+      if(!response)throw Error('Ảnh này chưa có bản in công khai tại kho R2');
     }
     finally{clearTimeout(timer)}
     if(!response.ok)throw Error('Nguồn ảnh không trả dữ liệu (HTTP '+response.status+')');
@@ -271,8 +287,9 @@
       // Do not upscale smaller archival scans, and never edit or upload their source files.
       const landscape=width>height;
       const maxW=landscape?3508:2480,maxH=landscape?2480:3508;
-      const scale=Math.min(1,maxW/width,maxH/height);
-      if(scale===1 && (jpeg||png)){
+      const footer=previewCopy?44:0;
+      const scale=Math.min(1,maxW/width,(maxH-footer)/height);
+      if(!previewCopy&&scale===1 && (jpeg||png)){
         // Preserve native JPEG/PNG bytes when already within the 300-DPI A4 print budget.
         return {data:await readBlobDataURL(blob,jpeg?'image/jpeg':'image/png'),width,height};
       }
@@ -280,30 +297,31 @@
       const outH=Math.max(1,Math.round(height*scale));
       if(outW*outH>12000000)throw Error('Ảnh quá lớn để xử lý PDF A4 an toàn trên điện thoại');
       const canvas=document.createElement('canvas');
-      canvas.width=outW;canvas.height=outH;
+      canvas.width=outW;canvas.height=outH+footer;
       try{
         const ctx=canvas.getContext('2d',{alpha:false});
         if(!ctx)throw Error('Không thể mở vùng xử lý ảnh');
         ctx.imageSmoothingEnabled=true;
         ctx.imageSmoothingQuality='high';
         ctx.fillStyle='#fff';
-        ctx.fillRect(0,0,outW,outH);
+        ctx.fillRect(0,0,outW,outH+footer);
         ctx.drawImage(image,0,0,outW,outH);
+        if(previewCopy){ctx.fillStyle='#444';ctx.font='14px sans-serif';ctx.fillText('dauxuacuadao.info.vn | BAN SAO TU ANH XEM CONG KHAI',8,outH+26,Math.max(1,outW-16));}
         // JPEG scans are exported at 94% quality, instead of embedding oversized originals.
         // PNG and WebP preserve handwriting and fine-line detail via lossless PNG encoding.
-        const mime=jpeg?'image/jpeg':'image/png';
-        const data=canvas.toDataURL(mime,jpeg?.94:undefined);
-        return {data,width:outW,height:outH};
+        const mime=jpeg||previewCopy?'image/jpeg':'image/png';
+        const data=canvas.toDataURL(mime,mime==='image/jpeg'?.94:undefined);
+        return {data,width:outW,height:outH+footer,previewCopy};
       }finally{canvas.width=canvas.height=0}
     }finally{URL.revokeObjectURL(temp)}
   }
   async function preparePrintScans(record,progress){
     const urls=documentScanSources(record),result=[];
     for(let i=0;i<urls.length;i++){
-      progress('Đang lấy ảnh gốc độ phân giải cao '+(i+1)+'/'+urls.length+'…');
-      try{result.push(await fullResolutionPrintScan(urls[i]))}
+      progress('Đang lấy bản ảnh công khai '+(i+1)+'/'+urls.length+'…');
+      try{result.push(await fullResolutionPrintScan(urls[i],{allowPublicPreview:record.kind==='documents'&&window.SITE_CONFIG?.publicReadProvider==='d1-staging'}))}
       catch(error){
-        // Never silently produce a truncated archive PDF or replace a failed original by a tiny thumbnail.
+        // Never omit a page. A public preview copy is marked and reported separately.
         throw Error('Trang ảnh '+(i+1)+'/'+urls.length+' chưa tải được: '+(error?.message||error)+'. Chưa xuất PDF để tránh thiếu trang.');
       }
     }
@@ -467,11 +485,11 @@
   {name:'docProps/core.xml',data:core},{name:'word/document.xml',data:documentXml},
   {name:'word/_rels/document.xml.rels',data:docRels},{name:'word/footer1.xml',data:footerXml},...photoFiles]);
 }
-  function attachBlob(blob,record,format,bar){
+  function attachBlob(blob,record,format,bar,{previewCopy=false}={}){
  const old=bar.querySelector('.gdd-doc-ready');
  if(old){URL.revokeObjectURL(old.href);old.remove()}
  bar.querySelector('.gdd-doc-share')?.remove();
- const name=safeFilename(record.title)+'.'+format;
+ const name=safeFilename(record.title)+(previewCopy?'-ban-xem':'')+'.'+format;
  const url=URL.createObjectURL(blob),link=document.createElement('a');
  link.href=url;link.download=name;link.className='gdd-doc-ready';
  link.textContent='↓ Lưu file '+name;bar.appendChild(link);
@@ -489,7 +507,7 @@
   });
   bar.appendChild(share);
  }
- if(!/iPad|iPhone|iPod/.test(navigator.userAgent))link.click();
+ if(!previewCopy&&!/iPad|iPhone|iPod/.test(navigator.userAgent))link.click();
 }
   async function exportDocument(button,bar){
     if(locked)return;
@@ -511,8 +529,9 @@
         const blob=await new Promise((resolve,reject)=>{
           try{make.createPdf(imageOnlyDocumentPdf(record,scans)).getBlob(resolve)}catch(e){reject(e)}
         });
-        attachBlob(blob,record,'pdf',bar);
-        progress('Đã tạo PDF '+scans.length+' trang ảnh tư liệu, tối ưu theo khổ A4 300 DPI (không tự lưu lên kho). Bấm liên kết bên dưới để lưu và in.');
+        const previewCount=scans.filter(x=>x.previewCopy).length;
+        attachBlob(blob,record,'pdf',bar,{previewCopy:previewCount>0});
+        progress(previewCount?'Đã tạo đủ '+scans.length+' trang A4 · '+previewCount+' trang dùng ảnh xem công khai do chưa có bản in độ phân giải cao. Bản này có thể kém nét hơn; bấm Lưu file nếu muốn sử dụng.':'Đã tạo PDF '+scans.length+' trang ảnh tư liệu, tối ưu theo khổ A4 tối đa 300 DPI. Bấm liên kết bên dưới để lưu và in.');
       }else{
         const images=await prepareImages(record,progress);
         progress('Đang tạo bản '+(isPdf?'PDF':'Word')+'…');

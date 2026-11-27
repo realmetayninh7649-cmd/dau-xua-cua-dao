@@ -75,3 +75,16 @@ jobs:
       - name: "Read-only live audit of published albums and approved print derivatives"
         continue-on-error: true
         run: node tests/digitized-pdf-live-source-audit.mjs
+
+      - name: Generate PDFs from the two actual published records reported by the user
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node tests/digitized-pdf-live-render.mjs
+          python - <<'PY'
+          import fitz
+          for i,count in enumerate([1,4]):
+              with fitz.open(f'/tmp/gdd-pdf-test/live-{i}.pdf') as doc:
+                  assert len(doc)==count
+                  for p in doc:
+                      assert len(p.get_images())==1 and abs(p.rect.width-595.28)<2 and abs(p.rect.height-841.89)<2
+              print('LIVE PDF VERIFIED',count,'A4 pages')
+          PY

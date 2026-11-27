@@ -18,7 +18,7 @@ function fakeDocument(){
     addEventListener(){},
     createElement(tag){
       return {nodeName:tag,style:{},setAttribute(){},remove(){},appendChild(){},
-        getContext(){return {drawImage(){},fillRect(){}}},toDataURL(type){return 'data:'+(type||'image/png')+';base64,iVBORw0KGgo='}};
+        getContext(){return {drawImage(){},fillRect(){},fillText(){}}},toDataURL(type){return 'data:'+(type||'image/png')+';base64,iVBORw0KGgo='}};
     }
   };
 }
@@ -34,11 +34,11 @@ class FakeFileReader{
     this.onload?.();
   }
 }
-function mockEnvironment({fetchFunction,imageWidth=1800,imageHeight=2600,d1=false}={}){
+function mockEnvironment({fetchFunction,imageWidth=1800,imageHeight=2600,d1=false,bridge={}}={}){
   class SizedFakeImage extends FakeImage{
     constructor(){super();this.naturalWidth=imageWidth;this.naturalHeight=imageHeight;}
   }
-  const c={window:{addEventListener(){},SITE_CONFIG:d1?{publicReadProvider:'d1-staging'}:{}},document:fakeDocument(),
+  const c={window:{addEventListener(){},SITE_CONFIG:d1?{publicReadProvider:'d1-staging'}:{},...bridge},document:fakeDocument(),
     MutationObserver:class{observe(){} disconnect(){}},
     Image:SizedFakeImage,
     FileReader:FakeFileReader,
@@ -186,3 +186,16 @@ test('Digitized public catalog renders published preview images in all groups wi
 
 test('D1 export obtains published owner and complete album without Supabase',async()=>{const id='11111111-1111-4111-8111-111111111111',calls=[];const m=mockEnvironment({d1:true,fetchFunction:async url=>{calls.push(String(url));const data=String(url).includes('/albums?')?[{owner_kind:'documents',owner_id:id,image_url:'https://example.org/2.jpg',caption:'Trang 2'}]:{id,published:true,file_url:'https://example.org/1.jpg'};return {ok:true,json:async()=>({data})}}});const r={kind:'documents',slug:'sample',gallery:[]};const gallery=await m.readGallery(r,()=>{});assert.equal(r.documentFileUrl,'https://example.org/1.jpg');assert.equal(gallery[0].url,'https://example.org/2.jpg');assert.equal(calls.length,2);assert.ok(calls.every(u=>u.startsWith('https://gdd-d1-api-staging.')));});
 test('D1 print never requests restricted legacy original when no print derivative exists',async()=>{const m=mockEnvironment({d1:true,fetchFunction:async()=>{throw Error('unexpected network')}});await assert.rejects(m.fullResolutionPrintScan(base+'documents/missing.jpg'),/chưa có bản in công khai/);});
+
+test('missing approved print uses only same published preview and marks copy',async()=>{
+ const url='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/11111111-1111-4111-8111-111111111111/preview',print=url.replace('/preview','/download'),calls=[];
+ const bridge={GDDPrivatePublishing:{isPreviewURL:s=>s===url},GDDLegacyImages:{printUrl:()=>print,displayUrl:s=>s}};
+ const m=mockEnvironment({d1:true,bridge,fetchFunction:async u=>{calls.push(u);return u===print?{ok:false,status:404}:{ok:true,blob:async()=>new Blob([Uint8Array.from([255,216,255,0,1,2,3])],{type:'image/jpeg'})}}});
+ const scans=await m.preparePrintScans({kind:'documents',documentFileUrl:url,gallery:[]},()=>{});
+ assert.equal(scans.length,1);assert.equal(scans[0].previewCopy,true);assert.equal(scans[0].height,2644);assert.deepEqual(calls,[print,url]);
+});
+test('403 is not bypassed and missing preview still stops the entire PDF',async()=>{
+ const url='https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/11111111-1111-4111-8111-111111111111/preview',calls=[];
+ const m=mockEnvironment({d1:true,bridge:{GDDPrivatePublishing:{isPreviewURL:()=>true},GDDLegacyImages:{printUrl:s=>s.replace('/preview','/download'),displayUrl:s=>s}},fetchFunction:async u=>{calls.push(u);return {ok:false,status:403}}});
+ await assert.rejects(m.preparePrintScans({kind:'documents',documentFileUrl:url,gallery:[]},()=>{}),/HTTP 403/);assert.equal(calls.length,1);
+});
