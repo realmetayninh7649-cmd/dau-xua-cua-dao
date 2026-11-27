@@ -67,7 +67,17 @@
     const raw=anchor.getAttribute('href');
     const type=kind(raw);
     if(!type.startsWith('legacy-')&&!['r2','reader'].includes(type))return;
-    const to=readerUrl(raw);
+    let to=readerUrl(raw);
+    // Pass the actual owning record only when the clicked link belongs to its detail panel.
+    const owner=anchor.closest?.('#detail-content');
+    if(owner&&['people','documents'].includes(owner.dataset.gddKind)&&owner.dataset.gddRecordSlug){
+      const target=new URL(to,location.href);
+      if(target.origin===location.origin&&target.pathname===READER_PATH){
+        target.searchParams.set('record_kind',owner.dataset.gddKind);
+        target.searchParams.set('record_slug',owner.dataset.gddRecordSlug);
+        to=target.href;
+      }
+    }
     event.preventDefault();
     try{sessionStorage.setItem('gdd-reader-return',location.href)}catch{}
     window.location.assign(to);

@@ -1,0 +1,17 @@
+name: GDD - Scoped screen privacy experiment
+on:
+  push:
+    branches: [main]
+    paths: ['gdd-screen-privacy.js','gdd-document-router.js','tests/screen-privacy-scope.test.mjs','.github/workflows/gdd-screen-privacy.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check gdd-screen-privacy.js && node --check gdd-document-router.js && node --check app.js && node --test tests/screen-privacy-scope.test.mjs

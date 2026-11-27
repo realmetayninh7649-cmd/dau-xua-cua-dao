@@ -521,6 +521,7 @@ function videoSource(raw){
         .catch(()=>{});
     }
     $('#detail-content').dataset.gddKind=kind;
+    $('#detail-content').dataset.gddRecordSlug=record.slug||'';
     $('#detail-content').dataset.gddArchiveCode=archiveCode;
     const coverImage=$('#detail-content .detail-cover img');
     if(coverImage&&archiveCode)coverImage.dataset.photoCode=archiveCode;
@@ -583,6 +584,7 @@ function videoSource(raw){
     if($('#detail-overlay').hidden)return;
     $('#detail-overlay').hidden=true;
     $('#detail-content').replaceChildren();
+    delete $('#detail-content').dataset.gddRecordSlug;
     state.detail=null;
     if($('#admin-overlay').hidden)document.body.classList.remove('modal-open');
   }
