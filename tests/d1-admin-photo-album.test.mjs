@@ -40,10 +40,11 @@ test('private document attachments are integrated into all editorial types',()=>
 });
 
 test('one-click publication prepares readers before publishing parent and releases after confirmation',()=>{
- const prepare=ADMIN_JS.indexOf('prepareReaders(active,progress)');
+ const prepare=ADMIN_JS.indexOf('prepareReaders(active,progress,!!restricted)');
+ const policy=ADMIN_JS.indexOf('await workApplyRecordAccess(active,readerPlans,progress)',prepare);
  const patch=ADMIN_JS.indexOf('await patch(finalFields)',prepare);
  const release=ADMIN_JS.indexOf('releaseReaders(active,readerPlans,progress)',patch);
- assert.ok(prepare>0&&patch>prepare&&release>patch);
+ assert.ok(prepare>0&&policy>prepare&&patch>policy&&release>patch);
  assert.ok(PHOTO_JS.includes('readerPlans.has(row.asset_id)'));
  assert.ok(PHOTO_JS.includes('Number(row.public_view)===1&&Number(row.preview_ready)===1'));
  assert.ok(PHOTO_JS.includes('record.record?.published===true||record.record?.published===1'));
@@ -103,7 +104,7 @@ test('gallery covers and albums accept images above 24 MiB without loosening oth
 test('new single-file PDF skips page derivatives and enables download by default',()=>{
  assert.ok(PHOTO_JS.includes("row.view_source==='single_pdf'"));
  assert.ok(PHOTO_JS.includes("allowDownload:/\\.pdf$/i.test(file.name)"));
- assert.ok(PHOTO_JS.includes("if(row.view_source==='single_pdf'"));
+ assert.ok(PHOTO_JS.includes("if(!forcePages&&row.view_source==='single_pdf'"));
 });
 
 test('gallery editor supports the Chơn Dung Tiền Bối category alongside five existing categories',()=>{
@@ -157,3 +158,5 @@ test('three cover slots are separate from ordinary attachments and restored acro
  assert.ok(ADMIN_JS.includes('if(slot>1)'));
  assert.doesNotThrow(()=>new Script(ADMIN_JS));
 });
+
+test('record policy controls offer all three explicit choices and generate a raster watermark before activation',()=>{assert.match(ADMIN_JS,/work-record-access/);assert.match(ADMIN_JS,/Chỉ xem – Bảo vệ tăng cường/);assert.match(ADMIN_JS,/ctx\.fillText\('dauxuacuadao\.info\.vn'/);assert.match(ADMIN_JS,/await workWrite\(base\+'\/prepare','POST',\{operation:'upload'/);});

@@ -68,6 +68,11 @@ export async function handleRecordAccess(req,env,path){
   }
   if(!['download','view','protected'].includes(input.mode)||!Number.isSafeInteger(input.version)||record.gdd_version!==input.version)return reply({error:'Phiên bản hồ sơ đã thay đổi hoặc quyền không hợp lệ'},409);
   if(input.mode==='download'&&!operation){await env.DB.prepare("INSERT INTO gdd_record_access(kind,record_id,mode) VALUES(?,?,'download') ON CONFLICT(kind,record_id) DO UPDATE SET mode='download',updated_at=CURRENT_TIMESTAMP").bind(kind,id).run();return reply({mode:'download'})}
+  if(input.draft===true&&!operation&&Number(record.published)===0){
+   await ready();
+   await env.DB.prepare("INSERT INTO gdd_record_access(kind,record_id,mode) VALUES(?,?,?) ON CONFLICT(kind,record_id) DO UPDATE SET mode=excluded.mode,updated_at=CURRENT_TIMESTAMP").bind(kind,id,input.mode).run();
+   return reply({mode:input.mode,draft:true});
+  }
   const inv=await inventory(env,kind,id,record,input);
   if(operation==='prepare')return reply({entries:inv.entries,legacy:inv.refs.some(x=>x.startsWith('legacy:'))});
   await ready();

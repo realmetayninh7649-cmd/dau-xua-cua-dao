@@ -1474,6 +1474,7 @@ async function workApplyRecordAccess(active,plans,progress){
  const payload={mode,version:active.record.gdd_version,plans,urls};
  if(mode==='protected'){
   const plan=await workWrite(base+'/prepare','POST',payload);
+  if(plan.legacy&&!confirm('Có ảnh di sản từng dùng liên kết Supabase cũ. Bản xem trên R2 sẽ được bảo vệ; bản đã tải hoặc liên kết công khai ngoài R2 không thể thu hồi. Tiếp tục?'))throw Error('Chưa xác nhận bảo vệ ảnh di sản');
   for(const [index,item] of plan.entries.entries()){
    progress('Đang đóng watermark '+(index+1)+'/'+plan.entries.length+'…');
    const response=await fetch(base+'/source?'+new URLSearchParams({ref:item.ref,variant:item.variant}),{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw Error('Không đọc được ảnh xem nguồn');
@@ -1506,6 +1507,7 @@ async function workSave(mode='draft'){
   active.record=result.data;workUpdateIdentity();workKeepPhotoDraft();
  }
  try{
+  if($('work-record-access')&&$('work-record-access').dataset.ready!=='yes')throw Error('Chưa xác minh quyền sử dụng tư liệu');
   if(kind==='people'&&workDeathValidate&&!workDeathValidate())throw Error('Xin kiểm tra ngày qui vị trước khi lưu.');
   const title=workFieldInputs.get(kind==='people'||kind==='gdd_calendar_memorials'?'full_name':'title')?.value.trim();
   if(!title)throw Error('Nhập danh xưng hoặc nhan đề trước.');
@@ -1530,6 +1532,7 @@ async function workSave(mode='draft'){
    window.GDDPhotoAlbum?.bindRecord(active);workUpdateIdentity();workKeepPhotoDraft();
   }else if(!active.record.published)await patch(changes);
   if(!publish){
+   const access=$('work-record-access');if(access&&active.record.published!==1&&active.record.published!==true){const saved=await workWrite(workRoot+kind+'/'+active.id+'/record-access','POST',{mode:access.value,version:active.record.gdd_version,draft:true});if(saved.mode!==access.value)throw Error('Chưa lưu được lựa chọn quyền bản nháp');}
    progress(workHasLocalFiles()?'Đã lưu bản nháp. Tệp đang chọn còn ở trang này; nhấn Đăng bài để tải lên.':'Đã lưu bản nháp.');
    return;
   }
