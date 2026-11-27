@@ -303,3 +303,35 @@ body.gdd-p1-ready #gdd-p1-aside #gdd-calendar-reminder-panel{padding:9px;margin-
 body.gdd-p1-ready #gdd-p1-aside #gdd-cal-toggle{display:block;min-height:36px}
 body.gdd-p1-ready #gdd-p1-aside .gdd-calendar:not(.gdd-calendar-expanded) :is(.gdd-cal-toolbar,.gdd-calendar-weekdays,.gdd-cal-days,.gdd-today-link,.gdd-panel-footnote){display:none!important}
 @media(min-width:601px) and (max-width:900px){body.gdd-p1-ready #gdd-p1-aside{display:flex;flex-direction:column}body.gdd-p1-ready #gdd-p1-aside[hidden]{display:none!important}}
+
+/* Compact audio and calendar: the player stays usable while the catalog is folded. */
+body.gdd-p1-ready #gdd-p1-aside :is(#gdd-p1-audio-panel,#gdd-p1-calendar-panel)>summary{min-height:54px;padding:8px 32px 8px 10px;gap:1px 9px}
+body.gdd-p1-ready #gdd-p1-aside :is(#gdd-p1-audio-panel,#gdd-p1-calendar-panel) .gdd-p1-utility-icon{width:30px;height:30px}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao{padding:8px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-layout{display:flex!important;flex-direction:column;align-items:stretch;gap:6px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-player-box{position:static;order:0;padding:7px!important;box-shadow:none}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-now h3{margin:0!important;font-size:13px!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-info{margin:3px 0!important}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-transport{margin:2px 0 0!important}
+body.gdd-p1-ready #gdd-radio-catalog-toggle{border:1px solid #dcd1b8;border-radius:7px;background:#f9f6ed;padding:0 8px}
+body.gdd-p1-ready #gdd-radio-catalog-toggle>summary{cursor:pointer;padding:10px 2px;color:#245548;font-weight:700;font-size:12px;min-height:40px}
+body.gdd-p1-ready #gdd-radio-catalog-toggle[open]>summary{border-bottom:1px solid #dfd5c1;margin-bottom:7px}
+body.gdd-p1-ready #gdd-radio-catalog-toggle .gdd-radio-tabs{margin:5px 0!important;gap:4px}
+body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao #gdd-radio-catalog-toggle .gdd-radio-list{max-height:184px!important;overflow-y:auto;overscroll-behavior:contain}
+body.gdd-p1-ready #gdd-radio-catalog-toggle .gdd-radio-more{margin:5px 0}
+body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard{padding:5px!important}
+body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard .gdd-calendar{padding:7px!important;box-shadow:none}
+body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard .gdd-panel-head{margin:0 0 5px;padding:0 0 4px;gap:5px}
+body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard .gdd-panel-mark{display:none}
+body.gdd-p1-ready #gdd-p1-aside #gdd-cal-selected{padding:6px 7px;margin:4px 0}
+body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard .gdd-calendar:not(.gdd-calendar-expanded) :is(.gdd-cal-qui-vi-month,.gdd-ceremony-legend){display:none!important}
+body.gdd-p1-ready #gdd-p1-aside :is(#gdd-cal-qui-vi-list,#gdd-dao-festival-selected){margin:5px 0!important;padding:7px!important}
+body.gdd-p1-ready #gdd-p1-aside #gdd-cal-qui-vi-list:has(.gdd-cal-qui-vi-empty){padding:5px 7px!important}
+body.gdd-p1-ready #gdd-p1-aside #gdd-cal-qui-vi-list .gdd-cal-qui-vi-empty{margin:2px 0!important;font-size:11px}
+body.gdd-p1-ready #gdd-p1-aside #gdd-dao-festival-guidance{margin:5px 0!important;padding:5px 7px!important}
+body.gdd-p1-ready #gdd-p1-aside #gdd-calendar-reminder-panel{margin:5px 0 0!important;padding:7px!important}
+body.gdd-p1-ready #gdd-p1-aside #gdd-remind-coming{margin-top:5px;padding-top:5px}
+body.gdd-p1-ready #gdd-p1-aside #gdd-remind-coming ul{gap:3px}
+body.gdd-p1-ready #gdd-p1-aside #gdd-remind-coming:not([open]) ul{display:none}
+body.gdd-p1-ready #gdd-p1-aside #gdd-calendar-reminder-panel .gdd-remind-settings{margin-top:4px;padding-top:4px}
+body.gdd-p1-ready #gdd-p1-aside #gdd-calendar-reminder-panel #gdd-remind-coming>summary{padding:4px 0;min-height:32px}

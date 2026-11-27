@@ -87,6 +87,18 @@
     const order=[aside.querySelector('.gdd-p1-side-intro'),...['gdd-daily-quote-slot','gdd-tu-thoi','gdd-p1-audio-panel','gdd-p1-calendar-panel','gdd-research-public','gdd-tuan-cuu-utility'].map(id)].filter(n=>n&&n.parentNode===aside);
     let previous=null;for(const node of order){if(previous){if(previous.nextElementSibling!==node)previous.after(node)}else if(aside.firstElementChild!==node)aside.prepend(node);previous=node;}
   }
+  function compactAudio(audio){
+    if(!audio||id('gdd-radio-catalog-toggle'))return;
+    const tabs=$('.gdd-radio-tabs',audio),list=id('gdd-radio-list'),player=id('gdd-radio-player-box');
+    const layout=$('.gdd-radio-layout',audio),listWrap=list?.parentElement;
+    if(!tabs||!listWrap||!player||!layout||listWrap.parentElement!==layout)return;
+    const catalog=document.createElement('details');catalog.id='gdd-radio-catalog-toggle';
+    const summary=document.createElement('summary');summary.textContent='Chọn bài nghe · Danh sách âm thanh';
+    catalog.append(summary);layout.append(catalog);catalog.append(tabs,listWrap);
+    // Keep the same audio element and list handlers; do not re-create or stop playback.
+    layout.prepend(player);
+    if(location.hash==='#am-thanh-dai-dao')catalog.open=true;
+  }
   function putModules() {
     if (!layout) return;
     const mainColumn = id('gdd-p1-main');
@@ -103,7 +115,8 @@
     if (directory && directory.parentElement !== mainColumn) mainColumn.append(directory);
 
     const audio = id('am-thanh-dai-dao');
-    createPanel('gdd-p1-audio-panel', 'Âm Thanh Đạo Sử', audio, 'Radio Đạo Sử · Niệm danh · Nhạc Đạo');
+    createPanel('gdd-p1-audio-panel', 'Âm Thanh Đại Đạo', audio, 'Radio · Niệm danh · Nhạc Đạo');
+    compactAudio(audio);
     const dashboard = id('gdd-archive-dashboard');
     if (dashboard) {
       const title = $('.gdd-dash-heading h2', dashboard);
@@ -140,6 +153,7 @@
     if (panelId) {
       const panel = id(panelId);
       if (panel) panel.open = true;
+      if(panelId==='gdd-p1-audio-panel'){const catalog=id('gdd-radio-catalog-toggle');if(catalog)catalog.open=true;}
       requestAnimationFrame(() => id(section)?.scrollIntoView({block: 'start'}));
     }
   }

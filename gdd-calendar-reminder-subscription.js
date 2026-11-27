@@ -52,16 +52,12 @@
      <button type="button" id="gdd-remind-copy">⧉ Sao chép liên kết lịch</button>
    </div>
    <p class="gdd-remind-status" id="gdd-remind-status" role="status" aria-live="polite">Ngày lễ và ngày kỷ niệm được cập nhật theo bản lịch công khai định kỳ từ D1.</p>
-   </details><div class="gdd-remind-coming" id="gdd-remind-coming">
-     <strong>Những ngày lễ cúng và kỷ niệm sắp tới</strong>
-     <ul><li>Đang tải ngày lễ và ngày tưởng niệm…</li></ul>
-   </div>
    <details id="gdd-remind-help">
      <summary>Cách bật lời nhắc trên iPhone và Android</summary>
      <p><b>iPhone:</b> Chạm “Theo dõi lịch”, xác nhận thêm lịch; sau đó mở ứng dụng <b>Lịch → Lịch → (i)</b> cạnh lịch “Giữ Đạo Giữa Đời” và bật <b>Thông báo sự kiện</b>. Trong <b>Cài đặt → Thông báo → Lịch</b>, bật Cho phép thông báo.</p>
      <p><b>Android / Google Calendar:</b> Sao chép liên kết, mở Google Calendar trên máy tính → <b>Lịch khác → Thêm lịch → Từ URL</b>, dán liên kết; bật thông báo cho lịch đó. Hoặc tải tệp .ics để nhập từ máy tính. Việc đồng bộ và thông báo tùy ứng dụng lịch.</p>
      <p><b>Lưu ý:</b> Tệp .ics là bản chụp lịch cho 11 năm (năm hiện tại và 10 năm kế); nhập lại để cập nhật ngày mới. “Theo dõi lịch” cho phép ứng dụng lịch tự đồng bộ theo lịch làm mới của riêng ứng dụng. Không tự gửi thông báo khi người đọc chưa đăng ký hoặc chưa cấp quyền cho ứng dụng Lịch.</p>
-   </details>`;
+   </details></details><details class="gdd-remind-coming" id="gdd-remind-coming"><summary>Lễ cúng &amp; tưởng niệm sắp tới</summary><ul><li>Đang tải ngày lễ và ngày tưởng niệm…</li></ul></details>`;
   const note=$('.gdd-cal-qui-vi-month',calendar);
   if(note)note.insertAdjacentElement('afterend',box);
   else selected.insertAdjacentElement('afterend',box);
@@ -127,7 +123,7 @@
       else{const response=await fetch(upcomingEndpoint,{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);json=await response.json();if(window.GDDCalendarUpcoming)json={ok:true,...window.GDDCalendarUpcoming};}
       if(!json.ok||!Array.isArray(json.upcoming))throw Error('Unexpected calendar');
       list.replaceChildren();
-      for(const e of json.upcoming.slice(0,3)){
+      for(const e of json.upcoming.slice(0,5)){
         const li=document.createElement('li');
         const lunarFirst=e.basis!=='solar'&&!!e.lunar;
         const date=document.createElement('time');date.dateTime=e.solar;date.textContent=lunarFirst?labelLunar(e)+' ÂL':dateVN(e.solar)+' DL';
