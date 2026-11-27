@@ -203,7 +203,7 @@ export async function collectCategory(env,kind,{origin='manual',limit=DAILY_RESE
   result.push({source:s.url,ok:outcome==='ready_saved'||outcome==='incomplete_saved'||outcome==='duplicate',reason:outcome});
  }
  // Persist remaining discovered references without counting them toward the quota.
- for(const s of [...queue.values()].slice(0,80)){
+ for(const s of [...queue.values()].slice(0,12)){
   if(seen.has(s.url))continue;
   const res=await db.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key) SELECT ?,?,?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM gdd_research_items WHERE kind=? AND rtrim(source_url,'/')=?)").bind(crypto.randomUUID(),kind,s.title,s.url,s.citation,kind==='history'?'history-source:'+s.url:s.url,kind,s.url).run();sources+=res.meta?.changes||0;
  }
