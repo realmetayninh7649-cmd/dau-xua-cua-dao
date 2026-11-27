@@ -52,11 +52,26 @@ async function allowed(index){
  }
  return true;
 }
+// Read specific lesson pages rather than treating their table of contents as quotations.
+async function extractLesson(item){
+ const u=new URL(item.url);
+ if(u.origin!=='https://thanhgiaocaodai.com'||!/^\/doc\/thanh-ngon-hiep-tuyen\/ngay-[a-z0-9-]+\/?$/.test(u.pathname))return null;
+ if(!await allowed(item))return null;
+ const html=await fetchFixed(item.url,600000),paragraphs=[];let current=null;
+ const parser=new HTMLRewriter().on('main p, article p',{
+ element(el){current={text:''};const c=current;el.onEndTag(()=>{paragraphs.push(c.text.trim());if(current===c)current=null})},text(t){if(current&&current.text.length<4000)current.text+=t.text}
+ });
+ await parser.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();
+ // Only complete short sentences, not cut-off fragments or navigation metadata.
+ const candidates=paragraphs.flatMap(s=>s.split(/(?<=[.!?])\s+/)).map(s=>s.trim()).filter(s=>/^(THẦY|Các con|Đạo THẦY|Ấy vậy|Phải|Chư đạo hữu)/.test(s)&&/[.!?]$/.test(s)&&!/\.\.\.|…/.test(s)&&s.split(/\s+/).length>=8&&s.split(/\s+/).length<=20);
+ if(!candidates.length)return null;
+ return {excerpt:candidates[0],note:'Máy trích một câu hoàn chỉnh từ bài riêng; chưa đối chiếu bản in, người ban giáo và quyền sử dụng. Đọc văn cảnh trước khi duyệt.'};
+}
 async function discover(index){
  if(!await allowed(index))return {links:[],excerpt:'',blocked:true};
  const html=await fetchFixed(index.url,2000000),links=[];let link=null,quote=null,excerpt='';
  const rewrite=new HTMLRewriter().on('a[href]',{
-   element(el){link={href:el.getAttribute('href'),label:''};const current=link;el.onEndTag(()=>{if(current.label.length>=8&&current.label.length<=300&&interestingTitle(current.label)){try{const u=new URL(current.href,index.url),base=new URL(index.url);if(u.origin===base.origin&&u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname!=='/'&&u.href.length<=2000)links.push({title:current.label.trim().replace(/\s+/g,' '),url:u.href,citation:index.citation})}catch{}}if(link===current)link=null})},
+   element(el){link={href:el.getAttribute('href'),label:''};const current=link;el.onEndTag(()=>{if(current.label.length>=8&&current.label.length<=300&&(interestingTitle(current.label)||/^ngay\s+\d/i.test(norm(current.label.trim())))){try{const u=new URL(current.href,index.url),base=new URL(index.url);if(u.origin===base.origin&&u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname!=='/'&&u.href.length<=2000)links.push({title:current.label.trim().replace(/\s+/g,' '),url:u.href,citation:index.citation})}catch{}}if(link===current)link=null})},
    text(t){if(link&&link.label.length<350)link.label+=t.text}
  }).on('blockquote',{
    element(el){quote={text:''};const current=quote;el.onEndTag(()=>{if(!excerpt&&current.text.trim().split(/\s+/).length>=8)excerpt=shortExcerpt(current.text);if(quote===current)quote=null})},
@@ -81,12 +96,20 @@ export async function collectResearch(env,mode='all'){
      if(found.blocked){result.push({source:index.url,ok:false,reason:'robots'});continue}
      // Only one short candidate per index, never collect a series of extracts from a single page.
      if(found.excerpt&&inserted<10)await save({title:'Đoạn dẫn cần đối chiếu – '+index.citation,url:index.url,citation:index.citation},'excerpt:'+index.url,found.excerpt,'Đoạn trích ngắn do máy nhận diện từ khối trích dẫn; chưa xác định tác giả, ngày, ấn bản, quyền sử dụng. Cần mở nguồn và kiểm duyệt.');
-     for(const item of found.links){if(inserted>=10)break;await save(item,item.url)}
+     for(const item of found.links){
+       if(inserted>=10)break;
+       await save(item,item.url);
+     }
+     // Process at most two previously unprocessed individual lesson pages per scan.
+     if(index.url==='https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/'){
+       const {results:todo}=await env.DB.prepare("SELECT title,source_url AS url,citation FROM gdd_research_items s WHERE s.state='pending' AND length(trim(s.excerpt))=0 AND s.source_url LIKE 'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/ngay-%' AND NOT EXISTS(SELECT 1 FROM gdd_research_items x WHERE x.discovered_key='excerpt:'||s.source_url) ORDER BY s.created_at,s.id LIMIT 2").all();
+       for(const item of todo||[]){if(inserted>=10)break;try{const x=await extractLesson(item);if(x)await save(item,'excerpt:'+item.url,x.excerpt,x.note);else result.push({source:item.url,ok:false,reason:'no_complete_short_excerpt'})}catch(e){result.push({source:item.url,ok:false,reason:String(e?.message||'unavailable').slice(0,100)})}}
+     }
      result.push({source:index.url,ok:true,links:found.links.length});
    }catch(e){result.push({source:index.url,ok:false,reason:String(e?.message||'unavailable').slice(0,100)})}
  }
  await env.DB.prepare('INSERT INTO gdd_research_runs(id,result) VALUES(?,?)').bind(crypto.randomUUID(),JSON.stringify({inserted,result})).run();
- const counts=await env.DB.prepare("SELECT count(*) AS total, sum(CASE WHEN state='pending' THEN 1 ELSE 0 END) AS pending, sum(CASE WHEN state='pending' AND length(excerpt)>0 THEN 1 ELSE 0 END) AS excerpts FROM gdd_research_items").first();
+ const counts=await env.DB.prepare("SELECT count(*) AS total, sum(CASE WHEN state='pending' AND length(trim(excerpt))=0 THEN 1 ELSE 0 END) AS sources, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS pending, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS excerpts FROM gdd_research_items").first();
  return {inserted,result,counts,indexes:INDEXES.map(s=>s.url)};
 }
 export async function handleResearch(request,env,path,json){
@@ -99,7 +122,7 @@ export async function handleResearch(request,env,path,json){
  }
  if(path===BASE+'/items'&&request.method==='GET'){
    const q=new URL(request.url).searchParams,search=str(q.get('q'),200),state=q.get('state')||'all',offset=Math.min(10000,Math.max(0,Math.floor(Number(q.get('offset'))||0)));
-   const {results}=await db.prepare("SELECT * FROM gdd_research_items WHERE (?='all' OR state=?) AND (?='' OR instr(lower(title||' '||excerpt||' '||speaker||' '||citation),lower(?))>0) ORDER BY updated_at DESC,id LIMIT 100 OFFSET ?").bind(state,state,search,search,offset).all();return json({data:results||[],offset});
+   const {results}=await db.prepare("SELECT * FROM gdd_research_items WHERE ((?='all') OR (?='sources' AND state='pending' AND length(trim(excerpt))=0) OR (?='pending' AND state='pending' AND length(trim(excerpt))>0) OR (? IN ('approved','rejected') AND state=?)) AND (?='' OR instr(lower(title||' '||excerpt||' '||speaker||' '||citation),lower(?))>0) ORDER BY updated_at DESC,id LIMIT 100 OFFSET ?").bind(state,state,state,state,state,search,search,offset).all();return json({data:results||[],offset});
  }
  if(path===BASE+'/runs'&&request.method==='GET'){const {results}=await db.prepare('SELECT * FROM gdd_research_runs ORDER BY created_at DESC LIMIT 20').all();return json({data:results||[]})}
  if(path===BASE+'/items'&&request.method==='POST'){
