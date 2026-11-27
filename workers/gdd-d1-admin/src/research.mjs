@@ -64,19 +64,42 @@ async function allowed(index){
 export function completeSentences(paragraphs){
  return paragraphs.flatMap(s=>s.split(/(?<=[.!?])\s+/)).map(s=>s.trim()).filter(s=>/^(?:THẦY|Các con|Đạo THẦY|Ấy vậy|Phải|Chư đạo hữu|TA|Ai|Con|Nhơn sanh|Chúng sanh|Người|Đạo|Muốn|Làm|Cả thảy)\b/i.test(s)&&/[.!?]$/.test(s)&&!/\.\.\.|…|https?:|tải app|đọc bài|xem toàn bộ/i.test(s)&&s.split(/\s+/).length>=8&&s.split(/\s+/).length<=23);
 }
-async function extractLesson(item){
+export function lessonCandidates(blocks){
+ let speaker='',date='',inside=false,header='';const out=[];
+ for(const b of blocks){
+  const s=String(b.text||'').replace(/\s+/g,' ').trim();if(!s)continue;
+  if(b.tag==='h1'){inside=true;speaker='';date='';header='';continue}
+  if(!inside)continue;
+  if(/^Bài khác trong quyển|^Xem toàn bộ mục lục/i.test(s))break;
+  if(b.tag==='h2'||b.tag==='h3'){
+   header=s;
+   if(/^NGỌC HOÀNG THƯỢNG ĐẾ\s+VIẾT CAO ĐÀI/i.test(s)||/^CAO ĐÀI,?\s*(?:LE TRÈS-HAUT\.?)?$/i.test(s)||/^ĐỨC CHÍ TÔN$/i.test(s))speaker='Đức Chí Tôn';
+   else if(/^THÍCH CA (?:NHƯ LAI|MÂU NI)/i.test(s))speaker='Đức Thích Ca Như Lai';
+   else if(/^(?:ĐỨC )?LÝ THÁI BẠCH(?:\s*[:.]|\s*$)/i.test(s))speaker='Đức Lý Thái Bạch';
+   else if(/^(?:ĐỨC )?(?:THÁI THƯỢNG (?:LÃO QUÂN|NGƯƠN THỈ)|QUAN ÂM (?:NHƯ LAI|BỒ TÁT))(?:\s*[:.]|\s*$)/i.test(s))speaker=s.replace(/[.:]$/,'');
+   else speaker='';
+   continue;
+  }
+  if(b.tag!=='p')continue;
+  if(!header&&s.length<=220&&/\b(?:18|19)\d{2}\b/.test(s)&&(/\d{1,2}\s+(?:Janvier|Février|Mars|Avril|Mai|Juin|Juillet|Août|Septembre|Octobre|Novembre|Décembre)\s+\d{4}/i.test(s)||/\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}/.test(s))&&!/Thánh Ngôn Hiệp Tuyển|ấn bản|Đọc bài|bản dịch/i.test(s)){date=s;continue}
+  for(const excerpt of completeSentences([s]))out.push({excerpt,speaker,source_date:date,note:'Trích câu hoàn chỉnh từ bài riêng. '+(header?'Đề mục nguyên văn: '+header+'. ':'')+'Cần đối chiếu văn cảnh, bản in và quyền sử dụng.'});
+ }
+ return out;
+}
+async function readLesson(item){
  const u=new URL(item.url);
- if(u.origin!=='https://thanhgiaocaodai.com'||!/^\/doc\/thanh-ngon-hiep-tuyen\/ngay-[a-z0-9-]+\/?$/.test(u.pathname))return null;
+ if(u.origin!=='https://thanhgiaocaodai.com'||!/^\/doc\/thanh-ngon-hiep-tuyen\/ngay-[a-z0-9-]+\/?$/.test(u.pathname)||u.search||u.hash)return [];
  if(!await allowed(item))throw Error('robots');
- const html=await fetchFixed(item.url,600000),paragraphs=[];let current=null;
- const parser=new HTMLRewriter().on('p',{
- element(el){current={text:''};const c=current;el.onEndTag(()=>{paragraphs.push(c.text.trim());if(current===c)current=null})},text(t){if(current&&current.text.length<4000)current.text+=t.text}
+ const html=await fetchFixed(item.url,600000),blocks=[];let current=null;
+ const parser=new HTMLRewriter().on('h1,h2,h3,p',{
+ element(el){current={tag:el.tagName.toLowerCase(),text:''};const c=current;el.onEndTag(()=>{blocks.push(c);if(current===c)current=null})},text(t){if(current&&current.text.length<12000)current.text+=t.text}
  });
  await parser.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();
- // Only complete short sentences, not cut-off fragments or navigation metadata.
- const candidates=completeSentences(paragraphs);
- if(!candidates.length)return null;
- return {excerpt:candidates[0],source_date:u.pathname.match(/ngay-(\d{1,2}-\d{1,2}-\d{4})\/?$/)?.[1]||'',note:'Máy trích một câu hoàn chỉnh từ bài riêng; chưa đối chiếu bản in, người ban giáo và quyền sử dụng. Đọc văn cảnh trước khi duyệt.'};
+ return lessonCandidates(blocks);
+}
+async function extractLesson(item){
+ const candidates=await readLesson(item);
+ return candidates.find(x=>x.speaker&&x.source_date)||candidates[0]||null;
 }
 // Extract only a short, dated event sentence from a specific approved source domain.
 // Dates without explicit calendar indication stay internal for editorial verification.
@@ -119,14 +142,14 @@ async function discover(index){
  return {links:[...new Map(links.map(x=>[x.url,x])).values()].slice(0,30),excerpt,blocked:false};
 }
 export async function collectResearch(env,mode='all'){
- if(mode!=='all'&&mode!=='seed'&&(!Number.isInteger(mode)||mode<0||mode>=INDEXES.length))throw Error('Nguồn không hợp lệ');
+ if(mode!=='all'&&mode!=='seed'&&mode!=='enrich'&&(!Number.isInteger(mode)||mode<0||mode>=INDEXES.length))throw Error('Nguồn không hợp lệ');
  let inserted=0;const result=[];
- const save=async(s,key,excerpt='',note='',sourceDate='')=>{
-   const id=crypto.randomUUID(),res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note,source_date) VALUES(?,?,?,?,?,?,?,?,?)").bind(id,s.kind||'quote',s.title,s.url,s.citation,key,excerpt,note,sourceDate).run();
+ const save=async(s,key,excerpt='',note='',sourceDate='',speaker='')=>{
+   const id=crypto.randomUUID(),res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note,source_date,speaker) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(id,s.kind||'quote',s.title,s.url,s.citation,key,excerpt,note,sourceDate,speaker).run();
    inserted+=res.meta?.changes||0;
  };
  if(mode==='all'||mode==='seed')for(const s of SOURCES){try{await save(s,s.url);result.push({source:s.url,ok:true,kind:'catalog'})}catch(e){result.push({source:s.url,ok:false,reason:String(e?.message||'D1 write failed').slice(0,150)})}}
- const indexes=mode==='all'?INDEXES:mode==='seed'?[]:[INDEXES[mode]];
+ const indexes=mode==='all'?INDEXES:mode==='seed'||mode==='enrich'?[]:[INDEXES[mode]];
  for(const index of indexes){
    if(inserted>=10)break;
    try{
@@ -147,7 +170,7 @@ export async function collectResearch(env,mode='all'){
      for(const item of queue.slice(0,4)){
        if(inserted>=10)break;
        let outcome='no_complete_short_excerpt';
-       try{const x=await extractLesson(item);if(x){await save(item,'excerpt:'+item.url,x.excerpt,x.note,x.source_date);outcome='excerpt_saved'}}
+       try{const x=await extractLesson(item);if(x){await save(item,'excerpt:'+item.url,x.excerpt,x.note,x.source_date,x.speaker);outcome='excerpt_saved'}}
        catch(e){outcome=String(e?.message||'unavailable').slice(0,100)}
        await env.DB.prepare("INSERT INTO gdd_research_attempts(source_url,outcome) VALUES(?,?) ON CONFLICT(source_url) DO UPDATE SET attempted_at=CURRENT_TIMESTAMP,outcome=excluded.outcome").bind(item.url,outcome).run();
        result.push({source:item.url,ok:outcome==='excerpt_saved',reason:outcome});
@@ -164,21 +187,41 @@ export async function collectResearch(env,mode='all'){
     }
    }catch(e){result.push({source:'history_queue',ok:false,reason:String(e?.message||'unavailable').slice(0,150)})}
  }
+ let enriched=0;
+ if(mode==='enrich'||mode==='all'){
+  try{
+   const {results:todo}=await env.DB.prepare("SELECT * FROM gdd_research_items s WHERE state='pending' AND kind='quote' AND length(trim(excerpt))>0 AND (length(trim(speaker))=0 OR length(trim(source_date))=0) AND source_url LIKE 'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/ngay-%' AND NOT EXISTS(SELECT 1 FROM gdd_research_attempts a WHERE a.source_url='metadata:'||s.id AND a.attempted_at>datetime('now','-1 day')) ORDER BY created_at,id LIMIT 4").all();
+   for(const item of todo||[]){
+    let outcome='no_exact_attribution';
+    try{
+     const candidates=await readLesson({url:item.source_url});
+     const match=candidates.filter(x=>x.excerpt.replace(/\s+/g,' ').trim()===item.excerpt.replace(/\s+/g,' ').trim()&&x.speaker&&x.source_date);
+     if(match.length===1&&(!item.speaker||item.speaker===match[0].speaker)){
+      const x=match[0],snapshot={...item,speaker:item.speaker||x.speaker,source_date:item.source_date&&!/^\d{1,2}-\d{1,2}-\d{4}$/.test(item.source_date)?item.source_date:x.source_date,note:(item.note+'\n'+x.note).trim().slice(0,4000),version:item.version+1};
+      const changed=await env.DB.batch([env.DB.prepare("UPDATE gdd_research_items SET speaker=?,source_date=?,note=?,version=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND version=? AND state='pending' AND visible=0").bind(snapshot.speaker,snapshot.source_date,snapshot.note,snapshot.version,item.id,item.version),env.DB.prepare("INSERT INTO gdd_research_revisions(id,item_id,version,snapshot) SELECT ?,id,version,? FROM gdd_research_items WHERE id=? AND version=? AND changes()=1").bind(crypto.randomUUID(),JSON.stringify(snapshot),item.id,snapshot.version)]);
+      if(changed[0].meta?.changes===1){enriched++;outcome='metadata_saved'}
+     }
+    }catch(e){outcome=String(e?.message||'unavailable').slice(0,100)}
+    await env.DB.prepare("INSERT INTO gdd_research_attempts(source_url,outcome) VALUES(?,?) ON CONFLICT(source_url) DO UPDATE SET attempted_at=CURRENT_TIMESTAMP,outcome=excluded.outcome").bind('metadata:'+item.id,outcome).run();
+    result.push({source:item.source_url,ok:outcome==='metadata_saved',reason:outcome});
+   }
+  }catch(e){result.push({source:'metadata_queue',ok:false,reason:String(e?.message||'unavailable').slice(0,150)})}
+ }
  await env.DB.prepare('INSERT INTO gdd_research_runs(id,result) VALUES(?,?)').bind(crypto.randomUUID(),JSON.stringify({inserted,result})).run();
- const counts=await env.DB.prepare("SELECT count(*) AS total, sum(CASE WHEN state='pending' AND length(trim(excerpt))=0 THEN 1 ELSE 0 END) AS sources, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS pending, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS excerpts FROM gdd_research_items").first();
- return {inserted,result,counts,indexes:INDEXES.map(s=>s.url)};
+ const counts=await env.DB.prepare("SELECT count(*) AS total, sum(CASE WHEN state='pending' AND length(trim(excerpt))=0 THEN 1 ELSE 0 END) AS sources, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 AND NOT (kind='quote' AND (length(trim(speaker))=0 OR length(trim(source_date))=0 OR lower(speaker||' '||source_date) LIKE '%chưa xác định%' OR lower(speaker||' '||source_date) LIKE '%cần đối chiếu%' OR lower(speaker||' '||source_date) LIKE '%chưa rõ%' OR lower(speaker||' '||source_date) LIKE '%không rõ%' OR lower(speaker||' '||source_date) LIKE '%chờ duyệt%' OR lower(speaker||' '||source_date) LIKE '%chưa kiểm chứng%')) THEN 1 ELSE 0 END) AS pending, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 AND (kind='quote' AND (length(trim(speaker))=0 OR length(trim(source_date))=0 OR lower(speaker||' '||source_date) LIKE '%chưa xác định%' OR lower(speaker||' '||source_date) LIKE '%cần đối chiếu%' OR lower(speaker||' '||source_date) LIKE '%chưa rõ%' OR lower(speaker||' '||source_date) LIKE '%không rõ%' OR lower(speaker||' '||source_date) LIKE '%chờ duyệt%' OR lower(speaker||' '||source_date) LIKE '%chưa kiểm chứng%')) THEN 1 ELSE 0 END) AS incomplete, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS excerpts FROM gdd_research_items").first();
+ return {inserted,enriched,result,counts,indexes:INDEXES.map(s=>s.url)};
 }
 export async function handleResearch(request,env,path,json){
  const db=env.DB;if(!db)return json({error:'db_unconfigured'},503);
  try{
  if(path===BASE+'/sources'&&request.method==='GET')return json({data:SOURCES});
  if(path===BASE+'/collect'&&request.method==='POST'){
-   const input=await request.json();const mode=input.mode==='seed'?'seed':Number.isInteger(input.index)?input.index:'all';
+   const input=await request.json();const mode=['seed','enrich'].includes(input.mode)?input.mode:Number.isInteger(input.index)?input.index:'all';
    return json(await collectResearch(env,mode));
  }
  if(path===BASE+'/items'&&request.method==='GET'){
    const q=new URL(request.url).searchParams,search=str(q.get('q'),200),state=q.get('state')||'all',offset=Math.min(10000,Math.max(0,Math.floor(Number(q.get('offset'))||0)));
-   const {results}=await db.prepare("SELECT * FROM gdd_research_items WHERE ((?='all') OR (?='sources' AND state='pending' AND length(trim(excerpt))=0) OR (?='pending' AND state='pending' AND length(trim(excerpt))>0) OR (? IN ('approved','rejected') AND state=?)) AND (?='' OR instr(lower(title||' '||excerpt||' '||speaker||' '||citation),lower(?))>0) ORDER BY updated_at DESC,id LIMIT 100 OFFSET ?").bind(state,state,state,state,state,search,search,offset).all();return json({data:results||[],offset});
+   const {results}=await db.prepare("SELECT * FROM gdd_research_items WHERE ((?='all') OR (?='sources' AND state='pending' AND length(trim(excerpt))=0) OR (?='pending' AND state='pending' AND length(trim(excerpt))>0 AND NOT (kind='quote' AND (length(trim(speaker))=0 OR length(trim(source_date))=0 OR lower(speaker||' '||source_date) LIKE '%chưa xác định%' OR lower(speaker||' '||source_date) LIKE '%cần đối chiếu%' OR lower(speaker||' '||source_date) LIKE '%chưa rõ%' OR lower(speaker||' '||source_date) LIKE '%không rõ%' OR lower(speaker||' '||source_date) LIKE '%chờ duyệt%' OR lower(speaker||' '||source_date) LIKE '%chưa kiểm chứng%'))) OR (?='incomplete' AND state='pending' AND length(trim(excerpt))>0 AND (kind='quote' AND (length(trim(speaker))=0 OR length(trim(source_date))=0 OR lower(speaker||' '||source_date) LIKE '%chưa xác định%' OR lower(speaker||' '||source_date) LIKE '%cần đối chiếu%' OR lower(speaker||' '||source_date) LIKE '%chưa rõ%' OR lower(speaker||' '||source_date) LIKE '%không rõ%' OR lower(speaker||' '||source_date) LIKE '%chờ duyệt%' OR lower(speaker||' '||source_date) LIKE '%chưa kiểm chứng%'))) OR (? IN ('approved','rejected') AND state=?)) AND (?='' OR instr(lower(title||' '||excerpt||' '||speaker||' '||citation),lower(?))>0) ORDER BY updated_at DESC,id LIMIT 100 OFFSET ?").bind(state,state,state,state,state,state,search,search,offset).all();return json({data:results||[],offset});
  }
  if(path===BASE+'/runs'&&request.method==='GET'){const {results}=await db.prepare('SELECT * FROM gdd_research_runs ORDER BY created_at DESC LIMIT 20').all();return json({data:results||[]})}
  if(path===BASE+'/items'&&request.method==='POST'){
