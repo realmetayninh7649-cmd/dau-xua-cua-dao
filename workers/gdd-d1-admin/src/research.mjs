@@ -23,6 +23,8 @@ export function validateResearch(input,old){
  return r;
 }
 // Fixed public indexes only. Never fetch arbitrary URLs supplied by a user.
+const LESSON_ROOT='https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/';
+const LESSON_DATES=['31-5-1926','5-6-1926','8-6-1926','27-6-1926','5-7-1926','15-7-1926','17-7-1926','22-7-1926','25-7-1926','30-7-1926','4-8-1926','7-8-1926','9-8-1926','21-8-1926','22-8-1926','27-8-1926','11-9-1926','17-9-1926','18-9-1926','22-9-1926','29-9-1926','1-10-1926','4-10-1926','12-10-1926','24-10-1926','27-10-1926','28-10-1926','29-10-1926','1-11-1926','12-11-1926','20-11-1926','23-11-1926','24-11-1926','28-11-1926'];
 const INDEXES=[
  {url:'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/',citation:'Thánh Ngôn Hiệp Tuyển – Quyển 1, cần đối chiếu bản in'},
  {url:'https://caodaiebook.net/tailieusuutap.htm',citation:'Cao Đài E-book – thư mục sưu tầm'},
@@ -55,19 +57,22 @@ async function allowed(index){
  return true;
 }
 // Read specific lesson pages rather than treating their table of contents as quotations.
+export function completeSentences(paragraphs){
+ return paragraphs.flatMap(s=>s.split(/(?<=[.!?])\s+/)).map(s=>s.trim()).filter(s=>/^(?:THẦY|Các con|Đạo THẦY|Ấy vậy|Phải|Chư đạo hữu|TA|Ai|Con|Nhơn sanh|Chúng sanh|Người|Đạo|Muốn|Làm|Cả thảy)\b/i.test(s)&&/[.!?]$/.test(s)&&!/\.\.\.|…|https?:|tải app|đọc bài|xem toàn bộ/i.test(s)&&s.split(/\s+/).length>=8&&s.split(/\s+/).length<=23);
+}
 async function extractLesson(item){
  const u=new URL(item.url);
  if(u.origin!=='https://thanhgiaocaodai.com'||!/^\/doc\/thanh-ngon-hiep-tuyen\/ngay-[a-z0-9-]+\/?$/.test(u.pathname))return null;
- if(!await allowed(item))return null;
+ if(!await allowed(item))throw Error('robots');
  const html=await fetchFixed(item.url,600000),paragraphs=[];let current=null;
- const parser=new HTMLRewriter().on('main p, article p',{
+ const parser=new HTMLRewriter().on('p',{
  element(el){current={text:''};const c=current;el.onEndTag(()=>{paragraphs.push(c.text.trim());if(current===c)current=null})},text(t){if(current&&current.text.length<4000)current.text+=t.text}
  });
  await parser.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();
  // Only complete short sentences, not cut-off fragments or navigation metadata.
- const candidates=paragraphs.flatMap(s=>s.split(/(?<=[.!?])\s+/)).map(s=>s.trim()).filter(s=>/^(THẦY|Các con|Đạo THẦY|Ấy vậy|Phải|Chư đạo hữu)/.test(s)&&/[.!?]$/.test(s)&&!/\.\.\.|…/.test(s)&&s.split(/\s+/).length>=8&&s.split(/\s+/).length<=20);
+ const candidates=completeSentences(paragraphs);
  if(!candidates.length)return null;
- return {excerpt:candidates[0],note:'Máy trích một câu hoàn chỉnh từ bài riêng; chưa đối chiếu bản in, người ban giáo và quyền sử dụng. Đọc văn cảnh trước khi duyệt.'};
+ return {excerpt:candidates[0],source_date:u.pathname.match(/ngay-(\d{1,2}-\d{1,2}-\d{4})\/?$/)?.[1]||'',note:'Máy trích một câu hoàn chỉnh từ bài riêng; chưa đối chiếu bản in, người ban giáo và quyền sử dụng. Đọc văn cảnh trước khi duyệt.'};
 }
 async function discover(index){
  if(!await allowed(index))return {links:[],excerpt:'',blocked:true};
@@ -85,8 +90,8 @@ async function discover(index){
 export async function collectResearch(env,mode='all'){
  if(mode!=='all'&&mode!=='seed'&&(!Number.isInteger(mode)||mode<0||mode>=INDEXES.length))throw Error('Nguồn không hợp lệ');
  let inserted=0;const result=[];
- const save=async(s,key,excerpt='',note='')=>{
-   const id=crypto.randomUUID(),res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note) VALUES(?,?,?,?,?,?,?,?)").bind(id,'quote',s.title,s.url,s.citation,key,excerpt,note).run();
+ const save=async(s,key,excerpt='',note='',sourceDate='')=>{
+   const id=crypto.randomUUID(),res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note,source_date) VALUES(?,?,?,?,?,?,?,?,?)").bind(id,'quote',s.title,s.url,s.citation,key,excerpt,note,sourceDate).run();
    inserted+=res.meta?.changes||0;
  };
  if(mode==='all'||mode==='seed')for(const s of SOURCES){try{await save(s,s.url);result.push({source:s.url,ok:true,kind:'catalog'})}catch(e){result.push({source:s.url,ok:false,reason:String(e?.message||'D1 write failed').slice(0,150)})}}
@@ -96,19 +101,27 @@ export async function collectResearch(env,mode='all'){
    try{
      const found=await discover(index);
      if(found.blocked){result.push({source:index.url,ok:false,reason:'robots'});continue}
-     // Only one short candidate per index, never collect a series of extracts from a single page.
-     if(found.excerpt&&inserted<10)await save({title:'Đoạn dẫn cần đối chiếu – '+index.citation,url:index.url,citation:index.citation},'excerpt:'+index.url,found.excerpt,'Đoạn trích ngắn do máy nhận diện từ khối trích dẫn; chưa xác định tác giả, ngày, ấn bản, quyền sử dụng. Cần mở nguồn và kiểm duyệt.');
-     for(const item of found.links){
-       if(inserted>=10)break;
-       await save(item,item.url);
-     }
-     // Process at most two previously unprocessed individual lesson pages per scan.
-     if(index.url==='https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/'){
-       const {results:todo}=await env.DB.prepare("SELECT title,source_url AS url,citation FROM gdd_research_items s WHERE s.state='pending' AND length(trim(s.excerpt))=0 AND s.source_url LIKE 'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/ngay-%' AND NOT EXISTS(SELECT 1 FROM gdd_research_items x WHERE x.discovered_key='excerpt:'||s.source_url) ORDER BY s.created_at,s.id LIMIT 2").all();
-       for(const item of todo||[]){if(inserted>=10)break;try{const x=await extractLesson(item);if(x)await save(item,'excerpt:'+item.url,x.excerpt,x.note);else result.push({source:item.url,ok:false,reason:'no_complete_short_excerpt'})}catch(e){result.push({source:item.url,ok:false,reason:String(e?.message||'unavailable').slice(0,100)})}}
-     }
+     // Catalog links are references, not quotations. Never save index blockquotes as review-ready.
+     for(const item of found.links){if(inserted>=(mode===0||mode==='all'?6:10))break;await save(item,item.url);}
      result.push({source:index.url,ok:true,links:found.links.length});
    }catch(e){result.push({source:index.url,ok:false,reason:String(e?.message||'unavailable').slice(0,100)})}
+ }
+ // Extraction is a separate queue, not conditional on successful catalog discovery.
+ if(mode==='all'||mode===0){
+   try{
+     const {results:stored}=await env.DB.prepare("SELECT source_url,discovered_key FROM gdd_research_items WHERE discovered_key LIKE 'excerpt:%'").all();
+     const {results:attempted}=await env.DB.prepare("SELECT source_url FROM gdd_research_attempts WHERE attempted_at>datetime('now','-1 day')").all();
+     const seen=new Set([...(stored||[]),...(attempted||[])].map(r=>r.source_url));
+     const queue=LESSON_DATES.map(d=>({title:'Ngày '+d,url:LESSON_ROOT+'ngay-'+d,citation:'Thánh Ngôn Hiệp Tuyển — Quyển 1, bản điện tử; cần đối chiếu ấn bản gốc'})).filter(x=>!seen.has(x.url));
+     for(const item of queue.slice(0,4)){
+       if(inserted>=10)break;
+       let outcome='no_complete_short_excerpt';
+       try{const x=await extractLesson(item);if(x){await save(item,'excerpt:'+item.url,x.excerpt,x.note,x.source_date);outcome='excerpt_saved'}}
+       catch(e){outcome=String(e?.message||'unavailable').slice(0,100)}
+       await env.DB.prepare("INSERT INTO gdd_research_attempts(source_url,outcome) VALUES(?,?) ON CONFLICT(source_url) DO UPDATE SET attempted_at=CURRENT_TIMESTAMP,outcome=excluded.outcome").bind(item.url,outcome).run();
+       result.push({source:item.url,ok:outcome==='excerpt_saved',reason:outcome});
+     }
+   }catch(e){result.push({source:'lesson_queue',ok:false,reason:String(e?.message||'unavailable').slice(0,150)})}
  }
  await env.DB.prepare('INSERT INTO gdd_research_runs(id,result) VALUES(?,?)').bind(crypto.randomUUID(),JSON.stringify({inserted,result})).run();
  const counts=await env.DB.prepare("SELECT count(*) AS total, sum(CASE WHEN state='pending' AND length(trim(excerpt))=0 THEN 1 ELSE 0 END) AS sources, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS pending, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS excerpts FROM gdd_research_items").first();
