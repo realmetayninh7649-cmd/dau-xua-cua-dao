@@ -19,7 +19,7 @@ test('private original and explicit preview approval, no silent public writes or
  assert.ok(!ADMIN_HTML.includes('id="work-photo-confirm"'));
  assert.ok(!ADMIN_HTML.includes('id="work-photo-upload"'));
  assert.ok(PHOTO_JS.includes('managedImageBlob'));
- assert.ok(PHOTO_JS.includes("allowDownload:false"));
+ assert.ok(PHOTO_JS.includes("allowDownload:kind==='documents'"));assert.ok(PHOTO_JS.includes("allowDownload:current.kind==='documents'"));assert.ok(PHOTO_JS.includes("'/download',{method:'PUT'"));
  assert.ok(PHOTO_JS.includes("asset_id:photo.assetId"));
  assert.ok(!PHOTO_JS.includes('GDD_BUCKET.delete'));
  assert.ok(!PHOTO_JS.includes('supabase'));
@@ -68,7 +68,7 @@ test('release accepts D1 integer publication flag and rejects unpublished rows',
 });
 
 test('attachment download permission defaults off and is saved by the ordinary publish action',()=>{
- assert.ok(PHOTO_JS.includes('allowDownload:false'));
+ assert.ok(PHOTO_JS.includes("allowDownload:kind==='documents'"));assert.ok(PHOTO_JS.includes("allowDownload:/\\.pdf$/i.test(file.name)"));
  assert.ok(PHOTO_JS.includes('Cho phép khách tải tệp gốc'));
  assert.ok(ADMIN_JS.includes('saveDownloadPermissions(active,false,progress)'));
  assert.ok(ADMIN_JS.includes('saveDownloadPermissions(active,true,progress)'));

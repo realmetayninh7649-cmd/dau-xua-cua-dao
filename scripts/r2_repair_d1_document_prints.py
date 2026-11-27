@@ -12,22 +12,16 @@ PREVIEW=re.compile(re.escape(GATE)+r"/v1/public/("+UUID+r")/preview",re.I)
 def get(url):
     with urllib.request.urlopen(urllib.request.Request(url,headers={"Origin":"https://dauxuacuadao.info.vn"}),timeout=25) as res:
         return json.load(res)
-def rows(path):
-    for offset in range(0,5001,100):
-        data=get(API+path+("&" if "?" in path else "?")+f"limit=100&offset={offset}")["data"]
-        if not isinstance(data,list) or len(data)>100: raise RuntimeError("Invalid public list")
-        yield from data
-        if len(data)<100:return
-    raise RuntimeError("Incomplete pagination")
+def query(sql,params=[]):
+    url="https://api.cloudflare.com/client/v4/accounts/"+os.environ["CLOUDFLARE_ACCOUNT_ID"]+"/d1/database/56bf9fcc-3f9a-43e5-82f7-8c521f5b370a/query"
+    req=urllib.request.Request(url,data=json.dumps({"sql":sql,"params":params}).encode(),headers={"Authorization":"Bearer "+os.environ["CLOUDFLARE_D1_API_TOKEN"],"Content-Type":"application/json"},method="POST")
+    with urllib.request.urlopen(req,timeout=25) as res: out=json.load(res)
+    if not out.get("success"):raise RuntimeError("D1 query failed")
+    return out["result"][0]["results"]
 def asset_ids(record):
-    images=list(rows("albums?owner_kind=documents&owner_id="+record["id"]))
-    if any(r.get("owner_kind")!="documents" or r.get("owner_id")!=record["id"] for r in images):raise RuntimeError("Owner mismatch")
-    links=[record.get("file_url"),*[r.get("image_url") for r in images]]
-    # Single-image legacy document with no album: the public cover is its scan.
-    if not any(links):links.append(record.get("cover_url"))
-    elif not images and not PREVIEW.fullmatch(str(record.get("file_url") or "")) and not re.search(r"\.(jpg|jpeg|png|webp)$",str(record.get("file_url") or ""),re.I):
-        if not record.get("file_url"):links.append(record.get("cover_url"))
-    return {m.group(1) for url in links if (m:=PREVIEW.fullmatch(str(url or "")))}
+    # Authoritative D1 join, only published documents and already-public image assets.
+    rows=query("SELECT DISTINCT a.asset_id FROM gdd_r2_assets a JOIN documents d ON d.id=a.record_id AND d.published=1 WHERE a.record_kind='documents' AND d.id=? AND a.media_kind='image' AND a.public_view=1 AND a.preview_ready=1 AND (a.role IN ('album','cover')) AND (EXISTS(SELECT 1 FROM archive_gallery_images g WHERE g.owner_kind='documents' AND g.owner_id=d.id AND g.image_url=?||a.asset_id||'/preview') OR d.file_url=?||a.asset_id||'/preview' OR (a.role='cover' AND NOT EXISTS(SELECT 1 FROM archive_gallery_images g WHERE g.owner_kind='documents' AND g.owner_id=d.id) AND coalesce(d.file_url,'')=''))",[record["id"],GATE+"/v1/public/",GATE+"/v1/public/"])
+    return {r["asset_id"] for r in rows if re.fullmatch(UUID,r["asset_id"],re.I)}
 def get_meta(s3,aid):
     r=s3.get_object(Bucket=BUCKET,Key="meta/"+aid+".json")
     try: raw=r["Body"].read(65537)
@@ -46,8 +40,7 @@ def probe(aid):
     with urllib.request.urlopen(req,timeout=25) as res:
         if res.status not in (200,206) or not res.headers.get("Content-Type","").startswith("image/jpeg") or res.read(2)!=b"\xff\xd8":raise RuntimeError("Public print verification failed")
 def repair(s3,aid,record):
-    public=get(GATE+"/v1/public/"+aid)
-    if public.get("id")!=aid or public.get("kind")!="image":raise RuntimeError("Public preview not approved")
+    if aid not in asset_ids(record):raise RuntimeError('Not a public document scan')
     meta,etag=get_meta(s3,aid)
     if meta.get("id")!=aid or meta.get("kind")!="image" or meta.get("published") is not True or meta.get("preview") is not True:raise RuntimeError("Not a published image")
     owner=meta.get("owner","");key=meta.get("key","")
@@ -73,8 +66,7 @@ def repair(s3,aid,record):
         check,_=read(s3,printkey,MAX_OUT)
         if check!=derived:raise RuntimeError("Print readback mismatch")
     # Recheck published association immediately before conditional metadata update.
-    fresh=get(API+"documents/"+record["slug"])["data"]
-    if fresh.get("published") is not True or fresh.get("id")!=record["id"] or aid not in asset_ids(fresh):raise RuntimeError("Publication changed")
+    if aid not in asset_ids(record):raise RuntimeError("Publication changed")
     newmeta,newetag=get_meta(s3,aid)
     if newetag!=etag:raise RuntimeError("Metadata changed; retry safely")
     newmeta.update(download=True,downloadMime="image/jpeg",allowDownload=True,updatedAt=datetime.datetime.now(datetime.timezone.utc).isoformat())
@@ -84,8 +76,8 @@ def repair(s3,aid,record):
     return "repaired"
 def main():
     s3=client();ok=fail=0
-    for record in rows("documents"):
-        if record.get("published") is not True or not re.fullmatch(UUID,str(record.get("id","")),re.I):continue
+    for record in query("SELECT id,slug FROM documents WHERE published=1 ORDER BY id"):
+        if not re.fullmatch(UUID,str(record.get("id","")),re.I):continue
         for aid in sorted(asset_ids(record)):
             try:
                 outcome=repair(s3,aid,record);ok+=1;print("PRINT OK",record["slug"],aid,outcome,flush=True)
