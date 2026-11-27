@@ -292,7 +292,7 @@
     if(e.target.closest('#gdd-memorial-archive-more'))showArchive(false);
   });
   document.addEventListener('keydown',e=>{
-    if(!modalOpen)return;
+    if(!modalOpen||document.getElementById('gdd-image-viewer')?.hidden===false)return;
     if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();clearMemRoute();}
     if(e.key==='Tab'){
       const nodes=Array.from(overlay.querySelectorAll('button:not([hidden]):not(:disabled),a[href],input:not(:disabled)')).filter(x=>x.getClientRects().length);

@@ -165,18 +165,35 @@ try {
         d.querySelector('.gdd-extra-cover-page button').click();
       });
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
-      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh bìa 2 · 2/2');
+      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh bìa 2 · 2/4');
       await page.locator('#gdd-image-prev').click();
-      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh bìa 1 · 1/2');
+      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh bìa 1 · 1/4');
       await page.locator('#gdd-image-close').click();
       await page.evaluate(()=>document.querySelector('.gdd-detail-photo-grid button').click());
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
-      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh kèm 1 · 1/2');
+      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh kèm 1 · 3/4');
       await page.locator('#gdd-image-next').click();
-      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh kèm 2 · 2/2');
+      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh kèm 2 · 4/4');
       assert.equal(page.url(),currentUrl);
       assert.equal(await page.locator('#gdd-image-viewer').getAttribute('data-gdd-record-image'),'yes');
       await page.locator('#gdd-image-close').click();
+      // Shared details outside the main article overlay: memorial, audio and calendar.
+      for(const type of ['memorial','audio','calendar']){
+        await page.evaluate(type=>{
+          const id=type==='memorial'?'gdd-memorial-dialog-body':type==='audio'?'gdd-radio-description':'gdd-calendar-photo-fixture';
+          let root=document.getElementById(id);
+          if(!root){root=document.createElement('div');root.id=id;document.body.append(root)}
+          if(type==='calendar')root.dataset.calendarAttachmentId='test-record';
+          const primary=type==='memorial'?'<img class="gdd-memorial-detail-image" src="/logo.png" alt="Bìa chính">':type==='audio'?'<img src="/logo.png" alt="Bìa chính">':'<div class="gdd-cal-qui-vi-entry gdd-cal-qui-vi-static"><img src="/logo.png" alt="Bìa chính"></div>';
+          root.innerHTML=primary+'<section class="gdd-extra-covers"><figure class="gdd-extra-cover-page"><button data-gdd-photo-open="1"><img src="/logo.png" alt="Bìa bổ sung"></button></figure></section><div class="gdd-attached-photo-grid"><figure><button data-gdd-photo-open="1"><img src="/logo.png" alt="Ảnh đính kèm"></button></figure></div>';
+          root.querySelector('.gdd-extra-cover-page button').click();
+        },type);
+        await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
+        assert.equal(await page.locator('#gdd-image-title').innerText(),'Bìa bổ sung · 2/3',label+' '+type);
+        await page.locator('#gdd-image-next').click();
+        assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh đính kèm · 3/3');
+        await page.locator('#gdd-image-close').click();
+      }
       console.log('ALL IMAGE VIEWERS VIEW ONLY PASS',label);
       console.log('PERSON IMAGE UI PASS',label,'no download/original; gallery controls preserved');
       console.log('IMAGE GALLERY PASS',label,'arrows/swipe/keyboard/zoom/close');

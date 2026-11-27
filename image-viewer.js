@@ -20,6 +20,7 @@
       padding:10px 13px; font:600 12px/1.4 'Be Vietnam Pro',system-ui,sans-serif;
       border-radius:5px; cursor:pointer; }
     .gdd-image-action:hover { background:#e5eee8; }
+    [data-gdd-photo-open],#gdd-memorial-dialog-body > .gdd-memorial-detail-image,#gdd-radio-description > img,[data-calendar-attachment-id] > .gdd-cal-qui-vi-static > img {cursor:zoom-in;}
     .gdd-image-viewer[hidden] { display:none!important; }
     .gdd-image-viewer { position:fixed!important; z-index:10000!important; inset:0;
       display:flex; flex-direction:column; width:100vw!important; max-width:100vw!important; box-sizing:border-box; background:#0d1213; color:#f4f5f1;
@@ -143,17 +144,27 @@
   };
   const reset=()=>{scale=1;x=0;y=0;updateTransform();};
   const imgTitle=img=>img.alt||img.closest('.person-card,.gallery-card')?.querySelector('h3')?.textContent||'Ảnh tư liệu';
-  // Chỉ duyệt các ảnh thuộc cùng một album; không chuyển sang hồ sơ của người khác.
+  // A single ordered sequence per article: primary cover, extra covers, attachments.
+  // Never join separate articles, QR artwork, video posters or PDF/Word tiles.
+  const recordScope='#detail-content,#gdd-memorial-dialog-body,#gdd-radio-description,[data-calendar-attachment-id]';
+  const primarySelector=':scope > .detail-cover img,:scope > .gdd-memorial-detail-image,:scope > img,:scope > .gdd-cal-qui-vi-entry > img';
   function imageSequence(img) {
     if(!(img instanceof HTMLImageElement))return [];
-    const album=img.closest('.gdd-album-grid,.gdd-detail-photo-grid,.gdd-attached-photo-grid');
-    const record=img.closest('#detail-content');
-    const cover=record&&!album&&img.closest('.detail-cover,.gdd-extra-cover-page');
-    const grid=album||(cover?record:img.closest('#gallery-grid'));
-    if(!grid)return [];
-    const selector=album?(album.classList.contains('gdd-album-grid')?'.gdd-album-tile img':'[data-gdd-photo-open] img'):cover?':scope > .detail-cover img,.gdd-extra-covers .gdd-extra-cover-page img':'.gallery-visual img';
-    return [...grid.querySelectorAll(selector)]
-      .filter(item=>item instanceof HTMLImageElement)
+    const owner=img.closest(recordScope);
+    let nodes=[];
+    if(owner){
+      const main=[...owner.querySelectorAll(primarySelector)];
+      const covers=[...owner.querySelectorAll('.gdd-extra-cover-page img')];
+      const album=[...owner.querySelectorAll('.gdd-album-grid .gdd-album-tile img')];
+      const fallback=album.length?[]:[...owner.querySelectorAll('.gdd-detail-photo-grid [data-gdd-photo-open] img')];
+      const attachments=[...owner.querySelectorAll('.gdd-attached-photo-grid [data-gdd-photo-open] img')];
+      nodes=[...new Set([...main,...covers,...album,...fallback,...attachments])];
+      if(!nodes.includes(img))nodes.push(img);
+    }else{
+      const grid=img.closest('#gallery-grid');
+      if(grid)nodes=[...grid.querySelectorAll('.gallery-visual img')];
+    }
+    return nodes.filter(item=>item instanceof HTMLImageElement)
       .map(item=>({element:item,src:safeSource(item.currentSrc||item.src),title:imgTitle(item),photoCode:item.dataset.photoCode||''}))
       .filter(item=>item.src);
   }
@@ -361,9 +372,11 @@
     const frame=el.closest(
       '#gallery-grid .gallery-visual, #people-grid .person-media, '+
       '#gdd-people-list .person-media, #gdd-directory .gdd-preview-thumb, '+
-      '#detail-content .detail-cover, #detail-content [data-gdd-photo-open], #detail-content .gdd-extra-cover-page, #detail-content .gdd-detail-photo-grid figure'
+      '#detail-content .detail-cover, #detail-content .gdd-detail-photo-grid figure, '+
+      '[data-gdd-photo-open], #gdd-memorial-dialog-body > .gdd-memorial-detail-image, '+
+      '#gdd-radio-description > img, [data-calendar-attachment-id] > .gdd-cal-qui-vi-static > img'
     );
-    const img=frame?.querySelector('img');
+    const img=frame instanceof HTMLImageElement?frame:frame?.querySelector('img');
     if(!img)return;
     const src=img.currentSrc||img.src;
     if(!safeSource(src))return;
