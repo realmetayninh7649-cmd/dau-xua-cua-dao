@@ -1,3 +1,5 @@
+import {mediaMode,protectedKey} from './record-policy.mjs';
+import {LEGACY_PUBLISHED_PATHS} from './legacy-published-paths.mjs';
 import { VERSION } from './version.mjs';
 import { LEGACY_PREVIEW_PATH, legacyPreviewResponse } from './legacy-preview.mjs';
 import { LEGACY_PRINT_ROUTE, legacyPrintResponse } from './legacy-print.mjs';
@@ -260,13 +262,15 @@ async function publicView(req,env,path,originAllowed) {
   let meta;
   try{meta=await getMeta(env,id)}catch{return failure(503,'Chưa đọc được bản xem',originAllowed)}
   if(!meta?.published)return failure(404,'Bản xem chưa công bố',originAllowed);
+  let mode;try{mode=await mediaMode(env,'managed:'+id)}catch{return failure(503,'Chưa xác minh được quyền tư liệu',originAllowed)}
+  if(variant==='download'&&mode!=='download')return failure(403,'Tư liệu chỉ được xem',originAllowed);
   if(!variant){
     const data={
       id,kind:meta.kind,
       name:String(meta.originalName||'Tư liệu').slice(0,160),
       pageCount:meta.kind==='document'?meta.pageCount:1,
       viewSource:meta.kind==='document'?meta.viewSource:'image',
-      allowDownload:meta.kind==='image'&&meta.allowDownload===true&&meta.download===true,
+      allowDownload:mode==='download'&&meta.kind==='image'&&meta.allowDownload===true&&meta.download===true,
       version:VERSION
     };
     return respond(data,200,originAllowed);
@@ -279,12 +283,12 @@ async function publicView(req,env,path,originAllowed) {
     if(meta.kind!=='document'||!Number.isInteger(page)||page<1||page>VIEW_MAX_PAGES||page>meta.pageCount)
       return failure(404,'Không có trang này',originAllowed);
   }
-  const key=variant==='preview'
+  const key=mode==='protected'?await protectedKey('managed:'+id,variant):variant==='preview'
     ?'derivatives/'+id+'/preview'+(meta.previewMime==='image/jpeg'?'.jpg':'.webp')
     :variant==='download'?'derivatives/'+id+'/download.jpg':viewPageKey(id,page);
   try{
     const object=await env.GDD_BUCKET.get(key);
-    if(!object?.body)return failure(404,'Không có ảnh đã xuất bản',originAllowed);
+    if(!object?.body)return failure(404,mode==='protected'?'Bản xem bảo vệ chưa sẵn sàng':'Không có ảnh đã xuất bản',originAllowed);
     return imageResponse(object,originAllowed,variant==='download');
   }catch{return failure(503,'Không đọc được ảnh xem',originAllowed)}
 }
@@ -359,6 +363,9 @@ async function adminView(req,env,path,cors,user) {
 export default {
   async fetch(req,env){
     const url=new URL(req.url),path=url.pathname;
+    if(path==='/record-access-ready'){
+      try{if(!env.POLICY_DB||env.RECORD_POLICY_REQUIRED!=='yes')throw Error('missing');await mediaMode(env,'health');return respond({record_access:true},200,false)}catch{return failure(503,'Policy unavailable',false)}
+    }
     if(path==='/health'){
       if(req.method!=='GET')return failure(405,'Method not allowed',false);
       return await headR2(env)
@@ -396,8 +403,24 @@ export default {
       }
     }
     // Route is hard-disabled during maintenance; only 700 allowlisted public WebPs could be served after reopening.
-    if(path.startsWith(LEGACY_PREVIEW_PATH))return legacyPreviewResponse(req,env,path,cors,LEGACY_PREVIEW_ENABLED);
-    if(path.startsWith(LEGACY_PRINT_ROUTE))return legacyPrintResponse(req,env,path,cors);
+    if(path.startsWith(LEGACY_PREVIEW_PATH)||path.startsWith(LEGACY_PRINT_ROUTE)){
+      const print=path.startsWith(LEGACY_PRINT_ROUTE);
+      const prefix=print?LEGACY_PRINT_ROUTE:LEGACY_PREVIEW_PATH;
+      const suffix=print?'.jpg':'.webp';
+      let source;try{const tail=path.slice(prefix.length);if(!tail.endsWith(suffix))throw Error('invalid');source=decodeURIComponent(tail.slice(0,-suffix.length))}catch{return failure(404,'Không có bản xem',cors)}
+      if(!LEGACY_PUBLISHED_PATHS.has(source))return failure(404,'Không có bản xem',cors);
+      let mode;try{mode=await mediaMode(env,'legacy:'+source)}catch{return failure(503,'Chưa xác minh được quyền tư liệu',cors)}
+      if(print&&mode!=='download')return failure(403,'Tư liệu chỉ được xem',cors);
+      if(mode==='protected'){
+        if(req.method!=='GET'||!LEGACY_PREVIEW_ENABLED)return failure(404,'Không có bản xem',cors);
+        const obj=await env.GDD_BUCKET.get(await protectedKey('legacy:'+source,'preview'));
+        if(!obj?.body)return failure(404,'Bản xem bảo vệ chưa sẵn sàng',cors);
+        return imageResponse(obj,cors);
+      }
+      const result=print?await legacyPrintResponse(req,env,path,cors):await legacyPreviewResponse(req,env,path,cors,LEGACY_PREVIEW_ENABLED);
+      if(env.POLICY_DB){const headers=new Headers(result.headers);headers.set('Cache-Control','no-store');return new Response(result.body,{status:result.status,headers})}
+      return result;
+    }
     // Public chỉ được đọc bản xem do quản trị viên công bố, không có bản gốc.
     if(path.startsWith('/v1/public/'))return publicView(req,env,path,cors);
     if(!['GET','POST','PUT'].includes(req.method))return failure(405,'Method not allowed',cors);

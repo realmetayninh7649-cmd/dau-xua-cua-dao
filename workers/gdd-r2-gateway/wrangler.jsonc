@@ -18,7 +18,8 @@
   },
   "vars": {
     "SUPABASE_URL": "https://gwpdgubxoquhrfbolftq.supabase.co",
-    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_9l_chqaqGQ69Nfx63Chjrw_RA2yPaGa"
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_9l_chqaqGQ69Nfx63Chjrw_RA2yPaGa",
+    "RECORD_POLICY_REQUIRED": "yes"
   },
   "cache": {
     "enabled": true
@@ -31,6 +32,13 @@
         "limit": 500,
         "period": 60
       }
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "POLICY_DB",
+      "database_name": "gdd-dao-su-editor-live-clone-20261124",
+      "database_id": "56bf9fcc-3f9a-43e5-82f7-8c521f5b370a"
     }
   ]
 }
