@@ -13,7 +13,7 @@ const keys=['kind','title','excerpt','speaker','source_url','citation','source_d
 export function validateResearch(input,old){
  const r={kind:str(input.kind,20),title:str(input.title,300),excerpt:str(input.excerpt,12000),speaker:str(input.speaker,250),source_url:cleanURL(input.source_url),citation:str(input.citation,1500),source_date:str(input.source_date,150),note:str(input.note,4000),rights:str(input.rights,30),state:str(input.state,20),visible:input.visible===true||input.visible===1?1:0};
  if(!kinds.has(r.kind)||!r.title||!r.source_url||!rights.has(r.rights)||!states.has(r.state))throw Error('Thiếu hoặc sai thông tin nguồn, loại, nhan đề.');
- if(old&&['kind','title','excerpt','speaker','source_url','citation','source_date','rights'].some(k=>r[k]!==old[k])){r.state='pending';r.visible=0;}
+ if(old&&['kind','title','excerpt','speaker','source_url','citation','source_date','rights'].some(k=>r[k]!==old[k])&&!(old.state==='pending'&&r.state==='approved'&&input.confirmed===true)){r.state='pending';r.visible=0;}
  if(r.state==='approved'&&(!r.excerpt||!r.citation||r.rights==='unknown'))throw Error('Phải có nguyên văn, xuất xứ và quyền sử dụng trước khi duyệt.');
  if(r.visible&&r.state!=='approved')throw Error('Chỉ được hiển thị nội dung đã duyệt.');
  if(r.state==='approved'&&old?.state!=='approved'&&input.confirmed!==true)throw Error('Cần xác nhận đã đối chiếu nguồn.');

@@ -246,6 +246,12 @@ export default {
      }
      return handleEditorSandbox(request,env.EDIT_DB,path);
    }
+   if(path.startsWith('/api/v1/admin/research/')){
+     if(!await isAdministrator(env,ctx))return json({authenticated:false,error:'unauthorized'},403);
+     if(env.ENABLE_WORKING_EDITOR!=='enabled')return json({error:'editor_read_only'},403);
+     if(request.method!=='GET'&&(request.headers.get('Origin')!=='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'||(request.headers.get('Sec-Fetch-Site')&&request.headers.get('Sec-Fetch-Site')!=='same-origin')||!/^application\/json(?:;|$)/i.test(request.headers.get('Content-Type')||'')))return json({error:'csrf_rejected'},403);
+     return handleResearch(request,env,path,json);
+   }
    if(request.method!=='GET')
      return json({error:'read_only',write_enabled:false},405);
    // Health shows no data and no identity. External Access guards the hostname.
@@ -256,11 +262,6 @@ export default {
    // Validate runtime identity on EVERY admin page and data endpoint.
    if(!await isAdministrator(env,ctx))
      return json({authenticated:false,error:'unauthorized'},403);
-   if(path.startsWith('/api/v1/admin/research/')){
-     if(env.ENABLE_WORKING_EDITOR!=='enabled')return json({error:'editor_read_only'},403);
-     if(request.method!=='GET'&&(request.headers.get('Origin')!=='https://gdd-d1-admin-staging.realmetayninh7649.workers.dev'||(request.headers.get('Sec-Fetch-Site')&&request.headers.get('Sec-Fetch-Site')!=='same-origin')||!/^application\/json(?:;|$)/i.test(request.headers.get('Content-Type')||'')))return json({error:'csrf_rejected'},403);
-     return handleResearch(request,env,path,json);
-   }
    if(path==='/admin/research')return reply(RESEARCH_HTML,200,'text/html; charset=utf-8',{'Content-Security-Policy':"default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",'X-Frame-Options':'DENY'});
    if(path==='/admin/research.css')return reply(RESEARCH_CSS,200,'text/css; charset=utf-8');
    if(path==='/admin/research.js')return reply(RESEARCH_JS,200,'application/javascript; charset=utf-8');
