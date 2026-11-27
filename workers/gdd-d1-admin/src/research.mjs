@@ -19,9 +19,68 @@ export function validateResearch(input,old){
  if(r.visible&&input.confirmed!==true)throw Error('Cần xác nhận cho phép công bố.');
  return r;
 }
+// Fixed public indexes only. Never fetch arbitrary URLs supplied by a user.
+const INDEXES=[
+ {url:'https://caodaiebook.net/tailieusuutap.htm',citation:'Cao Đài E-book – thư mục sưu tầm'},
+ {url:'https://thanhgiaocaodai.com/doc/',citation:'Thánh Giáo Cao Đài – cần kiểm tra Hội Thánh và ấn bản'},
+ {url:'https://thanhgiaocaodai.com/doc/thanh-giao-cao-dai/',citation:'Thánh Giáo Cao Đài – cần đối chiếu nguyên bản'}
+];
+const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase();
+export function interestingTitle(v){return /thanh ngon|thanh giao|thuyet dao|huan tu|giao huan|loi day|kinh thien dao|kinh the dao|nghi le|nghi tiet/.test(norm(v))}
+export function shortExcerpt(v){return String(v||'').trim().split(/\s+/).slice(0,20).join(' ')}
+async function boundedText(res,max){
+ if(!res.ok)throw Error('HTTP '+res.status);
+ const declared=Number(res.headers.get('content-length')||0);if(declared>max)throw Error('source_too_large');
+ const reader=res.body?.getReader();if(!reader)throw Error('empty_source');
+ const decoder=new TextDecoder();let total=0,out='';
+ try{while(true){const part=await reader.read();if(part.done)break;total+=part.value.length;if(total>max)throw Error('source_too_large');out+=decoder.decode(part.value,{stream:true})}return out+decoder.decode()}finally{try{await reader.cancel()}catch{}}
+}
+async function fetchFixed(url,max,robots=false){
+ const res=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(12000),headers:{'User-Agent':'GDD-Research/1.0 (+https://dauxuacuadao.info.vn/)','Accept':robots?'text/plain':'text/html'}});
+ if(robots&&res.status===404)return '';
+ if(!robots&&!/text\/html|application\/xhtml/i.test(res.headers.get('content-type')||''))throw Error('not_html');
+ return boundedText(res,max);
+}
+async function allowed(index){
+ const u=new URL(index.url),robots=await fetchFixed(u.origin+'/robots.txt',64000,true);
+ // Conservative: honor any matching disallow; no attempts to circumvent crawl restrictions.
+ for(const line of robots.split(/\r?\n/)){
+   const rule=line.replace(/#.*$/,'').match(/^\s*disallow\s*:\s*(\S+)/i)?.[1];
+   if(rule&&(rule.includes('*')||rule.includes('$')||u.pathname.startsWith(rule)))return false;
+ }
+ return true;
+}
+async function discover(index){
+ if(!await allowed(index))return {links:[],excerpt:'',blocked:true};
+ const html=await fetchFixed(index.url,2000000),links=[];let link=null,quote=null,excerpt='';
+ const rewrite=new HTMLRewriter().on('a[href]',{
+   element(el){link={href:el.getAttribute('href'),label:''};const current=link;el.onEndTag(()=>{if(current.label.length>=8&&current.label.length<=300&&interestingTitle(current.label)){try{const u=new URL(current.href,index.url),base=new URL(index.url);if(u.origin===base.origin&&u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname!=='/'&&u.href.length<=2000)links.push({title:current.label.trim().replace(/\s+/g,' '),url:u.href,citation:index.citation})}catch{}}if(link===current)link=null})},
+   text(t){if(link&&link.label.length<350)link.label+=t.text}
+ }).on('blockquote',{
+   element(el){quote={text:''};const current=quote;el.onEndTag(()=>{if(!excerpt&&current.text.trim().split(/\s+/).length>=8)excerpt=shortExcerpt(current.text);if(quote===current)quote=null})},
+   text(t){if(quote&&quote.text.length<2500)quote.text+=t.text}
+ });
+ await rewrite.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();
+ return {links:[...new Map(links.map(x=>[x.url,x])).values()].slice(0,30),excerpt,blocked:false};
+}
 export async function collectResearch(env){
  let inserted=0;const result=[];
- for(const s of SOURCES){try{const res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),'quote',s.title,s.url,s.citation,s.url).run();inserted+=res.meta?.changes||0;result.push({source:s.url,ok:true})}catch{result.push({source:s.url,ok:false})}}
+ const save=async(s,key,excerpt='',note='')=>{
+   const id=crypto.randomUUID(),res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note) VALUES(?,?,?,?,?,?,?,?)").bind(id,'quote',s.title,s.url,s.citation,key,excerpt,note).run();
+   inserted+=res.meta?.changes||0;
+ };
+ for(const s of SOURCES){try{await save(s,s.url);result.push({source:s.url,ok:true,kind:'catalog'})}catch{result.push({source:s.url,ok:false})}}
+ for(const index of INDEXES){
+   if(inserted>=10)break;
+   try{
+     const found=await discover(index);
+     if(found.blocked){result.push({source:index.url,ok:false,reason:'robots'});continue}
+     // Only one short candidate per index, never collect a series of extracts from a single page.
+     if(found.excerpt&&inserted<10)await save({title:'Đoạn dẫn cần đối chiếu – '+index.citation,url:index.url,citation:index.citation},'excerpt:'+index.url,found.excerpt,'Đoạn trích ngắn do máy nhận diện từ khối trích dẫn; chưa xác định tác giả, ngày, ấn bản, quyền sử dụng. Cần mở nguồn và kiểm duyệt.');
+     for(const item of found.links){if(inserted>=10)break;await save(item,item.url)}
+     result.push({source:index.url,ok:true,links:found.links.length});
+   }catch(e){result.push({source:index.url,ok:false,reason:String(e?.message||'unavailable').slice(0,100)})}
+ }
  await env.DB.prepare('INSERT INTO gdd_research_runs(id,result) VALUES(?,?)').bind(crypto.randomUUID(),JSON.stringify({inserted,result})).run();
  return {inserted,result};
 }

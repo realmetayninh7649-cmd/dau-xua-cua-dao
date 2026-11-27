@@ -1,5 +1,5 @@
 import {MANIFEST,ICON_SVG,iconPng} from './admin-app.mjs';
-import {handleResearch} from './research.mjs';
+import {handleResearch,collectResearch} from './research.mjs';
 import {RESEARCH_HTML,RESEARCH_CSS,RESEARCH_JS} from './research-ui.mjs';
 import {AUDIO_OPTIMIZER_JS,AUDIO_ENCODER_WORKER} from './audio-optimizer-ui.mjs';
 import {LAME_JS,LAME_LICENSE} from './audio-encoder-vendor.mjs';
@@ -155,6 +155,7 @@ async function inventory(env){
  };
 }
 export default {
+ async scheduled(event,env,ctx){if(env.ENABLE_WORKING_EDITOR==='enabled')ctx.waitUntil(collectResearch(env).catch(()=>console.warn('Research collection unavailable')))},
  async fetch(request,env,ctx){
    const url=new URL(request.url),path=url.pathname;
    const audioUpload=/^\/api\/v1\/admin\/audio\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.exec(path);

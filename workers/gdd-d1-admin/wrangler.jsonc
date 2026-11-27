@@ -30,5 +30,10 @@
       "binding": "GDD_BUCKET",
       "bucket_name": "gdd-dau-xua-cua-dao"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": [
+      "0 0 * * *"
+    ]
+  }
 }
