@@ -35,6 +35,29 @@
     });
   }
 
+  function utilityIcon(kind){
+    const paths={
+      user:'<circle cx="12" cy="8" r="3"/><path d="M5 20v-2a7 7 0 0 1 14 0v2Z"/>',
+      book:'<path d="M12 5v15M12 5C9 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1Z"/>',
+      image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 6-6 4 4 3-3 5 5"/>',
+      file:'<path d="M5 3h10l4 4v14H5Z M15 3v5h4M8 12h8M8 16h8"/>',
+      flower:'<path d="M12 20C6 20 3 16 3 11c4 0 7 2 9 5 2-3 5-5 9-5 0 5-3 9-9 9Z M7 12c0-4 2-7 5-10 3 3 5 6 5 10"/>',
+      video:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 8 6 4-6 4Z"/>',
+      music:'<path d="M9 18V5l11-2v13M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/>',
+      calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h2M14 14h2M8 17h2"/>',
+      calculator:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 10h1M12 10h1M16 10h1M8 14h1M12 14h1M16 14h1M8 18h1M12 18h5"/>',
+      archive:'<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v12h14V9M10 13h4"/>'
+    };
+    const icon=document.createElement('span');icon.className='gdd-p1-utility-icon';icon.setAttribute('aria-hidden','true');
+    icon.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+(paths[kind]||paths.archive)+'</svg>';
+    return icon;
+  }
+  function decorateUtilityHeaders(){
+    for(const [name,kind] of [['gdd-p1-sidebar-navigation','archive'],['gdd-p1-audio-panel','music'],['gdd-p1-calendar-panel','calendar'],['gdd-tuan-cuu-utility','calculator']]){
+      const heading=id(name)?.querySelector('summary');
+      if(heading&&!heading.querySelector('.gdd-p1-utility-icon'))heading.prepend(utilityIcon(kind));
+    }
+  }
   function createPanel(name, label, node, description) {
     if (!node) return null;
     let panel = id(name);
@@ -42,7 +65,7 @@
       panel = document.createElement('details');
       panel.id = name;
       panel.className = 'gdd-p1-panel';
-      panel.open = false; // Gọn trang chủ, chỉ mở khi khách chọn hoặc theo đường dẫn.
+      panel.open = true; // Show the usable utility immediately; visitors may collapse it.
       const heading = document.createElement('summary');
       const title = document.createElement('span');
       title.className = 'gdd-p1-utility-name';
@@ -74,7 +97,7 @@
     if (directory && directory.parentElement !== mainColumn) mainColumn.append(directory);
 
     const audio = id('am-thanh-dai-dao');
-    createPanel('gdd-p1-audio-panel', 'Âm Thanh Đại Đạo', audio, 'Radio Đạo Sử · Thánh âm');
+    createPanel('gdd-p1-audio-panel', 'Âm Thanh Đại Đạo', audio, 'Radio Đạo Sử · Niệm danh · Nhạc Đạo');
     const dashboard = id('gdd-archive-dashboard');
     if (dashboard) {
       const title = $('.gdd-dash-heading h2', dashboard);
@@ -86,6 +109,7 @@
     const statCard = $('.gdd-statistics');
     const target = id('gdd-p1-stat-content');
     if (statCard && target && statCard.parentElement !== target) target.append(statCard);
+    decorateUtilityHeaders();
     syncRoute();
   }
 
@@ -139,7 +163,7 @@
     layout.innerHTML = '<div id="gdd-p1-main" class="gdd-p1-main" aria-label="Tư liệu Đạo sử mới cập nhật"></div>' +
       '<aside id="gdd-p1-aside" class="gdd-p1-aside" aria-label="Âm Thanh Đại Đạo và Lịch Âm – Dương">' +
       '<div class="gdd-p1-side-intro"><span>KHO TƯ LIỆU ĐẠO SỬ</span><h2>TIỆN ÍCH ĐẠO SỬ</h2>' +
-      '<p>Tra cứu lịch, thánh âm và các nghi lễ.</p></div></aside>';
+      '<p>Tra cứu, nghe thánh âm và tính ngày lễ.</p></div></aside>';
 
     // Mục tra cứu gói trong một khung đóng/mở để tiết kiệm chiều cao cột phụ.
     const nav = document.createElement('nav');
@@ -148,6 +172,7 @@
     nav.setAttribute('aria-label', 'Chuyên mục tra cứu Đạo sử');
     const navDetails = document.createElement('details');
     navDetails.className = 'gdd-p1-sidebar-details';
+    navDetails.open = true;
     const navSummary = document.createElement('summary');
     navSummary.className = 'gdd-p1-sidebar-summary';
     const navTitle = document.createElement('span');
@@ -161,15 +186,18 @@
     navLinks.className = 'gdd-p1-sidebar-links';
     for (const [route, title] of [
       ['chuc-sac', 'Hồ sơ Chức sắc'],
-      ['video-dao-su', 'Video Đạo Sử'],
-      ['ai-tin', 'Ai Tín'],
-      ['tai-lieu-so-hoa', 'Tài liệu số hóa'],
       ['bien-khao', 'Biên khảo'],
-      ['hinh-anh', 'Hình ảnh']
+      ['hinh-anh', 'Hình ảnh'],
+      ['tai-lieu-so-hoa', 'Tài liệu số hóa'],
+      ['ai-tin', 'Ai Tín'],
+      ['video-dao-su', 'Video Đạo Sử']
     ]) {
       const link = document.createElement('a');
       link.href = '#' + route;
-      link.textContent = title;
+      const glyphs={'chuc-sac':'user','bien-khao':'book','hinh-anh':'image','tai-lieu-so-hoa':'file','ai-tin':'flower','video-dao-su':'video'};
+      const icon=utilityIcon(glyphs[route]);
+      const label=document.createElement('span');label.textContent=title;
+      link.append(icon,label);
       const arrow = document.createElement('span');
       arrow.className = 'gdd-p1-link-arrow';
       arrow.setAttribute('aria-hidden', 'true');
@@ -234,14 +262,11 @@
     putModules();
     // Có module được dựng sau DOMContentLoaded: chỉ thử gắn thêm một lần khi trang nạp xong.
     window.addEventListener('load', putModules, {once: true});
+    window.addEventListener('gdd:utility-mounted',decorateUtilityHeaders);
     window.addEventListener('hashchange', syncRoute);
     const breakpoint = mobileLayout;
     breakpoint.addEventListener?.('change', event => {
       setView('main');
-      for (const name of ['gdd-p1-audio-panel', 'gdd-p1-calendar-panel']) {
-        const panel = id(name);
-        if (panel) panel.open = false;
-      }
       syncRoute();
     });
   }

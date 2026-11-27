@@ -329,7 +329,7 @@ function mount(){
   if(!aside||$('#gdd-tuan-cuu-utility'))return;
   const style=document.createElement('style');style.id='gdd-tuan-cuu-style';style.textContent=css;document.head.append(style);
   const details=document.createElement('details');
-  details.id='gdd-tuan-cuu-utility';details.className='gdd-p1-panel gdd-cuu-panel';
+  details.id='gdd-tuan-cuu-utility';details.className='gdd-p1-panel gdd-cuu-panel';details.open=true;
   details.innerHTML='<summary><span class="gdd-p1-utility-name">TÍNH NGÀY TUẦN CỬU</span><small class="gdd-p1-utility-desc">Tiểu Tường · Đại Tường · PDF / Word</small></summary>'+
     '<div class="gdd-cuu-content"><p class="gdd-cuu-lead">Nhập ngày qui vị theo Âm lịch (mặc định) hoặc Dương lịch để tra đủ 9 kỳ Cửu và hai kỳ Tường.</p>'+
     '<form class="gdd-cuu-form" id="gdd-cuu-form"><label>Họ tên / Thánh danh<input type="text" id="gdd-cuu-name" maxlength="160" placeholder="Danh xưng người qui vị" autocomplete="off"></label>'+
@@ -343,6 +343,7 @@ function mount(){
   const anniversary=aside.querySelector('.gdd-p1-anniversary-link');
   const calendar=aside.querySelector('#gdd-p1-calendar-panel');
   if(anniversary)anniversary.after(details);else if(calendar)calendar.after(details);else aside.append(details);
+  window.dispatchEvent(new Event('gdd:utility-mounted'));
   const today=localToday();
   $('#gdd-cuu-date').value=today;
   // Mặc định nhập Âm lịch theo ngày Việt Nam, có danh sách tháng nhuận chính xác.
