@@ -6,7 +6,13 @@ on:
     branches: [main]
     paths:
       - "scripts/gdd_r2_daily_delta.py"
+      - ".github/workflows/gdd-r2-originals-daily-delta.yml"
   workflow_dispatch:
+    inputs:
+      until_utc:
+        description: "Optional catch-up end UTC ISO timestamp; does not advance checkpoint"
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -25,8 +31,10 @@ jobs:
       - name: "Export only new private R2 originals, ciphertext only"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
-          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_BACKUP_READ_ACCESS_KEY_ID || secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_BACKUP_READ_SECRET_ACCESS_KEY || secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          GDD_BACKUP_CONFIRMED_THROUGH_UTC: ${{ vars.GDD_BACKUP_CONFIRMED_THROUGH_UTC }}
+          GDD_BACKUP_UNTIL_UTC: ${{ inputs.until_utc }}
         run: python scripts/gdd_r2_daily_delta.py
       - name: "Temporary encrypted transfer artifact; skip if no new original"
         uses: actions/upload-artifact@v4
@@ -34,5 +42,5 @@ jobs:
           name: gdd-originals-delta-${{ github.run_id }}
           path: /tmp/gdd-daily-encrypted/*.tar.gpg
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
           compression-level: 0

@@ -5,6 +5,7 @@ Never logs private keys, source paths, filenames, or original data.
 from __future__ import annotations
 import os,re,datetime,json,base64,hashlib,tarfile,tempfile,subprocess,pathlib,io,sys
 import boto3
+from botocore.exceptions import ClientError
 from botocore.config import Config
 BUCKET="gdd-dau-xua-cua-dao"
 PREFIX="originals/"
@@ -48,15 +49,27 @@ def item(name,size):
     return t
 def main():
     now=datetime.datetime.now(datetime.timezone.utc)
-    cutoff=max(BASELINE,now-datetime.timedelta(hours=30))
+    # Do not advance the watermark based on a workflow run alone: the encrypted
+    # backup must be verified in the external destination first. Until then, re-read
+    # the overlapping interval from the last confirmed full snapshot.
+    raw=os.getenv("GDD_BACKUP_CONFIRMED_THROUGH_UTC","").strip()
+    confirmed=datetime.datetime.fromisoformat(raw.replace("Z","+00:00")) if raw else BASELINE
+    if confirmed.tzinfo is None or confirmed<BASELINE or confirmed>now:
+        raise ValueError("Invalid confirmed backup checkpoint")
+    cutoff=max(BASELINE,confirmed-datetime.timedelta(hours=6))
+    until_raw=os.getenv("GDD_BACKUP_UNTIL_UTC","").strip()
+    until=datetime.datetime.fromisoformat(until_raw.replace("Z","+00:00")) if until_raw else now
+    if until.tzinfo is None or until<cutoff or until>now:
+        raise ValueError("Invalid catch-up end timestamp")
+    print("BACKUP_WINDOW_UTC="+cutoff.isoformat()+".."+until.isoformat(),flush=True)
     s3=conn();all_entries=objects(s3)
-    recent=sorted([r for r in all_entries if r[2]>=cutoff],key=lambda r:r[0])
+    recent=sorted([r for r in all_entries if cutoff<=r[2]<=until],key=lambda r:r[0])
     if not recent:
         print("No R2 original objects added/modified in delta window; safe no-op",flush=True)
         return
     total=sum(row[1] for row in recent)
     if len(recent)>MAX_DELTA_FILES or total>MAX_DELTA_BYTES:
-        raise ValueError("Delta over backup safety cap: requires separate new full snapshot")
+        raise ValueError("Delta exceeds safety cap; use bounded catch-up end timestamp. No checkpoint advanced.")
     pub=base64.b64decode(pathlib.Path("maintenance-tasks/gdrive-backup-recipient-public-key.b64").read_text("ascii").strip(),validate=True)
     if not pub.startswith(b"-----BEGIN PGP PUBLIC KEY BLOCK-----"):
         raise ValueError("Invalid archive public key")
@@ -77,7 +90,7 @@ def main():
                 records.append({"key":key,"bytes":size,"sha256":h.hexdigest(),"modified_utc":stamp.isoformat()})
                 print(f"Verified private original {number}/{len(recent)} (SHA256)",flush=True)
             manifest=json.dumps({"format":"GDD-R2-daily-delta-v1","backup_date_utc":now.date().isoformat(),
-                "window_start_utc":cutoff.isoformat(),"object_count":len(recent),
+                "window_start_utc":cutoff.isoformat(),"window_end_utc":until.isoformat(),"object_count":len(recent),
                 "original_bytes":total,"files":records},separators=(",",":"),ensure_ascii=False).encode("utf-8")
             tar.addfile(item("MANIFEST.json",len(manifest)),io.BytesIO(manifest))
         home=wd/"gnupg";home.mkdir(mode=0o700)
@@ -96,6 +109,14 @@ def main():
             "safe_to_transfer":True}),flush=True)
 if __name__=="__main__":
     try:main()
+    except ClientError as error:
+        code=str(error.response.get("Error",{}).get("Code","Unknown"))
+        operation=str(error.operation_name)
+        code=code if re.fullmatch(r"[A-Za-z0-9_-]{1,80}",code) else "Unknown"
+        operation=operation if re.fullmatch(r"[A-Za-z0-9_-]{1,80}",operation) else "Unknown"
+        status=error.response.get("ResponseMetadata",{}).get("HTTPStatusCode","unknown")
+        print(f"R2_BACKUP_BLOCKED operation={operation} code={code} http={status}; no credentials or object names printed",file=sys.stderr)
+        sys.exit(1)
     except Exception as error:
         print("SAFE DELTA BACKUP ERROR: "+type(error).__name__+"; no private R2 filenames or keys exposed",file=sys.stderr)
         sys.exit(1)

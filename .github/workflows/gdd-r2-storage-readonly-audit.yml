@@ -21,8 +21,8 @@ jobs:
       - name: "Count exact R2 object sizes by private/public function without printing filenames"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
-          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_BACKUP_READ_ACCESS_KEY_ID || secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_BACKUP_READ_SECRET_ACCESS_KEY || secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
         run: |
           python - <<'PY'
           import os, re, json, datetime, collections

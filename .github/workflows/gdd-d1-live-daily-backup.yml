@@ -1,0 +1,95 @@
+name: "GDD - Daily encrypted live D1 backup"
+# Fresh encrypted backup after submission-review audit and archive-code functionality passed.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gdd-d1-live-daily-backup.yml"
+  schedule:
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gdd-working-d1-encrypted-export
+  cancel-in-progress: false
+jobs:
+  secure-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cloudflare-d1-migration-20261123
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: "Read-only export of the ACTIVE D1 working copy to ephemeral runner"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4.159.0 d1 export gdd-dao-su-editor-live-clone-20261124 \
+            --remote --config workers/gdd-d1-admin/wrangler.jsonc \
+            --output=/tmp/gdd-working-private.sql >/tmp/gdd-working-export-internal.log 2>&1 \
+            || { echo "D1_ACTIVE_EXPORT_FAILED_PRIVATE_LOGS_SUPPRESSED"; exit 1; }
+          test -s /tmp/gdd-working-private.sql
+          echo "D1_WORKING_PRIVATE_EXPORT_COMPLETED=TRUE"
+      - name: "Verify exported 21 tables, baseline and editorial revision table locally"
+        run: |
+          python3 - <<'PY'
+          import sqlite3,json,pathlib
+          p=pathlib.Path('/tmp/gdd-working-private.sql')
+          if p.stat().st_size<10000 or p.stat().st_size>40000000:
+              raise SystemExit('Working D1 export size outside safe bound')
+          db=sqlite3.connect(':memory:')
+          db.executescript(p.read_text())
+          original=json.loads(pathlib.Path('workers/gdd-d1/source-row-counts-20261123.json').read_text())['table_counts']
+          assert len(original)==21 and sum(original.values())==1892
+          total=0
+          for k,v in original.items():
+              n=db.execute('SELECT count(*) FROM "'+k+'"').fetchone()[0]
+              if n<v:raise SystemExit('Active D1 archive missing original rows: '+k)
+              total+=n
+          row=db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gdd_v2_editor_revisions'").fetchone()
+          if row is None:raise SystemExit('D1 editor revisions table missing')
+          print('ACTIVE_D1_21_TABLES_EXPORTED='+str(total))
+          print('ACTIVE_D1_AUDIT_REVISIONS_INCLUDED=TRUE')
+          PY
+      - name: "Encrypt with established Cao Dai OpenPGP recipient; NEVER copy plaintext to artifact"
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$(mktemp -d /tmp/gdd-d1-encrypt-gpg.XXXXXX)"
+          chmod 700 "$GNUPGHOME"
+          base64 -d maintenance-tasks/gdrive-backup-recipient-public-key.b64 > /tmp/gdd-d1-archive-recipient.asc
+          gpg --batch --quiet --import /tmp/gdd-d1-archive-recipient.asc 2>/dev/null
+          fingerprint="$(gpg --batch --with-colons --list-keys | awk -F: '$1=="fpr" {print $10;exit}')"
+          if ! echo "$fingerprint" | grep -Eq '^[A-Fa-f0-9]{40,64}$';then
+             echo "D1_RECIPIENT_INVALID";exit 1
+          fi
+          gpg --batch --yes --quiet --trust-model always --recipient "$fingerprint" \
+            --output /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg \
+            --encrypt /tmp/gdd-working-private.sql
+          test -s /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg
+          if grep -a -q 'CREATE TABLE.*people' /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg; then
+             echo "ENCRYPTED_CONTENT_MARKER_FOUND";exit 1
+          fi
+          echo "ACTIVE_D1_OPENPGP_ENCRYPTED_NO_PLAINTEXT_ARTIFACT=TRUE"
+      - name: "Temporary artifact contains ONLY encrypted backup"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdd-d1-working-encrypted-${{ github.run_id }}
+          path: /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg
+          if-no-files-found: error
+          retention-days: 7
+      - name: "Erase temporary SQL and private encryption workspace, even after failed steps"
+        if: always()
+        run: |
+          rm -f /tmp/gdd-working-private.sql /tmp/gdd-working-export-internal.log /tmp/gdd-d1-archive-recipient.asc
+          find /tmp -maxdepth 1 -type d -name 'gdd-d1-encrypt-gpg.*' -exec rm -rf {} +
+          rm -f /tmp/GDD-D1-LAM-VIEC-HIEN-HANH-MA-HOA.sql.gpg
+          echo "ACTIVE_D1_PLAINTEXT_AND_TEMP_FILES_ERASED=TRUE"
