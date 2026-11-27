@@ -26,6 +26,7 @@ export function validateResearch(input,old){
 // Fixed public indexes only. Never fetch arbitrary URLs supplied by a user.
 const LESSON_ROOT='https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/';
 const LESSON_DATES=['31-5-1926','5-6-1926','8-6-1926','27-6-1926','5-7-1926','15-7-1926','17-7-1926','22-7-1926','25-7-1926','30-7-1926','4-8-1926','7-8-1926','9-8-1926','21-8-1926','22-8-1926','27-8-1926','11-9-1926','17-9-1926','18-9-1926','22-9-1926','29-9-1926','1-10-1926','4-10-1926','12-10-1926','24-10-1926','27-10-1926','28-10-1926','29-10-1926','1-11-1926','12-11-1926','20-11-1926','23-11-1926','24-11-1926','28-11-1926'];
+const HISTORY_BOOKS=[{url:'https://www.daotam.info/booksv/daosu/2056-dshh.htm',citation:'Đạo Sử 1925–1929, Nữ Đầu Sư Hương Hiếu, bản điện tử'},{url:'https://caodaiebook.net/CaoDaiTuDien(v2012)/cdtd-van_K.htm',citation:'Cao Đài Tự Điển, Đức Nguyên, mục K'},{url:'https://caodaiebook.net/CaoDaiTuDien(v2012)/cdtd-van_NG.htm',citation:'Cao Đài Tự Điển, Đức Nguyên, mục NG'},{url:'https://caodaiebook.net/CaoDaiTuDien(v2012)/cdtd-van_CH.htm',citation:'Cao Đài Tự Điển, Đức Nguyên, mục CH'},{url:'https://caodaiebook.net/CaoDaiTuDien(v2012)/cdtd-van_H.htm',citation:'Cao Đài Tự Điển, Đức Nguyên, mục H'}];
 const HISTORY_INDEX='https://www.caodai.com.vn/vn/news/tin-tuc-dao-su/page-118.html';
 const INDEXES=[
  {url:'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/',citation:'Thánh Ngôn Hiệp Tuyển – Quyển 1, cần đối chiếu bản in'},
@@ -103,28 +104,43 @@ async function extractLesson(item){
 }
 // Extract only a short, dated event sentence from a specific approved source domain.
 // Dates without explicit calendar indication stay internal for editorial verification.
-export function historicalCandidate(paragraphs){
+// Read explicit calendar notation before or after a date, including spaced numerals.
+export function eventDate(text){
+ const s=String(text||'').replace(/\u00a0/g,' ').normalize('NFC');
+ const patterns=[
+ {re:/(?:\bDL|\bD\.?\s*L\.?|dương lịch)\s*[:.]?\s*(\d{1,2})\s*[\/.-]\s*(\d{1,2})\s*[\/.-]\s*(\d{4})(?!\d)/i,lunar:false},
+ {re:/(\d{1,2})\s*[\/.-]\s*(\d{1,2})\s*[\/.-]\s*(\d{4})\s*(?:DL|D\.L\.?|dương lịch)(?!\p{L})/iu,lunar:false},
+ {re:/(\d{1,2})\s*[\/.-]\s*(\d{1,2})\s*[\/.-]\s*(\d{4})\s*(?:ÂL|AL|âm lịch)(?!\p{L})/iu,lunar:true},
+ {re:/\bngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})(?!\d)/i,lunar:false},
+ {re:/\bngày\s+(\d{1,2})\s*[\/.-]\s*(\d{1,2})\s*[\/.-]\s*(\d{4})\s*\(\s*(?:âl|al|âm lịch)\s*[:.]?/i,lunar:false}
+ ];
+ for(const p of patterns){const m=s.match(p.re);if(!m)continue;const d=+m[1],mo=+m[2],y=+m[3];if(y<1800||y>new Date().getUTCFullYear()||mo<1||mo>12||d<1||d>(p.lunar?30:31))continue;const check=new Date(Date.UTC(y,mo-1,d));if(!p.lunar&&(check.getUTCDate()!==d||check.getUTCMonth()+1!==mo))continue;return p.lunar?d+'/'+mo+'/'+y+' ÂL':y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
+ return '';
+}
+export function historicalCandidates(paragraphs){
+ const out=[];
  for(const para of paragraphs){
-  const sentences=para.split(/(?<=[.!?])\s+/);
-  for(const raw of sentences){
-   const s=raw.trim().replace(/\s+/g,' ');
-   if(!historyTitle(s)||s.split(/\s+/).length<8||s.split(/\s+/).length>24||!/[.!?]$/.test(s))continue;
-   const date=s.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\s*(ÂL|AL|âm lịch|DL|D\.L\.|dương lịch)\b/i);
-   if(!date)continue;
-   const d=+date[1],m=+date[2],y=+date[3],isLunar=/^(ÂL|AL|âm lịch)$/i.test(date[4]);
-   if(d<1||d>(isLunar?30:31)||m<1||m>12||y<1800||y>new Date().getUTCFullYear())continue;
-   const check=new Date(Date.UTC(y,m-1,d));if(!isLunar&&(check.getUTCDate()!==d||check.getUTCMonth()+1!==m))continue;
-   return {excerpt:s,source_date:isLunar?d+'/'+m+'/'+y+' ÂL':y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'),note:'Máy tìm câu có sự kiện và ngày ghi rõ loại lịch; cần xác nhận đây là ngày sự kiện gốc, không phải ngày lễ kỷ niệm hoặc ngày đăng bài.'};
+  const s=String(para||'').trim().replace(/\s+/g,' ');
+  if(!historyTitle(s)||s.split(/\s+/).length<8||s.split(/\s+/).length>180)continue;
+  // Prefer a complete, dated sentence; keep a longer passage private if abbreviations split it.
+  const sentences=s.split(/(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÀ-Ỹ][a-zà-ỹ])/u);
+  for(const text of sentences){
+   if(!historyTitle(text)||text.split(/\s+/).length<8||text.split(/\s+/).length>80)continue;
+   const source_date=eventDate(text);if(!source_date)continue;
+   // This is a review candidate, not an automatically verified statement or publication date.
+   if(text.split(/\s+/).length>24)continue;
+   out.push({excerpt:text,source_date,note:'Đoạn trích có niên đại trong nội dung. Cần xác định ngày sự kiện gốc, địa điểm, biên tập tóm lược và đối chiếu quyền sử dụng trước khi duyệt.'});break;
   }
  }
- return null;
+ return out;
 }
+export function historicalCandidate(paragraphs){return historicalCandidates(paragraphs)[0]||null}
 async function extractHistory(item){
  const u=new URL(item.url);
  if(!['https://www.caodai.com.vn','https://caodai.com.vn'].includes(u.origin)||!/^\/vn\/news-detail\/[a-z0-9-]+\.html$/i.test(u.pathname)||u.search||u.hash)return null;
  if(!await allowed(item))throw Error('robots');
  const html=await fetchFixed(item.url,600000),paragraphs=[];let current=null;
- const parser=new HTMLRewriter().on('p',{element(el){current={text:''};const c=current;el.onEndTag(()=>{paragraphs.push(c.text.trim());if(current===c)current=null})},text(t){if(current&&current.text.length<4000)current.text+=t.text}});
+ const parser=new HTMLRewriter().on('p,li',{element(el){current={text:''};const c=current;el.onEndTag(()=>{paragraphs.push(c.text.trim());if(current===c)current=null})},text(t){if(current&&current.text.length<4000)current.text+=t.text}});
  await parser.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();
  return historicalCandidate(paragraphs);
 }
@@ -149,6 +165,11 @@ export function researchRemaining(runs,kind,target=DAILY_RESEARCH_TARGET){
 }
 async function recordAttempt(db,key,outcome){
  await db.prepare("INSERT INTO gdd_research_attempts(source_url,outcome) VALUES(?,?) ON CONFLICT(source_url) DO UPDATE SET attempted_at=CURRENT_TIMESTAMP,outcome=excluded.outcome").bind(key,outcome).run();
+}
+async function readHistoryBook(book){
+ if(!await allowed(book))throw Error('robots');const html=await fetchFixed(book.url,2500000),paragraphs=[];let current=null;
+ const parser=new HTMLRewriter().on('p,li,h2,h3,h4',{element(el){current={text:''};const c=current;el.onEndTag(()=>{paragraphs.push(c.text.trim());if(current===c)current=null})},text(t){if(current&&current.text.length<10000)current.text+=t.text}});
+ await parser.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();return historicalCandidates(paragraphs);
 }
 export async function collectCategory(env,kind,{origin='manual',limit=DAILY_RESEARCH_TARGET}={}){
  if(!['quote','history'].includes(kind))throw Error('Loại sưu tầm không hợp lệ');
@@ -184,6 +205,11 @@ export async function collectCategory(env,kind,{origin='manual',limit=DAILY_RESE
    let outcome='index_scanned';try{const found=await discover(index);if(found.blocked)throw Error('robots');for(const s of found.links)add(s);result.push({source:index.url,ok:true,links:found.links.length})}catch(e){outcome=String(e?.message||e).slice(0,120);result.push({source:index.url,ok:false,reason:outcome})}
    await recordAttempt(db,'history-index:'+n,outcome);
   }
+ }
+ // Historical books can contain many distinct events. Deduplicate by exact excerpt and date, not just book URL.
+ if(kind==='history'){
+  const book=HISTORY_BOOKS.find(b=>!attempted.has('history-book:'+b.url));
+  if(book){let outcome='no_usable_excerpt';try{const candidates=await readHistoryBook(book);for(const x of candidates){if(ready>=target)break;const bytes=new TextEncoder().encode(x.source_date+'|'+x.excerpt);const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('');const res=await db.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note,source_date) SELECT ?,'history',?,?,?,?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM gdd_research_items WHERE kind='history' AND trim(excerpt)=?)").bind(crypto.randomUUID(),'Sự kiện ngày '+x.source_date,book.url,book.citation,'history-book:'+hash,x.excerpt,x.note,x.source_date,x.excerpt.trim()).run();ready+=res.meta?.changes||0;}outcome=ready?'events_saved':'no_usable_excerpt'}catch(e){outcome=String(e?.message||e).slice(0,120)}await recordAttempt(db,'history-book:'+book.url,outcome);result.push({source:book.url,ok:outcome==='events_saved',reason:outcome});}
  }
  // Bound subrequests/time; one real, non-duplicate quotation or event per source.
  for(const s of queue.values()){
