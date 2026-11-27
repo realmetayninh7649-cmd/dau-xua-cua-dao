@@ -17,6 +17,7 @@ export function validateResearch(input,old){
  if(old&&['kind','title','excerpt','speaker','source_url','citation','source_date','rights'].some(k=>r[k]!==old[k])&&!(old.state==='pending'&&r.state==='approved'&&input.confirmed===true)){r.state='pending';r.visible=0;}
  if(r.state==='approved'&&(!r.excerpt||!r.citation||r.rights==='unknown'))throw Error('Phải có nguyên văn, xuất xứ và quyền sử dụng trước khi duyệt.');
  if(r.visible&&r.kind==='quote'&&(!r.speaker||!r.source_date||/cần đối chiếu|chưa xác định|chưa rõ|không rõ|chờ duyệt|chưa kiểm chứng/i.test(r.speaker+' '+r.source_date)))throw Error('Cần ghi rõ đấng ban giáo hoặc người dạy và ngày tháng / đàn cơ trước khi hiển thị. Có thể duyệt nội bộ nếu chưa đủ dữ kiện.');
+ if(r.visible&&r.kind==='history'&&!/^(?:\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}(?:\/\d{4})?\s*ÂL)$/i.test(r.source_date))throw Error('Ngày sự kiện phải ghi YYYY-MM-DD (DL) hoặc DD/MM/YYYY ÂL, theo nguồn đã đối chiếu.');
  if(r.visible&&r.state!=='approved')throw Error('Chỉ được hiển thị nội dung đã duyệt.');
  if(r.state==='approved'&&old?.state!=='approved'&&input.confirmed!==true)throw Error('Cần xác nhận đã đối chiếu nguồn.');
  if(r.visible&&input.confirmed!==true)throw Error('Cần xác nhận cho phép công bố.');
@@ -25,13 +26,16 @@ export function validateResearch(input,old){
 // Fixed public indexes only. Never fetch arbitrary URLs supplied by a user.
 const LESSON_ROOT='https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/';
 const LESSON_DATES=['31-5-1926','5-6-1926','8-6-1926','27-6-1926','5-7-1926','15-7-1926','17-7-1926','22-7-1926','25-7-1926','30-7-1926','4-8-1926','7-8-1926','9-8-1926','21-8-1926','22-8-1926','27-8-1926','11-9-1926','17-9-1926','18-9-1926','22-9-1926','29-9-1926','1-10-1926','4-10-1926','12-10-1926','24-10-1926','27-10-1926','28-10-1926','29-10-1926','1-11-1926','12-11-1926','20-11-1926','23-11-1926','24-11-1926','28-11-1926'];
+const HISTORY_INDEX='https://www.caodai.com.vn/vn/news/tin-tuc-dao-su/page-118.html';
 const INDEXES=[
  {url:'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/',citation:'Thánh Ngôn Hiệp Tuyển – Quyển 1, cần đối chiếu bản in'},
  {url:'https://caodaiebook.net/tailieusuutap.htm',citation:'Cao Đài E-book – thư mục sưu tầm'},
  {url:'https://thanhgiaocaodai.com/doc/',citation:'Thánh Giáo Cao Đài – cần kiểm tra Hội Thánh và ấn bản'},
- {url:'https://thanhgiaocaodai.com/doc/thanh-giao-cao-dai/',citation:'Thánh Giáo Cao Đài – cần đối chiếu nguyên bản'}
+ {url:'https://thanhgiaocaodai.com/doc/thanh-giao-cao-dai/',citation:'Thánh Giáo Cao Đài – cần đối chiếu nguyên bản'},
+ {url:HISTORY_INDEX,citation:'Hội Thánh Cao Đài Tòa Thánh Tây Ninh – tin tức và hồi cố Đạo sử',kind:'history'}
 ];
 const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase();
+export function historyTitle(v){return /khai dao|cau dao|lap tich|tich dao|lap dao|khai tich|tan kinh|phong thanh|tho nan|luu day|hoi huong|dao su|lich su|khoi cong|khanh thanh|thanh lap|dang tien|qui vi|quy vi/.test(norm(v))}
 export function interestingTitle(v){return /thanh ngon|thanh giao|thuyet dao|huan tu|giao huan|loi day|kinh thien dao|kinh the dao|nghi le|nghi tiet/.test(norm(v))}
 export function shortExcerpt(v){return String(v||'').trim().split(/\s+/).slice(0,20).join(' ')}
 async function boundedText(res,max){
@@ -74,11 +78,38 @@ async function extractLesson(item){
  if(!candidates.length)return null;
  return {excerpt:candidates[0],source_date:u.pathname.match(/ngay-(\d{1,2}-\d{1,2}-\d{4})\/?$/)?.[1]||'',note:'Máy trích một câu hoàn chỉnh từ bài riêng; chưa đối chiếu bản in, người ban giáo và quyền sử dụng. Đọc văn cảnh trước khi duyệt.'};
 }
+// Extract only a short, dated event sentence from a specific approved source domain.
+// Dates without explicit calendar indication stay internal for editorial verification.
+export function historicalCandidate(paragraphs){
+ for(const para of paragraphs){
+  const sentences=para.split(/(?<=[.!?])\s+/);
+  for(const raw of sentences){
+   const s=raw.trim().replace(/\s+/g,' ');
+   if(!historyTitle(s)||s.split(/\s+/).length<8||s.split(/\s+/).length>24||!/[.!?]$/.test(s))continue;
+   const date=s.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\s*(ÂL|AL|âm lịch|DL|D\.L\.|dương lịch)\b/i);
+   if(!date)continue;
+   const d=+date[1],m=+date[2],y=+date[3],isLunar=/^(ÂL|AL|âm lịch)$/i.test(date[4]);
+   if(d<1||d>(isLunar?30:31)||m<1||m>12||y<1800||y>new Date().getUTCFullYear())continue;
+   const check=new Date(Date.UTC(y,m-1,d));if(!isLunar&&(check.getUTCDate()!==d||check.getUTCMonth()+1!==m))continue;
+   return {excerpt:s,source_date:isLunar?d+'/'+m+'/'+y+' ÂL':y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'),note:'Máy tìm câu có sự kiện và ngày ghi rõ loại lịch; cần xác nhận đây là ngày sự kiện gốc, không phải ngày lễ kỷ niệm hoặc ngày đăng bài.'};
+  }
+ }
+ return null;
+}
+async function extractHistory(item){
+ const u=new URL(item.url);
+ if(!['https://www.caodai.com.vn','https://caodai.com.vn'].includes(u.origin)||!/^\/vn\/news-detail\/[a-z0-9-]+\.html$/i.test(u.pathname)||u.search||u.hash)return null;
+ if(!await allowed(item))throw Error('robots');
+ const html=await fetchFixed(item.url,600000),paragraphs=[];let current=null;
+ const parser=new HTMLRewriter().on('p',{element(el){current={text:''};const c=current;el.onEndTag(()=>{paragraphs.push(c.text.trim());if(current===c)current=null})},text(t){if(current&&current.text.length<4000)current.text+=t.text}});
+ await parser.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();
+ return historicalCandidate(paragraphs);
+}
 async function discover(index){
  if(!await allowed(index))return {links:[],excerpt:'',blocked:true};
  const html=await fetchFixed(index.url,2000000),links=[];let link=null,quote=null,excerpt='';
  const rewrite=new HTMLRewriter().on('a[href]',{
-   element(el){link={href:el.getAttribute('href'),label:''};const current=link;el.onEndTag(()=>{if(current.label.length>=8&&current.label.length<=300&&(interestingTitle(current.label)||/^ngay\s+\d/i.test(norm(current.label.trim())))){try{const u=new URL(current.href,index.url),base=new URL(index.url);if(u.origin===base.origin&&u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname!=='/'&&u.href.length<=2000)links.push({title:current.label.trim().replace(/\s+/g,' '),url:u.href,citation:index.citation})}catch{}}if(link===current)link=null})},
+   element(el){link={href:el.getAttribute('href'),label:''};const current=link;el.onEndTag(()=>{if(current.label.length>=8&&current.label.length<=300&&(index.kind==='history'?historyTitle(current.label):(interestingTitle(current.label)||/^ngay\s+\d/i.test(norm(current.label.trim()))))){try{const u=new URL(current.href,index.url),base=new URL(index.url);if(u.origin===base.origin&&u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname!=='/'&&u.href.length<=2000)links.push({title:current.label.trim().replace(/\s+/g,' '),url:u.href,citation:index.citation,kind:index.kind||'quote'})}catch{}}if(link===current)link=null})},
    text(t){if(link&&link.label.length<350)link.label+=t.text}
  }).on('blockquote',{
    element(el){quote={text:''};const current=quote;el.onEndTag(()=>{if(!excerpt&&current.text.trim().split(/\s+/).length>=8)excerpt=shortExcerpt(current.text);if(quote===current)quote=null})},
@@ -91,7 +122,7 @@ export async function collectResearch(env,mode='all'){
  if(mode!=='all'&&mode!=='seed'&&(!Number.isInteger(mode)||mode<0||mode>=INDEXES.length))throw Error('Nguồn không hợp lệ');
  let inserted=0;const result=[];
  const save=async(s,key,excerpt='',note='',sourceDate='')=>{
-   const id=crypto.randomUUID(),res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note,source_date) VALUES(?,?,?,?,?,?,?,?,?)").bind(id,'quote',s.title,s.url,s.citation,key,excerpt,note,sourceDate).run();
+   const id=crypto.randomUUID(),res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note,source_date) VALUES(?,?,?,?,?,?,?,?,?)").bind(id,s.kind||'quote',s.title,s.url,s.citation,key,excerpt,note,sourceDate).run();
    inserted+=res.meta?.changes||0;
  };
  if(mode==='all'||mode==='seed')for(const s of SOURCES){try{await save(s,s.url);result.push({source:s.url,ok:true,kind:'catalog'})}catch(e){result.push({source:s.url,ok:false,reason:String(e?.message||'D1 write failed').slice(0,150)})}}
@@ -102,7 +133,7 @@ export async function collectResearch(env,mode='all'){
      const found=await discover(index);
      if(found.blocked){result.push({source:index.url,ok:false,reason:'robots'});continue}
      // Catalog links are references, not quotations. Never save index blockquotes as review-ready.
-     for(const item of found.links){if(inserted>=(mode===0||mode==='all'?6:10))break;await save(item,item.url);}
+     for(const item of found.links){if(inserted>=(mode===0||mode==='all'?6:index.kind==='history'?7:10))break;await save(item,index.kind==='history'?'history-source:'+item.url:item.url);}
      result.push({source:index.url,ok:true,links:found.links.length});
    }catch(e){result.push({source:index.url,ok:false,reason:String(e?.message||'unavailable').slice(0,100)})}
  }
@@ -122,6 +153,16 @@ export async function collectResearch(env,mode='all'){
        result.push({source:item.url,ok:outcome==='excerpt_saved',reason:outcome});
      }
    }catch(e){result.push({source:'lesson_queue',ok:false,reason:String(e?.message||'unavailable').slice(0,150)})}
+ }
+ if(mode==='all'||INDEXES[mode]?.kind==='history'){
+   try{
+    const {results:todo}=await env.DB.prepare("SELECT title,source_url AS url,citation FROM gdd_research_items s WHERE s.kind='history' AND s.state='pending' AND length(trim(s.excerpt))=0 AND NOT EXISTS(SELECT 1 FROM gdd_research_items x WHERE x.discovered_key='history:'+s.source_url) AND NOT EXISTS(SELECT 1 FROM gdd_research_attempts a WHERE a.source_url=s.source_url AND a.attempted_at>datetime('now','-1 day')) ORDER BY s.created_at,s.id LIMIT 3").all();
+    for(const item of todo||[]){if(inserted>=10)break;let outcome='no_dated_event';
+     try{const x=await extractHistory(item);if(x){await save({...item,kind:'history'},'history:'+item.url,x.excerpt,x.note,x.source_date);outcome='event_saved'}}catch(e){outcome=String(e?.message||'unavailable').slice(0,100)}
+     await env.DB.prepare("INSERT INTO gdd_research_attempts(source_url,outcome) VALUES(?,?) ON CONFLICT(source_url) DO UPDATE SET attempted_at=CURRENT_TIMESTAMP,outcome=excluded.outcome").bind(item.url,outcome).run();
+     result.push({source:item.url,ok:outcome==='event_saved',reason:outcome});
+    }
+   }catch(e){result.push({source:'history_queue',ok:false,reason:String(e?.message||'unavailable').slice(0,150)})}
  }
  await env.DB.prepare('INSERT INTO gdd_research_runs(id,result) VALUES(?,?)').bind(crypto.randomUUID(),JSON.stringify({inserted,result})).run();
  const counts=await env.DB.prepare("SELECT count(*) AS total, sum(CASE WHEN state='pending' AND length(trim(excerpt))=0 THEN 1 ELSE 0 END) AS sources, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS pending, sum(CASE WHEN state='pending' AND length(trim(excerpt))>0 THEN 1 ELSE 0 END) AS excerpts FROM gdd_research_items").first();
