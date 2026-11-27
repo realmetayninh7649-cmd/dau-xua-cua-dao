@@ -99,8 +99,35 @@
       .then(m=>m.createClient(c.supabaseUrl,c.supabasePublishableKey));
     return supaPromise;
   }
+  async function readD1Gallery(record,progress){
+    const api='https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/public/';
+    if(!['people','posts','documents'].includes(record.kind))throw Error('Chuyên mục không hỗ trợ xuất tệp.');
+    const read=async url=>{
+      const response=await fetch(url,{credentials:'omit',cache:'no-store'});
+      if(!response.ok)throw Error('Kho tư liệu công khai chưa phản hồi (HTTP '+response.status+')');
+      return response.json();
+    };
+    const owner=(await read(api+record.kind+'/'+encodeURIComponent(record.slug))).data;
+    if(!owner||owner.published!==true||!owner.id)throw Error('Không tìm thấy tư liệu đã công bố.');
+    if(record.kind==='documents')record.documentFileUrl=safeURL(owner.file_url);
+    const result=[];
+    for(let offset=0;offset<2000;offset+=100){
+      const q=new URLSearchParams({owner_kind:record.kind,owner_id:owner.id,limit:'100',offset:String(offset)});
+      const data=(await read(api+'albums?'+q)).data;
+      if(!Array.isArray(data)||data.length>100)throw Error('Danh sách ảnh công khai không hợp lệ.');
+      for(const img of data){
+        if(img.owner_kind!==record.kind||img.owner_id!==owner.id)throw Error('Danh sách ảnh không khớp hồ sơ.');
+        const url=safeURL(img.image_url);if(!url)throw Error('Có trang ảnh không có đường dẫn hợp lệ.');
+        result.push({url,caption:(tidy(img.caption)||'Ảnh tư liệu '+(result.length+1))+(img.photo_code?' · dauxuacuadao.info.vn | '+img.photo_code:'')});
+      }
+      if(data.length<100)return result;
+      progress('Đã tìm thấy '+result.length+' ảnh đính kèm…');
+    }
+    throw Error('Bộ ảnh vượt giới hạn xuất tệp an toàn.');
+  }
   async function readGallery(record,progress){
     if(record.kind==='memorial')return record.gallery;
+    if(window.SITE_CONFIG?.publicReadProvider==='d1-staging')return readD1Gallery(record,progress);
     const client=await getSupa();
     const {data:owner,error:ownerError}=await client.from(record.kind).select(record.kind==='documents'?'id,file_url':'id')
       .eq('slug',record.slug).eq('published',true).maybeSingle();
@@ -212,7 +239,13 @@
   async function fullResolutionPrintScan(url){
     const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),45000);
     let response;
-    try{response=await fetch(window.GDDLegacyImages?.printUrl?.(url)||url,{mode:'cors',credentials:'omit',signal:abort.signal})}
+    try{
+      const print=window.GDDLegacyImages?.printUrl?.(url)||url;
+      // Never request the restricted old storage in D1 mode, and never substitute a thumbnail for a print scan.
+      if(window.SITE_CONFIG?.publicReadProvider==='d1-staging'&&new URL(print).hostname.endsWith('.supabase.co'))
+        throw Error('Ảnh này chưa có bản in công khai tại kho R2');
+      response=await fetch(print,{mode:'cors',credentials:'omit',signal:abort.signal});
+    }
     finally{clearTimeout(timer)}
     if(!response.ok)throw Error('Nguồn ảnh không trả dữ liệu (HTTP '+response.status+')');
     const blob=await response.blob();

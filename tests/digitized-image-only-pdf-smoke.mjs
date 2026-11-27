@@ -7,7 +7,7 @@ const original=fs.readFileSync(new URL('../gdd-document-export.js',import.meta.u
 const last=original.lastIndexOf('})();');
 assert.ok(last>100,'Expected archive export module IIFE');
 const instrumented=original.slice(0,last)+
-  'globalThis.__PDF_TEST_ONLY={documentScanSources,imageOnlyDocumentPdf,fullResolutionPrintScan,preparePrintScans,pdfDefinition,docxBlob};\n'
+  'globalThis.__PDF_TEST_ONLY={documentScanSources,imageOnlyDocumentPdf,fullResolutionPrintScan,preparePrintScans,pdfDefinition,docxBlob,readGallery};\n'
   +original.slice(last);
 
 function fakeDocument(){
@@ -34,16 +34,16 @@ class FakeFileReader{
     this.onload?.();
   }
 }
-function mockEnvironment({fetchFunction,imageWidth=1800,imageHeight=2600}={}){
+function mockEnvironment({fetchFunction,imageWidth=1800,imageHeight=2600,d1=false}={}){
   class SizedFakeImage extends FakeImage{
     constructor(){super();this.naturalWidth=imageWidth;this.naturalHeight=imageHeight;}
   }
-  const c={window:{addEventListener(){}},document:fakeDocument(),
+  const c={window:{addEventListener(){},SITE_CONFIG:d1?{publicReadProvider:'d1-staging'}:{}},document:fakeDocument(),
     MutationObserver:class{observe(){} disconnect(){}},
     Image:SizedFakeImage,
     FileReader:FakeFileReader,
     Blob,
-    URL, location:{href:'https://dauxuacuadao.info.vn/',
+    URL, URLSearchParams, location:{href:'https://dauxuacuadao.info.vn/',
       origin:'https://dauxuacuadao.info.vn',pathname:'/',
       hash:'#tai-lieu-so-hoa/example'},
     setTimeout,clearTimeout,AbortController,
@@ -183,3 +183,6 @@ test('Digitized public catalog renders published preview images in all groups wi
   assert.match(css,/#tai-lieu-so-hoa #document-grid \.archive-thumb > img/);
   assert.match(css,/object-fit:contain/);
 });
+
+test('D1 export obtains published owner and complete album without Supabase',async()=>{const id='11111111-1111-4111-8111-111111111111',calls=[];const m=mockEnvironment({d1:true,fetchFunction:async url=>{calls.push(String(url));const data=String(url).includes('/albums?')?[{owner_kind:'documents',owner_id:id,image_url:'https://example.org/2.jpg',caption:'Trang 2'}]:{id,published:true,file_url:'https://example.org/1.jpg'};return {ok:true,json:async()=>({data})}}});const r={kind:'documents',slug:'sample',gallery:[]};const gallery=await m.readGallery(r,()=>{});assert.equal(r.documentFileUrl,'https://example.org/1.jpg');assert.equal(gallery[0].url,'https://example.org/2.jpg');assert.equal(calls.length,2);assert.ok(calls.every(u=>u.startsWith('https://gdd-d1-api-staging.')));});
+test('D1 print never requests restricted legacy original when no print derivative exists',async()=>{const m=mockEnvironment({d1:true,fetchFunction:async()=>{throw Error('unexpected network')}});await assert.rejects(m.fullResolutionPrintScan(base+'documents/missing.jpg'),/chưa có bản in công khai/);});
