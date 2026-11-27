@@ -140,6 +140,11 @@ style.textContent+=`
 .gdd-motif-sun:before,.gdd-motif-sun:after{border-radius:50%;box-shadow:0 0 0 4px #b8a16f22,0 0 0 9px #b8a16f14,0 0 0 14px #b8a16f0b}
 .gdd-motif-floral:before,.gdd-motif-floral:after{border-radius:40% 0 40% 0}
 `;
+function rotatingUtilityItem(items,kind,slot,day){
+ if(!items.length)return null;
+ const n=kind==='quote'||kind==='history'?slot:day;
+ return items[((n%items.length)+items.length)%items.length];
+}
 let busy=false,last=0;
 async function refresh(){
  const aside=document.getElementById('gdd-p1-aside');if(!aside||busy)return;
@@ -155,18 +160,16 @@ async function refresh(){
  const packet={data:research.status==='fulfilled'?research.value:[]};
  const archiveRows=archive.status==='fulfilled'?archive.value:{documents:[],posts:[]};
  const now=today(),day=Math.floor(Date.parse(now+'T00:00:00Z')/86400000);const fragment=document.createDocumentFragment(),quotes=document.createDocumentFragment(),slot=quoteSlot(new Date());
- const [y,m,d]=now.split('-').map(Number);let lunar=null;try{lunar=window.GDDVietnameseLunar?.solarToLunar(d,m,y)}catch{}
  const documents=(archiveRows.documents||[]).map(r=>archiveItem(r,'documents')).filter(Boolean);
  const posts=(archiveRows.posts||[]).map(r=>archiveItem(r,'posts')).filter(Boolean);
  const featured=[...documents,...posts].sort((a,b)=>a.id.localeCompare(b.id));
- const history=documents.filter(r=>documentAnniversary(r.source_date,now,lunar)).map(r=>({...r,excerpt:'Văn kiện có ngày ghi trên hồ sơ trùng ngày hôm nay ('+documentAnniversary(r.source_date,now,lunar)+'). '+r.excerpt}));
  for(const [kind,name,kicker] of config){
  let items=packet.data.filter(r=>r.kind===kind&&(kind==='quote'?quoteReady(r):r.excerpt&&r.citation&&safeLink(r.source_url)));
- if(kind==='history')items=items.filter(r=>documentAnniversary(r.source_date,now,lunar));
- if(!items.length&&kind==='history')items=history;
+ // Historical recollections use approved event records regardless of today's date.
+ if(kind==='history')items=items.filter(r=>typeof r.source_date==='string'&&r.source_date.trim()&&r.title).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
  if(!items.length&&kind==='featured')items=featured;
  if(!items.length)continue;
- const row=items[((kind==='quote'?slot:day)%items.length+items.length)%items.length],card=make('section','gdd-research-card');
+ const row=rotatingUtilityItem(items,kind,slot,day),card=make('section','gdd-research-card');
  if(kind==='quote'){renderQuote(card,row,name,slot);quotes.append(card);continue;}
  cardHeader(card,kind,name,kicker);card.append(make('p','gdd-research-title',row.title));if(row.source_date)card.append(make('small','gdd-ornate-date',row.source_date));if(row.excerpt)card.append(make('p','gdd-archive-summary',row.archiveKind?row.excerpt:clipArchiveText(row.excerpt)));
  if(row.speaker)card.append(make('strong','',row.speaker));
