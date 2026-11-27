@@ -35,7 +35,7 @@ const INDEXES=[
  {url:HISTORY_INDEX,citation:'Hội Thánh Cao Đài Tòa Thánh Tây Ninh – tin tức và hồi cố Đạo sử',kind:'history'}
 ];
 const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase();
-export function historyTitle(v){return /khai dao|cau dao|lap tich|tich dao|lap dao|khai tich|tan kinh|phong thanh|tho nan|luu day|hoi huong|dao su|lich su|khoi cong|khanh thanh|thanh lap|dang tien|qui vi|quy vi/.test(norm(v))}
+export function historyTitle(v){return /khai dao|cau dao|lap tich|tich dao|lap dao|khai tich|tan kinh|phong thanh|tho nan|luu day|hoi huong|dao su|lich su|khoi cong|khanh thanh|thanh lap|dang tien|qui vi|quy vi|an vi|khai giang|be giang|ban hanh|thanh le|hoi nghi|huan linh|thanh linh|tiep ruoc/.test(norm(v))}
 export function interestingTitle(v){return /thanh ngon|thanh giao|thuyet dao|huan tu|giao huan|loi day|kinh thien dao|kinh the dao|nghi le|nghi tiet/.test(norm(v))}
 export function shortExcerpt(v){return String(v||'').trim().split(/\s+/).slice(0,20).join(' ')}
 async function boundedText(res,max){
@@ -139,7 +139,77 @@ async function discover(index){
    text(t){if(quote&&quote.text.length<2500)quote.text+=t.text}
  });
  await rewrite.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();
- return {links:[...new Map(links.map(x=>[x.url,x])).values()].slice(0,30),excerpt,blocked:false};
+ return {links:[...new Map(links.map(x=>[x.url,x])).values()].slice(0,index.kind==='history'?80:200),excerpt,blocked:false};
+}
+export const DAILY_RESEARCH_TARGET=10;
+export const RESEARCH_CRONS={quote:'0,30 21-23 * * *',history:'15,45 21-23 * * *'};
+export function researchRemaining(runs,kind,target=DAILY_RESEARCH_TARGET){
+ let total=0;for(const row of runs){try{const r=JSON.parse(row.result);if(r.mode===kind&&r.origin==='scheduled')total+=Math.max(0,Number(r.ready)||0)}catch{}}
+ return Math.max(0,target-total);
+}
+async function recordAttempt(db,key,outcome){
+ await db.prepare("INSERT INTO gdd_research_attempts(source_url,outcome) VALUES(?,?) ON CONFLICT(source_url) DO UPDATE SET attempted_at=CURRENT_TIMESTAMP,outcome=excluded.outcome").bind(key,outcome).run();
+}
+export async function collectCategory(env,kind,{origin='manual',limit=DAILY_RESEARCH_TARGET}={}){
+ if(!['quote','history'].includes(kind))throw Error('Loại sưu tầm không hợp lệ');
+ const db=env.DB,result=[];let ready=0,incomplete=0,sources=0,attempts=0;
+ let target=Math.max(0,Math.min(DAILY_RESEARCH_TARGET,Math.floor(Number(limit)||0)));
+ if(origin==='scheduled'){
+  const {results}=await db.prepare("SELECT result FROM gdd_research_runs WHERE date(created_at,'+7 hours')=date('now','+7 hours')").all();
+  target=Math.min(target,researchRemaining(results||[],kind));
+ }
+ if(!target)return {mode:kind,origin,target,ready,incomplete,sources,attempts,result,remaining:0,skipped:true};
+ const {results:seenRows}=await db.prepare("SELECT source_url FROM gdd_research_items WHERE kind=? AND length(trim(excerpt))>0").bind(kind).all();
+ const seen=new Set((seenRows||[]).map(r=>r.source_url.replace(/\/$/,'')));
+ const {results:attemptRows}=await db.prepare("SELECT source_url FROM gdd_research_attempts WHERE attempted_at>datetime('now','-1 day')").all();
+ const attempted=new Set((attemptRows||[]).map(r=>r.source_url));
+ const queue=new Map();
+ const valid=url=>{try{const u=new URL(url);return !u.search&&!u.hash&&(kind==='quote'?u.origin==='https://thanhgiaocaodai.com'&&/^\/doc\/thanh-ngon-hiep-tuyen\/ngay-[a-z0-9-]+\/?$/.test(u.pathname):['https://www.caodai.com.vn','https://caodai.com.vn'].includes(u.origin)&&/^\/vn\/news-detail\/[a-z0-9-]+\.html$/i.test(u.pathname))}catch{return false}};
+ const add=s=>{if(valid(s.url)){const url=s.url.replace(/\/$/,'');if(!seen.has(url)&&!attempted.has('collect:'+kind+':'+url)&&!queue.has(url))queue.set(url,{...s,url})}};
+ const {results:stored}=await db.prepare("SELECT title,source_url AS url,citation FROM gdd_research_items WHERE kind=? AND state='pending' AND length(trim(excerpt))=0 ORDER BY created_at,id LIMIT 500").bind(kind).all();
+ for(const row of stored||[])add(row);
+ if(kind==='quote'){
+  // Existing verified lesson index exposes the full dated lesson catalog.
+  const index=INDEXES[0];try{const found=await discover(index);if(found.blocked)throw Error('robots');for(const s of found.links)add(s);result.push({source:index.url,ok:true,links:found.links.length})}catch(e){result.push({source:index.url,ok:false,reason:String(e?.message||e).slice(0,120)})}
+  for(const d of LESSON_DATES)add({url:LESSON_ROOT+'ngay-'+d,title:'Ngày '+d,citation:index.citation});
+ }else{
+  // The published catalog reports 125 pages. Walk the bounded official catalog,
+  // prioritizing older material; skip recently scanned pages, not just page 118.
+  const pages=Array.from({length:125},(_,i)=>125-i);
+  const {results:scans}=await db.prepare("SELECT source_url,attempted_at FROM gdd_research_attempts WHERE source_url LIKE 'history-index:%' ORDER BY attempted_at ASC").all();
+  const times=new Map((scans||[]).map(r=>[r.source_url,r.attempted_at]));
+  pages.sort((a,b)=>String(times.get('history-index:'+a)||'').localeCompare(String(times.get('history-index:'+b)||''))||b-a);
+  for(const n of pages.slice(0,2)){
+   const index={...INDEXES.find(x=>x.kind==='history'),url:HISTORY_INDEX.replace('page-118.html','page-'+n+'.html')};
+   let outcome='index_scanned';try{const found=await discover(index);if(found.blocked)throw Error('robots');for(const s of found.links)add(s);result.push({source:index.url,ok:true,links:found.links.length})}catch(e){outcome=String(e?.message||e).slice(0,120);result.push({source:index.url,ok:false,reason:outcome})}
+   await recordAttempt(db,'history-index:'+n,outcome);
+  }
+ }
+ // Bound subrequests/time; one real, non-duplicate quotation or event per source.
+ for(const s of queue.values()){
+  if(ready>=target||attempts>=12)break;attempts++;
+  let outcome='no_usable_excerpt';
+  try{
+   const x=kind==='quote'?await extractLesson(s):await extractHistory(s);
+   if(x?.excerpt){
+    const complete=!!(x.source_date&&(kind==='history'||x.speaker));
+    const key=(kind==='quote'?'excerpt:':'history:')+s.url;
+    const id=crypto.randomUUID();
+    const res=await db.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note,source_date,speaker) SELECT ?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM gdd_research_items WHERE kind=? AND (rtrim(source_url,'/')=? AND length(trim(excerpt))>0 OR trim(excerpt)=?))").bind(id,kind,s.title,s.url,s.citation,key,x.excerpt,x.note,x.source_date||'',x.speaker||'',kind,s.url,x.excerpt.trim()).run();
+    if(res.meta?.changes===1){if(complete){ready++;outcome='ready_saved'}else{incomplete++;outcome='incomplete_saved'}}else outcome='duplicate';
+   }
+  }catch(e){outcome=String(e?.message||e).slice(0,120)}
+  await recordAttempt(db,'collect:'+kind+':'+s.url,outcome);
+  result.push({source:s.url,ok:outcome==='ready_saved'||outcome==='incomplete_saved'||outcome==='duplicate',reason:outcome});
+ }
+ // Persist remaining discovered references without counting them toward the quota.
+ for(const s of [...queue.values()].slice(0,80)){
+  if(seen.has(s.url))continue;
+  const res=await db.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key) SELECT ?,?,?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM gdd_research_items WHERE kind=? AND rtrim(source_url,'/')=?)").bind(crypto.randomUUID(),kind,s.title,s.url,s.citation,kind==='history'?'history-source:'+s.url:s.url,kind,s.url).run();sources+=res.meta?.changes||0;
+ }
+ const summary={mode:kind,origin,target,ready,incomplete,sources,attempts,remaining:Math.max(0,target-ready),result};
+ await db.prepare('INSERT INTO gdd_research_runs(id,result) VALUES(?,?)').bind(crypto.randomUUID(),JSON.stringify(summary)).run();
+ return summary;
 }
 export async function collectResearch(env,mode='all'){
  if(mode!=='all'&&mode!=='seed'&&mode!=='enrich'&&(!Number.isInteger(mode)||mode<0||mode>=INDEXES.length))throw Error('Nguồn không hợp lệ');
@@ -216,12 +286,12 @@ export async function handleResearch(request,env,path,json){
  try{
  if(path===BASE+'/sources'&&request.method==='GET')return json({data:SOURCES});
  if(path===BASE+'/collect'&&request.method==='POST'){
-   const input=await request.json();const mode=['seed','enrich'].includes(input.mode)?input.mode:Number.isInteger(input.index)?input.index:'all';
+   const input=await request.json();if(['quote','history'].includes(input.mode))return json(await collectCategory(env,input.mode,{limit:input.limit??DAILY_RESEARCH_TARGET}));const mode=['seed','enrich'].includes(input.mode)?input.mode:Number.isInteger(input.index)?input.index:'all';
    return json(await collectResearch(env,mode));
  }
  if(path===BASE+'/items'&&request.method==='GET'){
-   const q=new URL(request.url).searchParams,search=str(q.get('q'),200),state=q.get('state')||'all',offset=Math.min(10000,Math.max(0,Math.floor(Number(q.get('offset'))||0)));
-   const {results}=await db.prepare("SELECT * FROM gdd_research_items WHERE ((?='all') OR (?='sources' AND state='pending' AND length(trim(excerpt))=0) OR (?='pending' AND state='pending' AND length(trim(excerpt))>0 AND NOT (kind='quote' AND (length(trim(speaker))=0 OR length(trim(source_date))=0 OR lower(speaker||' '||source_date) LIKE '%chưa xác định%' OR lower(speaker||' '||source_date) LIKE '%cần đối chiếu%' OR lower(speaker||' '||source_date) LIKE '%chưa rõ%' OR lower(speaker||' '||source_date) LIKE '%không rõ%' OR lower(speaker||' '||source_date) LIKE '%chờ duyệt%' OR lower(speaker||' '||source_date) LIKE '%chưa kiểm chứng%'))) OR (?='incomplete' AND state='pending' AND length(trim(excerpt))>0 AND (kind='quote' AND (length(trim(speaker))=0 OR length(trim(source_date))=0 OR lower(speaker||' '||source_date) LIKE '%chưa xác định%' OR lower(speaker||' '||source_date) LIKE '%cần đối chiếu%' OR lower(speaker||' '||source_date) LIKE '%chưa rõ%' OR lower(speaker||' '||source_date) LIKE '%không rõ%' OR lower(speaker||' '||source_date) LIKE '%chờ duyệt%' OR lower(speaker||' '||source_date) LIKE '%chưa kiểm chứng%'))) OR (? IN ('approved','rejected') AND state=?)) AND (?='' OR instr(lower(title||' '||excerpt||' '||speaker||' '||citation),lower(?))>0) ORDER BY updated_at DESC,id LIMIT 100 OFFSET ?").bind(state,state,state,state,state,state,search,search,offset).all();return json({data:results||[],offset});
+   const q=new URL(request.url).searchParams,search=str(q.get('q'),200),state=q.get('state')||'all',kind=['quote','history'].includes(q.get('kind'))?q.get('kind'):'',offset=Math.min(10000,Math.max(0,Math.floor(Number(q.get('offset'))||0)));
+   const {results}=await db.prepare("SELECT * FROM gdd_research_items WHERE ((?='all') OR (?='sources' AND state='pending' AND length(trim(excerpt))=0) OR (?='pending' AND state='pending' AND length(trim(excerpt))>0 AND NOT (kind='quote' AND (length(trim(speaker))=0 OR length(trim(source_date))=0 OR lower(speaker||' '||source_date) LIKE '%chưa xác định%' OR lower(speaker||' '||source_date) LIKE '%cần đối chiếu%' OR lower(speaker||' '||source_date) LIKE '%chưa rõ%' OR lower(speaker||' '||source_date) LIKE '%không rõ%' OR lower(speaker||' '||source_date) LIKE '%chờ duyệt%' OR lower(speaker||' '||source_date) LIKE '%chưa kiểm chứng%'))) OR (?='incomplete' AND state='pending' AND length(trim(excerpt))>0 AND (kind='quote' AND (length(trim(speaker))=0 OR length(trim(source_date))=0 OR lower(speaker||' '||source_date) LIKE '%chưa xác định%' OR lower(speaker||' '||source_date) LIKE '%cần đối chiếu%' OR lower(speaker||' '||source_date) LIKE '%chưa rõ%' OR lower(speaker||' '||source_date) LIKE '%không rõ%' OR lower(speaker||' '||source_date) LIKE '%chờ duyệt%' OR lower(speaker||' '||source_date) LIKE '%chưa kiểm chứng%'))) OR (? IN ('approved','rejected') AND state=?)) AND (?='' OR kind=?) AND (?='' OR instr(lower(title||' '||excerpt||' '||speaker||' '||citation),lower(?))>0) ORDER BY updated_at DESC,id LIMIT 100 OFFSET ?").bind(state,state,state,state,state,state,kind,kind,search,search,offset).all();return json({data:results||[],offset});
  }
  if(path===BASE+'/runs'&&request.method==='GET'){const {results}=await db.prepare('SELECT * FROM gdd_research_runs ORDER BY created_at DESC LIMIT 20').all();return json({data:results||[]})}
  if(path===BASE+'/items'&&request.method==='POST'){
