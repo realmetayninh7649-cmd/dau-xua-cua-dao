@@ -1,14 +1,14 @@
 {
   "ok": true,
   "source": "public-published-dated-D1-only",
-  "generated_at": "2026-11-26T23:57:43.727Z",
+  "generated_at": "2026-11-27T00:00:07.716Z",
   "years": [
     2026,
     2036
   ],
-  "people_records": 40,
+  "people_records": 45,
   "manual_records": 0,
-  "count": 880,
+  "count": 935,
   "upcoming": [
     {
       "name": "BẢO ĐẠO CHƠN QUÂN CA MINH CHƯƠNG",
@@ -18,7 +18,8 @@
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
       "type": "person",
-      "verified": true
+      "verified": true,
+      "basis": "lunar"
     },
     {
       "name": "QUYỀN THÁI CHÁNH PHỐI SƯ THÁI KHÝ THANH (1894 – 1967)",
@@ -28,7 +29,19 @@
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
       "type": "person",
-      "verified": true
+      "verified": true,
+      "basis": "lunar"
+    },
+    {
+      "name": "PHỐI SƯ THƯỢNG TÔNG THANH  (1863-1933)",
+      "rank": "Phối Sư",
+      "solar": "2026-12-02",
+      "lunar": "24/10/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "person",
+      "verified": true,
+      "basis": "lunar"
     },
     {
       "name": "ĐẦU SƯ THÁI NƯƠNG TINH",
@@ -38,7 +51,8 @@
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
       "type": "person",
-      "verified": true
+      "verified": true,
+      "basis": "lunar"
     },
     {
       "name": "Cúng Sóc (mùng 1 âm lịch)",
@@ -47,7 +61,19 @@
       "lunar": "01/11/2026",
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
-      "type": "ritual"
+      "type": "ritual",
+      "basis": "lunar"
+    },
+    {
+      "name": "ĐẦU SƯ THÁI MINH TINH - HÒA THƯỢNG THIỆN MINH",
+      "rank": "Thái Đầu Sư",
+      "solar": "2026-12-19",
+      "lunar": "11/11/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "person",
+      "verified": false,
+      "basis": "lunar"
     },
     {
       "name": "TIỂU SỬ NGÀI TIẾP DẪN ĐẠO NHƠN NGUYỄN VĂN HỢI (1911–1991)",
@@ -57,7 +83,8 @@
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
       "type": "person",
-      "verified": true
+      "verified": true,
+      "basis": "lunar"
     },
     {
       "name": "Cúng Vọng (ngày Rằm âm lịch)",
@@ -66,7 +93,8 @@
       "lunar": "15/11/2026",
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
-      "type": "ritual"
+      "type": "ritual",
+      "basis": "lunar"
     },
     {
       "name": "Vía Đức Jésus Christ",
@@ -75,7 +103,8 @@
       "lunar": "17/11/2026",
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
-      "type": "ritual"
+      "type": "ritual",
+      "basis": "solar"
     },
     {
       "name": "ĐỨC NỮ ĐẦU SƯ HÀM PHONG HỒ HƯƠNG LỰ",
@@ -85,26 +114,8 @@
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
       "type": "person",
-      "verified": true
-    },
-    {
-      "name": "Cúng Sóc (mùng 1 âm lịch)",
-      "rank": "Tiểu Đàn",
-      "solar": "2027-01-08",
-      "lunar": "01/12/2026",
-      "lunarYear": 2026,
-      "lunarCanChi": "Bính Ngọ",
-      "type": "ritual"
-    },
-    {
-      "name": "SƠ LƯỢC TIỂU SỬ ĐẠO NHƠN HUỲNH QUANG CHIÊU (1899 – 1981)",
-      "rank": "Đạo Nhơn",
-      "solar": "2027-01-12",
-      "lunar": "05/12/2026",
-      "lunarYear": 2026,
-      "lunarCanChi": "Bính Ngọ",
-      "type": "person",
-      "verified": false
+      "verified": true,
+      "basis": "lunar"
     }
   ]
 }
