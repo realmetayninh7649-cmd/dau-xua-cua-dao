@@ -19,10 +19,29 @@ function documentAnniversary(value,now,lunar){
  if(y<1800||y>Number(now.slice(0,4))||date.getUTCFullYear()!==y||date.getUTCMonth()+1!==m||date.getUTCDate()!==d)return null;
  return String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0')===now.slice(5)&&y<Number(now.slice(0,4))?'dương lịch':null;
 }
+// A plain-text excerpt from the published record, never generated commentary.
+function clipArchiveText(value,limit=240){
+ const s=String(value||'').replace(/\s+/g,' ').trim();
+ if(s.length<=limit)return s;
+ const cut=s.slice(0,limit+1),space=cut.lastIndexOf(' ');
+ return cut.slice(0,space>limit/2?space:limit).replace(/[ ,;:]+$/,'')+'…';
+}
+function archiveExcerpt(record){
+ for(const source of [record.summary,record.body]){
+  if(!source)continue;
+  const doc=new DOMParser().parseFromString(String(source),'text/html');
+  doc.querySelectorAll('script,style,iframe,object,embed,nav,figure,table,svg,template,form,button,video,audio').forEach(n=>n.remove());
+  const paragraphs=[...doc.querySelectorAll('p,li,blockquote')].map(n=>n.textContent.trim()).filter(Boolean);
+  const raw=doc.body.textContent||'';
+  const text=(paragraphs.find(s=>s.length>=45&&!/^(?:nhan đề|số hiệu văn kiện|ngày văn kiện|nguồn|xuất xứ)\s*:/i.test(s))||raw).replace(/^\s*(?:nội dung tóm tắt|nội dung|tóm tắt|giới thiệu)\s*:\s*/i,'').trim();
+  if(text.length>=24)return clipArchiveText(text);
+ }
+ return '';
+}
 function archiveItem(r,kind){
  if(r?.published!==true||!r.slug||!r.title)return null;
  const prefix=kind==='documents'?'tai-lieu-so-hoa':'bai-viet';
- return {id:kind+':'+r.id,title:String(r.title),excerpt:String(r.summary||'').replace(/<[^>]*>/g,' ').trim().slice(0,280),citation:kind==='documents'?'Kho Số Hóa · Dấu Xưa Cửa Đạo':'Kho Biên Khảo · Dấu Xưa Cửa Đạo',source_url:location.origin+'/#'+prefix+'/'+encodeURIComponent(r.slug),source_date:kind==='documents'?String(r.document_date||''):'',archiveKind:kind};
+ return {id:kind+':'+r.id,title:String(r.title),excerpt:archiveExcerpt(r),citation:kind==='documents'?'Kho Số Hóa · Dấu Xưa Cửa Đạo':'Kho Biên Khảo · Dấu Xưa Cửa Đạo',source_url:location.origin+'/#'+prefix+'/'+encodeURIComponent(r.slug),source_date:kind==='documents'?String(r.document_date||''):'',archiveKind:kind};
 }
 function clockParts(now){
  const s=(now.getUTCHours()*3600+now.getUTCMinutes()*60+now.getUTCSeconds()+7*3600)%86400;
@@ -35,7 +54,7 @@ let clockTimer;
 function mountClock(){
  const aside=document.getElementById('gdd-p1-aside');if(!aside||document.getElementById('gdd-tu-thoi'))return;
  const card=make('section','gdd-research-card');card.id='gdd-tu-thoi';
- card.append(make('div','gdd-research-kicker','GIỜ CÚNG HẰNG NGÀY'),make('h3','','ĐỒNG HỒ TỨ THỜI'));
+ cardHeader(card,'clock','ĐỒNG HỒ TỨ THỜI','GIỜ CÚNG HẰNG NGÀY');
  const time=make('div','gdd-clock-time'),next=make('div','gdd-clock-next'),remaining=make('div','gdd-clock-count'),grid=make('div','gdd-clock-grid');
  const names=['Tý','Mẹo','Ngọ','Dậu'],hours=['00:00','06:00','12:00','18:00'];
  const tiles=names.map((name,i)=>{const n=make('div','gdd-clock-slot');n.append(make('strong','',name),make('small','',hours[i]));grid.append(n);return n});
@@ -49,10 +68,49 @@ function quoteReady(r){
  const fields=[r?.excerpt,r?.speaker,r?.source_date];
  return fields.every(v=>typeof v==='string'&&v.trim())&&!/cần đối chiếu|chưa xác định|chưa rõ|không rõ|chờ duyệt|chưa kiểm chứng/i.test(r.speaker+' '+r.source_date);
 }
+const ornamentPaths={
+ quote:'M4 5h6v6H6c0 3-1 5-3 6m11-12h6v6h-4c0 3-1 5-3 6',
+ history:'M4 7a9 9 0 1 1-1 8M4 3v5H9M12 7v5l4 2',
+ ritual:'M12 5C9 3 5 3 2 5v15c4-2 7-2 10 0 3-2 6-2 10 0V5c-3-2-7-2-10 0zM12 5v15M5 8l4-1m6 0 4 1M5 12l4-1m6 0 4 1',
+ featured:'M4 4h11l5 5v12H4zM15 4v5h5M8 12h8M8 16h8',
+ clock:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 6v6l4 2'
+};
+function ornament(kind){
+ const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');
+ svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');path.setAttribute('d',ornamentPaths[kind]||ornamentPaths.featured);path.setAttribute('fill','none');path.setAttribute('stroke','currentColor');path.setAttribute('stroke-width','1.35');path.setAttribute('stroke-linecap','round');path.setAttribute('stroke-linejoin','round');svg.append(path);return svg;
+}
+function cardHeader(card,kind,name,kicker){
+ card.classList.add('gdd-ornate-card','gdd-ornate-'+kind);
+ const header=make('div','gdd-ornate-heading'),emblem=make('span','gdd-ornate-emblem'),labels=make('div','gdd-ornate-labels');
+ emblem.append(ornament(kind));if(kicker)labels.append(make('div','gdd-research-kicker',kicker));labels.append(make('h3','',name));header.append(emblem,labels);card.append(header,make('div','gdd-ornate-rule'));
+}
 function renderQuote(card,row,name){
  card.classList.add('gdd-daily-quote');
- card.append(make('h3','',name),make('blockquote','',row.excerpt),make('strong','gdd-quote-speaker',row.speaker),make('small','gdd-quote-date',row.source_date));
+ cardHeader(card,'quote',name,'');card.append(make('blockquote','',row.excerpt),make('strong','gdd-quote-speaker',row.speaker),make('small','gdd-quote-date',row.source_date));
 }
+style.textContent+=`
+.gdd-research-card.gdd-ornate-card{position:relative;isolation:isolate;overflow:hidden;border:1px solid #d7c9aa;border-radius:11px;background:linear-gradient(145deg,#fffdf8 65%,#f2ead9);padding:17px 15px 15px;box-shadow:0 2px 7px #3a362408}
+.gdd-ornate-card:before,.gdd-ornate-card:after{content:"";position:absolute;z-index:-1;pointer-events:none;width:47px;height:47px;opacity:.48;border:1px solid #b8a16f;border-radius:50% 0 50% 0;transform:rotate(45deg)}
+.gdd-ornate-card:before{right:-24px;top:-24px;box-shadow:0 0 0 5px #b8a16f22,0 0 0 10px #b8a16f12}
+.gdd-ornate-card:after{left:-25px;bottom:-25px;box-shadow:0 0 0 5px #b8a16f22}
+.gdd-ornate-heading{display:flex;align-items:center;gap:10px;text-align:left}
+.gdd-ornate-emblem{flex:0 0 36px;height:36px;display:grid;place-items:center;color:#917444;background:#eee5d1;border:1px solid #cdb88d;border-radius:50%}
+.gdd-ornate-emblem svg{width:22px;height:22px}
+.gdd-ornate-labels{min-width:0}.gdd-ornate-card .gdd-ornate-heading h3{font-size:15px;line-height:1.35;margin:2px 0 0;letter-spacing:.025em}
+.gdd-ornate-card .gdd-research-kicker{font-size:9px;letter-spacing:.12em}
+.gdd-ornate-rule{position:relative;height:12px;margin:7px 0 9px;background:linear-gradient(#d6c6a4,#d6c6a4) left center/46% 1px no-repeat,linear-gradient(#d6c6a4,#d6c6a4) right center/46% 1px no-repeat}
+.gdd-ornate-rule:after{content:"";position:absolute;top:3px;left:calc(50% - 3px);width:6px;height:6px;background:#b59a65;transform:rotate(45deg)}
+.gdd-ornate-card .gdd-research-title{font-size:15px;line-height:1.55}
+.gdd-ornate-card .gdd-archive-summary{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:10px 0;font-size:13px;line-height:1.65}
+.gdd-ornate-card .gdd-ornate-date{font-variant-numeric:tabular-nums;margin-top:5px}
+.gdd-ornate-card .gdd-ornate-source{font-size:10px;color:#806d4e}
+.gdd-ornate-card .gdd-ornate-link{display:inline-flex;align-items:center;padding:7px 11px;min-height:36px;border:1px solid #d0c09c;background:#eaf0e7;border-radius:6px;text-decoration:none;font-size:12px}
+.gdd-ornate-card .gdd-ornate-link:focus-visible{outline:2px solid #194b42;outline-offset:2px}
+.gdd-daily-quote .gdd-ornate-heading{justify-content:center}.gdd-daily-quote .gdd-ornate-emblem{flex-basis:30px;height:30px}.gdd-daily-quote .gdd-ornate-emblem svg{width:17px;height:17px}
+.gdd-daily-quote blockquote{margin:5px 0 12px;border-top:0;border-bottom:1px solid #d6c6a4;padding:5px 3px 14px;font:italic 17px/1.85 Georgia,serif}
+.gdd-daily-quote .gdd-quote-speaker{letter-spacing:.05em}
+@media(max-width:600px){.gdd-research-card.gdd-ornate-card{padding:16px 15px}.gdd-ornate-card .gdd-ornate-heading h3{font-size:16px}.gdd-ornate-card .gdd-archive-summary{font-size:14px}.gdd-ornate-card .gdd-ornate-link{min-height:44px}.gdd-daily-quote blockquote{font-size:18px}}
+`;
 let busy=false,last=0;
 async function refresh(){
  const aside=document.getElementById('gdd-p1-aside');if(!aside||busy)return;
@@ -79,9 +137,9 @@ async function refresh(){
  if(!items.length)continue;
  const row=items[day%items.length],card=make('section','gdd-research-card');
  if(kind==='quote'){renderQuote(card,row,name);fragment.append(card);continue;}
- card.append(make('div','gdd-research-kicker',kicker),make('h3','',name),make('p','gdd-research-title',row.title));if(row.excerpt)card.append(make(row.archiveKind?'p':'blockquote',row.archiveKind?'gdd-archive-summary':'',row.excerpt));
- if(row.speaker)card.append(make('strong','',row.speaker));if(row.source_date)card.append(make('small','',row.source_date));
- card.append(make('small','','Xuất xứ: '+row.citation));const link=make('a','','Xem nguồn tư liệu ↗');link.href=safeLink(row.source_url);if(!row.archiveKind){link.target='_blank';link.rel='noopener noreferrer'}card.append(link);fragment.append(card);
+ cardHeader(card,kind,name,kicker);card.append(make('p','gdd-research-title',row.title));if(row.source_date)card.append(make('small','gdd-ornate-date',row.source_date));if(row.excerpt)card.append(make('p','gdd-archive-summary',row.archiveKind?row.excerpt:clipArchiveText(row.excerpt)));
+ if(row.speaker)card.append(make('strong','',row.speaker));
+ card.append(make('small','gdd-ornate-source',row.citation));const link=make('a','gdd-ornate-link',kind==='ritual'?'Mở xem kinh / nghi lễ ↗':kind==='history'?'Xem tư liệu lịch sử ↗':'Xem tư liệu ↗');link.href=safeLink(row.source_url);if(!row.archiveKind){link.target='_blank';link.rel='noopener noreferrer'}card.append(link);fragment.append(card);
  }
  root.replaceChildren(fragment);root.hidden=!root.children.length;last=Date.now();
  }catch{root.replaceChildren();root.hidden=true;}finally{busy=false}
