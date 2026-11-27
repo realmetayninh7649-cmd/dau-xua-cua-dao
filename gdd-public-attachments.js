@@ -32,8 +32,8 @@ function attach(target,kind,id,{before=null,photos=false,lazy=false}={}){
   if(!docs.length&&!images.length){if(results.some(x=>x.status==='rejected')&&lazy){section.append(el('small','Chưa tải được danh sách tư liệu. Mở lại mục để thử lại.'));started=false;return}section.remove();return}
   if(!lazy)section.append(el('strong',photos?'TƯ LIỆU ĐÍNH KÈM':'TÀI LIỆU ĐÍNH KÈM ('+docs.length+')'));
   if(images.length){
-   const grid=el('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin:10px 0;';
-   for(const row of images){const figure=el('figure');figure.style.margin='0';const img=el('img');img.loading='lazy';img.decoding='async';img.src=window.GDDLegacyImages?.displayUrl(row.image_url)||row.image_url;img.alt=row.caption||'Ảnh tư liệu';img.style.cssText='width:100%;height:auto;object-fit:contain;border-radius:4px;';figure.append(img);if(row.caption)figure.append(el('figcaption',row.caption));grid.append(figure)}
+   const grid=el('div','','gdd-attached-photo-grid');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin:10px 0;';
+   for(const row of images){const figure=el('figure');figure.style.margin='0';const img=el('img');img.loading='lazy';img.decoding='async';img.src=window.GDDLegacyImages?.displayUrl(row.image_url)||row.image_url;img.alt=row.caption||'Ảnh tư liệu';img.style.cssText='width:100%;height:auto;object-fit:contain;border-radius:4px;';const button=el('button');button.type='button';button.dataset.gddPhotoOpen='1';button.className='gdd-attached-photo-open';button.setAttribute('aria-label','Xem ảnh toàn màn hình');if(row.photo_code)img.dataset.photoCode=row.photo_code;button.append(img);figure.append(button);if(row.caption)figure.append(el('figcaption',row.caption));grid.append(figure)}
    section.append(grid);
   }
   for(const row of docs){
@@ -76,9 +76,9 @@ function attachCovers(target,kind,id,{after=null,before=null,lazy=false}={}){
    if(!rows.length){if(lazy)section.append(el('small','Không có ảnh bìa bổ sung.'));else section.remove();return}
    for(const row of rows){
     const figure=el('figure');figure.className='gdd-extra-cover-page';
-    const a=el('a');a.href=row.image_url;a.target='_blank';a.rel='noopener noreferrer';a.setAttribute('aria-label','Xem toàn ảnh bìa '+row.slot);
-    const img=el('img');img.src=row.image_url;img.alt='Ảnh bìa '+row.slot;img.loading='lazy';img.decoding='async';a.append(img);
-    figure.append(a,el('figcaption','Ảnh bìa '+row.slot+' · Xem toàn ảnh ↗'));section.append(figure);
+    const a=el('button');a.type='button';a.dataset.gddPhotoOpen='1';a.className='gdd-extra-cover-open';a.setAttribute('aria-label','Xem toàn màn hình ảnh bìa '+row.slot);
+    const img=el('img');img.src=row.image_url;img.alt='Ảnh bìa '+row.slot;const code=target.dataset.gddArchiveCode;if(code)img.dataset.photoCode=code;img.loading='lazy';img.decoding='async';a.append(img);
+    figure.append(a,el('figcaption','Ảnh bìa '+row.slot+' · Chạm để xem toàn màn hình'));section.append(figure);
    }
    section.hidden=false;
   }catch{if(!section.isConnected)return;if(lazy){section.append(el('small','Chưa tải được ảnh bìa bổ sung.'));}else section.remove()}

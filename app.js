@@ -478,9 +478,9 @@ function videoSource(raw){
           const caption=String(photo.caption||photo.photo_code||'Ảnh tư liệu '+(i+1));
           const note=photo.photo_code&&photo.caption
             ?caption+' · '+photo.photo_code:caption;
-          return '<figure><a href="'+escape(url)+'" target="_blank" rel="noopener noreferrer" '+
+          return '<figure><button type="button" data-gdd-photo-open="1" class="gdd-attached-photo-open" '+
             'aria-label="Xem ảnh tư liệu '+(i+1)+'">'+
-            '<img src="'+escape(url)+'" alt="'+escape(caption)+'" loading="lazy" decoding="async"></a>'+
+            '<img src="'+escape(url)+'" alt="'+escape(caption)+'" data-photo-code="'+escape(photo.photo_code||'')+'" loading="lazy" decoding="async"></button>'+
             '<figcaption>'+linkedText(note)+'</figcaption></figure>';
         }).join('')+'</div></section>'
       :'';

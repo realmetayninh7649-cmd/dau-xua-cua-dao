@@ -13,9 +13,9 @@
  // No pointer hit on protected image elements; their containers remain interactive.
  const style=document.createElement('style');style.id='gdd-restricted-image-style';
  style.textContent=`
- body[data-gdd-screen-access="view"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body),
- body[data-gdd-screen-access="protected"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body),
- body[data-gdd-screen-access="checking"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body),
+ body[data-gdd-screen-access="view"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body,.gdd-extra-cover-page,.gdd-detail-photo-grid,.gdd-attached-photo-grid),
+ body[data-gdd-screen-access="protected"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body,.gdd-extra-cover-page,.gdd-detail-photo-grid,.gdd-attached-photo-grid),
+ body[data-gdd-screen-access="checking"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body,.gdd-extra-cover-page,.gdd-detail-photo-grid,.gdd-attached-photo-grid),
  body[data-gdd-screen-access="view"] #gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,
  body[data-gdd-screen-access="protected"] #gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,
  body[data-gdd-screen-access="checking"] #gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,
@@ -24,7 +24,7 @@
  body[data-gdd-screen-access="checking"] .r2-reader .reader-stage {
   -webkit-touch-callout:none!important;
  }
- body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body) img,
+ body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body,.gdd-extra-cover-page,.gdd-detail-photo-grid,.gdd-attached-photo-grid) img,
  body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) #gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage img,
  body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) .r2-reader :is(.reader-stage,.page-list) img {
   pointer-events:none!important;-webkit-touch-callout:none!important;-webkit-user-drag:none!important;
@@ -40,7 +40,7 @@
  const restricted=()=>['checking','view','protected'].includes(document.body.dataset.gddScreenAccess);
  function blocksImageMenu(target){
   if(!restricted()||!target?.closest)return false;
-  return Boolean(target.closest('#gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,#detail-content .detail-cover,#detail-content .gdd-album-figure,#detail-content .detail-body img,.r2-reader .reader-stage,.r2-reader .page-list'));
+  return Boolean(target.closest('#gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,#detail-content .detail-cover,#detail-content .gdd-album-figure,#detail-content .detail-body img,#detail-content .gdd-extra-cover-page,#detail-content .gdd-detail-photo-grid,#detail-content .gdd-attached-photo-grid,.r2-reader .reader-stage,.r2-reader .page-list'));
  }
  for(const name of ['contextmenu','dragstart'])document.addEventListener(name,event=>{if(blocksImageMenu(event.target))event.preventDefault()},true);
  function context(){

@@ -157,6 +157,26 @@ try {
         assert.notEqual(await page.locator('#gdd-image-scale').innerText(),'100%');
         await page.locator('#gdd-image-close').click();
       }
+      // Every secondary cover and fallback attachment opens locally, never a new tab.
+      const currentUrl=page.url();
+      await page.evaluate(()=>{
+        const d=document.getElementById('detail-content');d.dataset.gddKind='documents';
+        d.innerHTML='<div class="detail-cover"><img src="/logo.png" alt="Ảnh bìa 1"></div><section class="gdd-extra-covers"><figure class="gdd-extra-cover-page"><button data-gdd-photo-open="1"><img src="/logo.png" alt="Ảnh bìa 2"></button></figure></section><div class="gdd-detail-photo-grid"><figure><button data-gdd-photo-open="1"><img src="/logo.png" alt="Ảnh kèm 1"></button></figure><figure><button data-gdd-photo-open="1"><img src="/logo.png" alt="Ảnh kèm 2"></button></figure></div>';
+        d.querySelector('.gdd-extra-cover-page button').click();
+      });
+      await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
+      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh bìa 2 · 2/2');
+      await page.locator('#gdd-image-prev').click();
+      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh bìa 1 · 1/2');
+      await page.locator('#gdd-image-close').click();
+      await page.evaluate(()=>document.querySelector('.gdd-detail-photo-grid button').click());
+      await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
+      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh kèm 1 · 1/2');
+      await page.locator('#gdd-image-next').click();
+      assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh kèm 2 · 2/2');
+      assert.equal(page.url(),currentUrl);
+      assert.equal(await page.locator('#gdd-image-viewer').getAttribute('data-gdd-record-image'),'yes');
+      await page.locator('#gdd-image-close').click();
       console.log('ALL IMAGE VIEWERS VIEW ONLY PASS',label);
       console.log('PERSON IMAGE UI PASS',label,'no download/original; gallery controls preserved');
       console.log('IMAGE GALLERY PASS',label,'arrows/swipe/keyboard/zoom/close');

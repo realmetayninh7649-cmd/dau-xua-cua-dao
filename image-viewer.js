@@ -146,10 +146,12 @@
   // Chỉ duyệt các ảnh thuộc cùng một album; không chuyển sang hồ sơ của người khác.
   function imageSequence(img) {
     if(!(img instanceof HTMLImageElement))return [];
-    const album=img.closest('.gdd-album-grid');
-    const grid=album||img.closest('#gallery-grid');
+    const album=img.closest('.gdd-album-grid,.gdd-detail-photo-grid,.gdd-attached-photo-grid');
+    const record=img.closest('#detail-content');
+    const cover=record&&!album&&img.closest('.detail-cover,.gdd-extra-cover-page');
+    const grid=album||(cover?record:img.closest('#gallery-grid'));
     if(!grid)return [];
-    const selector=album?'.gdd-album-tile img':'.gallery-visual img';
+    const selector=album?(album.classList.contains('gdd-album-grid')?'.gdd-album-tile img':'[data-gdd-photo-open] img'):cover?':scope > .detail-cover img,.gdd-extra-covers .gdd-extra-cover-page img':'.gallery-visual img';
     return [...grid.querySelectorAll(selector)]
       .filter(item=>item instanceof HTMLImageElement)
       .map(item=>({element:item,src:safeSource(item.currentSrc||item.src),title:imgTitle(item),photoCode:item.dataset.photoCode||''}))
@@ -359,7 +361,7 @@
     const frame=el.closest(
       '#gallery-grid .gallery-visual, #people-grid .person-media, '+
       '#gdd-people-list .person-media, #gdd-directory .gdd-preview-thumb, '+
-      '#detail-content .detail-cover'
+      '#detail-content .detail-cover, #detail-content [data-gdd-photo-open], #detail-content .gdd-extra-cover-page, #detail-content .gdd-detail-photo-grid figure'
     );
     const img=frame?.querySelector('img');
     if(!img)return;
@@ -387,7 +389,7 @@
       }
       // Mọi ảnh bìa chỉ có nút xem toàn màn hình; dọn nút tải cũ ở tất cả chuyên mục.
       detail.querySelectorAll('.gdd-image-actions [data-gdd-image-save]').forEach(button=>button.remove());
-      const cover=detail.querySelector('.detail-cover');
+      const cover=detail.querySelector(':scope > .detail-cover');
       const img=cover?.querySelector('img');
       if(!img)return;
       let bar=cover.nextElementSibling?.classList.contains('gdd-image-actions')?cover.nextElementSibling:null;
