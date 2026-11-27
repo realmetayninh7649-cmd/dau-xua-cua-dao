@@ -9,7 +9,40 @@
  const mask=document.createElement('div');mask.id='gdd-screen-privacy-curtain';mask.hidden=true;mask.setAttribute('aria-hidden','true');
  mask.style.cssText='position:fixed;inset:0;background:#000;z-index:2147483647;pointer-events:none;display:none';
  document.body.appendChild(mask);
+ // Browser-native image save menus are separate from screenshot privacy.
+ // No pointer hit on protected image elements; their containers remain interactive.
+ const style=document.createElement('style');style.id='gdd-restricted-image-style';
+ style.textContent=`
+ body[data-gdd-screen-access="view"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body),
+ body[data-gdd-screen-access="protected"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body),
+ body[data-gdd-screen-access="checking"] #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body),
+ body[data-gdd-screen-access="view"] #gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,
+ body[data-gdd-screen-access="protected"] #gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,
+ body[data-gdd-screen-access="checking"] #gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,
+ body[data-gdd-screen-access="view"] .r2-reader .reader-stage,
+ body[data-gdd-screen-access="protected"] .r2-reader .reader-stage,
+ body[data-gdd-screen-access="checking"] .r2-reader .reader-stage {
+  -webkit-touch-callout:none!important;
+ }
+ body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) #detail-content :is(.detail-cover,.gdd-album-figure,.detail-body) img,
+ body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) #gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage img,
+ body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) .r2-reader :is(.reader-stage,.page-list) img {
+  pointer-events:none!important;-webkit-touch-callout:none!important;-webkit-user-drag:none!important;
+  user-select:none!important;-webkit-user-select:none!important;
+ }
+ body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) #detail-content .gdd-album-figure a,
+ body:is([data-gdd-screen-access="view"],[data-gdd-screen-access="protected"],[data-gdd-screen-access="checking"]) .r2-reader .reader-stage canvas {
+  -webkit-touch-callout:none!important;
+ }
+ `;
+ document.head.appendChild(style);
  let key='',active=false,revision=0,blurred=false,until=0,timer=null;
+ const restricted=()=>['checking','view','protected'].includes(document.body.dataset.gddScreenAccess);
+ function blocksImageMenu(target){
+  if(!restricted()||!target?.closest)return false;
+  return Boolean(target.closest('#gdd-image-viewer[data-gdd-record-image="yes"] .gdd-image-stage,#detail-content .detail-cover,#detail-content .gdd-album-figure,#detail-content .detail-body img,.r2-reader .reader-stage,.r2-reader .page-list'));
+ }
+ for(const name of ['contextmenu','dragstart'])document.addEventListener(name,event=>{if(blocksImageMenu(event.target))event.preventDefault()},true);
  function context(){
   if(reader){
    const q=new URLSearchParams(location.search);
@@ -28,13 +61,15 @@
   const c=context(),next=valid(c)?c.kind+'\n'+c.slug:'';
   if(next===key&&!force)return;
   key=next;const seq=++revision;deactivate();
-  if(!next)return;
+  if(!next){delete document.body.dataset.gddScreenAccess;return;}
+  document.body.dataset.gddScreenAccess='checking';
   try{
    const response=await fetch(API+'?'+new URLSearchParams({kind:c.kind,slug:c.slug}),{cache:'no-store',credentials:'omit'});
    if(!response.ok)return;
    const data=await response.json();
    const current=context();
    if(seq!==revision||!valid(current)||current.kind!==c.kind||current.slug!==c.slug)return;
+   document.body.dataset.gddScreenAccess=['download','view','protected'].includes(data.mode)?data.mode:'checking';
    active=data.mode==='protected';render();
   }catch{/* Unknown policy never activates the experiment. Existing server policy is unchanged. */}
  }

@@ -215,6 +215,8 @@
   function openImage(src, name, isPerson=false, contextImage=null, suppressDownload=false){
     const url=safeSource(src);if(!url)return;
     if(viewer.hidden)previousFocus=document.activeElement;
+    const record=contextImage?.closest('#detail-content');
+    viewer.dataset.gddRecordImage=record&&['people','documents'].includes(record.dataset.gddKind)?'yes':'no';
     const images=imageSequence(contextImage);
     const ownerCode=contextImage?.closest('#detail-content')?.dataset.gddArchiveCode||'';
     const singleCode=contextImage?.dataset.photoCode||ownerCode;
@@ -240,7 +242,7 @@
   full.addEventListener('error',()=>{loading.hidden=false;loading.textContent='Không thể hiển thị ảnh tư liệu. Xin thử lại sau.';});
   function closeImage(navigate=true){
     if(viewer.hidden)return;
-    viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
+    viewer.hidden=true;delete viewer.dataset.gddRecordImage;document.body.classList.remove('gdd-photo-open');
     ++viewTicket;
     if(tracedPreviewURL){URL.revokeObjectURL(tracedPreviewURL);tracedPreviewURL='';}
     pointers.clear();start=null;swipeStart=null;hadMultiTouch=false;gallery=[];galleryIndex=0;source='';personPhoto=false;full.removeAttribute('src');
@@ -272,9 +274,9 @@
   stage.addEventListener('pointerdown',e=>{
     if(e.target instanceof Element&&e.target.closest('.gdd-image-nav'))return;
     if(e.pointerType==='mouse'&&e.button!==0)return;
-    // Đừng chặn hành vi mặc định của chạm-giữ trên iOS: khách có thể Lưu ảnh.
-    // Touch-action:none trên stage vẫn giữ vuốt/chụm hai ngón do trình xem xử lý.
-    if(e.pointerType!=='touch')e.preventDefault();
+    // Restricted record images are not native hit targets; the stage retains custom gestures.
+    const restricted=viewer.dataset.gddRecordImage==='yes'&&['checking','view','protected'].includes(document.body.dataset.gddScreenAccess);
+    if(restricted||e.pointerType!=='touch')e.preventDefault();
     if(pointers.size===0){swipeStart={x:e.clientX,y:e.clientY,time:Date.now(),startScale:scale};hadMultiTouch=false;}
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pointers.size>1){hadMultiTouch=true;swipeStart=null;}
