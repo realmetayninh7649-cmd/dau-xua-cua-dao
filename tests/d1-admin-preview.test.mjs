@@ -232,3 +232,22 @@ test('admin home-screen app uses stable URL, same-origin protected icons, and no
  assert.ok(!ADMIN_JS.includes('serviceWorker.register'));
  assert.match((await call('/admin')).res.headers.get('Content-Security-Policy'),/manifest-src 'self'/);
 });
+
+// Record access must verify both live services via bindings before changing rights.
+test('record access uses internal service bindings and fails closed',async()=>{
+ const {verifyRecordAccessReady}=await import('../workers/gdd-d1-admin/src/record-access.mjs');
+ const calls=[];
+ const binding=(name,body={record_access:true},status=200)=>({fetch:async request=>{
+  calls.push([name,new URL(request.url).pathname,request.method]);
+  return new Response(JSON.stringify(body),{status});
+ }});
+ const env={RECORD_GATEWAY:binding('R2'),RECORD_PUBLIC_API:binding('D1')};
+ await verifyRecordAccessReady(env);
+ assert.deepEqual(calls,[['R2','/record-access-ready','GET'],['D1','/api/v1/public/access-ready','GET']]);
+ await assert.rejects(verifyRecordAccessReady({...env,RECORD_GATEWAY:undefined}),/R2.*chưa đổi quyền/);
+ await assert.rejects(verifyRecordAccessReady({...env,RECORD_PUBLIC_API:binding('D1',{record_access:false})}),/D1.*chưa đổi quyền/);
+ await assert.rejects(verifyRecordAccessReady({...env,RECORD_GATEWAY:binding('R2',{},503)}),/R2.*503/);
+ await assert.rejects(verifyRecordAccessReady({...env,RECORD_PUBLIC_API:{fetch:async()=>{throw Error('offline')}}}),/D1.*lỗi kết nối/);
+ const config=JSON.parse(readFileSync('workers/gdd-d1-admin/wrangler.jsonc','utf8'));
+ assert.deepEqual(config.services,[{binding:'RECORD_GATEWAY',service:'gdd-r2-gateway'},{binding:'RECORD_PUBLIC_API',service:'gdd-d1-api-staging'}]);
+});

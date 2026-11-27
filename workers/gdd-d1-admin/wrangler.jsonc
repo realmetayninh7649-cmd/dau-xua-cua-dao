@@ -36,5 +36,15 @@
       "0,30 21-23 * * *",
       "15,45 21-23 * * *"
     ]
-  }
+  },
+  "services": [
+    {
+      "binding": "RECORD_GATEWAY",
+      "service": "gdd-r2-gateway"
+    },
+    {
+      "binding": "RECORD_PUBLIC_API",
+      "service": "gdd-d1-api-staging"
+    }
+  ]
 }

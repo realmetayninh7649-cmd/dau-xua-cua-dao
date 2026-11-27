@@ -48,7 +48,22 @@ async function inventory(env,kind,id,record,input){
  if(input.mode==='protected'&&entries.length+[...refs].filter(x=>x.startsWith('managed:')).length>40)throw Error('Tập dài vượt giới hạn tạo watermark của đợt này; chọn Chỉ xem hoặc chia tập.');
  return {refs:[...refs],entries};
 }
-async function ready(){const [g,a]=await Promise.all([fetch(GATE+'/record-access-ready'),fetch(API+'/api/v1/public/access-ready')]);if(!g.ok||!a.ok||!(await g.json()).record_access||!(await a.json()).record_access)throw Error('Máy chủ bảo vệ chưa triển khai hoàn tất; chưa đổi quyền.')}
+// Same-account workers.dev calls must use service bindings, not global fetch.
+export async function verifyRecordAccessReady(env){
+ const checks=[
+  ['R2',env.RECORD_GATEWAY,GATE+'/record-access-ready'],
+  ['D1',env.RECORD_PUBLIC_API,API+'/api/v1/public/access-ready']
+ ];
+ const failures=await Promise.all(checks.map(async ([name,binding,url])=>{
+  try{
+   if(!binding||typeof binding.fetch!=='function')return name+' (chưa kết nối nội bộ)';
+   const response=await binding.fetch(new Request(url,{method:'GET',headers:{'Cache-Control':'no-cache'}}));
+   if(!response.ok)return name+' (HTTP '+response.status+')';
+   return (await response.json()).record_access===true?null:name+' (chưa sẵn sàng)';
+  }catch{return name+' (lỗi kết nối)'}
+ }));
+ if(failures.some(Boolean))throw Error('Máy chủ bảo vệ chưa sẵn sàng: '+failures.filter(Boolean).join(', ')+'; chưa đổi quyền.');
+}
 export async function handleRecordAccess(req,env,path){
  const match=/^\/api\/v1\/admin\/work\/(people|documents)\/([a-f0-9-]{36})\/record-access(?:\/(source|prepare))?$/.exec(path);
  if(!match||!ID.test(match[2]))return reply({error:'invalid_access_route'},404);
@@ -69,13 +84,13 @@ export async function handleRecordAccess(req,env,path){
   if(!['download','view','protected'].includes(input.mode)||!Number.isSafeInteger(input.version)||record.gdd_version!==input.version)return reply({error:'Phiên bản hồ sơ đã thay đổi hoặc quyền không hợp lệ'},409);
   if(input.mode==='download'&&!operation){await env.DB.prepare("INSERT INTO gdd_record_access(kind,record_id,mode) VALUES(?,?,'download') ON CONFLICT(kind,record_id) DO UPDATE SET mode='download',updated_at=CURRENT_TIMESTAMP").bind(kind,id).run();return reply({mode:'download'})}
   if(input.draft===true&&!operation&&Number(record.published)===0){
-   await ready();
+   await verifyRecordAccessReady(env);
    await env.DB.prepare("INSERT INTO gdd_record_access(kind,record_id,mode) VALUES(?,?,?) ON CONFLICT(kind,record_id) DO UPDATE SET mode=excluded.mode,updated_at=CURRENT_TIMESTAMP").bind(kind,id,input.mode).run();
    return reply({mode:input.mode,draft:true});
   }
   const inv=await inventory(env,kind,id,record,input);
-  if(operation==='prepare')return reply({entries:inv.entries,legacy:inv.refs.some(x=>x.startsWith('legacy:'))});
-  await ready();
+  if(operation==='prepare'){await verifyRecordAccessReady(env);return reply({entries:inv.entries,legacy:inv.refs.some(x=>x.startsWith('legacy:'))});}
+  await verifyRecordAccessReady(env);
   if(input.mode==='protected')for(const e of inv.entries)if(!await env.GDD_BUCKET.head(await protectedKey(e.ref,e.variant)))return reply({error:'Thiếu bản xem watermark; chưa đổi quyền'},409);
   await env.DB.batch([env.DB.prepare("INSERT INTO gdd_record_access(kind,record_id,mode) VALUES(?,?,?) ON CONFLICT(kind,record_id) DO UPDATE SET mode=excluded.mode,updated_at=CURRENT_TIMESTAMP").bind(kind,id,input.mode),...inv.refs.map(ref=>env.DB.prepare('INSERT OR IGNORE INTO gdd_access_media(kind,record_id,media_ref) VALUES(?,?,?)').bind(kind,id,ref))]);
   return reply({mode:input.mode,legacy:inv.refs.some(x=>x.startsWith('legacy:'))});
