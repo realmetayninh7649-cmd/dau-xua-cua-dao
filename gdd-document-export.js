@@ -11,7 +11,8 @@
    .gdd-doc-export{margin:30px 0 17px;padding:17px;background:#f3f5ef;border:1px solid #d5dfd3;border-left:3px solid #af9159;border-radius:5px}
    .gdd-doc-export h3{margin:0 0 6px;color:#235347;font:700 15px/1.5 'Noto Serif',Georgia,serif}
    .gdd-doc-export p{margin:0 0 13px;color:#617268;font:400 11px/1.75 'Be Vietnam Pro',sans-serif}
-   .gdd-doc-actions{display:flex;gap:9px;flex-wrap:wrap}
+   .gdd-doc-actions{display:flex;gap:9px;flex-wrap:wrap}.gdd-doc-actions[hidden]{display:none!important}
+   #detail-content[data-gdd-record-access='view'] img,#detail-content[data-gdd-record-access='protected'] img{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none}
    .gdd-doc-actions button,.gdd-doc-ready{display:inline-block;min-height:39px;border:1px solid #20564a;border-radius:5px;background:#20564a;color:#fff;padding:10px 14px;font:700 11px/1.45 'Be Vietnam Pro',sans-serif;text-decoration:none;cursor:pointer}
    .gdd-doc-actions button:last-child{background:#fffdf8;color:#20564a}
    .gdd-doc-actions button:disabled{cursor:progress;opacity:.55}
@@ -40,12 +41,38 @@
     return r?.kind==='media'||root?.dataset.gddDisplayTarget==='media'||
       (r?.kind==='posts'&&r.slug===imageAlbumPost);
   }
+  const accessApi='https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/public/record-access';
+  function needsPolicy(r){return window.SITE_CONFIG?.publicReadProvider==='d1-staging'&&['people','documents'].includes(r?.kind)}
+  async function readAccess(r){
+    if(!needsPolicy(r))return 'download';
+    const q=new URLSearchParams({kind:r.kind,slug:r.slug});
+    const response=await fetch(accessApi+'?'+q,{cache:'no-store',credentials:'omit'});
+    if(!response.ok)throw Error('Chưa xác minh được quyền tải tư liệu');
+    const data=await response.json();if(!['download','view','protected'].includes(data.mode))throw Error('Quyền tải chưa xác định');
+    return data.mode;
+  }
+  function restrictBar(bar,mode){
+    bar.dataset.access=mode;
+    const buttons=bar.querySelector('.gdd-doc-actions');
+    if(buttons)buttons.hidden=mode!=='download';
+    bar.querySelectorAll('.gdd-doc-ready').forEach(node=>node.remove());
+    const desc=bar.querySelector('p');
+    if(mode!=='download'&&desc)desc.textContent=mode==='protected'?'Tư liệu chỉ được xem qua bản có dấu bảo vệ. Không cấp bản tải PDF/Word.':mode==='view'?'Tư liệu chỉ được phép xem trên website, không cấp bản tải.':'Đang xác minh quyền tải tư liệu.';
+    if(root)root.dataset.gddRecordAccess=mode;
+  }
+  function checkBar(bar,r){
+    if(!needsPolicy(r))return;
+    restrictBar(bar,'checking');
+    readAccess(r).then(mode=>{if(bar.isConnected&&route()?.slug===r.slug&&route()?.kind===r.kind){if(mode==='download'){bar.dataset.access=mode;bar.querySelector('.gdd-doc-actions').hidden=false;root.dataset.gddRecordAccess=mode;bar.querySelector('p').textContent=makeBar().querySelector('p').textContent}else restrictBar(bar,mode)}}).catch(()=>{if(bar.isConnected)restrictBar(bar,'unavailable')});
+  }
+  document.addEventListener('contextmenu',event=>{if(['view','protected'].includes(root?.dataset.gddRecordAccess)&&event.target.closest?.('#detail-content img'))event.preventDefault()});
+  document.addEventListener('dragstart',event=>{if(['view','protected'].includes(root?.dataset.gddRecordAccess)&&event.target.closest?.('#detail-content img'))event.preventDefault()});
   function addControls(){
     const r=route();
     if(root){
       const old=root.querySelector('.gdd-doc-export');
       const isArticle=r&&!belongsToImages(r)&&root.querySelector('.detail-title')&&root.querySelector('.detail-body');
-      if(!isArticle)old?.remove();else if(!old)root.appendChild(makeBar());
+      if(!isArticle){old?.remove();delete root.dataset.gddRecordAccess;}else if(!old){const bar=makeBar();root.appendChild(bar);checkBar(bar,r);}
     }
     if(memorialRoot){
       // Khung tưởng niệm vẫn giữ nội dung, ảnh và nguồn; không kèm tiện ích tải PDF/Word.
@@ -518,6 +545,7 @@
     const progress=s=>{if(status)status.textContent=s};
     locked=true;controls.forEach(x=>x.disabled=true);
     try{
+      if(await readAccess(current)!=='download'){restrictBar(bar,'view');throw Error('Tư liệu chỉ được phép xem trên website');}
       const record=snapshot(current);
       progress('Đang kiểm tra bộ ảnh công khai…');
       record.gallery=await readGallery(record,progress);
