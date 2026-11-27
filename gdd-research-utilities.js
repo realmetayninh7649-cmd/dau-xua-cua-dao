@@ -30,6 +30,7 @@ function clockParts(now){
  const fmt=n=>String(n).padStart(2,'0'),time=n=>fmt(Math.floor(n/3600))+':'+fmt(Math.floor(n/60)%60)+':'+fmt(n%60);
  return {slot,next,remaining,now:time(s),countdown:time(remaining)};
 }
+style.textContent+='.gdd-daily-quote{text-align:center;background:#fffdf8;padding:18px 14px}.gdd-daily-quote h3{letter-spacing:.045em;margin:0 0 12px;font-size:16px}.gdd-daily-quote blockquote{border-left:0;border-top:1px solid #ddd4bf;border-bottom:1px solid #ddd4bf;margin:10px 0 13px;padding:14px 4px;font:16px/1.85 Georgia,serif;color:#194b42;max-height:none;overflow:visible}.gdd-daily-quote .gdd-quote-speaker{font:700 14px/1.6 Georgia,serif;color:#194b42}.gdd-daily-quote .gdd-quote-date{font:12px/1.6 Georgia,serif;color:#806d4e;white-space:pre-wrap}';
 let clockTimer;
 function mountClock(){
  const aside=document.getElementById('gdd-p1-aside');if(!aside||document.getElementById('gdd-tu-thoi'))return;
@@ -42,6 +43,15 @@ function mountClock(){
  const anchor=document.getElementById('gdd-p1-calendar-panel')||aside.querySelector('.gdd-p1-side-intro');if(anchor)anchor.after(card);else aside.prepend(card);
  const tick=()=>{const p=clockParts(new Date());time.textContent=p.now;next.textContent='Thời cúng kế tiếp: '+names[p.next]+' · '+hours[p.next];remaining.textContent='Còn '+p.countdown;tiles.forEach((n,i)=>n.classList.toggle('is-next',i===p.next));};
  tick();clearInterval(clockTimer);clockTimer=setInterval(tick,1000);
+}
+// Public quotations use only the actual excerpt and verified attribution/date fields.
+function quoteReady(r){
+ const fields=[r?.excerpt,r?.speaker,r?.source_date];
+ return fields.every(v=>typeof v==='string'&&v.trim())&&!/cần đối chiếu|chưa xác định|chưa rõ|không rõ|chờ duyệt|chưa kiểm chứng/i.test(r.speaker+' '+r.source_date);
+}
+function renderQuote(card,row,name){
+ card.classList.add('gdd-daily-quote');
+ card.append(make('h3','',name),make('blockquote','',row.excerpt),make('strong','gdd-quote-speaker',row.speaker),make('small','gdd-quote-date',row.source_date));
 }
 let busy=false,last=0;
 async function refresh(){
@@ -62,12 +72,13 @@ async function refresh(){
  const featured=[...documents,...posts].sort((a,b)=>a.id.localeCompare(b.id));
  const history=documents.filter(r=>documentAnniversary(r.source_date,now,lunar)).map(r=>({...r,excerpt:'Văn kiện có ngày ghi trên hồ sơ trùng ngày hôm nay ('+documentAnniversary(r.source_date,now,lunar)+'). '+r.excerpt}));
  for(const [kind,name,kicker] of config){
- let items=packet.data.filter(r=>r.kind===kind&&r.excerpt&&r.citation&&safeLink(r.source_url));
+ let items=packet.data.filter(r=>r.kind===kind&&(kind==='quote'?quoteReady(r):r.excerpt&&r.citation&&safeLink(r.source_url)));
  if(kind==='history')items=items.filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.source_date||'')&&r.source_date.slice(5)===now.slice(5));
  if(!items.length&&kind==='history')items=history;
  if(!items.length&&kind==='featured')items=featured;
  if(!items.length)continue;
  const row=items[day%items.length],card=make('section','gdd-research-card');
+ if(kind==='quote'){renderQuote(card,row,name);fragment.append(card);continue;}
  card.append(make('div','gdd-research-kicker',kicker),make('h3','',name),make('p','gdd-research-title',row.title));if(row.excerpt)card.append(make(row.archiveKind?'p':'blockquote',row.archiveKind?'gdd-archive-summary':'',row.excerpt));
  if(row.speaker)card.append(make('strong','',row.speaker));if(row.source_date)card.append(make('small','',row.source_date));
  card.append(make('small','','Xuất xứ: '+row.citation));const link=make('a','','Xem nguồn tư liệu ↗');link.href=safeLink(row.source_url);if(!row.archiveKind){link.target='_blank';link.rel='noopener noreferrer'}card.append(link);fragment.append(card);
