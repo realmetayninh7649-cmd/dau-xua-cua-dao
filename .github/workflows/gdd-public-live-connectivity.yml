@@ -1,0 +1,41 @@
+name: GDD - Public live website connectivity
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: ['.github/workflows/gdd-public-live-connectivity.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: DNS and HTTPS, public endpoints only
+        run: |
+          for host in dauxuacuadao.info.vn realmetayninh7649-cmd.github.io; do
+            echo "DNS_CHECK $host"
+            dig +time=3 +tries=1 "$host" A
+            dig +time=3 +tries=1 "$host" AAAA
+            dig +time=3 +tries=1 @1.1.1.1 "$host" A
+          done
+          for url in 'https://dauxuacuadao.info.vn/' 'https://dauxuacuadao.info.vn/index.html?gdd_probe=20261127' 'https://realmetayninh7649-cmd.github.io/dau-xua-cua-dao/'; do
+            echo "HTTPS_CHECK $url"
+            curl -sS -L --connect-timeout 8 --max-time 20 -o /tmp/gdd-public.html -w 'HTTP=%{http_code} IP=%{remote_ip} SIZE=%{size_download} TOTAL=%{time_total} URL=%{url_effective}\n' "$url" || true
+            grep -o '<title>[^<]*</title>' /tmp/gdd-public.html | head -1 || true
+          done
+      - name: Browser load and visible body
+        run: |
+          npm install --no-save playwright-core
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright-core';
+          const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN||'/usr/bin/google-chrome',args:['--no-sandbox']});
+          try {
+            const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            page.on('pageerror',e=>console.log('PAGE_ERROR',e.message.slice(0,250)));
+            page.on('requestfailed',r=>console.log('REQUEST_FAILED',r.url().split('?')[0],r.failure()?.errorText));
+            page.on('response',r=>{if(r.status()>=400)console.log('HTTP_ERROR',r.status(),r.url().split('?')[0])});
+            try {const response=await page.goto('https://dauxuacuadao.info.vn/',{waitUntil:'domcontentloaded',timeout:30000});console.log('BROWSER_HTTP',response?.status());}catch(e){console.log('NAV_ERROR',e.message.slice(0,300))}
+            try {await page.waitForTimeout(3000);console.log('VISIBLE_BODY',await page.locator('body').innerText({timeout:5000}).then(s=>s.slice(0,400)));}catch(e){console.log('BODY_ERROR',e.message.slice(0,250))}
+          }finally{await browser.close()}
+          JS
