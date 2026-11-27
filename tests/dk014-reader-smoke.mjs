@@ -31,7 +31,7 @@ async function check(label,width,height,type,showDownload){
     const scroller=await page.locator('#r2-scroller').boundingBox();
     assert.ok(scroller&&scroller.width<=width+2,label+' horizontal overflow');
     const dlVisible=await page.locator('#r2-download').isVisible();
-    assert.equal(dlVisible,showDownload,label+' unexpected download link');
+    assert.equal(dlVisible,false,label+' image viewer must not offer download');
     if(type!=='image'){
       assert.equal((await page.locator('#r2-counter').innerText()).trim(),'1 / 2');
       await page.locator('#r2-next').click();

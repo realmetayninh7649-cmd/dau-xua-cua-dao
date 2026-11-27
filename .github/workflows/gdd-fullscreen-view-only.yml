@@ -1,0 +1,25 @@
+name: GDD - Fullscreen image view only
+on:
+  push:
+    branches: [main]
+    paths: ['image-viewer.js','r2-xem.html','r2-xem.mjs','tests/fullscreen-view-only.test.mjs','.github/workflows/gdd-fullscreen-view-only.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check image-viewer.js && node --check r2-xem.mjs && node --test tests/fullscreen-view-only.test.mjs
+      - run: npm install --no-save playwright-core@1.56.1
+      - run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/gdd-viewer-http.log 2>&1 &
+          sleep 2
+          export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          node tests/image-viewer-gallery-smoke.mjs
+          node tests/dk014-reader-smoke.mjs

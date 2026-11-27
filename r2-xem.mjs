@@ -164,9 +164,6 @@ async function initializeApproved(){
     el('r2-controls').hidden=false;
     el('r2-scroller').hidden=false;
     if(data.kind==='document'&&query.get('download'))void (async()=>{try{const u=new URL(query.get('download'));if(!u.search){u.search='?view=1';const valid=attachmentSource(u.href);if(valid&&valid.pathname.split('/')[7]===id){const parts=valid.pathname.split('/');const check=new URL(ATTACH_API+'/api/v1/public/attachments');check.searchParams.set('owner_kind',parts[5]);check.searchParams.set('owner_id',parts[6]);check.searchParams.set('limit','100');const result=await fetch(check,{cache:'no-store'});if(result.ok&&(await result.json()).data?.some(x=>x.asset_id===id&&Number(x.allow_download)===1&&/\.pdf$/i.test(x.original_name||''))){valid.search='';const dl=el('r2-pdf-download');dl.href=valid.href;dl.hidden=false;}}}}catch{}})();
-    if(data.allowDownload===true&&data.kind==='image'){
-      const anchor=el('r2-download');anchor.href=API+'/v1/public/'+id+'/download';anchor.hidden=false;
-    }
     ready();
   }catch(err){retry('Không mở được bản xem. Hãy thử tải lại.')}
 }

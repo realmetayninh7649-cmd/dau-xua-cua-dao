@@ -39,7 +39,7 @@ try {
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
       assert.equal(await page.locator('#gdd-image-title').innerText(),'Ảnh tư liệu 2 · 2/3',label+': opening image 2');
       assert.equal(await page.locator('#gdd-image-download').isVisible(),false,label+': no download in Hình ảnh gallery viewer');
-      assert.equal(await page.locator('#gdd-image-original').isVisible(),true,label+': gallery original link still available');
+      assert.equal(await page.locator('#gdd-image-original').count(),0,label+': no separate image link');
       assert.equal(await page.locator('#gdd-image-prev').isVisible(),true);
       assert.equal(await page.locator('#gdd-image-next').isVisible(),true);
       await page.locator('#gdd-image-next').click();
@@ -94,7 +94,7 @@ try {
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
       const person=await page.evaluate(()=>({
         imageUrl:document.getElementById('gdd-image-full').src,
-        originalHref:document.getElementById('gdd-image-original').getAttribute('href'),
+        originalHref:document.getElementById('gdd-image-original')?.getAttribute('href')??null,
         stampExists:!!document.getElementById('gdd-image-stamp'),
         watermarkLoaded:!!window.GDDPersonPhotoWatermark
       }));
@@ -133,18 +133,31 @@ try {
       await page.evaluate(()=>document.querySelector('#detail-content [data-gdd-image-show]').click());
       await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
       assert.equal(await page.locator('#gdd-image-download').isVisible(),false,label+': media fullscreen has no download');
-      assert.equal(await page.locator('#gdd-image-original').isVisible(),true,label+': existing original viewing not changed');
+      assert.equal(await page.locator('#gdd-image-original').count(),0,label+': no separate image link');
       await page.locator('#gdd-image-close').click();
-      // Bài biên khảo thường vẫn giữ nút tải; không đổi ngoài Hình ảnh.
+      // Both Biên khảo and Số hóa use the same view-only fullscreen.
       await page.evaluate(()=>{
         const detail=document.getElementById('detail-content');
         detail.dataset.gddKind='posts';
         detail.dataset.gddDisplayTarget='posts';
         detail.innerHTML='<div class="detail-cover"><img src="/logo.png" alt="Bài biên khảo thường"></div>';
       });
-      await page.waitForFunction(()=>!!document.querySelector('#detail-content [data-gdd-image-save]'));
-      assert.equal(await page.locator('#detail-content [data-gdd-image-save]').count(),1,label+': ordinary biên khảo still has download');
-      console.log('MEDIA IMAGE DOWNLOAD UI PASS',label,'gallery/cover hidden, regular posts intact');
+      for(const kind of ['posts','documents']){
+        await page.evaluate(kind=>{
+          const detail=document.getElementById('detail-content');
+          detail.dataset.gddKind=kind;
+          detail.dataset.gddDisplayTarget=kind;
+          detail.innerHTML='<div class="detail-cover"><img src="/logo.png" alt="Tư liệu"></div>';
+        },kind);
+        await page.waitForFunction(()=>!!document.querySelector('#detail-content [data-gdd-image-show]'));
+        await page.evaluate(()=>document.querySelector('#detail-content [data-gdd-image-show]').click());
+        await page.locator('#gdd-image-viewer').waitFor({state:'visible'});
+        assert.equal(await page.locator('#gdd-image-download,#gdd-image-original').count(),0,label+': no download or open link '+kind);
+        await page.locator('#gdd-image-plus').click();
+        assert.notEqual(await page.locator('#gdd-image-scale').innerText(),'100%');
+        await page.locator('#gdd-image-close').click();
+      }
+      console.log('ALL IMAGE VIEWERS VIEW ONLY PASS',label);
       console.log('PERSON IMAGE UI PASS',label,'no download/original; gallery controls preserved');
       console.log('IMAGE GALLERY PASS',label,'arrows/swipe/keyboard/zoom/close');
     } catch(error) {

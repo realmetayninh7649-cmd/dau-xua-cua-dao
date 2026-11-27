@@ -20,9 +20,7 @@
       padding:10px 13px; font:600 12px/1.4 'Be Vietnam Pro',system-ui,sans-serif;
       border-radius:5px; cursor:pointer; }
     .gdd-image-action:hover { background:#e5eee8; }
-    .gdd-image-download-status { flex-basis:100%; font-size:11px; color:#386454; line-height:1.5; }
     .gdd-image-viewer[hidden] { display:none!important; }
-    #gdd-image-original[hidden], #gdd-image-download[hidden] { display:none!important; }
     .gdd-image-viewer { position:fixed!important; z-index:10000!important; inset:0;
       display:flex; flex-direction:column; width:100vw!important; max-width:100vw!important; box-sizing:border-box; background:#0d1213; color:#f4f5f1;
       font:500 13px/1.5 'Be Vietnam Pro',system-ui,sans-serif;
@@ -34,7 +32,7 @@
     .gdd-image-icon { color:white; background:#ffffff17; border:1px solid #ffffff32;
       padding:0; border-radius:8px; height:42px; min-width:42px; cursor:pointer;
       font:600 22px/1 system-ui,sans-serif; display:inline-flex; align-items:center; justify-content:center; }
-    .gdd-image-icon:focus-visible, .gdd-image-download:focus-visible { outline:3px solid #dfbd76; outline-offset:2px; }
+    .gdd-image-icon:focus-visible { outline:3px solid #dfbd76; outline-offset:2px; }
     .gdd-image-stage { touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:default;
       overflow:hidden; position:relative; flex:1 1 auto; min-height:0;
       display:flex; justify-content:center; align-items:center; cursor:grab; }
@@ -61,21 +59,18 @@
       pointer-events:auto; user-select:auto; -webkit-user-select:auto; -webkit-touch-callout:default; }
     .gdd-image-stage .gdd-image-loading { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       color:#e3e7e2; background:#000a; padding:8px 13px; border-radius:6px; pointer-events:none; }
-    .gdd-image-bottom { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+    .gdd-image-bottom { flex:0 0 auto; display:flex; align-items:center; justify-content:center;
       flex-wrap:wrap; gap:11px; padding:12px 16px calc(13px + env(safe-area-inset-bottom));
       border-top:1px solid #ffffff2b; background:#151e1e; }
     .gdd-image-controls { display:flex; align-items:center; gap:7px; }
     .gdd-image-controls .gdd-image-icon { height:39px; min-width:39px; font-size:20px; }
     .gdd-image-scale { display:inline-block; min-width:48px; text-align:center; font-size:11px; }
-    .gdd-image-download { padding:10px 13px; min-height:39px; background:#f0e8d8; color:#183d36;
-      border:0; border-radius:6px; cursor:pointer; font-family:inherit; font-weight:700; font-size:12px; line-height:1.5; }
     .gdd-image-caption { color:#b6c3bd; font-size:11px; text-align:center; width:100%; }
     @media (max-width:490px) {
       .gdd-image-head { padding-left:11px; padding-right:11px; }
       .gdd-image-bottom { justify-content:center; gap:8px; padding-left:8px; padding-right:8px; }
       .gdd-image-controls { gap:5px; }
       .gdd-image-caption { font-size:10px; }
-      .gdd-image-download { font-size:11px; }
     }
     @media (prefers-reduced-motion:reduce) { .gdd-image-stage img { transition:none!important; } }
   `;
@@ -109,15 +104,13 @@
         <button class="gdd-image-icon" id="gdd-image-plus" type="button" aria-label="Phóng to">+</button>
         <button class="gdd-image-icon" id="gdd-image-reset" type="button" aria-label="Vừa khung" style="font-size:20px">↺</button>
       </div>
-      <button class="gdd-image-download" id="gdd-image-download" type="button">↓ Tải ảnh có lưu dấu</button>
-      <a class="gdd-image-download" id="gdd-image-original" href="#" target="_blank" rel="noopener noreferrer" style="background:#ffffff17;color:white;text-decoration:none">Mở bản ảnh xem ↗</a>
       <div class="gdd-image-caption" id="gdd-image-caption">Chụm hai ngón tay để phóng to; kéo để xem chi tiết.</div>
     </div>`;
   document.body.appendChild(viewer);
 
   const $ = id => document.getElementById(id);
   const stage=$('gdd-image-stage'), full=$('gdd-image-full'), loading=$('gdd-image-loading');
-  const caption=$('gdd-image-caption'), download=$('gdd-image-download'), orig=$('gdd-image-original');
+  const caption=$('gdd-image-caption');
   let scale=1, x=0, y=0, source='', title='', previousFocus=null, personPhoto=false, noImageDownload=false, viewTicket=0;
   let gallery=[], galleryIndex=0, swipeStart=null, hadMultiTouch=false;
   let tracedPreviewURL='';
@@ -187,16 +180,7 @@
     // Không đưa ảnh CHƯA có mã vào màn hình xem lớn khi đang xử lý bản lưu dấu.
     full.style.visibility=mustTrace?'hidden':'';
     if(!mustTrace)full.src=url;
-    // Full-screen gallery links initially open only an approved display version.
-    // When stamping completes the link is replaced by the marked blob.
-    const safeOpen=window.GDDLegacyImages?.displayUrl?.(url)||url;
-    const legacyUnmapped=/^https:\/\/gwpdgubxoquhrfbolftq\.supabase\.co\/storage\/v1\/object\/public\//.test(url)&&safeOpen===url;
-    if(personPhoto||legacyUnmapped)orig.removeAttribute('href');
-    else orig.href=safeOpen;
-    orig.hidden=personPhoto||legacyUnmapped;
-    orig.textContent=alreadyTraced?'Mở bản ảnh có lưu dấu ↗':'Mở bản ảnh xem ↗';
-    download.hidden=personPhoto||noImageDownload;
-    download.textContent='↓ Tải ảnh có lưu dấu';
+    // The viewer has no download or separate-image link.
     loading.hidden=false;loading.textContent=mustTrace?'Đang chuẩn bị bản ảnh có lưu dấu…':'Đang mở ảnh…';
     refreshArrows();
     caption.textContent='Vuốt trái/phải để chuyển ảnh; chụm hai ngón để phóng to.';
@@ -213,19 +197,13 @@
         const stampedURL=URL.createObjectURL(blob);
         tracedPreviewURL=stampedURL;
         full.src=stampedURL;full.style.visibility='';
-        if(!personPhoto){
-          orig.href=stampedURL;
-          orig.hidden=false;
-          orig.textContent='Mở bản ảnh có lưu dấu ↗';
-        }
       }).catch(err=>{
         if(viewer.hidden||viewTicket!==currentTicket)return;
         // Không giấu lỗi: nguồn ngoài thiếu CORS thì bản xem còn chưa có dòng lưu dấu.
         full.dataset.gddTraceFailed='1';
         full.style.visibility='';
         full.src=window.GDDLegacyImages?.displayUrl?.(url)||url;
-        orig.hidden=true;download.hidden=true;
-        caption.textContent='Nguồn ảnh chưa hỗ trợ tạo bản lưu dấu, nên tạm khóa tải trực tiếp.';
+        caption.textContent='Nguồn ảnh chưa hỗ trợ tạo bản lưu dấu tự động.';
         console.info('[GDD Trace] Nguồn ảnh không cho phép tạo bản lưu dấu:',err?.message||err);
       });
     }
@@ -259,7 +237,7 @@
       (full.dataset.gddTraceFailed==='1'?' · Nguồn ảnh chưa hỗ trợ lưu dấu tự động.':'');
   }
   full.addEventListener('load',imageReady);
-  full.addEventListener('error',()=>{loading.hidden=false;loading.textContent=personPhoto?'Không thể hiển thị ảnh tư liệu. Xin thử lại sau.':'Không thể hiển thị ảnh. Hãy chọn “Mở ảnh gốc”.';});
+  full.addEventListener('error',()=>{loading.hidden=false;loading.textContent='Không thể hiển thị ảnh tư liệu. Xin thử lại sau.';});
   function closeImage(navigate=true){
     if(viewer.hidden)return;
     viewer.hidden=true;document.body.classList.remove('gdd-photo-open');
@@ -351,56 +329,6 @@
     else if(e.key==='0'){e.preventDefault();reset();}
   },true);
   
-  const filename=(url,label)=>{
-    const path=new URL(url).pathname,tail=decodeURIComponent(path.split('/').pop()||'');
-    if(/^.{1,100}\.(?:jpe?g|png|webp|gif|avif)$/i.test(tail))return tail;
-    const name=(label||'anh-tu-lieu').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70)||'anh-tu-lieu';
-    return name+'.jpg';
-  };
-  function noticeDownload(btn,message){
-    const actions=btn.closest('.gdd-image-actions');
-    if(actions){
-      let note=actions.querySelector('.gdd-image-download-status');
-      if(!note){
-        note=document.createElement('span');
-        note.className='gdd-image-download-status';
-        note.setAttribute('role','status');
-        actions.appendChild(note);
-      }
-      note.textContent=message;
-    }
-    caption.textContent=message;
-  }
-  async function downloadImage(url,label,btn,photoCode=''){
-    if(!url)return;
-    const old=btn.textContent;
-    btn.disabled=true;
-    btn.textContent='Đang chuẩn bị ảnh…';
-    try {
-      // Visitors receive only the approved optimized R2 image, not its Supabase original.
-      const approvedUrl=window.GDDLegacyImages?.displayUrl?.(url)||url;
-      const response=await fetch(approvedUrl,{mode:'cors',credentials:'omit'});
-      if(!response.ok)throw Error('Nguồn ảnh không cho phép tải');
-      const original=await response.blob();
-      if(!original.type.startsWith('image/'))throw Error('Tệp này không phải hình ảnh');
-      const traceCode=window.GDDTrace?.validCode(photoCode)?photoCode:'TU-LIEU-CO-LUU-DAU';
-      // Never serve an unmarked file even when the record has no archive ID yet.
-      if(!window.GDDTrace?.stampedBlob)throw Error('Chưa có bộ tạo bản lưu dấu');
-      const output=(window.GDDTrace.isStampedURL(approvedUrl)||window.GDDTraceDisplay?.isStampedBlob(url))
-        ? original : await window.GDDTrace.stampedBlob(original,traceCode);
-      const blobUrl=URL.createObjectURL(output),a=document.createElement('a');
-      a.href=blobUrl;
-      a.download=filename(url,label);
-      document.body.appendChild(a);
-      a.click();a.remove();
-      setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
-      noticeDownload(btn,'Đã yêu cầu lưu bản ảnh có dòng nguồn và mã tư liệu (nếu đã cấp).');
-    } catch(err) {
-      console.warn('[GDD Photo Download]',err);
-      noticeDownload(btn,'Nguồn ảnh chưa cho phép tải bản có lưu dấu. Xin thử lại sau.');
-    } finally {btn.disabled=false;btn.textContent=old;}
-  }
-  download.addEventListener('click',()=>{if(!personPhoto&&!noImageDownload)downloadImage(source,title,download,gallery[galleryIndex]?.photoCode);});
   
   // Chính sách nút xem/tải ảnh dựa trên mục hiển thị, không thay đổi nguồn ảnh.
   function isPersonFrame(frame){
