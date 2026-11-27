@@ -18,3 +18,5 @@ test('public sacred quote needs explicit attribution and date; internal approval
 test('extract whole sentences without promotional or incomplete text',()=>{assert.deepEqual(completeSentences(['Ai có đức hạnh lớn thì mới ngồi đặng địa vị của THẦY ban thưởng.','THẦY dạy ...','Đọc bài nầy trong app để xem.']),['Ai có đức hạnh lớn thì mới ngồi đặng địa vị của THẦY ban thưởng.']);});
 
 test('dated event extraction requires explicit calendar and historical keyword',()=>{assert.equal(historyTitle('Ngày Vọng Thiên Cầu Đạo'),true);assert.equal(historyTitle('Trang chủ'),false);assert.equal(historicalCandidate(['Ngày 15/10/1926 ÂL, Hội Thánh tổ chức Đại Lễ Khai Đạo.']).source_date,'15/10/1926 ÂL');assert.equal(historicalCandidate(['Ngày 15/10/1926, Hội Thánh tổ chức Đại Lễ Khai Đạo.']),null);});
+
+test('history editor stores explicitly entered place without confusing it with a speaker',()=>{assert.ok(RESEARCH_JS.includes("data.speaker=place?'Địa điểm: '+place"));assert.ok(RESEARCH_JS.includes('delete data.event_place'));});
