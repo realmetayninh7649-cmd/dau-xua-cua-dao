@@ -1,0 +1,21 @@
+name: GDD - Install record access controls
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: ['.github/workflows/gdd-record-access-migration.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install additive policy tables only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.159.0 d1 execute gdd-dao-su-editor-live-clone-20261124 --remote --config workers/gdd-d1-admin/wrangler.jsonc --file workers/gdd-d1-admin/migrations/record-access-v1.sql
