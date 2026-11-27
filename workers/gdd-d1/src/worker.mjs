@@ -72,6 +72,16 @@ function parsePage(url){
 export default {
   async fetch(request,env,ctx){
     const incomingPath=new URL(request.url).pathname;
+    if(incomingPath==='/api/v1/public/access-ready'||incomingPath==='/api/v1/public/record-access'){
+      if(request.method!=='GET')return respond(request,{error:'read_only'},405,{private:true});
+      try{
+        if(incomingPath.endsWith('access-ready')){await env.DB.prepare('SELECT count(*) AS n FROM gdd_record_access').first();return respond(request,{record_access:env.RECORD_ACCESS_REQUIRED==='yes'},200,{private:true})}
+        const q=new URL(request.url).searchParams,kind=q.get('kind'),slug=q.get('slug');
+        if(!['people','documents'].includes(kind)||!slug||slug.length>300)return respond(request,{error:'invalid_record'},400,{private:true});
+        const row=await env.DB.prepare("SELECT coalesce(p.mode,'download') AS mode FROM \""+kind+"\" r LEFT JOIN gdd_record_access p ON p.kind=? AND p.record_id=r.id WHERE r.slug=? AND r.published=1 LIMIT 1").bind(kind,slug).first();
+        return row?respond(request,{mode:row.mode},200,{private:true}):respond(request,{error:'not_found'},404,{private:true});
+      }catch{return respond(request,{error:'access_unavailable'},503,{private:true})}
+    }
     if(incomingPath==='/api/v1/public/research-utilities'){
       if(request.method!=='GET')return respond(request,{error:'read_only'},405,{private:true});
       try{
@@ -99,6 +109,7 @@ export default {
       const deny=()=>respond(request,{error:'not_found'},404,{private:true});
       if(!PUBLIC_TABLES.has(kind)||!uuid.test(id)||!uuid.test(asset)||!env.DB||!env.SUBMISSIONS_BUCKET)return deny();
       try{
+        if(env.RECORD_ACCESS_REQUIRED==='yes'&&['people','documents'].includes(kind)){const policy=await env.DB.prepare('SELECT mode FROM gdd_record_access WHERE kind=? AND record_id=?').bind(kind,id).first();if(policy&&policy.mode!=='download')return deny();}
         const row=await env.DB.prepare("SELECT a.asset_id,a.owner_id,a.original_name,a.original_bytes,a.view_source FROM gdd_r2_assets a WHERE a.asset_id=? AND a.record_kind=? AND a.record_id=? AND a.role='attachment' AND a.media_kind='document' AND a.allow_download=1 AND EXISTS(SELECT 1 FROM \""+kind+"\" p WHERE p.id=a.record_id AND p.published=1) LIMIT 1").bind(asset,kind,id).first();
         if(!row||row.asset_id!==asset||!uuid.test(row.owner_id||''))return deny();
         const ext=String(row.original_name||'').split('.').pop().toLowerCase();
@@ -203,7 +214,9 @@ export default {
         if(!parent)return respond(request,{data:[],has_next:false},200,{private:true});
         const page=parsePage(url);if(!page)return respond(request,{error:'invalid_pagination'},400,{private:true});
         const {results=[]}=await env.DB.prepare("SELECT asset_id,original_name,CASE WHEN public_view=1 AND preview_ready=1 THEN 1 ELSE 0 END AS has_reader,CASE WHEN view_source='single_pdf' AND allow_download=1 THEN 1 ELSE 0 END AS single_pdf,CASE WHEN allow_download=1 THEN 1 ELSE 0 END AS allow_download FROM gdd_r2_assets WHERE record_kind=? AND record_id=? AND role='attachment' AND media_kind='document' AND ((public_view=1 AND preview_ready=1) OR allow_download=1) ORDER BY created_at,asset_id LIMIT ? OFFSET ?").bind(kind,id,page.limit+1,page.offset).all();
-        return respond(request,{data:results.slice(0,page.limit),has_next:results.length>page.limit},200,{private:true});
+        let data=results.slice(0,page.limit);
+        if(env.RECORD_ACCESS_REQUIRED==='yes'&&['people','documents'].includes(kind)){const policy=await env.DB.prepare('SELECT mode FROM gdd_record_access WHERE kind=? AND record_id=?').bind(kind,id).first();if(policy&&policy.mode!=='download')data=data.filter(r=>Number(r.has_reader)===1).map(r=>({...r,allow_download:0,single_pdf:0}));}
+        return respond(request,{data,has_next:results.length>page.limit},200,{private:true});
       }
       if(path[3]==='covers'&&path.length===4){
         const kind=url.searchParams.get('owner_kind'),id=url.searchParams.get('owner_id');

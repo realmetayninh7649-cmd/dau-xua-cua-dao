@@ -429,12 +429,12 @@ async function prepareDocument(row,current,notify){
   readerPlans.set(row.asset_id,plan);return plan;
  }finally{try{await pdf?.destroy()}catch{}}
 }
-async function prepareReaders(record,notify=()=>{}){
+async function prepareReaders(record,notify=()=>{},forcePages=false){
  if(!context||!documentKinds.has(record.kind))return [];
  if(context.kind!==record.kind||context.id!==record.id)throw Error('Hồ sơ đính kèm không khớp');
  const current=context,rows=await listDocuments(current),plans=[];
  for(const row of rows){
-  if(row.view_source==='single_pdf'&&/\.pdf$/i.test(row.original_name||''))continue;
+  if(!forcePages&&row.view_source==='single_pdf'&&/\.pdf$/i.test(row.original_name||''))continue;
    if(Number(row.public_view)===1&&Number(row.preview_ready)===1)continue;
   if(!/\.(pdf|docx)$/i.test(row.original_name||''))continue;
   try{plans.push(await prepareDocument(row,current,message=>{const text=row.original_name+': '+message;docStatus(text);notify(text)}))}

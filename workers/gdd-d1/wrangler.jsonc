@@ -38,5 +38,8 @@
         "period": 60
       }
     }
-  ]
+  ],
+  "vars": {
+    "RECORD_ACCESS_REQUIRED": "yes"
+  }
 }

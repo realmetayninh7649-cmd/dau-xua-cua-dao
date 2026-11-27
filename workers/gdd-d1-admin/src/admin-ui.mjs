@@ -1137,6 +1137,13 @@ function workBuild(kind,record){
  workDeathValidate=null;
  workClearCovers();workFieldInputs.clear();
  const fields=$('work-fields');fields.replaceChildren();
+ if(['people','documents'].includes(kind)){
+  const label=document.createElement('label');label.textContent='Quyền sử dụng tư liệu';const select=document.createElement('select');select.id='work-record-access';
+  for(const [value,name] of [['download','Cho phép xem và tải về'],['view','Chỉ cho phép xem'],['protected','Chỉ xem – Bảo vệ tăng cường (watermark)']]){const opt=document.createElement('option');opt.value=value;opt.textContent=name;select.append(opt)}
+  const note=document.createElement('small');note.textContent='Chỉ xem: khóa PDF/Word và bản in. Tăng cường: chữ chìm trực tiếp trên bản xem. Không thể thu hồi ảnh đã tải hoặc ngăn chụp màn hình.';
+  fields.append(label,select,note);select.value='download';
+  if(record){select.disabled=true;select.dataset.ready='no';api(workRoot+kind+'/'+record.id+'/record-access').then(x=>{if(!select.isConnected)return;select.value=x.mode;select.dataset.ready='yes';select.disabled=false}).catch(()=>{note.textContent='Chưa đọc được quyền tư liệu; không cập nhật bài khi chưa xác minh.'})}else select.dataset.ready='yes';
+ }
  for(const field of workFields[kind]||[]){
   const label=document.createElement('label');
   const choices=kind==='people'&&field==='branch'?Object.keys(workPersonRanks):
@@ -1461,6 +1468,28 @@ function workUpdateIdentity(){
  $('work-publish').textContent=record?.published?'Cập nhật bài trên website':'Đăng bài lên website';
  if(record)$('work-identity').textContent='Mã định danh: '+(record.archive_code||'Chưa có mã')+' · phiên bản '+record.gdd_version+' · '+(record.published?'Đã đăng':'Nháp');
 }
+async function workApplyRecordAccess(active,plans,progress){
+ const select=$('work-record-access');if(!select)return;if(select.dataset.ready!=='yes')throw Error('Chưa đọc được quyền tư liệu');
+ const mode=select.value,base=workRoot+active.kind+'/'+active.id+'/record-access',urls=['image_url','cover_url','file_url'].map(k=>workFieldInputs.get(k)?.value||'').filter(Boolean);
+ const payload={mode,version:active.record.gdd_version,plans,urls};
+ if(mode==='protected'){
+  const plan=await workWrite(base+'/prepare','POST',payload);
+  for(const [index,item] of plan.entries.entries()){
+   progress('Đang đóng watermark '+(index+1)+'/'+plan.entries.length+'…');
+   const response=await fetch(base+'/source?'+new URLSearchParams({ref:item.ref,variant:item.variant}),{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw Error('Không đọc được ảnh xem nguồn');
+   const url=URL.createObjectURL(await response.blob()),image=new Image(),canvas=document.createElement('canvas');
+   try{image.src=url;await image.decode();const max=active.kind==='people'?1000:1800,scale=Math.min(1,max/Math.max(image.naturalWidth,image.naturalHeight));
+    canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw Error('Không tạo được ảnh bảo vệ');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);
+    const font=Math.max(10,Math.round(canvas.width*.016)),dx=Math.max(125,font*18),dy=Math.max(42,font*5),d=Math.hypot(canvas.width,canvas.height);
+    ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(-Math.PI/7);ctx.font=font+'px sans-serif';ctx.fillStyle='rgba(28,43,37,.18)';ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1;
+    for(let y=-d;y<d;y+=dy)for(let x=-d+(Math.round(y/dy)%2)*dx/2;x<d;x+=dx){ctx.strokeText('dauxuacuadao.info.vn',x,y);ctx.fillText('dauxuacuadao.info.vn',x,y)}
+    const jpeg=canvas.toDataURL('image/jpeg',.84).split(',')[1];const saved=await workWrite(base+'/prepare','POST',{operation:'upload',...item,jpeg});if(!saved.stored)throw Error('Chưa lưu được ảnh watermark');
+   }finally{canvas.width=canvas.height=0;URL.revokeObjectURL(url)}
+  }
+ }
+ const saved=await workWrite(base,'POST',payload);if(saved.mode!==mode)throw Error('Chưa xác nhận quyền sử dụng tư liệu');
+}
 async function workSave(mode='draft'){
  if(!workCurrent||workBusy)return;
  const active=workCurrent,kind=active.kind,publish=mode==='publish';
@@ -1551,7 +1580,9 @@ async function workSave(mode='draft'){
   if(window.GDDPhotoAlbum?.hasPhotos())await window.GDDPhotoAlbum.uploadBatch(active,progress);
   if(window.GDDPhotoAlbum?.hasDocuments())await window.GDDPhotoAlbum.uploadDocuments(active,progress);
   await window.GDDPhotoAlbum?.saveDownloadPermissions(active,false,progress);
-  const readerPlans=await window.GDDPhotoAlbum?.prepareReaders(active,progress)||[];
+  const restricted=$('work-record-access')&&$('work-record-access').value!=='download';
+  const readerPlans=await window.GDDPhotoAlbum?.prepareReaders(active,progress,!!restricted)||[];
+  await workApplyRecordAccess(active,readerPlans,progress);
   const finalFields=workChanged();delete finalFields.published;
   if(!active.record.published)finalFields.published=true;
   progress('Đang đưa bài lên website…');
