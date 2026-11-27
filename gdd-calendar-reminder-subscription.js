@@ -45,14 +45,14 @@
   box.setAttribute('aria-label','Nhận nhắc lễ cúng và ngày kỷ niệm qui vị trước một ngày');
   box.innerHTML=`
    <div class="gdd-remind-heading"><span aria-hidden="true">♧</span><span>Lịch cúng lễ &amp; tưởng niệm</span></div>
-   <p class="gdd-remind-description">Lịch cúng lễ tại Tòa Thánh và ngày kỷ niệm qui vị tự quy đổi ngày âm sang ngày dương của <strong>từng năm</strong>. Khi đã thêm lịch vào điện thoại, có thể nhận nhắc <strong>09:00 sáng trước 1 ngày</strong> (giờ Việt Nam), tùy cài đặt thông báo của ứng dụng Lịch.</p>
+   <details class="gdd-remind-settings"><summary>Đăng ký lịch &amp; nhận lời nhắc</summary><p class="gdd-remind-description">Lịch cúng lễ tại Tòa Thánh và ngày kỷ niệm qui vị tự quy đổi ngày âm sang ngày dương của <strong>từng năm</strong>. Khi đã thêm lịch vào điện thoại, có thể nhận nhắc <strong>09:00 sáng trước 1 ngày</strong> (giờ Việt Nam), tùy cài đặt thông báo của ứng dụng Lịch.</p>
    <div class="gdd-remind-actions">
      <button type="button" id="gdd-remind-subscribe">＋ Theo dõi lịch tự cập nhật</button>
      <button type="button" id="gdd-remind-download">↓ Tải lịch có lời nhắc</button>
      <button type="button" id="gdd-remind-copy">⧉ Sao chép liên kết lịch</button>
    </div>
    <p class="gdd-remind-status" id="gdd-remind-status" role="status" aria-live="polite">Ngày lễ và ngày kỷ niệm được cập nhật theo bản lịch công khai định kỳ từ D1.</p>
-   <div class="gdd-remind-coming" id="gdd-remind-coming">
+   </details><div class="gdd-remind-coming" id="gdd-remind-coming">
      <strong>Những ngày lễ cúng và kỷ niệm sắp tới</strong>
      <ul><li>Đang tải ngày lễ và ngày tưởng niệm…</li></ul>
    </div>
@@ -127,7 +127,7 @@
       else{const response=await fetch(upcomingEndpoint,{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);json=await response.json();if(window.GDDCalendarUpcoming)json={ok:true,...window.GDDCalendarUpcoming};}
       if(!json.ok||!Array.isArray(json.upcoming))throw Error('Unexpected calendar');
       list.replaceChildren();
-      for(const e of json.upcoming.slice(0,5)){
+      for(const e of json.upcoming.slice(0,3)){
         const li=document.createElement('li');
         const lunarFirst=e.basis!=='solar'&&!!e.lunar;
         const date=document.createElement('time');date.dateTime=e.solar;date.textContent=lunarFirst?labelLunar(e)+' ÂL':dateVN(e.solar)+' DL';

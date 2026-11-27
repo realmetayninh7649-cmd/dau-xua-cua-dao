@@ -293,3 +293,13 @@ body.gdd-p1-ready #gdd-p1-aside #gdd-tuan-cuu-utility .gdd-cuu-form button{min-h
 @media(min-width:901px){body.gdd-p1-ready .gdd-p1-layout{grid-template-columns:minmax(0,1fr) minmax(330px,32%);gap:22px}}
 @media(min-width:601px) and (max-width:900px){body.gdd-p1-ready #gdd-p1-aside{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}body.gdd-p1-ready #gdd-p1-aside[hidden]{display:none!important}body.gdd-p1-ready #gdd-p1-aside .gdd-p1-side-intro,body.gdd-p1-ready #gdd-p1-sidebar-navigation{grid-column:1/-1}body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-links{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){body.gdd-p1-ready #gdd-p1-aside{gap:11px}body.gdd-p1-ready #gdd-p1-aside .gdd-p1-sidebar-links a{font-size:12px}body.gdd-p1-ready #gdd-p1-aside #am-thanh-dai-dao .gdd-radio-item-copy strong{font-size:13px}body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard .gdd-cal-day{min-height:40px!important}}
+
+/* Seven ordered utility sections; keep navigation in the existing main menu. */
+body.gdd-p1-ready #gdd-p1-sidebar-navigation[hidden],body.gdd-p1-ready #gdd-daily-quote-slot[hidden],body.gdd-p1-ready #gdd-research-public[hidden]{display:none!important}
+body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard{padding:8px!important}
+body.gdd-p1-ready #gdd-p1-aside #gdd-archive-dashboard .gdd-calendar{padding:8px!important}
+body.gdd-p1-ready #gdd-p1-aside #gdd-cal-selected{margin:5px 0;padding:7px 8px}
+body.gdd-p1-ready #gdd-p1-aside #gdd-calendar-reminder-panel{padding:9px;margin-top:7px}
+body.gdd-p1-ready #gdd-p1-aside #gdd-cal-toggle{display:block;min-height:36px}
+body.gdd-p1-ready #gdd-p1-aside .gdd-calendar:not(.gdd-calendar-expanded) :is(.gdd-cal-toolbar,.gdd-calendar-weekdays,.gdd-cal-days,.gdd-today-link,.gdd-panel-footnote){display:none!important}
+@media(min-width:601px) and (max-width:900px){body.gdd-p1-ready #gdd-p1-aside{display:flex;flex-direction:column}body.gdd-p1-ready #gdd-p1-aside[hidden]{display:none!important}}

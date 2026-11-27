@@ -1,7 +1,7 @@
 (()=>{'use strict';
 if(window.__GDDResearchUtilities)return;window.__GDDResearchUtilities=true;
 const endpoint='https://gdd-d1-api-staging.realmetayninh7649.workers.dev/api/v1/public/research-utilities';
-const config=[['quote','THÁNH NGÔN MỖI NGÀY','LỜI ĐẠO MỖI NGÀY'],['history','NGÀY NÀY NĂM XƯA','DẤU ẤN ĐẠO SỬ'],['ritual','KINH ĐẠO – NGHI LỄ','KINH SÁCH'],['featured','TƯ LIỆU NỔI BẬT','GÓC VĂN KHỐ']];
+const config=[['quote','THÁNH NGÔN MỖI NGÀY','LỜI ĐẠO MỖI NGÀY'],['history','NGÀY NÀY NĂM XƯA','DẤU ẤN ĐẠO SỬ'],['featured','TƯ LIỆU NỔI BẬT','GÓC VĂN KHỐ']];
 const make=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;n.textContent=value||'';return n};
 const style=document.createElement('style');style.textContent='#gdd-research-public{display:grid;gap:12px;min-width:0}#gdd-research-public[hidden]{display:none!important}.gdd-research-card{background:#fffdf8;border:1px solid #ddd4bf;border-radius:10px;padding:14px;min-width:0;overflow-wrap:anywhere}.gdd-research-card .gdd-research-kicker{font:600 10px/1.5 system-ui;letter-spacing:.12em;color:#94794d}.gdd-research-card h3{font:700 16px/1.5 Georgia,serif;color:#194b42;margin:4px 0 10px}.gdd-research-card blockquote{margin:8px 0;padding:10px 0 10px 12px;border-left:2px solid #b6a176;white-space:pre-wrap;color:#244c40;font:15px/1.75 Georgia,serif;max-height:20em;overflow:auto}.gdd-research-card strong{display:block;font:600 13px/1.6 system-ui;color:#244c40}.gdd-research-card small{display:block;color:#806d4e;font:11px/1.6 system-ui;margin-top:6px}.gdd-research-card a{display:inline-block;margin-top:10px;font:600 12px/1.5 system-ui;color:#194b42;text-decoration:underline}.gdd-research-card .gdd-research-title{font:600 14px/1.5 Georgia,serif;color:#194b42;margin:0}';document.head.append(style);style.textContent+='#gdd-tu-thoi{text-align:center;background:linear-gradient(150deg,#fffdf8,#f4eedf)}#gdd-tu-thoi h3{margin-bottom:8px}.gdd-clock-time{font:600 clamp(29px,4vw,40px)/1.2 Georgia,serif;font-variant-numeric:tabular-nums;color:#194b42}.gdd-clock-next{font-weight:600;color:#194b42;font-size:13px;margin-top:12px}.gdd-clock-count{font:600 22px/1.5 Georgia,serif;font-variant-numeric:tabular-nums;color:#94794d}.gdd-clock-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:10px}.gdd-clock-slot{padding:7px 2px;border:1px solid #ddd4bf;border-radius:6px;background:#fffdf8}.gdd-clock-slot.is-next{border-color:#a48758;background:#e8eee5}.gdd-clock-slot small{margin:2px 0 0;font-variant-numeric:tabular-nums}.gdd-research-card .gdd-archive-summary{font-size:12px;line-height:1.6;color:#425c4f}';
 function today(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day}
@@ -92,6 +92,7 @@ const quoteMotifs=[
  {name:'sun',path:'M8 22h104M42 22a18 18 0 0 1 36 0M60 1v5M44 6l3 4M76 6l-3 4M35 14l4 2M85 14l-4 2'},
  {name:'floral',path:'M60 14C52 4 48 10 60 14c-12 4-8 10 0 0 8 10 12 4 0 0 12-4 8-10 0 0zM8 14h31l7-6M112 14H81l-7-6M30 14l7 7m53-7-7 7'}
 ];
+function quoteSlot(now){return Math.floor((now.getTime()+7*3600000)/21600000)}
 function quoteMotifIndex(day){return ((day%quoteMotifs.length)+quoteMotifs.length)%quoteMotifs.length}
 function quoteDecoration(day){
  const motif=quoteMotifs[quoteMotifIndex(day)],ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');
@@ -142,7 +143,9 @@ style.textContent+=`
 let busy=false,last=0;
 async function refresh(){
  const aside=document.getElementById('gdd-p1-aside');if(!aside||busy)return;
- let root=document.getElementById('gdd-research-public');if(!root){root=make('div');root.id='gdd-research-public';root.hidden=true;const calendar=document.getElementById('gdd-tu-thoi')||document.getElementById('gdd-p1-calendar-panel');if(calendar)calendar.after(root);else aside.append(root)}
+ let root=document.getElementById('gdd-research-public');if(!root){root=make('div');root.id='gdd-research-public';root.hidden=true;aside.append(root)}
+ let quoteRoot=document.getElementById('gdd-daily-quote-slot');if(!quoteRoot){quoteRoot=make('div');quoteRoot.id='gdd-daily-quote-slot';quoteRoot.hidden=true;aside.append(quoteRoot)}
+ window.dispatchEvent(new Event('gdd:utility-mounted'));
  busy=true;
  try{
  const [research,archive]=await Promise.allSettled([
@@ -151,7 +154,7 @@ async function refresh(){
  ]);
  const packet={data:research.status==='fulfilled'?research.value:[]};
  const archiveRows=archive.status==='fulfilled'?archive.value:{documents:[],posts:[]};
- const now=today(),day=Math.floor(Date.parse(now+'T00:00:00Z')/86400000);const fragment=document.createDocumentFragment();
+ const now=today(),day=Math.floor(Date.parse(now+'T00:00:00Z')/86400000);const fragment=document.createDocumentFragment(),quotes=document.createDocumentFragment(),slot=quoteSlot(new Date());
  const [y,m,d]=now.split('-').map(Number);let lunar=null;try{lunar=window.GDDVietnameseLunar?.solarToLunar(d,m,y)}catch{}
  const documents=(archiveRows.documents||[]).map(r=>archiveItem(r,'documents')).filter(Boolean);
  const posts=(archiveRows.posts||[]).map(r=>archiveItem(r,'posts')).filter(Boolean);
@@ -159,19 +162,19 @@ async function refresh(){
  const history=documents.filter(r=>documentAnniversary(r.source_date,now,lunar)).map(r=>({...r,excerpt:'Văn kiện có ngày ghi trên hồ sơ trùng ngày hôm nay ('+documentAnniversary(r.source_date,now,lunar)+'). '+r.excerpt}));
  for(const [kind,name,kicker] of config){
  let items=packet.data.filter(r=>r.kind===kind&&(kind==='quote'?quoteReady(r):r.excerpt&&r.citation&&safeLink(r.source_url)));
- if(kind==='history')items=items.filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.source_date||'')&&r.source_date.slice(5)===now.slice(5));
+ if(kind==='history')items=items.filter(r=>documentAnniversary(r.source_date,now,lunar));
  if(!items.length&&kind==='history')items=history;
  if(!items.length&&kind==='featured')items=featured;
  if(!items.length)continue;
- const row=items[day%items.length],card=make('section','gdd-research-card');
- if(kind==='quote'){renderQuote(card,row,name,day);fragment.append(card);continue;}
+ const row=items[((kind==='quote'?slot:day)%items.length+items.length)%items.length],card=make('section','gdd-research-card');
+ if(kind==='quote'){renderQuote(card,row,name,slot);quotes.append(card);continue;}
  cardHeader(card,kind,name,kicker);card.append(make('p','gdd-research-title',row.title));if(row.source_date)card.append(make('small','gdd-ornate-date',row.source_date));if(row.excerpt)card.append(make('p','gdd-archive-summary',row.archiveKind?row.excerpt:clipArchiveText(row.excerpt)));
  if(row.speaker)card.append(make('strong','',row.speaker));
  card.append(make('small','gdd-ornate-source',row.citation));const link=make('a','gdd-ornate-link',kind==='ritual'?'Mở xem kinh / nghi lễ ↗':kind==='history'?'Xem tư liệu lịch sử ↗':'Xem tư liệu ↗');link.href=safeLink(row.source_url);if(!row.archiveKind){link.target='_blank';link.rel='noopener noreferrer'}card.append(link);fragment.append(card);
  }
- root.replaceChildren(fragment);root.hidden=!root.children.length;last=Date.now();
- }catch{root.replaceChildren();root.hidden=true;}finally{busy=false}
+ quoteRoot.replaceChildren(quotes);quoteRoot.hidden=!quoteRoot.children.length;root.replaceChildren(fragment);root.hidden=!root.children.length;last=Date.now();window.dispatchEvent(new Event('gdd:utility-mounted'));
+ }catch{root.replaceChildren();root.hidden=true;quoteRoot.replaceChildren();quoteRoot.hidden=true;}finally{busy=false}
 }
-function init(){mountClock();refresh();window.addEventListener('load',()=>{mountClock();refresh()},{once:true});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>60000)refresh()});setInterval(()=>{if(!document.hidden)refresh()},120000)}
+function init(){mountClock();refresh();window.addEventListener('load',()=>{mountClock();refresh()},{once:true});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>60000)refresh()});setInterval(()=>{if(!document.hidden)refresh()},120000);let lastSlot=quoteSlot(new Date());setInterval(()=>{const s=quoteSlot(new Date());if(s!==lastSlot&&!document.hidden){lastSlot=s;refresh()}},1000)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

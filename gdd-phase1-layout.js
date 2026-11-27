@@ -81,6 +81,12 @@
     return panel;
   }
 
+  function arrangeUtilities(){
+    const aside=id('gdd-p1-aside');if(!aside)return;
+    const nav=id('gdd-p1-sidebar-navigation');if(nav)nav.hidden=true;
+    const order=[aside.querySelector('.gdd-p1-side-intro'),...['gdd-daily-quote-slot','gdd-tu-thoi','gdd-p1-audio-panel','gdd-p1-calendar-panel','gdd-research-public','gdd-tuan-cuu-utility'].map(id)].filter(n=>n&&n.parentNode===aside);
+    let previous=null;for(const node of order){if(previous){if(previous.nextElementSibling!==node)previous.after(node)}else if(aside.firstElementChild!==node)aside.prepend(node);previous=node;}
+  }
   function putModules() {
     if (!layout) return;
     const mainColumn = id('gdd-p1-main');
@@ -97,7 +103,7 @@
     if (directory && directory.parentElement !== mainColumn) mainColumn.append(directory);
 
     const audio = id('am-thanh-dai-dao');
-    createPanel('gdd-p1-audio-panel', 'Âm Thanh Đại Đạo', audio, 'Radio Đạo Sử · Niệm danh · Nhạc Đạo');
+    createPanel('gdd-p1-audio-panel', 'Âm Thanh Đạo Sử', audio, 'Radio Đạo Sử · Niệm danh · Nhạc Đạo');
     const dashboard = id('gdd-archive-dashboard');
     if (dashboard) {
       const title = $('.gdd-dash-heading h2', dashboard);
@@ -110,6 +116,7 @@
     const target = id('gdd-p1-stat-content');
     if (statCard && target && statCard.parentElement !== target) target.append(statCard);
     decorateUtilityHeaders();
+    arrangeUtilities();
     syncRoute();
   }
 
@@ -262,7 +269,7 @@
     putModules();
     // Có module được dựng sau DOMContentLoaded: chỉ thử gắn thêm một lần khi trang nạp xong.
     window.addEventListener('load', putModules, {once: true});
-    window.addEventListener('gdd:utility-mounted',decorateUtilityHeaders);
+    window.addEventListener('gdd:utility-mounted',()=>{decorateUtilityHeaders();arrangeUtilities()});
     window.addEventListener('hashchange', syncRoute);
     const breakpoint = mobileLayout;
     breakpoint.addEventListener?.('change', event => {
