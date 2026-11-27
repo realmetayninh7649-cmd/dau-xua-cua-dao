@@ -1460,5 +1460,15 @@ if(type==='lunar-day'||type==='lunar-month')return `<label>${escape(label)}<inpu
     const ob=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){$$('[data-nav]').forEach(x=>x.classList.toggle('active',x.dataset.nav===entry.target.id))}})},{rootMargin:'-25% 0px -55% 0px'});
     $$('.section-anchor').forEach(s=>ob.observe(s));
   }
+  // Refresh published records without destroying the current document or its audio element.
+  window.GDDRefreshPublished=async function(archive){
+    if(config.publicReadProvider!=='d1-staging')throw Error('Chưa hỗ trợ làm mới dữ liệu tại chỗ');
+    const kinds=['people','posts','media','videos','obituaries','documents'];
+    if(archive?.source!=='public-published-read-only-backup'||!kinds.every(k=>Array.isArray(archive[k])&&archive[k].every(r=>r.published===true)))throw Error('Dữ liệu công khai không hợp lệ');
+    for(const k of kinds)state.data[k]=archive[k];
+    state.placements=Array.isArray(archive.placements)?archive.placements:[];
+    state.galleryImages=Array.isArray(archive.gallery)?archive.gallery:[];
+    updateSubgroupFilter();render();
+  };
   bindEvents();initSupabase();
 })();

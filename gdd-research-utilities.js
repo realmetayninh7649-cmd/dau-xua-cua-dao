@@ -200,6 +200,6 @@ async function refresh(){
  quoteRoot.replaceChildren(quotes);quoteRoot.hidden=!quoteRoot.children.length;root.replaceChildren(fragment);root.hidden=!root.children.length;last=Date.now();window.dispatchEvent(new Event('gdd:utility-mounted'));
  }catch{root.replaceChildren();root.hidden=true;quoteRoot.replaceChildren();quoteRoot.hidden=true;}finally{busy=false}
 }
-function init(){mountClock();refresh();window.addEventListener('load',()=>{mountClock();refresh()},{once:true});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>60000)refresh()});setInterval(()=>{if(!document.hidden)refresh()},120000);let lastSlot=quoteSlot(new Date());setInterval(()=>{const s=quoteSlot(new Date());if(s!==lastSlot&&!document.hidden){lastSlot=s;refresh()}},1000)}
+function init(){mountClock();refresh();window.addEventListener('gdd:soft-refresh',refresh);window.addEventListener('load',()=>{mountClock();refresh()},{once:true});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>60000)refresh()});setInterval(()=>{if(!document.hidden)refresh()},120000);let lastSlot=quoteSlot(new Date());setInterval(()=>{const s=quoteSlot(new Date());if(s!==lastSlot&&!document.hidden){lastSlot=s;refresh()}},1000)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

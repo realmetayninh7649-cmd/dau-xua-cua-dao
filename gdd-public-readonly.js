@@ -57,6 +57,7 @@
     }
     return pending;
   }
+  async function refresh(){pending=null;return load()}
   async function utilitySources(){
     const result=await Promise.allSettled([pages('documents'),pages('posts')]);
     return {documents:result[0].status==='fulfilled'?result[0].value:[],posts:result[1].status==='fulfilled'?result[1].value:[]};
@@ -83,5 +84,5 @@
         ||String(a.created_at||'').localeCompare(String(b.created_at||'')))
       ;
   }
-  window.GDDPublicReadOnly=Object.freeze({load,rows,find,album,calendarSources,utilitySources});
+  window.GDDPublicReadOnly=Object.freeze({load,refresh,rows,find,album,calendarSources,utilitySources});
 })();

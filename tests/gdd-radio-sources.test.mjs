@@ -62,3 +62,5 @@ test('automatic next follows same category and stops at end, without replaying s
  assert.ok(radio.includes('await fetchPublic(false)'));
  assert.ok(radio.includes("const saved=fromBeginning?0:progressFor(row.id)"));
 });
+
+test('website refresh keeps the live audio element and restores reload session separately',()=>{const refresh=readFileSync('gdd-app-refresh.js','utf8');assert.match(refresh,/GDDPublicReadOnly\.refresh\(\)/);assert.match(refresh,/if\(!preserve\)/);assert.match(radio,/nav\?\.type==='reload'/);assert.match(radio,/selectProgram\(row,false,false,resume\)/);const list=radio.slice(radio.indexOf('window.GDDRadioRefresh='),radio.indexOf('fetchPublic();',radio.indexOf('window.GDDRadioRefresh=')));assert.doesNotMatch(list,/player\.(?:pause|load|src)|selectProgram\(/);});
