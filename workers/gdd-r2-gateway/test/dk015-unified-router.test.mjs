@@ -40,7 +40,7 @@ test('clicks from dynamically loaded albums also route old PDF to common reader'
     target:{closest:()=>({getAttribute:()=>legacy,target:'_blank'})}});
   assert.equal(prevented,true);
   assert.equal(opens.length,1);
-  assert.equal(opens[0][0],'_blank');
+  assert.equal(opens[0][0],'assign'); // Current reader intentionally opens in same tab on iPhone.
   assert.equal(new URL(opens[0][1]).searchParams.get('source'),legacy);
 });
 test('album/detail no longer offer direct original PDF download controls',()=>{
