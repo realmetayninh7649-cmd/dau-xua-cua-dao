@@ -2,6 +2,7 @@ const BASE='/api/v1/admin/research';
 export const SOURCES=[
 {title:'Lời Thuyết Đạo của Đức Hộ Pháp',url:'https://caodai.com.vn/vn/news-detail/loi-thuyet-dao-cua-duc-ho-phap-1.html',citation:'Hội Thánh Cao Đài Tòa Thánh Tây Ninh'},
 {title:'Thánh Ngôn Hiệp Tuyển — Quyển 1',url:'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/',citation:'Bản điện tử, cần đối chiếu ấn bản gốc'},
+{title:'Thi văn dạy Đạo – Thánh Ngôn Hiệp Tuyển quyển 1',url:'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/thi-van-day-dao',citation:'Hội Thánh Tòa Thánh Tây Ninh – bản điện tử cần đối chiếu ấn bản'},
 {title:'Thư mục tư liệu Cao Đài E-book',url:'https://caodaiebook.net/tailieusuutap.htm',citation:'Thư mục bản chụp và tài liệu sưu tầm'},
 {title:'Thư viện Thánh giáo, kinh sách',url:'https://thanhgiaocaodai.com/doc/',citation:'Nhiều nguồn Hội Thánh, cần phân biệt xuất xứ'}
 ];
@@ -21,6 +22,7 @@ export function validateResearch(input,old){
 }
 // Fixed public indexes only. Never fetch arbitrary URLs supplied by a user.
 const INDEXES=[
+ {url:'https://thanhgiaocaodai.com/doc/thanh-ngon-hiep-tuyen/',citation:'Thánh Ngôn Hiệp Tuyển – Quyển 1, cần đối chiếu bản in'},
  {url:'https://caodaiebook.net/tailieusuutap.htm',citation:'Cao Đài E-book – thư mục sưu tầm'},
  {url:'https://thanhgiaocaodai.com/doc/',citation:'Thánh Giáo Cao Đài – cần kiểm tra Hội Thánh và ấn bản'},
  {url:'https://thanhgiaocaodai.com/doc/thanh-giao-cao-dai/',citation:'Thánh Giáo Cao Đài – cần đối chiếu nguyên bản'}
@@ -63,14 +65,16 @@ async function discover(index){
  await rewrite.transform(new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}})).arrayBuffer();
  return {links:[...new Map(links.map(x=>[x.url,x])).values()].slice(0,30),excerpt,blocked:false};
 }
-export async function collectResearch(env){
+export async function collectResearch(env,mode='all'){
+ if(mode!=='all'&&mode!=='seed'&&(!Number.isInteger(mode)||mode<0||mode>=INDEXES.length))throw Error('Nguồn không hợp lệ');
  let inserted=0;const result=[];
  const save=async(s,key,excerpt='',note='')=>{
    const id=crypto.randomUUID(),res=await env.DB.prepare("INSERT OR IGNORE INTO gdd_research_items(id,kind,title,source_url,citation,discovered_key,excerpt,note) VALUES(?,?,?,?,?,?,?,?)").bind(id,'quote',s.title,s.url,s.citation,key,excerpt,note).run();
    inserted+=res.meta?.changes||0;
  };
- for(const s of SOURCES){try{await save(s,s.url);result.push({source:s.url,ok:true,kind:'catalog'})}catch{result.push({source:s.url,ok:false})}}
- for(const index of INDEXES){
+ if(mode==='all'||mode==='seed')for(const s of SOURCES){try{await save(s,s.url);result.push({source:s.url,ok:true,kind:'catalog'})}catch(e){result.push({source:s.url,ok:false,reason:String(e?.message||'D1 write failed').slice(0,150)})}}
+ const indexes=mode==='all'?INDEXES:mode==='seed'?[]:[INDEXES[mode]];
+ for(const index of indexes){
    if(inserted>=10)break;
    try{
      const found=await discover(index);
@@ -82,13 +86,17 @@ export async function collectResearch(env){
    }catch(e){result.push({source:index.url,ok:false,reason:String(e?.message||'unavailable').slice(0,100)})}
  }
  await env.DB.prepare('INSERT INTO gdd_research_runs(id,result) VALUES(?,?)').bind(crypto.randomUUID(),JSON.stringify({inserted,result})).run();
- return {inserted,result};
+ const counts=await env.DB.prepare("SELECT count(*) AS total, sum(CASE WHEN state='pending' THEN 1 ELSE 0 END) AS pending, sum(CASE WHEN state='pending' AND length(excerpt)>0 THEN 1 ELSE 0 END) AS excerpts FROM gdd_research_items").first();
+ return {inserted,result,counts,indexes:INDEXES.map(s=>s.url)};
 }
 export async function handleResearch(request,env,path,json){
  const db=env.DB;if(!db)return json({error:'db_unconfigured'},503);
  try{
  if(path===BASE+'/sources'&&request.method==='GET')return json({data:SOURCES});
- if(path===BASE+'/collect'&&request.method==='POST')return json(await collectResearch(env));
+ if(path===BASE+'/collect'&&request.method==='POST'){
+   const input=await request.json();const mode=input.mode==='seed'?'seed':Number.isInteger(input.index)?input.index:'all';
+   return json(await collectResearch(env,mode));
+ }
  if(path===BASE+'/items'&&request.method==='GET'){
    const q=new URL(request.url).searchParams,search=str(q.get('q'),200),state=q.get('state')||'all',offset=Math.min(10000,Math.max(0,Math.floor(Number(q.get('offset'))||0)));
    const {results}=await db.prepare("SELECT * FROM gdd_research_items WHERE (?='all' OR state=?) AND (?='' OR instr(lower(title||' '||excerpt||' '||speaker||' '||citation),lower(?))>0) ORDER BY updated_at DESC,id LIMIT 100 OFFSET ?").bind(state,state,search,search,offset).all();return json({data:results||[],offset});
