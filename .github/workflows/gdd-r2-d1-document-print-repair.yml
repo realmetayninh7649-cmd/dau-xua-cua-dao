@@ -1,0 +1,28 @@
+name: GDD - Repair published D1 document print copies
+on:
+  push:
+    branches: [cloudflare-d1-migration-20261123]
+    paths: ["scripts/r2_repair_d1_document_prints.py"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gdd-d1-document-print-repair
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install boto3==1.40.61 Pillow==11.3.0
+      - name: Build and verify public document print copies only
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GDD_R2_ARCHIVE_ACCESS_KEY_ID: ${{ secrets.GDD_R2_ARCHIVE_ACCESS_KEY_ID }}
+          GDD_R2_ARCHIVE_SECRET_ACCESS_KEY: ${{ secrets.GDD_R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: python scripts/r2_repair_d1_document_prints.py

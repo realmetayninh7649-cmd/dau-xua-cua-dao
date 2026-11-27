@@ -123,7 +123,7 @@ async function archiveOriginal(file,notify){
     throw Error('R2 chưa xác nhận đã giữ riêng bản gốc');
  return uploaded.id;
 }
-async function uploadPreview(item){
+async function uploadPreview(item,kind=context?.kind){
  const image=new Image();
  await new Promise((resolve,reject)=>{
   image.onload=resolve;image.onerror=()=>reject(Error('Điện thoại không đọc được ảnh'));
@@ -142,6 +142,20 @@ async function uploadPreview(item){
    throw Error('Ảnh xem vượt 8 MB; cần thu nhỏ ảnh');
  await managedRequest('/v1/assets/'+item.assetId+'/preview',{
    method:'PUT',data:optimized,type:mime});
+ if(kind==='documents'){
+   // Separate, marked printable derivative; never publish the original.
+   const portrait=image.naturalHeight>=image.naturalWidth;
+   const scale=Math.min(1,(portrait?2480:3508)/image.naturalWidth,((portrait?3508:2480)-44)/image.naturalHeight);
+   const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));const height=Math.max(1,Math.round(image.naturalHeight*scale));canvas.height=height+44;
+   try{
+     const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw Error('Không tạo được bản in');
+     ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingQuality='high';ctx.drawImage(image,0,0,canvas.width,height);
+     ctx.fillStyle='#444';ctx.font='16px sans-serif';ctx.fillText('DAU XUA CUA DAO | dauxuacuadao.info.vn | BAN IN TU LIEU CO LUU DAU',8,height+27,Math.max(1,canvas.width-16));
+     const print=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.92));
+     if(!print||print.size>8*1048576)throw Error('Bản in vượt giới hạn');
+     await managedRequest('/v1/assets/'+item.assetId+'/download',{method:'PUT',data:print,type:'image/jpeg'});
+   }finally{canvas.width=canvas.height=0}
+ }
  }finally{image.onload=null;image.onerror=null;image.removeAttribute('src')}
 }
 async function changeSavedPhoto(photo,action,extra={},message=null){
@@ -154,9 +168,9 @@ async function changeSavedPhoto(photo,action,extra={},message=null){
   if(action==='replace'){
    const item=replacements.get(photo.id);if(!item)throw Error('Chọn ảnh thay thế trước');
    if(!item.assetId)item.assetId=await archiveOriginal(item.file,say);
-   if(!item.previewReady){say('Đang tạo bản xem ảnh mới…');await uploadPreview(item);item.previewReady=true}
+   if(!item.previewReady){say('Đang tạo bản xem ảnh mới…');await uploadPreview(item,current.kind);item.previewReady=true}
    if(!item.published){
-    const released=await managedRequest('/v1/assets/'+item.assetId+'/publication',{method:'POST',data:JSON.stringify({publish:true,allowDownload:false})});
+    const released=await managedRequest('/v1/assets/'+item.assetId+'/publication',{method:'POST',data:JSON.stringify({publish:true,allowDownload:current.kind==='documents'})});
     if(released.published!==true||released.originalPrivate!==true)throw Error('Chưa xác nhận bản xem');
     item.published=true;
    }
@@ -248,10 +262,10 @@ async function uploadBatch(record,notify=()=>{}){
     if(!photo.assetId)photo.assetId=await archiveOriginal(photo.file,progress);
     if(!photo.published){
       progress('Tạo bản xem nhẹ…');
-      await uploadPreview(photo);
+      await uploadPreview(photo,kind);
       progress('Hoàn thiện bản xem…');
       const released=await managedRequest('/v1/assets/'+photo.assetId+'/publication',{
-       method:'POST',data:JSON.stringify({publish:true,allowDownload:false})});
+       method:'POST',data:JSON.stringify({publish:true,allowDownload:kind==='documents'})});
       if(released.published!==true||released.originalPrivate!==true)
         throw Error('Bản xem R2 chưa được phê duyệt');
       photo.published=true;
@@ -480,11 +494,11 @@ window.GDDPhotoAlbum={async archiveBatchDocument(file,notify){if(!workBusy||!fil
   if(!item.previewReady){
    notify('Tạo bản xem nhẹ…');
    item.previewUrl=URL.createObjectURL(file);
-   try{await uploadPreview(item);item.previewReady=true}finally{URL.revokeObjectURL(item.previewUrl);item.previewUrl=null}
+   try{await uploadPreview(item,kind);item.previewReady=true}finally{URL.revokeObjectURL(item.previewUrl);item.previewUrl=null}
    await item.checkpoint?.();
   }
   notify('Công bố bản xem ảnh đại diện…');
-  const released=await managedRequest('/v1/assets/'+item.assetId+'/publication',{method:'POST',data:JSON.stringify({publish:true,allowDownload:false})});
+  const released=await managedRequest('/v1/assets/'+item.assetId+'/publication',{method:'POST',data:JSON.stringify({publish:true,allowDownload:kind==='documents'})});
   if(released.published!==true||released.originalPrivate!==true)throw Error('R2 chưa xác nhận bản xem');
   item.published=true;await item.checkpoint?.();
  }
