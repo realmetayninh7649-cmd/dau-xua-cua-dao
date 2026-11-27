@@ -16,6 +16,7 @@ export function validateResearch(input,old){
  if((r.state==='approved'&&old?.state!=='approved'||r.visible)&&input.confirmed!==true)throw Error('Cần xác nhận đã đối chiếu nguồn và quyền sử dụng.');
  if(old&&['kind','title','excerpt','speaker','source_url','citation','source_date','rights'].some(k=>r[k]!==old[k])&&!(old.state==='pending'&&r.state==='approved'&&input.confirmed===true)){r.state='pending';r.visible=0;}
  if(r.state==='approved'&&(!r.excerpt||!r.citation||r.rights==='unknown'))throw Error('Phải có nguyên văn, xuất xứ và quyền sử dụng trước khi duyệt.');
+ if(r.visible&&r.kind==='quote'&&(!r.speaker||!r.source_date||/cần đối chiếu|chưa xác định|chưa rõ|không rõ|chờ duyệt|chưa kiểm chứng/i.test(r.speaker+' '+r.source_date)))throw Error('Cần ghi rõ đấng ban giáo hoặc người dạy và ngày tháng / đàn cơ trước khi hiển thị. Có thể duyệt nội bộ nếu chưa đủ dữ kiện.');
  if(r.visible&&r.state!=='approved')throw Error('Chỉ được hiển thị nội dung đã duyệt.');
  if(r.state==='approved'&&old?.state!=='approved'&&input.confirmed!==true)throw Error('Cần xác nhận đã đối chiếu nguồn.');
  if(r.visible&&input.confirmed!==true)throw Error('Cần xác nhận cho phép công bố.');

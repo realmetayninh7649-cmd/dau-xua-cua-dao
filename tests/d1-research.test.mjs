@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {validateResearch,interestingTitle,shortExcerpt} from '../workers/gdd-d1-admin/src/research.mjs';import {RESEARCH_JS} from '../workers/gdd-d1-admin/src/research-ui.mjs';
-const row={kind:'quote',title:'Test',excerpt:'Nội dung',speaker:'',source_url:'https://example.org/',citation:'Nguồn',source_date:'',note:'',rights:'permitted',state:'approved',visible:true,confirmed:true};
+const row={kind:'quote',title:'Test',excerpt:'Nội dung',speaker:'Đức Chí Tôn',source_url:'https://example.org/',citation:'Nguồn',source_date:'20/02/1926',note:'',rights:'permitted',state:'approved',visible:true,confirmed:true};
 test('approval gate and reset after content edit',()=>{assert.throws(()=>validateResearch({...row,rights:'unknown'}));assert.throws(()=>validateResearch({...row,confirmed:false}));assert.throws(()=>validateResearch({...row,state:'pending'}));const x=validateResearch(row);assert.equal(x.visible,1);const y=validateResearch({...row,excerpt:'new'},x);assert.equal(y.visible,0);assert.equal(y.state,'pending');assert.doesNotThrow(()=>new Function(RESEARCH_JS));});
 
 test('candidate search keeps short extracts and relevant titles only',()=>{assert.equal(interestingTitle('Thánh Ngôn Hiệp Tuyển'),true);assert.equal(interestingTitle('Trang chủ'),false);assert.equal(shortExcerpt(Array(50).fill('từ').join(' ')).split(' ').length,20)});
@@ -12,3 +12,5 @@ test('research write reaches handler only after Access and CSRF checks',async()=
 test('research UI offers distinct explicit decisions without automatic rights',()=>{assert.ok(RESEARCH_JS.includes("data.visible=decision==='publish'"));assert.ok(RESEARCH_JS.includes("data.rights==='unknown'"));});
 
 test('review save keeps current queue filter and search',()=>{assert.ok(!RESEARCH_JS.includes("$('filter').value=x.state"));assert.ok(RESEARCH_JS.includes("while(!rows.length&&offset>0)"));});
+
+test('public sacred quote needs explicit attribution and date; internal approval remains possible',()=>{assert.throws(()=>validateResearch({...row,speaker:''}));assert.throws(()=>validateResearch({...row,source_date:'Chưa xác định'}));assert.equal(validateResearch({...row,speaker:'',source_date:'',visible:false}).state,'approved');});
