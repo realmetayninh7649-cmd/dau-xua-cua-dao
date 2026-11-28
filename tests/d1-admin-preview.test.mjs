@@ -265,3 +265,11 @@ test('daily memorial auto-publish is date scoped, deduplicated and preserves res
  assert.equal(dailyNotices([{...p,record_access:'download'}],[],[],now)[0].portrait_url,p.image_url);
  const cfg=JSON.parse(readFileSync('workers/gdd-d1-admin/wrangler.jsonc','utf8'));assert.ok(MEMORIAL_CRONS.every(x=>cfg.triggers.crons.includes(x)));
 });
+
+test('auto memorial accepts approved legacy previews and rejects arbitrary originals',async()=>{
+ const {portraitPreview}=await import('../workers/gdd-d1-admin/src/daily-memorial.mjs');
+ const {LEGACY_PUBLISHED_PATHS}=await import('../workers/gdd-r2-gateway/src/legacy-published-paths.mjs');
+ const name=[...LEGACY_PUBLISHED_PATHS].find(x=>x.startsWith('people/'));assert.ok(name);
+ assert.equal(portraitPreview('https://gwpdgubxoquhrfbolftq.supabase.co/storage/v1/object/public/dao-su-images/'+name),'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/legacy-preview/'+name+'.webp');
+ assert.equal(portraitPreview('https://example.org/private.jpg'),null);
+});
