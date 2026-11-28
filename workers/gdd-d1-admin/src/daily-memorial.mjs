@@ -54,6 +54,11 @@ async function stableId(key){
  const h=[...bytes].map(x=>x.toString(16).padStart(2,'0')).join('');
  return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
 }
+async function fetchPortrait(env,url){
+ const response=env.RECORD_GATEWAY?await env.RECORD_GATEWAY.fetch(new Request(url,{method:'GET'})):await fetch(url,{method:'GET',redirect:'error'});
+ if(response.body)await response.body.cancel().catch(()=>{});
+ return response;
+}
 export async function publishDailyMemorials(env,now=new Date()){
  if(!env.DB)throw Error('Working database not configured');
  const db=env.DB;
@@ -74,7 +79,7 @@ export async function publishDailyMemorials(env,now=new Date()){
   if(restricted.results?.length)continue;
   // The public gateway is authoritative; do not attach an unavailable preview.
   try{
-   const response=env.RECORD_GATEWAY?await env.RECORD_GATEWAY.fetch(new Request(n.portrait_url,{method:'HEAD'})):await fetch(n.portrait_url,{method:'HEAD'});
+   const response=await fetchPortrait(env,n.portrait_url);
    if(!response.ok||!String(response.headers.get('content-type')||'').startsWith('image/'))continue;
   }catch{continue}
   const result=await db.prepare("UPDATE gdd_memorials SET portrait_url=?,updated_at=?,gdd_version=gdd_version+1 WHERE slug=? AND published=1 AND (portrait_url IS NULL OR trim(portrait_url)='')").bind(n.portrait_url,now.toISOString(),n.slug).run();
@@ -86,7 +91,7 @@ export async function publishDailyMemorials(env,now=new Date()){
   const ref=mediaRef(n.portrait_url);
   const restricted=await db.prepare("SELECT 1 AS blocked FROM gdd_access_media m JOIN gdd_record_access a ON a.kind=m.kind AND a.record_id=m.record_id WHERE m.media_ref=? AND a.mode<>'download' LIMIT 1").bind(ref).all();
   if(restricted.results?.length){n.portrait_url=null;continue}
-  try{const response=env.RECORD_GATEWAY?await env.RECORD_GATEWAY.fetch(new Request(n.portrait_url,{method:'HEAD'})):await fetch(n.portrait_url,{method:'HEAD'});if(!response.ok||!String(response.headers.get('content-type')||'').startsWith('image/'))n.portrait_url=null;}catch{n.portrait_url=null}
+  try{const response=await fetchPortrait(env,n.portrait_url);if(!response.ok||!String(response.headers.get('content-type')||'').startsWith('image/'))n.portrait_url=null;}catch{n.portrait_url=null}
  }
  let inserted=0;const stamp=now.toISOString();
  // Deterministic primary key protects against concurrent/repeated cron delivery, even for deleted drafts.
