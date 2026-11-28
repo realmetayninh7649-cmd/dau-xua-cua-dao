@@ -1,20 +1,29 @@
 {
   "ok": true,
   "source": "public-published-verified-D1-only",
-  "generated_at": "2026-11-23T19:20:01.085Z",
+  "generated_at": "2026-11-28T03:31:07.938Z",
   "years": [
     2026,
     2036
   ],
   "people_records": 49,
   "manual_records": 0,
-  "count": 825,
+  "count": 869,
   "upcoming": [
     {
       "name": "QUYỀN THÁI CHÁNH PHỐI SƯ THÁI KHÝ THANH (1894 – 1967)",
       "rank": "Quyền Chánh Phối Sư",
       "solar": "2026-11-28",
       "lunar": "20/10/2026",
+      "lunarYear": 2026,
+      "lunarCanChi": "Bính Ngọ",
+      "type": "person"
+    },
+    {
+      "name": "PHỐI SƯ THƯỢNG TÔNG THANH  (1863-1933)",
+      "rank": "Phối Sư",
+      "solar": "2026-12-02",
+      "lunar": "24/10/2026",
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
       "type": "person"
@@ -90,15 +99,6 @@
       "lunarYear": 2026,
       "lunarCanChi": "Bính Ngọ",
       "type": "person"
-    },
-    {
-      "name": "Cúng Vọng (ngày Rằm âm lịch)",
-      "rank": "Tiểu Đàn",
-      "solar": "2027-01-22",
-      "lunar": "15/12/2026",
-      "lunarYear": 2026,
-      "lunarCanChi": "Bính Ngọ",
-      "type": "ritual"
     }
   ]
 }
