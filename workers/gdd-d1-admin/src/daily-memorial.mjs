@@ -1,6 +1,6 @@
 /* Publish only date-matched public calendar notices. Never alter existing articles or source records. */
 import {calculate} from '../../gdd-calendar-static/calendar-core.mjs';
-export const MEMORIAL_CRONS=Object.freeze(['5 17 * * *','5 0 * * *']); // 00:05 and 07:05 Vietnam time
+export const MEMORIAL_CRONS=Object.freeze(['5 17 * * *','5 0 * * *','35 1-16,18-23 * * *']); // midnight, morning and hourly recovery
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/\s+/g,' ').trim();
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const pad=n=>String(n).padStart(2,'0');
