@@ -1,3 +1,4 @@
+import {publishDailyMemorials,MEMORIAL_CRONS} from './daily-memorial.mjs';
 import {MANIFEST,ICON_SVG,iconPng} from './admin-app.mjs';
 import {handleResearch,collectResearch,collectCategory,RESEARCH_CRONS} from './research.mjs';
 import {RESEARCH_HTML,RESEARCH_CSS,RESEARCH_JS} from './research-ui.mjs';
@@ -156,7 +157,7 @@ async function inventory(env){
  };
 }
 export default {
- async scheduled(event,env,ctx){if(env.ENABLE_WORKING_EDITOR!=='enabled')return;const kind=Object.keys(RESEARCH_CRONS).find(k=>RESEARCH_CRONS[k]===event.cron);if(kind)ctx.waitUntil(collectCategory(env,kind,{origin:'scheduled'}).catch(()=>console.warn('Research collection unavailable')))},
+ async scheduled(event,env,ctx){if(env.ENABLE_WORKING_EDITOR!=='enabled')return;if(MEMORIAL_CRONS.includes(event.cron)){ctx.waitUntil(publishDailyMemorials(env,new Date(event.scheduledTime)).then(result=>console.log('Daily memorial',JSON.stringify(result))));return;}const kind=Object.keys(RESEARCH_CRONS).find(k=>RESEARCH_CRONS[k]===event.cron);if(kind)ctx.waitUntil(collectCategory(env,kind,{origin:'scheduled'}).catch(()=>console.warn('Research collection unavailable')))},
  async fetch(request,env,ctx){
    const url=new URL(request.url),path=url.pathname;
    const audioUpload=/^\/api\/v1\/admin\/audio\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.exec(path);

@@ -72,21 +72,87 @@ const canChiYear=y=>CAN[(y+6)%10]+" "+CHI[(y+8)%12];
 const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/gi,"d").toLowerCase().replace(/\s+/g," ").trim();
 const esc=s=>String(s??"").replace(/\\/g,"\\\\").replace(/\r?\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;");
 const folded=line=>{let out="",part="",n=0;for(const c of line){const p=c.codePointAt(0),k=p<128?1:p<2048?2:p<65536?3:4;if(n+k>73){out+=part+"\r\n ";part="";n=1}part+=c;n+=k}return out+part};
+const validLunar=(d,m)=>Number.isInteger(Number(d))&&Number(d)>=1&&Number(d)<=30&&Number.isInteger(Number(m))&&Number(m)>=1&&Number(m)<=12;
+const validSolar=(d,m,y=2000)=>{const dt=new Date(Date.UTC(y,m-1,d));return Number.isInteger(d)&&Number.isInteger(m)&&m>=1&&m<=12&&d>=1&&dt.getUTCDate()===d&&dt.getUTCMonth()===m-1&&dt.getUTCFullYear()===y};
+const published=r=>r?.published===true||r?.published===1;
 const recPerson=p=>{
- const row={type:"person",id:p.id,name:p.full_name,rank:p.rank||"",source:"Hồ sơ Chức Sắc đã xác minh",slug:p.slug};
- if(p.death_lunar_day&&p.death_lunar_month)return {...row,ld:+p.death_lunar_day,lm:+p.death_lunar_month,leap:!!p.death_lunar_leap};
- if(/^\d{4}-\d{2}-\d{2}$/.test(p.death_solar_date||"")){const [y,m,d]=p.death_solar_date.split("-").map(Number);return {...row,sd:d,sm:m}}
+ const row={type:"person",id:p.id,name:p.full_name,rank:p.rank||"",source:p.calendar_date_source||(p.verified===true||p.verified===1?"Hồ sơ Chức Sắc đã đối chiếu":"Hồ sơ Chức Sắc công bố – chưa đánh dấu đối chiếu"),verified:p.verified===true||p.verified===1,slug:p.slug};
+ if(validLunar(p.death_lunar_day,p.death_lunar_month))return {...row,ld:+p.death_lunar_day,lm:+p.death_lunar_month,leap:!!p.death_lunar_leap};
+ if(/^\d{4}-\d{2}-\d{2}$/.test(p.death_solar_date||"")){const [y,m,d]=p.death_solar_date.split("-").map(Number);if(validSolar(d,m,y))return {...row,sd:d,sm:m}}
  return null;
 };
 const recManual=p=>{
  const row={type:"manual",id:p.id,name:p.full_name,rank:p.rank||"",source:p.source_note||"Lịch tưởng niệm Web Đạo",linked:p.linked_person_id||null};
- if(p.calendar_system==="lunar"&&p.lunar_day&&p.lunar_month)return {...row,ld:+p.lunar_day,lm:+p.lunar_month,leap:!!p.lunar_leap};
- if(p.calendar_system==="solar"&&p.solar_day&&p.solar_month)return {...row,sd:+p.solar_day,sm:+p.solar_month};
+ if(p.calendar_system==="lunar"&&validLunar(p.lunar_day,p.lunar_month))return {...row,ld:+p.lunar_day,lm:+p.lunar_month,leap:!!p.lunar_leap};
+ if(p.calendar_system==="solar"&&validSolar(+p.solar_day,+p.solar_month))return {...row,sd:+p.solar_day,sm:+p.solar_month};
  return null;
 };
+// Documented annual lunar date in the published biography; never invent a death year.
+const PROFILE_LUNAR_FALLBACKS=Object.freeze({
+ "bao-dao-ca-minh-chuong-67sgj4":{day:19,month:10,leap:false,source:"Hồ sơ Bảo Đạo Chơn Quân Ca Minh Chương: cả hai niên đại được ghi nhận đều là 19/10 âm lịch; năm qui vị còn dị biệt."}
+});
+// Extract only dates explicitly associated with death, and a lunar/solar marker or Can Chi year.
+const deathAnchor=/(?:\b(?:qui vi|quy vi|dang tien|lieu dao|tu tran|qua doi|tu the|vien tich|tu tich|mat vao|mat ngay|tu vong)\b)/g;
+const canChiDate='(?:giap|at|binh|dinh|mau|ky|canh|tan|nham|quy)\\s+(?:ty|suu|dan|mao|thin|ti|ngo|mui|than|dau|tuat|hoi)\\b';
+const lunarMarker=new RegExp('^(?:\\s*(?:\\(|\\[)?\\s*(?:am lich|am|al|a\\.?l\\.?)(?=\\b|\\s|\\)|$)|\\s*(?:nam\\s+)?'+canChiDate+')');
+function datesInDeathText(p){
+ const lunar=[],solar=[];
+ const addL=(d,m,leap)=>{if(validLunar(d,m))lunar.push({day:+d,month:+m,leap:!!leap})};
+ const addS=(d,m,y)=>{if(y>=1800&&y<=2200&&validSolar(d,m,y))solar.push({date:y+'-'+pad(m)+'-'+pad(d),day:d,month:m})};
+ const scan=(text,notes=false)=>{
+   const value=norm(String(text||'').replace(/<[^>]*>/g,' ').replace(/[\u2010-\u2015]/g,'-'));
+   if(!value)return;
+   const scopes=[];
+   if(notes)scopes.push(value);
+   for(const hit of value.matchAll(deathAnchor)){
+     // Stop at paragraph/sentence or an unrelated biographical milestone; cap the local context.
+     const tail=value.slice(hit.index+hit[0].length,hit.index+hit[0].length+160);
+     const cut=tail.split(/;\s*|\.\s+|(?:\b(?:sinh|sanh|nhap mon|tho phong|an tang|mai tang|cai tang|le tang|le te|linh cuu)\b)/)[0];
+     if(cut)scopes.push(cut);
+   }
+   for(const scope of scopes){
+     const dates=/(?:\bngay\s+)?(?:\bmung\s+)?(\d{1,2})(?:\s+thang\s+|\s*[\/.-]\s*)(gieng|chap|\d{1,2})(\s+nhuan)?(?:\s*(?:nam\s+)?[\/.-]?\s*(\d{4})(?!\d))?/g;
+     for(const hit of scope.matchAll(dates)){
+       const d=+hit[1],m=hit[2]==='gieng'?1:hit[2]==='chap'?12:+hit[2],y=hit[4]?+hit[4]:null;
+       const before=scope.slice(Math.max(0,hit.index-28),hit.index),after=scope.slice(hit.index+hit[0].length,hit.index+hit[0].length+60);
+       const explicitL=/\b(?:am lich|am|al|a\.l\.?)\s*[:(]?\s*$/.test(before)||lunarMarker.test(after)||!!hit[3]||/gieng|chap/.test(hit[2]);
+       const explicitS=/\b(?:duong lich|dl|d\.l\.?)\s*[:(]?\s*$/.test(before)||/^\s*(?:\(|\[)?\s*(?:duong lich|dl|d\.l\.?)(?=\b|\s|\)|$)/.test(after);
+       if(explicitL&&!explicitS)addL(d,m,hit[3]);
+       else if(y&&!explicitL&&explicitS)addS(d,m,y);
+     }
+   }
+ };
+ // Date notes are not assumed to be death dates unless marked as such.
+ scan(p.date_notes,false);scan(p.biography,false);scan(p.summary,false);
+ const unique=(rows,key)=>[...new Map(rows.map(x=>[key(x),x])).values()];
+ return {lunar:unique(lunar,x=>x.day+'/'+x.month+'/'+x.leap),solar:unique(solar,x=>x.day+'/'+x.month)};
+}
+function applyDocumentedLunarDate(p){
+ if(validLunar(p.death_lunar_day,p.death_lunar_month))return p;
+ const extracted=datesInDeathText(p);
+ const known=Object.hasOwn(PROFILE_LUNAR_FALLBACKS,p.slug)?PROFILE_LUNAR_FALLBACKS[p.slug]:null;
+ if(known)return {...p,death_lunar_day:known.day,death_lunar_month:known.month,death_lunar_leap:known.leap,calendar_date_source:known.source};
+ if(extracted.lunar.length===1){
+   const date=extracted.lunar[0];
+   return {...p,death_lunar_day:date.day,death_lunar_month:date.month,death_lunar_leap:date.leap,calendar_date_source:'Ngày qui vị âm lịch trích từ nội dung hồ sơ Chức Sắc.'};
+ }
+ // Conflicting lunar dates require editorial review, not an arbitrary solar substitute.
+ if(extracted.lunar.length>1)return {...p,death_solar_date:null,calendar_date_conflict:true};
+ if(recPerson(p))return p;
+ if(extracted.solar.length===1)return {...p,death_solar_date:extracted.solar[0].date,calendar_date_source:'Ngày qui vị dương lịch trích từ nội dung hồ sơ; chưa ghi nhận ngày âm lịch.'};
+ return p;
+}
+// Profile dates are authoritative for explicitly linked manual records, even if the date changes.
+function selectCalendarSources(people,manual){
+ const allPeople=people.filter(published).map(applyDocumentedLunarDate),dated=allPeople.filter(p=>recPerson(p));
+ const ids=new Set(dated.map(p=>p.id));
+ const records=manual.filter(p=>published(p)&&recManual(p)&&!(p.linked_person_id&&ids.has(p.linked_person_id)));
+ return {allPeople,people:dated,manual:records};
+}
 function calculate(people,manual,startYear,years){
+ const selected=selectCalendarSources(people,manual);
  const lunarMap=new Map(),solarMap=new Map();
- for(const r of [...people.map(recPerson),...manual.map(recManual)].filter(Boolean)){
+ for(const r of [...selected.people.map(recPerson),...selected.manual.map(recManual)].filter(Boolean)){
    const l=r.ld!=null,map=l?lunarMap:solarMap,key=l?r.ld+"/"+r.lm+"/"+(r.leap?1:0):r.sd+"/"+r.sm;
    if(!map.has(key))map.set(key,[]);map.get(key).push(r);
  }
@@ -97,18 +163,18 @@ function calculate(people,manual,startYear,years){
      const candidates=[...(lunarMap.get(l.day+"/"+l.month+"/"+(l.leap?1:0))||[]),...(solarMap.get(d+"/"+m)||[])];
      const unique=[];
      for(const x of candidates){
-       const same=r=>x.type!==r.type&&((x.linked&&x.linked===r.id)||(r.linked&&r.linked===x.id)||norm(r.name)===norm(x.name));
+       const same=r=>x.type!==r.type&&((x.linked&&x.linked===r.id)||(r.linked&&r.linked===x.id)||(!x.linked&&!r.linked&&norm(r.name)===norm(x.name)));
        if(x.type==="manual"&&unique.some(same))continue;
        if(x.type==="person")for(let i=unique.length-1;i>=0;i--)if(same(unique[i]))unique.splice(i,1);
        unique.push(x);
      }
-     for(const x of unique)out.push({...x,solar:y+"-"+pad(m)+"-"+pad(d),lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,lunarYear:l.year,lunarCanChi:canChiYear(l.year),order:t});
+     for(const x of unique)out.push({...x,basis:x.ld!=null?"lunar":"solar",solar:y+"-"+pad(m)+"-"+pad(d),lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,lunarYear:l.year,lunarCanChi:canChiYear(l.year),order:t});
      const rites=CEREMONIES.filter(r=>r.calendar==="solar"?(r.day===d&&r.month===m):(!l.leap&&r.day===l.day&&r.month===l.month));
      if(l.day===1)rites.push({id:"soc",title:"Cúng Sóc (mùng 1 âm lịch)",rite:"Tiểu Đàn",monthly:true});
      if(l.day===15)rites.push({id:"vong",title:"Cúng Vọng (ngày Rằm âm lịch)",rite:"Tiểu Đàn",monthly:true});
      for(const rite of rites){
        out.push({type:"ritual",id:rite.id+(rite.monthly?"-"+l.month+(l.leap?"-nhuan":""):""),
-         name:rite.title,rank:rite.rite,source:rite.note||"Lịch cúng lễ hằng năm tại Tòa Thánh Tây Ninh",
+         name:rite.title,rank:rite.rite,basis:rite.calendar==="solar"?"solar":"lunar",source:rite.note||"Lịch cúng lễ hằng năm tại Tòa Thánh Tây Ninh",
          solar:y+"-"+pad(m)+"-"+pad(d),
          lunar:pad(l.day)+"/"+pad(l.month)+(l.leap?" nhuận":"")+"/"+l.year,lunarYear:l.year,lunarCanChi:canChiYear(l.year),order:t});
      }
@@ -137,4 +203,4 @@ function buildICS(events){
  return lines.map(folded).join("\r\n")+"\r\n";
 }
 
-export {calculate,buildICS};
+export {calculate,buildICS,selectCalendarSources};

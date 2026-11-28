@@ -251,3 +251,17 @@ test('record access uses internal service bindings and fails closed',async()=>{
  const config=JSON.parse(readFileSync('workers/gdd-d1-admin/wrangler.jsonc','utf8'));
  assert.deepEqual(config.services,[{binding:'RECORD_GATEWAY',service:'gdd-r2-gateway'},{binding:'RECORD_PUBLIC_API',service:'gdd-d1-api-staging'}]);
 });
+
+// Calendar publishing uses the same lunar computation as the public calendar.
+test('daily memorial auto-publish is date scoped, deduplicated and preserves restricted portraits',async()=>{
+ const {dailyNotices,vietnamDay,MEMORIAL_CRONS}=await import('../workers/gdd-d1-admin/src/daily-memorial.mjs');
+ const now=new Date('2026-11-27T17:05:00Z');assert.equal(vietnamDay(now),'2026-11-28');
+ const p={id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',slug:'thai-khy',full_name:'THÁI KHÝ THANH',rank:'Quyền Thái Chánh Phối Sư',published:1,death_lunar_day:20,death_lunar_month:10,record_access:'protected',image_url:'https://gdd-r2-gateway.realmetayninh7649.workers.dev/v1/public/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/preview'};
+ const manual={id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',full_name:p.full_name,published:1,calendar_system:'lunar',lunar_day:20,lunar_month:10,linked_person_id:p.id};
+ const list=dailyNotices([p],[manual],[],now);assert.equal(list.length,1);assert.equal(list[0].portrait_url,null);assert.match(list[0].body,/thai-khy/);assert.match(list[0].anniversary_date,/28\/11\/2026/);
+ assert.equal(dailyNotices([p],[],[{person_name:p.full_name,published:1,published_at:'2026-11-28T00:00:00Z'}],now).length,0);
+ assert.equal(dailyNotices([{...p,published:0}],[],[],now).length,0);
+ assert.equal(dailyNotices([p],[],[],new Date('2026-11-29T00:00:00Z')).length,0);
+ assert.equal(dailyNotices([{...p,record_access:'download'}],[],[],now)[0].portrait_url,p.image_url);
+ const cfg=JSON.parse(readFileSync('workers/gdd-d1-admin/wrangler.jsonc','utf8'));assert.ok(MEMORIAL_CRONS.every(x=>cfg.triggers.crons.includes(x)));
+});
